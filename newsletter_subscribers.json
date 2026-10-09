@@ -1,0 +1,42 @@
+[
+  {
+    "email": "itachi.disciple@thestreetco.io",
+    "date": "2026-09-24",
+    "time": "16:06:35",
+    "dateTime": "2026-09-24T16:06:35.983Z",
+    "dateFormatted": "24 Sept 2026",
+    "timeFormatted": "09:36:35 pm",
+    "istDateTime": "24 Sept 2026, 09:36:35 pm IST",
+    "timestamp": 1790265995983,
+    "clientDate": null,
+    "clientTime": null,
+    "subscribedAt": "2026-09-24T16:06:35.983Z",
+    "createdAt": "2026-09-24T16:06:35.983Z",
+    "updatedAt": "2026-09-24T16:06:35.983Z",
+    "status": "ACTIVE",
+    "memberTier": "RAVEN_NETWORK",
+    "welcomeCreditInr": 500,
+    "source": "footer_newsletter_form",
+    "submissionCount": 1
+  },
+  {
+    "email": "customer.test@thestreetco.io",
+    "date": "2026-09-26",
+    "time": "04:08:18",
+    "dateTime": "2026-09-26T04:08:18.719Z",
+    "dateFormatted": "26 Sept 2026",
+    "timeFormatted": "09:38:18 am",
+    "istDateTime": "26 Sept 2026, 09:38:18 am IST",
+    "timestamp": 1790395698719,
+    "clientDate": null,
+    "clientTime": null,
+    "subscribedAt": "2026-09-26T04:08:18.719Z",
+    "createdAt": "2026-09-26T04:08:18.719Z",
+    "updatedAt": "2026-09-26T04:08:18.719Z",
+    "status": "ACTIVE",
+    "memberTier": "RAVEN_NETWORK",
+    "welcomeCreditInr": 500,
+    "source": "footer_newsletter_form",
+    "submissionCount": 1
+  }
+]

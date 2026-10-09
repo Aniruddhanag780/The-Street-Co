@@ -1,0 +1,17 @@
+{
+  "name": "uchiha-itachi",
+  "version": "1.0.0",
+  "description": "Interactive showcase of Uchiha Itachi with scroll-scrubbed frames and mouse-tracked Sharingan eyes",
+  "type": "module",
+  "scripts": {
+    "dev": "node server.js",
+    "build": "echo 'Build complete'",
+    "lint": "node -c server.js",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "nodemailer": "^10.0.12",
+    "twilio": "^6.1.1"
+  }
+}

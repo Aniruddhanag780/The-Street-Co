@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <title>Zoho Inventory Integration Portal — The Street Co</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600;800&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      min-height: 100%;
+      overflow-x: hidden;
+    }
+
+    body {
+      background-color: #08080a;
+      color: #f0f0f2;
+      font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: clamp(1rem, 3vw, 2.5rem) clamp(0.75rem, 3vw, 1.5rem) 4rem;
+      background-image: radial-gradient(circle at 50% 8%, rgba(224, 90, 71, 0.12) 0%, transparent 65%);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 920px;
+      display: flex;
+      flex-direction: column;
+      gap: clamp(1rem, 2.5vw, 1.5rem);
+    }
+
+    /* Top Navigation Bar */
+    .top-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      padding-bottom: 0.5rem;
+      width: 100%;
+    }
+
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #e5e7eb;
+      text-decoration: none;
+      font-size: 0.82rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      padding: 0.5rem 0.95rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .back-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(255, 255, 255, 0.28);
+      color: #ffffff;
+      transform: translateY(-1px);
+    }
+
+    .brand-tag {
+      font-size: 0.75rem;
+      color: #9ca3af;
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: 0.05em;
+    }
+
+    /* Header Section */
+    .header {
+      text-align: center;
+      margin-bottom: 0.25rem;
+      padding: 0 0.5rem;
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 0.68rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      padding: 0.35rem 0.85rem;
+      border: 1px solid rgba(220, 38, 38, 0.4);
+      background: rgba(220, 38, 38, 0.1);
+      color: #f87171;
+      border-radius: 999px;
+      margin-bottom: 0.75rem;
+      font-weight: 700;
+    }
+
+    h1 {
+      font-family: 'Shippori Mincho', serif;
+      font-size: clamp(1.6rem, 4vw, 2.3rem);
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      color: #ffffff;
+      line-height: 1.2;
+    }
+
+    p.subtitle {
+      color: #9ca3af;
+      font-size: clamp(0.85rem, 2vw, 0.95rem);
+      margin-top: 0.5rem;
+      max-width: 680px;
+      margin-left: auto;
+      margin-right: auto;
+      line-height: 1.55;
+    }
+
+    /* Cards */
+    .card {
+      background: #0f0f14;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: clamp(1.1rem, 3vw, 1.75rem);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+      width: 100%;
+      overflow: hidden;
+    }
+
+    .card-title {
+      font-size: clamp(1rem, 2.5vw, 1.2rem);
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 0.35rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .card-desc {
+      font-size: 0.85rem;
+      color: #9ca3af;
+      margin-bottom: 1.25rem;
+      line-height: 1.5;
+    }
+
+    /* Live Connection Banner */
+    .status-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+      padding: clamp(0.9rem, 2vw, 1.25rem);
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      width: 100%;
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 220px;
+      flex: 1;
+    }
+
+    .status-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #eab308;
+      box-shadow: 0 0 12px #eab308;
+      flex-shrink: 0;
+    }
+
+    .status-dot.connected {
+      background: #22c55e;
+      box-shadow: 0 0 12px #22c55e;
+    }
+
+    .status-dot.error {
+      background: #ef4444;
+      box-shadow: 0 0 12px #ef4444;
+    }
+
+    .status-text {
+      font-weight: 700;
+      font-size: clamp(0.85rem, 2vw, 0.95rem);
+      color: #f3f4f6;
+    }
+
+    .status-sub {
+      font-size: 0.78rem;
+      color: #9ca3af;
+      margin-top: 2px;
+      word-break: break-word;
+    }
+
+    /* Forms & Inputs */
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: clamp(0.85rem, 2vw, 1.15rem);
+      width: 100%;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      width: 100%;
+    }
+
+    .form-group.full-width {
+      grid-column: 1 / -1;
+    }
+
+    label {
+      font-size: 0.76rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: #d1d5db;
+      text-transform: uppercase;
+    }
+
+    input, select {
+      width: 100%;
+      background: #14141a;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      padding: 0.75rem 0.95rem;
+      color: #ffffff;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    input:focus, select:focus {
+      border-color: #ef4444;
+      background: #1a1a24;
+      box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+    }
+
+    .help-hint {
+      font-size: 0.72rem;
+      color: #9ca3af;
+      line-height: 1.4;
+      word-break: break-word;
+    }
+
+    /* Buttons */
+    .btn-row {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1.25rem;
+      flex-wrap: wrap;
+      width: 100%;
+    }
+
+    button.btn {
+      padding: 0.75rem 1.4rem;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 0.82rem;
+      letter-spacing: 0.06em;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      border: none;
+      white-space: nowrap;
+    }
+
+    button.btn-primary {
+      background: #dc2626;
+      color: #ffffff;
+    }
+
+    button.btn-primary:hover:not(:disabled) {
+      background: #b91c1c;
+      transform: translateY(-1px);
+    }
+
+    button.btn-secondary {
+      background: rgba(255, 255, 255, 0.07);
+      color: #f3f4f6;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    button.btn-secondary:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.14);
+      border-color: rgba(255, 255, 255, 0.3);
+      color: #ffffff;
+    }
+
+    button.btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    /* Exchange Box */
+    .exchange-box {
+      background: rgba(239, 68, 68, 0.06);
+      border: 1px dashed rgba(239, 68, 68, 0.35);
+      border-radius: 10px;
+      padding: clamp(0.9rem, 2vw, 1.25rem);
+      margin-bottom: 1.4rem;
+      width: 100%;
+    }
+
+    .exchange-input-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      width: 100%;
+    }
+
+    .exchange-input-row input {
+      flex: 1 1 240px;
+    }
+
+    .exchange-input-row button {
+      flex: 0 1 auto;
+    }
+
+    /* Guide Steps */
+    .guide-step {
+      display: flex;
+      gap: 14px;
+      padding: 1rem 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      width: 100%;
+    }
+
+    .guide-step:last-child {
+      border-bottom: none;
+      padding-bottom: 0.25rem;
+    }
+
+    .step-number {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #ef4444;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      font-size: 0.8rem;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .step-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .step-content h4 {
+      font-size: 0.92rem;
+      color: #ffffff;
+      margin-bottom: 4px;
+    }
+
+    .step-content p {
+      font-size: 0.82rem;
+      color: #9ca3af;
+      line-height: 1.55;
+      word-break: break-word;
+    }
+
+    .code-pill {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #fca5a5;
+      word-break: break-all;
+      display: inline-block;
+    }
+
+    /* Notifications */
+    .notification {
+      padding: 0.85rem 1.1rem;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      display: none;
+      margin-top: 1rem;
+      word-break: break-word;
+      width: 100%;
+    }
+
+    .notification.success {
+      display: block;
+      background: rgba(34, 197, 94, 0.12);
+      border: 1px solid rgba(34, 197, 94, 0.35);
+      color: #4ade80;
+    }
+
+    .notification.error {
+      display: block;
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      color: #fca5a5;
+    }
+
+    /* Mobile Adaptations */
+    @media (max-width: 640px) {
+      .top-nav {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .back-btn {
+        justify-content: center;
+      }
+      .brand-tag {
+        text-align: center;
+      }
+      .status-banner {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .status-indicator {
+        min-width: 100%;
+      }
+      button.btn {
+        width: 100%;
+      }
+      .exchange-input-row button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    
+    <!-- Top Navigation Bar -->
+    <header class="top-nav">
+      <a href="/" class="back-btn">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+        <span>BACK TO STOREFRONT</span>
+      </a>
+      <span class="brand-tag">THE STREET CO × ZOHO INVENTORY</span>
+    </header>
+
+    <!-- Header Section -->
+    <section class="header">
+      <span class="badge">LIVE INTEGRATION</span>
+      <h1>Zoho Inventory Portal</h1>
+      <p class="subtitle">Manage products, sync live inventory stock, and automatically sync storefront sales orders directly with your Zoho account.</p>
+    </section>
+
+    <!-- Live Status Overview -->
+    <div class="card">
+      <div class="status-banner">
+        <div class="status-indicator">
+          <div class="status-dot" id="statusDot"></div>
+          <div>
+            <div class="status-text" id="statusText">Checking connection...</div>
+            <div class="status-sub" id="statusSub">Connecting to local server...</div>
+          </div>
+        </div>
+        <button class="btn btn-secondary" id="btnSyncNow" type="button">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          <span>SYNC PRODUCTS NOW</span>
+        </button>
+      </div>
+
+      <div id="syncResultBanner" class="notification"></div>
+    </div>
+
+    <!-- Zoho API Credentials Configuration Form -->
+    <div class="card">
+      <h3 class="card-title">Zoho Inventory Credentials</h3>
+      <p class="card-desc">Your Client ID, Secret, and Organization ID are configured. If you generate a fresh authorization code from the Zoho Developer Console, paste it below to update your permanent Refresh Token.</p>
+
+      <!-- Instant Code Exchange Box -->
+      <div class="exchange-box">
+        <label for="authCode" style="color: #fca5a5; display: block; margin-bottom: 6px;">Have a Generated Code from Self Client?</label>
+        <div class="exchange-input-row">
+          <input type="text" id="authCode" placeholder="Paste 1000.xxxxxxxxxxxxxxxxxxxxxxxx code here..." />
+          <button type="button" class="btn btn-primary" id="btnExchangeCode">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            <span>GET REFRESH TOKEN</span>
+          </button>
+        </div>
+        <span class="help-hint" style="color: #d1d5db; margin-top: 8px; display: block;">Generated from Zoho API Console &rarr; Self Client &rarr; Generate Code tab (Scope: <span class="code-pill">ZohoInventory.fullaccess.all,ZohoInventory.salesorders.all</span>)</span>
+      </div>
+
+      <form id="zohoSetupForm">
+        <div class="form-grid">
+          
+          <div class="form-group">
+            <label for="clientId">Client ID</label>
+            <input type="text" id="clientId" value="1000.UZX14OW3RS263F9HO71UTABZ83BEUK" placeholder="1000.XXXXXXXXXXXXXXXXXXXXXXXX" required />
+            <span class="help-hint">Your saved Zoho Client ID</span>
+          </div>
+
+          <div class="form-group">
+            <label for="clientSecret">Client Secret</label>
+            <input type="password" id="clientSecret" value="89c5bfa5bb94d3b6a6b956e030753116ed3f765095" placeholder="••••••••••••••••••••••••" required />
+            <span class="help-hint">Your saved Zoho Client Secret</span>
+          </div>
+
+          <div class="form-group full-width">
+            <label for="refreshToken">OAuth Refresh Token</label>
+            <input type="text" id="refreshToken" placeholder="Paste your Refresh Token here (or click GET REFRESH TOKEN above)" required />
+            <span class="help-hint">Permanent token used to communicate with Zoho Inventory</span>
+          </div>
+
+          <div class="form-group">
+            <label for="orgId">Zoho Organization ID</label>
+            <input type="text" id="orgId" value="60090378434" placeholder="60090378434" required />
+            <span class="help-hint">Found in Zoho Inventory &rarr; Profile &rarr; Organization ID</span>
+          </div>
+
+          <div class="form-group">
+            <label for="domain">Data Center Region (Domain)</label>
+            <select id="domain">
+              <option value="inventory.zoho.in" selected>India (inventory.zoho.in)</option>
+              <option value="inventory.zoho.com">US / Global (inventory.zoho.com)</option>
+              <option value="inventory.zoho.eu">Europe (inventory.zoho.eu)</option>
+              <option value="inventory.zoho.com.au">Australia (inventory.zoho.com.au)</option>
+            </select>
+            <span class="help-hint">Must match your Zoho account registration region</span>
+          </div>
+
+        </div>
+
+        <div class="btn-row">
+          <button type="submit" class="btn btn-primary" id="btnSaveConfig">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            <span>SAVE &amp; CONNECT ZOHO INVENTORY</span>
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Quick 3-Step Setup Guide -->
+    <div class="card">
+      <h3 class="card-title">How to Generate Zoho Credentials in 2 Minutes</h3>
+      <p class="card-desc">Follow these 3 simple steps to generate or rotate your permanent API credentials from the official Zoho API Console:</p>
+
+      <div class="guide-step">
+        <div class="step-number">1</div>
+        <div class="step-content">
+          <h4>Open Zoho API Console</h4>
+          <p>Visit <a href="https://api-console.zoho.in" target="_blank" rel="noopener noreferrer" style="color:#ef4444;text-decoration:underline;">api-console.zoho.in</a> (or .com if outside India). Sign in with your Zoho account and click <strong>Add Client</strong>.</p>
+        </div>
+      </div>
+
+      <div class="guide-step">
+        <div class="step-number">2</div>
+        <div class="step-content">
+          <h4>Select "Self Client" &amp; Generate Code</h4>
+          <p>Choose <strong>Self Client</strong>. Under <strong>Scope</strong>, paste: <span class="code-pill">ZohoInventory.fullaccess.all,ZohoInventory.salesorders.all</span>. Set Time Duration to 10 minutes and click <strong>Generate</strong> to get your authorization code.</p>
+        </div>
+      </div>
+
+      <div class="guide-step">
+        <div class="step-number">3</div>
+        <div class="step-content">
+          <h4>Generate Permanent Refresh Token</h4>
+          <p>Under the Client Secret tab, copy your <strong>Client ID</strong> and <strong>Client Secret</strong>. Use the authorization code in the box above to receive your permanent <strong>Refresh Token</strong> and save!</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- How to Add Products in Zoho Inventory Guide -->
+    <div class="card">
+      <h3 class="card-title">How to Add Products in Zoho Inventory</h3>
+      <p class="card-desc">Once connected, any product you create in Zoho Inventory immediately appears on your storefront:</p>
+
+      <div class="guide-step">
+        <div class="step-number">A</div>
+        <div class="step-content">
+          <h4>Create Item in Zoho</h4>
+          <p>In your Zoho Inventory Dashboard, go to <strong>Items</strong> &rarr; click <strong>+ New</strong>.</p>
+        </div>
+      </div>
+
+      <div class="guide-step">
+        <div class="step-number">B</div>
+        <div class="step-content">
+          <h4>Fill in Product Details</h4>
+          <p>
+            &bull; <strong>Item Name:</strong> Enter product title (e.g. <em>Fourth Hokage Minato Inspired Oversized T-Shirt</em>)<br/>
+            &bull; <strong>SKU:</strong> Enter a unique identifier (e.g. <em>TS-MIN-001</em>)<br/>
+            &bull; <strong>Selling Price:</strong> Enter price in ₹ INR (e.g. <em>1599</em>)<br/>
+            &bull; <strong>Initial Stock:</strong> Enter warehouse quantity on hand (e.g. <em>50</em>)<br/>
+            &bull; <strong>Upload Image:</strong> Attach product photo so it appears on the storefront.
+          </p>
+        </div>
+      </div>
+
+      <div class="guide-step">
+        <div class="step-number">C</div>
+        <div class="step-content">
+          <h4>Save &amp; View on Storefront</h4>
+          <p>Click <strong>Save</strong> in Zoho Inventory. Your store will automatically sync the catalog, render the item for your customers, and decrement stock when orders are placed!</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    async function loadStatus() {
+      const dot = document.getElementById('statusDot');
+      const text = document.getElementById('statusText');
+      const sub = document.getElementById('statusSub');
+
+      try {
+        const res = await fetch('/api/zoho-inventory/status');
+        const data = await res.json();
+        const zoho = data.zoho || {};
+
+        if (zoho.configured && zoho.syncStatus === 'synced') {
+          dot.className = 'status-dot connected';
+          text.textContent = 'CONNECTED TO ZOHO INVENTORY';
+          sub.textContent = `Active Organization: ${zoho.orgId} • ${zoho.cachedItemsCount} items synced • Token valid`;
+        } else if (zoho.configured) {
+          dot.className = 'status-dot connected';
+          text.textContent = 'CREDENTIALS CONFIGURED';
+          sub.textContent = `Organization: ${zoho.orgId} • Ready to sync items`;
+        } else {
+          dot.className = 'status-dot';
+          text.textContent = 'PENDING CONFIGURATION';
+          sub.textContent = 'Paste Client ID, Secret, and Refresh Token below to activate.';
+        }
+      } catch (err) {
+        dot.className = 'status-dot error';
+        text.textContent = 'SERVER UNREACHABLE';
+        sub.textContent = err.message;
+      }
+    }
+
+    document.getElementById('zohoSetupForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('btnSaveConfig');
+      const banner = document.getElementById('syncResultBanner');
+      const refreshInput = document.getElementById('refreshToken');
+      const rToken = (refreshInput.value || '').trim();
+
+      if (!rToken) {
+        banner.className = 'notification error';
+        banner.style.display = 'block';
+        banner.textContent = '⚠️ Refresh Token is required! Please generate a code from Zoho Developer Console (Self Client → Generate Code) and click "GET REFRESH TOKEN" above, or paste your permanent Refresh Token.';
+        refreshInput.focus();
+        refreshInput.style.borderColor = '#ef4444';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'SAVING & CONNECTING...';
+
+      const payload = {
+        clientId: document.getElementById('clientId').value.trim(),
+        clientSecret: document.getElementById('clientSecret').value.trim(),
+        refreshToken: rToken,
+        orgId: document.getElementById('orgId').value.trim(),
+        domain: document.getElementById('domain').value
+      };
+
+      try {
+        const res = await fetch('/api/zoho-inventory/setup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        
+        banner.className = 'notification success';
+        banner.style.display = 'block';
+        banner.textContent = '✓ Configuration saved! Triggering item sync...';
+
+        // Automatically trigger sync
+        const syncRes = await fetch('/api/zoho-inventory/sync', { method: 'POST' });
+        const syncData = await syncRes.json();
+        
+        if (syncData.success) {
+          banner.textContent = `✓ Connected! Successfully synchronized ${syncData.count} items from Zoho Inventory.`;
+        } else {
+          banner.className = 'notification error';
+          banner.textContent = `Configuration saved, but sync returned: ${syncData.message}`;
+        }
+      } catch (err) {
+        banner.className = 'notification error';
+        banner.style.display = 'block';
+        banner.textContent = `Error: ${err.message}`;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'SAVE & CONNECT ZOHO INVENTORY';
+        loadStatus();
+      }
+    });
+
+    document.getElementById('btnExchangeCode').addEventListener('click', async () => {
+      const codeInput = document.getElementById('authCode');
+      const code = (codeInput.value || '').trim();
+      const banner = document.getElementById('syncResultBanner');
+      const btn = document.getElementById('btnExchangeCode');
+
+      if (!code) {
+        banner.className = 'notification error';
+        banner.style.display = 'block';
+        banner.textContent = 'Please paste the generated code from the Self Client tab.';
+        codeInput.focus();
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'EXCHANGING...';
+      banner.className = 'notification';
+      banner.style.display = 'block';
+      banner.textContent = 'Exchanging code for permanent Refresh Token with Zoho OAuth...';
+
+      try {
+        const res = await fetch('/api/zoho-inventory/exchange-code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            code: code,
+            clientId: document.getElementById('clientId').value.trim(),
+            clientSecret: document.getElementById('clientSecret').value.trim(),
+            accountsDomain: 'accounts.zoho.in'
+          })
+        });
+
+        const data = await res.json();
+        if (data.success && data.refreshToken) {
+          document.getElementById('refreshToken').value = data.refreshToken;
+          banner.className = 'notification success';
+          banner.textContent = '✓ Refresh Token retrieved! Auto-saving and syncing items...';
+
+          // Auto-save and sync immediately
+          await fetch('/api/zoho-inventory/setup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              clientId: document.getElementById('clientId').value.trim(),
+              clientSecret: document.getElementById('clientSecret').value.trim(),
+              refreshToken: data.refreshToken,
+              orgId: document.getElementById('orgId').value.trim(),
+              domain: document.getElementById('domain').value
+            })
+          });
+
+          const syncRes = await fetch('/api/zoho-inventory/sync', { method: 'POST' });
+          const syncData = await syncRes.json();
+          if (syncData.success) {
+            banner.textContent = `✓ Connected! Successfully synchronized ${syncData.count} items from Zoho Inventory.`;
+          } else {
+            banner.textContent = `✓ Refresh token saved! ${syncData.message || ''}`;
+          }
+          loadStatus();
+        } else {
+          banner.className = 'notification error';
+          banner.textContent = `Exchange error: ${data.error || 'Failed to exchange code. Please ensure code is less than 10 minutes old.'}`;
+        }
+      } catch (err) {
+        banner.className = 'notification error';
+        banner.textContent = `Error: ${err.message}`;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'GET REFRESH TOKEN';
+      }
+    });
+
+    document.getElementById('btnSyncNow').addEventListener('click', async () => {
+      const banner = document.getElementById('syncResultBanner');
+      banner.className = 'notification';
+      banner.style.display = 'block';
+      banner.textContent = 'Syncing catalog from Zoho Inventory...';
+
+      try {
+        const res = await fetch('/api/zoho-inventory/sync', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          banner.className = 'notification success';
+          banner.textContent = `✓ Successfully synchronized ${data.count} items from Zoho Inventory!`;
+        } else {
+          banner.className = 'notification error';
+          banner.textContent = data.message || 'Sync failed. Please check your credentials.';
+        }
+      } catch (err) {
+        banner.className = 'notification error';
+        banner.textContent = err.message;
+      }
+      loadStatus();
+    });
+
+    loadStatus();
+  </script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+{
+  "name": "The Street Co",
+  "description": "Explore our exclusive collection of premium apparel and limited-edition essentials designed with exceptional quality.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

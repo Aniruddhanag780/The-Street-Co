@@ -1,0 +1,19 @@
+[
+  {
+    "ticketId": "STREET-CARE-117956",
+    "name": "Kabir Sengupta",
+    "email": "kabir@example.com",
+    "phone": "+91 6296731835",
+    "category": "Order Status & Tracking",
+    "orderNumber": "Order #864076",
+    "message": "Hello, checking on the dispatch timeframe for my latest drop.",
+    "status": "OPEN",
+    "createdAt": "2026-10-01T03:48:22.112Z",
+    "dateFormatted": "01 Oct 2026",
+    "timeFormatted": "09:18:22 am",
+    "istDateTime": "01 Oct 2026, 09:18:22 am IST",
+    "supportEmail": "support@thestreetco.zohodesk.in",
+    "assignedDesk": "Client Care Concierge",
+    "_id": "6abdd80656625b0c1d753366"
+  }
+]

@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OG Image Compressor &amp; Uploader — The Street Co</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background-color: #08080a;
+      color: #f0f0f2;
+      font-family: 'Space Grotesk', -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2.5rem 1rem;
+      background-image: radial-gradient(circle at 50% 10%, rgba(180, 20, 20, 0.15) 0%, transparent 60%);
+    }
+    .container {
+      width: 100%;
+      max-width: 800px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 0.5rem;
+    }
+    .badge {
+      display: inline-block;
+      font-size: 0.72rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      padding: 0.35rem 0.85rem;
+      border: 1px solid rgba(220, 38, 38, 0.4);
+      background: rgba(220, 38, 38, 0.1);
+      color: #ef4444;
+      border-radius: 999px;
+      margin-bottom: 0.75rem;
+    }
+    h1 {
+      font-family: 'Shippori Mincho', serif;
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      color: #fff;
+    }
+    p.subtitle {
+      color: #9ca3af;
+      font-size: 0.95rem;
+      margin-top: 0.4rem;
+    }
+    .dropzone {
+      border: 2px dashed rgba(220, 38, 38, 0.4);
+      border-radius: 1rem;
+      padding: 2.5rem 1.5rem;
+      text-align: center;
+      background: rgba(20, 20, 25, 0.6);
+      cursor: pointer;
+      transition: all 0.25s ease;
+      backdrop-filter: blur(10px);
+    }
+    .dropzone:hover, .dropzone.dragover {
+      border-color: #ef4444;
+      background: rgba(220, 38, 38, 0.08);
+      transform: translateY(-2px);
+    }
+    .dropzone-icon {
+      font-size: 2.5rem;
+      margin-bottom: 0.75rem;
+    }
+    .dropzone-title {
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: #fff;
+    }
+    .dropzone-desc {
+      color: #6b7280;
+      font-size: 0.85rem;
+      margin-top: 0.35rem;
+    }
+    input[type="file"] {
+      display: none;
+    }
+    .card {
+      background: #111116;
+      border: 1px solid #22222a;
+      border-radius: 1rem;
+      padding: 1.5rem;
+      display: none;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+    .card.active {
+      display: flex;
+    }
+    .stats-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      background: #181820;
+      padding: 1rem;
+      border-radius: 0.75rem;
+      border: 1px solid #282834;
+      font-size: 0.88rem;
+    }
+    .stat-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    .stat-label {
+      color: #9ca3af;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .stat-val {
+      font-weight: 700;
+      color: #fff;
+    }
+    .stat-val.highlight {
+      color: #10b981;
+    }
+    .controls-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    @media (max-width: 600px) {
+      .controls-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    label {
+      font-size: 0.82rem;
+      color: #d1d5db;
+      font-weight: 500;
+    }
+    select, input[type="range"] {
+      background: #181820;
+      border: 1px solid #2f2f3e;
+      color: #fff;
+      padding: 0.6rem 0.8rem;
+      border-radius: 0.5rem;
+      font-family: inherit;
+      font-size: 0.9rem;
+      outline: none;
+    }
+    .preview-box {
+      border-radius: 0.75rem;
+      overflow: hidden;
+      border: 1px solid #2f2f3e;
+      background: #000;
+      position: relative;
+    }
+    .preview-box img {
+      width: 100%;
+      height: auto;
+      display: block;
+      aspect-ratio: 1200 / 630;
+      object-fit: cover;
+    }
+    .preview-tag {
+      position: absolute;
+      top: 0.75rem;
+      right: 0.75rem;
+      background: rgba(0,0,0,0.75);
+      border: 1px solid rgba(255,255,255,0.2);
+      padding: 0.25rem 0.6rem;
+      border-radius: 0.35rem;
+      font-size: 0.75rem;
+      color: #fff;
+      backdrop-filter: blur(4px);
+    }
+    .actions {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .btn {
+      flex: 1;
+      padding: 0.85rem 1.25rem;
+      border-radius: 0.6rem;
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      transition: all 0.2s ease;
+      border: none;
+    }
+    .btn-primary {
+      background: #dc2626;
+      color: #fff;
+      box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4);
+    }
+    .btn-primary:hover {
+      background: #ef4444;
+      transform: translateY(-1px);
+    }
+    .btn-secondary {
+      background: #22222d;
+      color: #e5e7eb;
+      border: 1px solid #363646;
+    }
+    .btn-secondary:hover {
+      background: #2a2a38;
+    }
+    .status-msg {
+      padding: 0.85rem;
+      border-radius: 0.5rem;
+      font-size: 0.9rem;
+      display: none;
+    }
+    .status-msg.success {
+      display: block;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid #10b981;
+      color: #34d399;
+    }
+    .status-msg.error {
+      display: block;
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid #ef4444;
+      color: #f87171;
+    }
+    .back-link {
+      text-align: center;
+      margin-top: 1rem;
+    }
+    .back-link a {
+      color: #9ca3af;
+      text-decoration: none;
+      font-size: 0.88rem;
+    }
+    .back-link a:hover {
+      color: #ef4444;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="header">
+      <span class="badge">ADMIN TOOL</span>
+      <h1>Social Share Card (OG Image)</h1>
+      <p class="subtitle">Drop the image you want to use. We will automatically compress it to high-res standard 1200×630 and save it directly as <code>og-image.jpg</code>.</p>
+    </div>
+
+    <div class="dropzone" id="dropzone">
+      <div class="dropzone-icon">🏮</div>
+      <div class="dropzone-title">Click to Select or Drag &amp; Drop Image Here</div>
+      <div class="dropzone-desc">JPG, PNG, WebP up to 25MB (Will be compressed to ~90-150KB)</div>
+      <input type="file" id="fileInput" accept="image/*">
+    </div>
+
+    <div class="card" id="editorCard">
+      <div class="stats-row">
+        <div class="stat-item">
+          <span class="stat-label">Original Size</span>
+          <span class="stat-val" id="origSize">-</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Compressed Output</span>
+          <span class="stat-val highlight" id="compSize">-</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Target Aspect</span>
+          <span class="stat-val">1200 × 630 (1.91:1)</span>
+        </div>
+      </div>
+
+      <div class="controls-grid">
+        <div class="control-group">
+          <label for="fitMode">Framing / Fit Style:</label>
+          <select id="fitMode">
+            <option value="cover" selected>Cover (Auto-fit social card 1200×630)</option>
+            <option value="contain">Contain (Full artwork with dark bars)</option>
+            <option value="original">Keep Original Ratio (Max 1200px width)</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label for="qualityRange">Compression Quality: <span id="qualityVal">82%</span></label>
+          <input type="range" id="qualityRange" min="50" max="95" value="82">
+        </div>
+      </div>
+
+      <div class="preview-box">
+        <img id="previewImg" alt="OG Preview">
+        <span class="preview-tag">Live 1200×630 Preview</span>
+      </div>
+
+      <div id="statusAlert" class="status-msg"></div>
+
+      <div class="actions">
+        <button class="btn btn-primary" id="btnSave">
+          <span>💾 Save as og-image.jpg</span>
+        </button>
+        <button class="btn btn-secondary" id="btnDownload">
+          <span>📥 Download Compressed File</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="back-link">
+      <a href="/">← Return to The Street Co</a>
+    </div>
+  </div>
+
+  <canvas id="canvas" style="display: none;"></canvas>
+
+  <script>
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+    const editorCard = document.getElementById('editorCard');
+    const previewImg = document.getElementById('previewImg');
+    const origSizeEl = document.getElementById('origSize');
+    const compSizeEl = document.getElementById('compSize');
+    const fitModeEl = document.getElementById('fitMode');
+    const qualityRange = document.getElementById('qualityRange');
+    const qualityVal = document.getElementById('qualityVal');
+    const btnSave = document.getElementById('btnSave');
+    const btnDownload = document.getElementById('btnDownload');
+    const statusAlert = document.getElementById('statusAlert');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    let loadedImg = null;
+    let compressedDataUrl = null;
+    let originalFile = null;
+
+    dropzone.addEventListener('click', () => fileInput.click());
+
+    dropzone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropzone.classList.add('dragover');
+    });
+
+    dropzone.addEventListener('dragleave', () => {
+      dropzone.classList.remove('dragover');
+    });
+
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        handleFile(e.dataTransfer.files[0]);
+      }
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        handleFile(e.target.files[0]);
+      }
+    });
+
+    function formatBytes(bytes) {
+      if (!bytes || bytes === 0) return '0 B';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    function handleFile(file) {
+      if (!file.type.startsWith('image/')) {
+        alert('Please select an image file (JPG, PNG, WebP).');
+        return;
+      }
+      originalFile = file;
+      origSizeEl.textContent = formatBytes(file.size);
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          loadedImg = img;
+          editorCard.classList.add('active');
+          renderCompressed();
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    qualityRange.addEventListener('input', (e) => {
+      qualityVal.textContent = e.target.value + '%';
+      renderCompressed();
+    });
+
+    fitModeEl.addEventListener('change', () => {
+      renderCompressed();
+    });
+
+    function renderCompressed() {
+      if (!loadedImg) return;
+
+      const fit = fitModeEl.value;
+      const quality = parseInt(qualityRange.value, 10) / 100;
+
+      let targetW = 1200;
+      let targetH = 630;
+
+      if (fit === 'original') {
+        const ratio = loadedImg.height / loadedImg.width;
+        targetW = Math.min(1200, loadedImg.width);
+        targetH = Math.round(targetW * ratio);
+      }
+
+      canvas.width = targetW;
+      canvas.height = targetH;
+
+      ctx.fillStyle = '#08080a';
+      ctx.fillRect(0, 0, targetW, targetH);
+
+      if (fit === 'cover') {
+        const scale = Math.max(targetW / loadedImg.width, targetH / loadedImg.height);
+        const w = loadedImg.width * scale;
+        const h = loadedImg.height * scale;
+        const x = (targetW - w) / 2;
+        const y = (targetH - h) / 2;
+        ctx.drawImage(loadedImg, x, y, w, h);
+      } else if (fit === 'contain') {
+        const scale = Math.min(targetW / loadedImg.width, targetH / loadedImg.height);
+        const w = loadedImg.width * scale;
+        const h = loadedImg.height * scale;
+        const x = (targetW - w) / 2;
+        const y = (targetH - h) / 2;
+        ctx.drawImage(loadedImg, x, y, w, h);
+      } else {
+        ctx.drawImage(loadedImg, 0, 0, targetW, targetH);
+      }
+
+      compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+      previewImg.src = compressedDataUrl;
+
+      // Estimate compressed size
+      const stringLength = compressedDataUrl.length - 'data:image/jpeg;base64,'.length;
+      const sizeInBytes = 4 * Math.ceil(stringLength / 3) * 0.5624896334383687; // Base64 decode length
+      compSizeEl.textContent = formatBytes(sizeInBytes);
+    }
+
+    btnSave.addEventListener('click', async () => {
+      if (!compressedDataUrl) return;
+
+      btnSave.disabled = true;
+      btnSave.textContent = 'Saving to Server...';
+      statusAlert.className = 'status-msg';
+
+      try {
+        const res = await fetch('/api/upload-og-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageBase64: compressedDataUrl })
+        });
+        const data = await res.json();
+        if (data.success) {
+          statusAlert.className = 'status-msg success';
+          statusAlert.innerHTML = `✓ <strong>Success!</strong> Your image has been compressed (${formatBytes(data.sizeBytes)}) and saved directly as <code>og-image.jpg</code>. It will now be used for all social share previews!`;
+        } else {
+          throw new Error(data.error || 'Server rejected image');
+        }
+      } catch (err) {
+        statusAlert.className = 'status-msg error';
+        statusAlert.textContent = 'Error: ' + err.message;
+      } finally {
+        btnSave.disabled = false;
+        btnSave.innerHTML = '<span>💾 Save as og-image.jpg</span>';
+      }
+    });
+
+    btnDownload.addEventListener('click', () => {
+      if (!compressedDataUrl) return;
+      const a = document.createElement('a');
+      a.href = compressedDataUrl;
+      a.download = 'og-image.jpg';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    });
+  </script>
+</body>
+</html>

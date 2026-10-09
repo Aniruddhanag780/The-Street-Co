@@ -1,0 +1,1805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-P6M5JYSKP0"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-P6M5JYSKP0');
+</script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>The Street Co — Premium Streetwear Essentials</title>
+<meta name="description" content="Explore our exclusive collection of premium apparel and limited-edition essentials designed with exceptional quality." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://itachii.netlify.app" />
+<meta property="og:site_name" content="The Street Co" />
+<meta property="og:title" content="The Street Co — Premium Streetwear Essentials" />
+<meta property="og:description" content="Explore our exclusive collection of premium apparel and limited-edition essentials designed with exceptional quality." />
+<meta property="og:image" content="https://itachii.netlify.app/og-preview.jpg" />
+<meta property="og:image:secure_url" content="https://itachii.netlify.app/og-preview.jpg" />
+<meta property="og:image:type" content="image/jpeg" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="うちはイタチ — The Street Co" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="The Street Co — Premium Streetwear Essentials" />
+<meta name="twitter:description" content="Explore our exclusive collection of premium apparel and limited-edition essentials designed with exceptional quality." />
+<meta name="twitter:image" content="https://itachii.netlify.app/og-preview.jpg" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;800&family=Zen+Kaku+Gothic+New:wght@300;500;900&family=Cinzel:wght@400;700;900&family=Space+Grotesk:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- ══════════ PRELOADER ══════════ -->
+<div class="loader" id="loader">
+  <div class="loader__inner">
+    <div class="loader__glyph">写輪眼</div>
+    <div class="loader__bar"><span id="loaderFill"></span></div>
+    <div class="loader__meta">
+      <span>起動中 / INITIALIZING</span>
+      <span id="loaderPct">00</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ AMBIENT LAYERS ══════════ -->
+<div class="grain" aria-hidden="true"></div>
+<div class="vignette" aria-hidden="true"></div>
+<div class="scanlines" aria-hidden="true"></div>
+
+<!-- ══════════ AMATERASU — 黒炎 / BLACK FLAME HEM ══════════ -->
+<div class="amaterasu-bed" aria-hidden="true"></div>
+<canvas class="amaterasu" id="amaterasuCanvas" aria-hidden="true"></canvas>
+
+<!-- ══════════ STORM ══════════ -->
+<div class="storm" aria-hidden="true">
+  <div class="storm__flash" id="stormFlash"></div>
+  <svg class="storm__bolt" id="stormBolt" viewBox="0 0 1000 1000" preserveAspectRatio="none">
+    <path id="boltPath" d="" fill="none" stroke="#fff" stroke-width="2"
+          stroke-linejoin="round" stroke-linecap="round"/>
+    <path id="boltGlow" d="" fill="none" stroke="#9fd8ff" stroke-width="9"
+          stroke-linejoin="round" stroke-linecap="round" opacity=".45"/>
+  </svg>
+</div>
+
+<!-- ══════════ FIXED CHROME ══════════ -->
+<header class="chrome" id="topChrome">
+  <nav class="chrome__nav">
+    <a href="#shop" class="chrome__link">SHOP</a>
+    <a href="#collections" class="chrome__link" id="navCollectionsLink">COLLECTIONS</a>
+    <button class="chrome__wishlist-btn" id="shopWishlistBtn" type="button" aria-label="Wishlist" title="Saved Relics Wishlist">
+      <svg class="chrome__wishlist-icon-svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
+      </svg>
+      <span class="chrome__cart-text">WISHLIST</span>
+      <span class="chrome__wishlist-count" id="wishlistCount">0</span>
+    </button>
+    <button class="chrome__cart-btn" id="shopCartBtn" type="button" aria-label="Shopping Bag">
+      <svg class="chrome__cart-icon-svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/>
+        <line x1="3" y1="6" x2="21" y2="6"/>
+        <path d="M16 10a4 4 0 0 1-8 0"/>
+      </svg>
+      <span class="chrome__cart-text">BAG</span>
+      <span class="chrome__cart-count" id="cartCount">0</span>
+    </button>
+  </nav>
+</header>
+
+<div class="rail rail--left" aria-hidden="true">
+  <span>THE STREET CO · PREMIUM APPAREL · NEW DROP</span>
+</div>
+<div class="rail rail--right" aria-hidden="true">
+  <span id="railScroll">SCROLL 000%</span>
+</div>
+
+<div class="hint" id="hint" style="display:none;" aria-hidden="true"></div>
+
+<main>
+
+<!-- ══════════ ACT I — SCROLL SCRUB ══════════ -->
+<section class="scrub" id="scrub">
+  <div class="scrub__sticky">
+    <canvas id="mainCanvas"></canvas>
+    <div class="scrub__glow" id="scrubGlow"></div>
+
+    <!-- phase captions -->
+    <div class="phase" data-phase="0">
+      <h1 class="phase__jp">静寂</h1>
+      <p class="phase__en">SILENCE</p>
+      <p class="phase__sub">「一人で背負うと決めた。」 — He chose to carry it alone.</p>
+    </div>
+    <div class="phase" data-phase="1">
+      <h2 class="phase__jp">覚醒</h2>
+      <p class="phase__en">AWAKENING</p>
+      <p class="phase__sub">「本当の力は、目を開けた者にしか見えない。」</p>
+    </div>
+    <div class="phase" data-phase="2">
+      <h2 class="phase__jp">写輪眼</h2>
+      <p class="phase__en">SHARINGAN</p>
+      <p class="phase__sub">Three tomoe. Nothing escapes them.</p>
+    </div>
+    <div class="phase" data-phase="3">
+      <h2 class="phase__jp">烏</h2>
+      <p class="phase__en">A THOUSAND CROWS</p>
+      <p class="phase__sub">「幻術も、真実も、同じ羽で運ばれる。」</p>
+    </div>
+
+    <!-- Title lockup, only in the first beat -->
+    <div class="titleblock" id="titleblock">
+      <p class="titleblock__kicker">木ノ葉隠れの里 · 暁</p>
+      <h1 class="titleblock__jp">うちは<span>イタチ</span></h1>
+      <p class="titleblock__en"><span class="titleblock__en-text">UCHIHA&nbsp;ITACHI</span></p>
+    </div>
+
+    <canvas id="featherCanvas" class="feathers"></canvas>
+  </div>
+</section>
+
+<!-- ══════════ ACT II — MOUSE-TRACKED EYES ══════════ -->
+<section class="eyes" id="eyes">
+  <div class="eyes__sticky">
+    <canvas id="eyeCanvas"></canvas>
+    <div class="eyes__flare" id="eyeFlare"></div>
+    <div class="eyes__frame">
+      <div class="eyes__label eyes__label--tl">万華鏡写輪眼</div>
+      <div class="eyes__label eyes__label--tr">MANGEKYŌ · LIVE TRACK</div>
+      <div class="eyes__label eyes__label--bl" id="eyeReadout">視線 左 00.0 / FRAME 00</div>
+      <div class="eyes__label eyes__label--br">動かせ · MOVE YOUR CURSOR</div>
+    </div>
+    <div class="eyes__copy">
+      <h2>見つめ<span>返せ</span></h2>
+      <p>彼はあなたを見ている。 — Wherever you move, he follows.</p>
+      <p class="eyes__note">瞳孔追尾 · nine measured gaze positions, mapped left to right</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ SHOP — THE STREET CO ══════════ -->
+<section class="shop" id="shop">
+  <div class="shop__inner">
+    <div class="shop__head">
+      <span class="eyebrow" data-reveal>EXCLUSIVE STREETWEAR &amp; APPAREL</span>
+      <h2 data-reveal>THE <span>STREET CO</span><br>OFFICIAL SHOP</h2>
+      
+      <!-- ══════════ PROMINENT SEARCH BAR (ELEGANT PILL GEOMETRY · NO SQUARE BOX) ══════════ -->
+      <div class="shop__search-hero" data-reveal>
+        <div class="shop__search-wrapper" id="shopSearchWrapper">
+          <div class="shop__search-box shop__search-box--hero">
+            <svg class="shop__search-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="8"/>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input type="text" id="shopSearchInput" class="shop__search-input" placeholder="Search oversized tees, hoodies, jackets, accessories..." autocomplete="off" spellcheck="false"/>
+            <button type="button" id="shopSearchClearBtn" class="shop__search-clear" style="display:none;" aria-label="Clear search">✕</button>
+            <button type="button" id="shopSearchSubmitBtn" class="shop__search-submit" aria-label="Submit Search" title="Search Products">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <span class="shop__search-submit-label">SEARCH</span>
+            </button>
+          </div>
+          
+          <!-- Dropdown for Recently Viewed in Search Bar -->
+          <div class="search-recent-dropdown" id="shopSearchRecentDropdown" style="display:none;">
+            <div class="search-recent__header">
+              <span class="search-recent__label">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                RECENT SEARCH &amp; BROWSING HISTORY
+              </span>
+              <button type="button" class="search-recent__clear" data-action="clear-recently-viewed">CLEAR ALL</button>
+            </div>
+            <div class="search-recent__list" id="shopSearchRecentList"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Category Filter Bar (Centered, Clean Geometry) -->
+      <div class="shop__controls-bar" data-reveal>
+        <div class="shop__pills" id="shopFilterPills">
+          <button class="shop-pill active" type="button" data-shop-cat="all">All Products</button>
+          <button class="shop-pill" type="button" data-shop-cat="t-shirt">T-Shirt</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Product Grid: Live Synced with Zoho Inventory Catalog -->
+    <div class="shop__grid" id="shopGrid">
+      <div class="shop-loading-card" style="grid-column: 1 / -1; text-align: center; padding: 2.5rem 1.5rem; background: rgba(14,14,17,0.7); border: 1px solid rgba(232,228,220,0.08); border-radius: 6px;">
+        <span class="shop__sync-dot" style="display:inline-block; margin-bottom:.5rem;"></span>
+        <p style="font-family:'Cinzel',serif; letter-spacing:0.1em; color:var(--bone); font-size:0.95rem;">APPAREL &amp; PRODUCT CATALOG</p>
+        <small style="color:var(--ash); font-family:monospace; font-size:0.75rem;">Loading official catalog...</small>
+      </div>
+    </div>
+
+    <!-- SEE ALL COLLECTIONS CTA BUTTON -->
+    <div class="shop__collections-cta" data-reveal>
+      <button class="shop__collections-btn" id="openCollectionsBtn" type="button">
+        <span class="shop__collections-glow" aria-hidden="true"></span>
+        <span class="shop__collections-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="7" height="7" x="3" y="3" rx="1.5"/>
+            <rect width="7" height="7" x="14" y="3" rx="1.5"/>
+            <rect width="7" height="7" x="14" y="14" rx="1.5"/>
+            <rect width="7" height="7" x="3" y="14" rx="1.5"/>
+          </svg>
+        </span>
+        <span class="shop__collections-label">EXPLORE ALL COLLECTIONS</span>
+        <span class="shop__collections-arrow" aria-hidden="true">→</span>
+      </button>
+    </div>
+
+  </div>
+</section>
+
+  <!-- DEDICATED ALL COLLECTIONS SCREEN / PAGE -->
+  <section class="collections-page" id="collectionsPage" aria-hidden="true">
+    <div class="collections-page__head">
+      <div class="collections-page__head-inner">
+        <button class="collections-page__back" id="closeCollectionsBtn" type="button">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="19" y1="12" x2="5" y2="12"/>
+            <polyline points="12 19 5 12 12 5"/>
+          </svg>
+          <span>BACK TO SHOP</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="collections-page__content">
+      <!-- Search & Filters Toolbar (Prominent Pill Style - No Square Box) -->
+      <div class="collections-toolbar">
+        <div class="shop__search-wrapper collections-search-hero-wrapper" id="collecSearchWrapper">
+          <div class="shop__search-box shop__search-box--hero">
+            <svg class="shop__search-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="8"/>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input type="text" id="collecSearchInput" class="shop__search-input" placeholder="Search oversized tees, hoodies, jackets, accessories..." autocomplete="off" spellcheck="false"/>
+            <button type="button" id="collecClearSearch" class="shop__search-clear" style="display:none;" aria-label="Clear search">✕</button>
+          </div>
+
+          <!-- Dropdown for Recently Viewed in Search Bar -->
+          <div class="search-recent-dropdown" id="collecSearchRecentDropdown" style="display:none;">
+            <div class="search-recent__header">
+              <span class="search-recent__label">
+                <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                RECENTLY VIEWED ARTIFACTS
+              </span>
+              <button type="button" class="search-recent__clear" data-action="clear-recently-viewed">CLEAR ALL</button>
+            </div>
+            <div class="search-recent__list" id="collecSearchRecentList"></div>
+          </div>
+        </div>
+
+        <!-- Collection Category Tabs (Live from Zoho Inventory) -->
+        <div class="collections-filters">
+          <div class="collections-filter-group">
+            <span class="collections-filter-label">COLLECTIONS:</span>
+            <div class="collections-pills" id="collectionPills">
+              <button class="collec-pill active" type="button" data-collec="all">All Collections</button>
+              <button class="collec-pill" type="button" data-collec="minato">Minato</button>
+            </div>
+          </div>
+
+          <div class="collections-filter-group">
+            <span class="collections-filter-label">CATEGORY:</span>
+            <div class="collections-pills" id="categoryPills">
+              <button class="collec-pill active" type="button" data-cat="all">All Categories</button>
+              <button class="collec-pill" type="button" data-cat="t-shirt">T-Shirt</button>
+            </div>
+          </div>
+
+          <div class="collections-sort-group">
+            <label for="collecSortSelect" class="collections-filter-label">SORT:</label>
+            <select id="collecSortSelect" class="collections-sort-select">
+              <option value="featured">Featured Archive</option>
+              <option value="price-asc">Price: Low to High</option>
+              <option value="price-desc">Price: High to Low</option>
+              <option value="name">Name: A to Z</option>
+              <option value="name-desc">Name: Z to A</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Catalog Grid -->
+      <div class="collections-grid" id="collectionsGrid">
+        <!-- Rendered dynamically by JS with complete dataset -->
+      </div>
+    </div>
+  </section>
+
+<!-- ══════════ ACT III — JUTSU GRID ══════════ -->
+<section class="jutsu" id="jutsu">
+  <!-- background plate revealed under the ghost cursor -->
+  <div class="jutsu__reveal" id="jutsuReveal" aria-hidden="true"></div>
+  <div class="jutsu__rain" aria-hidden="true"></div>
+  <!-- ported reactbits.dev ghost-cursor, raw WebGL -->
+  <canvas class="ghost" id="ghostCanvas" aria-hidden="true"></canvas>
+
+  <div class="jutsu__inner">
+    <div class="jutsu__head">
+      <span class="eyebrow" data-px="0.10">禁術 · FORBIDDEN ARTS</span>
+      <h2 data-px="0.18">其の眼に<br>宿る術</h2>
+      <p data-px="0.26">The techniques that lived behind those eyes — and the price each one demanded. He never used a single one of them for himself.</p>
+      <div class="jutsu__meta" data-px="0.34">
+        <span><i>血継限界</i>KEKKEI GENKAI</span>
+        <span><i>暁 · 潜入</i>INFILTRATION</span>
+        <span><i>四つの術</i>FOUR ARTS</span>
+      </div>
+      <p class="jutsu__hint" data-px="0.40">動かせ · burn the dark away</p>
+    </div>
+
+   
+
+    <div class="jutsu__foot" data-px="0.14">
+      <span>「命を賭して、里を守る。」</span>
+      <span>TO PROTECT THE VILLAGE, HE GAVE UP BEING LOVED BY IT</span>
+    </div>
+  </div>
+
+  <!-- bottom-right anchor -->
+  <div class="jutsu__amaterasu" aria-hidden="true">
+    <span class="jutsu__amaterasu-jp">天照</span>
+    <span class="jutsu__amaterasu-ro">AMATERASU</span>
+    <span class="jutsu__amaterasu-sub">黒炎 · 七日七夜 · 消えぬ火</span>
+  </div>
+</section>
+
+<!-- ══════════ ACT IV — QUOTE ══════════ -->
+<!-- ══════════ BRAND ETHOS STATEMENT ══════════ -->
+<section class="quote">
+  <div class="quote__jp">THE STREET CO</div>
+  <blockquote>
+    <p>“Crafted for individuality. We engineer contemporary streetwear defined by premium materials, heavy gauge cottons, and timeless minimal silhouettes.”</p>
+    <cite>THE STREET CO. · OFFICIAL APPAREL</cite>
+  </blockquote>
+  <div class="quote__mark">EST. 2026</div>
+</section>
+
+<!-- ══════════ FOOTER ══════════ -->
+<footer id="end" class="site-footer">
+  
+  <!-- ══════════ FOOTER NEWSLETTER DISPATCH STRIP ══════════ -->
+  <div class="footer__newsletter-wrap">
+    <div class="footer__newsletter-inner">
+      <div class="footer__newsletter-left">
+        <div class="footer__newsletter-badge">
+          <span class="pulse-beacon"></span>
+          <span>EXCLUSIVE DROPS &amp; UPDATES</span>
+        </div>
+        <h3 class="footer__newsletter-title">SUBSCRIBE TO NEWSLETTER &amp; DROPS</h3>
+        <p class="footer__newsletter-desc">
+          Sign up to receive early access to new collection drops, limited restocks, and exclusive subscriber offers directly to your inbox.
+        </p>
+      </div>
+
+      <div class="footer__newsletter-right">
+        <form class="footer__newsletter-form" id="footerNewsletterForm" onsubmit="return false;">
+          <div class="footer__newsletter-input-box">
+            <span class="newsletter-input-icon">✉️</span>
+            <input type="email" id="footerNewsletterEmail" class="footer__newsletter-input" placeholder="Enter your email (e.g. contact@thestreetco.com)" required autocomplete="email" />
+            <button type="submit" id="footerNewsletterBtn" class="footer__newsletter-btn">
+              <span>SUBSCRIBE</span>
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
+          <div class="footer__newsletter-status" id="footerNewsletterStatus" aria-live="polite"></div>
+          <div class="footer__newsletter-perks">
+            <span>🛡️ Zero spam guarantee</span>
+            <span>⚡ Instant ₹500 welcome credit</span>
+            <span>📜 Unsubscribe anytime</span>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ APPAREL VALUE PILLARS ══════════ -->
+  <div class="footer__pillars">
+    <div class="pillar-card">
+      <div class="pillar-card__icon">📦</div>
+      <div class="pillar-card__info">
+        <strong>FAST COURIER DISPATCH</strong>
+        <small>Doorstep delivery across all 28,000+ Indian PIN codes via Express Courier</small>
+      </div>
+    </div>
+    <div class="pillar-card">
+      <div class="pillar-card__icon">🧵</div>
+      <div class="pillar-card__info">
+        <strong>PREMIUM FABRICS &amp; CRAFTSMANSHIP</strong>
+        <small>Heavyweight 240+ GSM combed cotton, reinforced seams, and custom-tailored streetwear cuts</small>
+      </div>
+    </div>
+    <div class="pillar-card">
+      <div class="pillar-card__icon">🔒</div>
+      <div class="pillar-card__info">
+        <strong>100% SECURE CHECKOUT</strong>
+        <small>Encrypted safe transactions via UPI, Credit/Debit Cards, Net Banking &amp; COD</small>
+      </div>
+    </div>
+    <div class="pillar-card">
+      <div class="pillar-card__icon">🔄</div>
+      <div class="pillar-card__info">
+        <strong>7-DAY EASY REPLACEMENTS</strong>
+        <small>Hassle-free size exchange and doorstep replacement guarantee on all clothing</small>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ MAIN FOOTER NAVIGATION GRID ══════════ -->
+  <div class="footer__grid">
+    
+    <!-- Col 1: Brand & Clothing Concept -->
+    <div class="footer__col footer__col--brand">
+      <div class="footer__brand-header">
+        <svg viewBox="0 0 100 100" class="footer__uchiwa" aria-hidden="true">
+          <circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" stroke-width="2"/>
+          <path d="M50 12 A38 38 0 0 1 50 88 A19 19 0 0 1 50 50 A19 19 0 0 0 50 12Z" fill="currentColor" opacity=".9"/>
+          <circle cx="50" cy="31" r="6" fill="#000"/>
+          <circle cx="50" cy="69" r="6" fill="currentColor"/>
+        </svg>
+        <div>
+          <strong class="footer__brand-title">THE STREET CO.</strong>
+          <span class="footer__brand-tag">PREMIUM STREETWEAR &amp; APPAREL</span>
+        </div>
+      </div>
+      
+      <p class="footer__brand-dossier">
+        Contemporary urban streetwear and apparel designed for modern living. Engineered with heavyweight cotton, precision tailoring, and minimalist silhouettes built for daily wear.
+      </p>
+
+      <div class="footer__socials">
+        <a href="#discord" class="footer__social-link" title="Discord Community" aria-label="Discord">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.929 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.894.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
+        </a>
+        <a href="#youtube" class="footer__social-link" title="YouTube Channel" aria-label="YouTube">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+        </a>
+        <a href="#x" class="footer__social-link" title="X (Twitter)" aria-label="X (formerly Twitter)">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        </a>
+        <a href="https://www.instagram.com/thestreetco_shop?stkn=ZnJ3eDZmaHd6Ym5o" target="_blank" rel="noopener noreferrer" class="footer__social-link" title="Instagram Lookbook (@thestreetco_shop)" aria-label="Instagram">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+        </a>
+      </div>
+    </div>
+
+    <!-- Col 2: SHOP -->
+    <div class="footer__col">
+      <h4 class="footer__col-heading">SHOP</h4>
+      <ul class="footer__link-list">
+        <li><a href="#shop" class="footer__link" data-footer-action="filter-category" data-category="all">Shop All Products</a></li>
+        <li><a href="#shop" class="footer__link" data-footer-action="scroll" data-target="#shop">New Arrivals</a></li>
+      </ul>
+    </div>
+
+    <!-- Col 3: COLLECTIONS -->
+    <div class="footer__col">
+      <h4 class="footer__col-heading">COLLECTIONS</h4>
+      <ul class="footer__link-list">
+        <li><a href="#collections" class="footer__link" data-footer-action="open-collections">View All Collections</a></li>
+      </ul>
+    </div>
+
+    <!-- Col 4: ORDERS & BAG -->
+    <div class="footer__col">
+      <h4 class="footer__col-heading">ORDERS &amp; BAG</h4>
+      <ul class="footer__link-list">
+        <li><a href="#bag" class="footer__link" data-footer-action="open-bag">Shopping Bag</a></li>
+        <li><a href="#wishlist" class="footer__link" data-footer-action="open-wishlist">Saved Wishlist</a></li>
+        <li><a href="#" class="footer__link" data-footer-action="open-tracking">Order Tracking</a></li>
+        <li><a href="#bag" class="footer__link" data-footer-action="open-bag">Proceed to Checkout</a></li>
+      </ul>
+    </div>
+
+    <!-- Col 5: CUSTOMER CARE -->
+    <div class="footer__col">
+      <h4 class="footer__col-heading">CUSTOMER SERVICE</h4>
+      <ul class="footer__link-list">
+        <li><a href="#shipping" class="footer__link" data-footer-action="legal" data-type="shipping">Shipping &amp; Delivery</a></li>
+        <li><a href="#returns" class="footer__link" data-footer-action="legal" data-type="refund">7-Day Returns &amp; Exchanges</a></li>
+        <li><a href="#size-guide" class="footer__link" data-footer-action="size-guide">Size &amp; Fit Guide</a></li>
+        <li><a href="#terms" class="footer__link" data-footer-action="legal" data-type="terms">Store Terms &amp; Policies</a></li>
+      </ul>
+    </div>
+
+  </div>
+
+  <!-- Grand Heritage Brand Banner -->
+  <div class="footer__big-wrap">
+    <div class="footer__big">THE STREET CO</div>
+    <div class="footer__kanji-sub">ザ・ストリート・カンパニー</div>
+  </div>
+
+  <!-- ══════════ BOTTOM LEGAL BAR & CONTROLS ══════════ -->
+  <div class="footer__bottom">
+    <div class="footer__bottom-left">
+      <span class="footer__copy">© 2026 The Street Co. All rights reserved.</span>
+      <span class="footer__tribute">Premium urban streetwear and apparel designed with exceptional quality.</span>
+    </div>
+
+    <div class="footer__bottom-center">
+      <ul class="footer__legal-links">
+        <li><a href="#privacy" class="footer__legal-link" data-footer-action="legal" data-type="privacy">Privacy Policy</a></li>
+        <li><span class="footer__legal-sep">·</span></li>
+        <li><a href="#terms" class="footer__legal-link" data-footer-action="legal" data-type="terms">Terms of Service</a></li>
+        <li><span class="footer__legal-sep">·</span></li>
+        <li><a href="#shipping-policy" class="footer__legal-link" data-footer-action="legal" data-type="shipping">Shipping Policy</a></li>
+        <li><span class="footer__legal-sep">·</span></li>
+        <li><a href="#refund-policy" class="footer__legal-link" data-footer-action="legal" data-type="refund">Refund &amp; Return Policy</a></li>
+        <li><span class="footer__legal-sep">·</span></li>
+        <li><a href="/admin-og" class="footer__legal-link" title="Social Preview Image Tool">OG Card Tool</a></li>
+      </ul>
+    </div>
+  </div>
+
+</footer>
+
+
+
+</main>
+
+<!-- ══════════ CART & WISHLIST DRAWER ══════════ -->
+<div class="cart-drawer" id="cartDrawer" aria-hidden="true">
+  <div class="cart-drawer__backdrop" id="cartBackdrop"></div>
+  <div class="cart-drawer__panel">
+    <div class="cart-drawer__head">
+      <div class="cart-drawer__tabs" role="tablist" aria-label="Cart and Wishlist views">
+        <button class="cart-drawer__tab active" id="cartDrawerTabBag" role="tab" aria-selected="true" type="button">
+          <svg class="cart-drawer__tab-icon" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/>
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <path d="M16 10a4 4 0 0 1-8 0"/>
+          </svg>
+          <span class="cart-drawer__tab-label">BAG</span>
+          <span class="cart-drawer__tab-count" id="cartDrawerCount">0</span>
+        </button>
+        <button class="cart-drawer__tab" id="cartDrawerTabWishlist" role="tab" aria-selected="false" type="button">
+          <svg class="cart-drawer__tab-icon" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
+          </svg>
+          <span class="cart-drawer__tab-label">WISHLIST</span>
+          <span class="cart-drawer__tab-count" id="cartDrawerWishlistCount">0</span>
+        </button>
+      </div>
+      <button class="cart-drawer__close" id="cartCloseBtn" type="button" aria-label="Close drawer">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Bag view body -->
+    <div class="cart-drawer__body" id="cartDrawerBagBody">
+      <div class="cart-drawer__items-list" id="cartItemsContainer">
+        <!-- Will be populated dynamically by JS -->
+      </div>
+
+      <!-- Coupon / Promo Box with Price-Matched Offers & Groups inside Bag/Cart -->
+      <div class="checkout-promo-box cart-promo-box" id="checkoutPromoBox" style="display:none;">
+        <div class="checkout-promo-box__header">
+          <div class="checkout-promo-box__title">
+            <span class="promo-seal-icon">🏷️</span>
+            <strong>PROMO CODES &amp; OFFERS</strong>
+          </div>
+          <span class="checkout-promo-applied-badge" id="checkoutPromoAppliedBadge" style="display:none;">COUPON APPLIED</span>
+        </div>
+
+        <div class="checkout-promo-input-row">
+          <div class="checkout-promo-input-wrap">
+            <input type="text" id="checkoutPromoInput" class="checkout-input" placeholder="Enter Coupon Code (e.g. STREET200, SAVE10)" autocomplete="off" spellcheck="false">
+            <button type="button" class="checkout-promo-clear-btn" id="checkoutPromoClearBtn" title="Cancel coupon" aria-label="Cancel coupon" style="display:none;">✕</button>
+          </div>
+          <button type="button" class="checkout-promo-apply-btn" id="checkoutPromoApplyBtn">APPLY</button>
+        </div>
+        <div class="checkout-promo-message" id="checkoutPromoMsg"></div>
+
+        <!-- Dynamic Price-Matched Suggested Coupons Showcase -->
+        <div class="checkout-coupons-showcase" id="checkoutCouponsShowcase">
+          <div class="checkout-coupons-header">
+            <div class="checkout-coupons-heading">
+              <span class="coupons-subhead">AVAILABLE OFFERS FOR YOU</span>
+            </div>
+          </div>
+
+          <!-- List of Top 2-3 Coupons Cards -->
+          <div class="checkout-coupons-list" id="checkoutCouponsList">
+            <!-- Dynamically populated with top 2-3 best matching coupons via JavaScript -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Wishlist view body -->
+    <div class="cart-drawer__body" id="wishlistItemsContainer" style="display:none;">
+      <!-- Will be populated dynamically by JS -->
+    </div>
+
+    <!-- Bag foot -->
+    <div class="cart-drawer__foot" id="cartDrawerFoot">
+      <div class="cart-drawer__price-summary">
+        <div class="cart-drawer__subtotal">
+          <span class="cart-drawer__subtotal-label">BAG SUBTOTAL</span>
+          <span class="cart-drawer__subtotal-val" id="cartSubtotal">₹0 INR</span>
+        </div>
+        <div class="cart-drawer__discount" id="cartDiscountRow" style="display:none;">
+          <span class="cart-drawer__discount-label">COUPON DISCOUNT (<span id="cartDiscountCodeBadge"></span>)</span>
+          <span class="cart-drawer__discount-val" id="cartDiscountVal">-₹0 INR</span>
+        </div>
+        <div class="cart-drawer__total" id="cartTotalRow" style="display:none;">
+          <span class="cart-drawer__total-label">FINAL BAG PRICE</span>
+          <span class="cart-drawer__total-val" id="cartTotalVal">₹0 INR</span>
+        </div>
+      </div>
+      <button class="cart-drawer__checkout" id="checkoutBtn" type="button" disabled>
+        <span id="checkoutBtnText">PROCEED TO CHECKOUT</span>
+      </button>
+    </div>
+
+    <!-- Wishlist foot -->
+    <div class="cart-drawer__foot" id="wishlistDrawerFoot" style="display:none;">
+      <button class="cart-drawer__checkout" id="wishlistMoveAllBtn" type="button">
+        <span>MOVE ALL TO CART</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Notification -->
+<div class="shop-toast" id="shopToast" aria-live="polite"></div>
+
+<!-- ══════════ FULL E-COMMERCE PRODUCT VIEW MODAL (AMAZON & FLIPKART STYLE · NO SQUARE BOX) ══════════ -->
+<div class="relic-modal" id="relicGalleryModal" aria-hidden="true">
+  <div class="relic-modal__backdrop" id="relicGalleryBackdrop"></div>
+  <div class="relic-modal__dialog" id="relicModalDialog" role="dialog" aria-modal="true" aria-labelledby="relicGalleryTitle">
+    
+    <!-- Top Utility & Breadcrumb Bar (Pill Styled - No Square Box) -->
+    <div class="pdp-top-bar">
+      <nav class="pdp-breadcrumbs" aria-label="Breadcrumb">
+        <span class="pdp-breadcrumb-home" id="pdpBreadcrumbHome" role="button" tabindex="0" style="cursor:pointer;" title="Return to previous screen">ALL PRODUCTS</span>
+        <span class="pdp-breadcrumb-sep">/</span>
+        <span class="pdp-breadcrumb-cat" id="pdpBreadcrumbCat">APPAREL</span>
+        <span class="pdp-breadcrumb-sep">/</span>
+        <span class="pdp-breadcrumb-cur" id="pdpBreadcrumbCur">RELIC</span>
+      </nav>
+      <div class="pdp-top-actions">
+        <button class="pdp-share-btn" id="pdpShareBtn" type="button" title="Copy artifact link to clipboard" aria-label="Share artifact link">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+          </svg>
+          <span>SHARE</span>
+        </button>
+        <button class="relic-modal__close-btn" id="relicGalleryCloseBtn" type="button" aria-label="Close Product View" title="Close and return">✕</button>
+      </div>
+    </div>
+
+    <!-- Main Two-Column Product Detail Section (Amazon & Flipkart Layout) -->
+    <div class="pdp-main-stage">
+      
+      <!-- Left Column: Media Stage & Direct Action Buttons (Flipkart Style) -->
+      <div class="pdp-gallery-col">
+        <div class="relic-gallery">
+          
+          <!-- Main Image Canvas with Zoom Lens & Floating Badges -->
+          <div class="relic-gallery__main-wrap" id="relicGalleryMainWrap">
+            <div class="pdp-image-zoom-container" id="pdpZoomContainer" title="Click to enlarge picture">
+              <img id="relicGalleryMainImg" class="relic-gallery__main-img" src="" alt="Artifact view" />
+              <div class="pdp-zoom-lens" id="pdpZoomLens"></div>
+              <div class="pdp-zoom-click-hint" id="pdpZoomClickHint">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                <span>CLICK TO ENLARGE</span>
+              </div>
+            </div>
+            <div id="relicGallerySvgFallback" class="relic-gallery__svg-fallback" style="display:none"></div>
+
+            <!-- Floating Wishlist Heart Button (Circle Pill) -->
+            <button class="pdp-floating-wish-btn" id="relicGalleryWishlistBtn" type="button" aria-label="Save to Wishlist" title="Save to Wishlist">
+              <svg class="relic-modal__heart-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
+              </svg>
+            </button>
+
+            <!-- Navigation Arrows -->
+            <button type="button" class="relic-gallery__nav prev" id="relicGalleryPrevBtn" aria-label="Previous view">‹</button>
+            <button type="button" class="relic-gallery__nav next" id="relicGalleryNextBtn" aria-label="Next view">›</button>
+            <div class="relic-gallery__counter" id="relicGalleryCounter">1 / 5 PHOTOS</div>
+          </div>
+          
+          <!-- Interactive Image Thumbnails (Smooth Rounded Capsules - No Square Box) -->
+          <div class="relic-gallery__thumbs" id="relicGalleryThumbs">
+            <!-- Populated dynamically by JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Product Detail, Pricing, Offers & Details (Amazon/Flipkart Style) -->
+      <div class="pdp-info-col">
+        <!-- Product Title -->
+        <h2 class="pdp-title" id="relicGalleryTitle">Akatsuki Cloud Trench Cloak</h2>
+
+        <!-- Amazon & Flipkart Styled Rating Row -->
+        <div class="pdp-fk-rating-row">
+          <div class="pdp-fk-rating-badge">
+            <span>4.9</span>
+            <span class="pdp-fk-star">★</span>
+          </div>
+          <button type="button" class="pdp-reviews-jump-btn" id="pdpJumpReviewsBtn">
+            <span id="pdpReviewCountLabel">1,428 Ratings &amp; 389 Reviews</span>
+          </button>
+        </div>
+
+        <!-- Amazon / Flipkart Deal & Pricing Card (Rounded - No Square Box) -->
+        <div class="pdp-pricing-card">
+          <div class="pdp-deal-ribbon-row">
+            <span class="pdp-deal-pill">LIMITED TIME DEAL</span>
+            <span class="pdp-deal-discount" id="pdpImgDiscountBadge">-20% OFF</span>
+          </div>
+          
+          <div class="pdp-price-row">
+            <div class="pdp-price-primary">
+              <span class="pdp-currency">₹</span>
+              <span class="pdp-amount" id="relicGalleryPriceInr">11,999</span>
+              <span class="pdp-inr-label">INR</span>
+            </div>
+            <div class="pdp-mrp-block">
+              <span class="pdp-mrp-label">M.R.P.:</span>
+              <del class="pdp-original-mrp" id="relicGalleryOriginalPrice">₹14,999</del>
+              <span class="pdp-savings-tag" id="relicGallerySavingsTag">SAVE ₹3,000 (20% OFF)</span>
+            </div>
+          </div>
+          
+          <div class="pdp-tax-badge-wrap" style="margin-top: 0.35rem; margin-bottom: 0.85rem;">
+            <span class="pdp-tax-notice" style="font-size: 0.75rem; color: #9ca3af; font-family: var(--mono); letter-spacing: 0.04em;">Inclusive of all taxes · Free Doorstep Delivery</span>
+          </div>
+
+          <!-- ══════ NOTIFY ME ON PRICE DROP (AMAZON/FLIPKART STYLE · PILL · LOCALSTORAGE PERSISTED) ══════ -->
+          <div class="pdp-price-drop-section" id="pdpPriceDropSection">
+            <!-- Initial / Trigger Button -->
+            <button class="pdp-price-drop-btn" id="pdpPriceDropBtn" type="button" aria-expanded="false" title="Set a price drop alert for this relic">
+              <span class="pdp-price-drop-bell-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+              </span>
+              <span class="pdp-price-drop-btn-text" id="pdpPriceDropBtnText">Notify Me on Price Drop</span>
+              <span class="pdp-price-drop-badge" id="pdpPriceDropBadge">GET ALERT</span>
+            </button>
+
+            <!-- Inline Email Input / Confirmation Form (Pill styled, smooth toggle) -->
+            <form class="pdp-price-drop-form" id="pdpPriceDropForm" style="display:none;" novalidate>
+              <div class="pdp-price-drop-input-wrap">
+                <svg class="pdp-price-drop-mail-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                  <polyline points="22,6 12,13 2,6"/>
+                </svg>
+                <input type="email" id="pdpPriceDropEmailInput" class="pdp-price-drop-email-input" placeholder="Enter your email address..." required spellcheck="false" autocomplete="email" aria-label="Email address for price drop alerts" />
+                <button type="submit" class="pdp-price-drop-submit-btn" id="pdpPriceDropSubmitBtn">
+                  <span>SET ALERT</span>
+                </button>
+              </div>
+              <div class="pdp-price-drop-form-hint">
+                <span>Instant dispatch when price drops below <strong id="pdpPriceDropTargetDisplay">current price</strong>. Saved to local storage.</span>
+                <button type="button" class="pdp-price-drop-cancel-btn" id="pdpPriceDropCancelBtn">Cancel</button>
+              </div>
+            </form>
+
+            <!-- Alert Active Status Banner & Controls (When alert is saved) -->
+            <div class="pdp-price-drop-active" id="pdpPriceDropActive" style="display:none;">
+              <div class="pdp-price-drop-active-info">
+                <span class="pdp-price-drop-active-dot" aria-hidden="true"></span>
+                <div class="pdp-price-drop-active-text">
+                  <strong>PRICE DROP ALERT ACTIVE 🔔</strong>
+                  <span id="pdpPriceDropActiveEmail">Watching for price decreases</span>
+                </div>
+              </div>
+              <div class="pdp-price-drop-active-actions">
+                <button type="button" class="pdp-price-drop-test-btn" id="pdpPriceDropTestBtn" title="Simulate a price decrease to test toast notification">
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                  <span>TEST PRICE DROP (-15%)</span>
+                </button>
+                <button type="button" class="pdp-price-drop-remove-btn" id="pdpPriceDropRemoveBtn" title="Remove price drop alert" aria-label="Remove price alert">✕</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Variant 1: Size Selection (Pills - No Square Box) -->
+        <div class="pdp-variant-group" id="pdpSizeGroup">
+          <div class="pdp-variant-header">
+            <span class="pdp-variant-label">SIZE / PROPORTION: <strong id="pdpSelectedSizeLabel">M</strong></span>
+            <button type="button" class="pdp-size-guide-btn" id="pdpSizeGuideBtn" title="View sizing measurements">SIZE CHART ⓘ</button>
+          </div>
+          <div class="pdp-size-options" id="pdpSizeOptions">
+            <button class="pdp-size-chip" type="button" data-size="S">S</button>
+            <button class="pdp-size-chip active" type="button" data-size="M">M</button>
+            <button class="pdp-size-chip" type="button" data-size="L">L</button>
+            <button class="pdp-size-chip" type="button" data-size="XL">XL</button>
+            <button class="pdp-size-chip" type="button" data-size="XXL">XXL</button>
+          </div>
+          <!-- Size guide hint box (hidden by default) -->
+          <div class="pdp-size-guide-box" id="pdpSizeGuideBox" style="display:none;">
+            <p><strong>OVERSIZED STREETWEAR TEE FIT GUIDE (INCHES):</strong><br>
+            • Size S: Chest 42", Length 28", Shoulder 20"<br>
+            • Size M: Chest 44", Length 29", Shoulder 21" (Standard Oversized)<br>
+            • Size L: Chest 46", Length 30", Shoulder 22"<br>
+            • Size XL: Chest 48", Length 31", Shoulder 23"<br>
+            • Size XXL: Chest 50", Length 32", Shoulder 24"</p>
+          </div>
+        </div>
+
+        <!-- Quantity & Subtotal Row -->
+        <div class="pdp-qty-row">
+          <div class="pdp-qty-stepper" id="pdpQtyStepper">
+            <button class="pdp-qty-btn" type="button" id="pdpQtyDec" aria-label="Decrease quantity">-</button>
+            <input type="number" class="pdp-qty-input" id="pdpQtyInput" value="1" min="1" max="10" readonly aria-label="Quantity" />
+            <button class="pdp-qty-btn" type="button" id="pdpQtyInc" aria-label="Increase quantity">+</button>
+          </div>
+          <div class="pdp-subtotal-display">
+            <span class="pdp-subtotal-title">TOTAL AMOUNT</span>
+            <span class="pdp-subtotal-price" id="pdpSubtotalPrice">₹1,599 INR</span>
+          </div>
+        </div>
+
+        <!-- Buy Now & Add to Bag Action Row (Placed directly below Size & Quantity selectors) -->
+        <div class="pdp-media-actions-row pdp-buybox-actions-row" id="pdpBuyboxActionsRow">
+          <button class="pdp-buy-now-btn" id="pdpBuyNowBtn" type="button" aria-label="Buy relic now with instant checkout">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+            </svg>
+            <span>BUY NOW</span>
+          </button>
+
+          <button class="pdp-add-btn" id="relicGalleryAddBagBtn" type="button" aria-label="Add relic to imperial bag">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/>
+              <line x1="3" y1="6" x2="21" y2="6"/>
+              <path d="M16 10a4 4 0 0 1-8 0"/>
+            </svg>
+            <span>ADD TO BAG</span>
+          </button>
+        </div>
+
+        <!-- Amazon & Flipkart Delivery & Pincode Lookup (Pills - No Square Box) -->
+        <div class="pdp-delivery-lookup">
+          <div class="pdp-delivery-header">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span>DELIVERY OPTIONS &amp; PINCODE ESTIMATE:</span>
+          </div>
+          <div class="pdp-delivery-input-wrap">
+            <input type="text" class="pdp-pincode-input" id="pdpPincodeInput" placeholder="Enter 6-digit delivery PIN (e.g. 110001, 400001)" maxlength="6" />
+            <button class="pdp-pincode-check-btn" id="pdpPincodeCheckBtn" type="button">CHECK</button>
+          </div>
+          <div class="pdp-delivery-result" id="pdpDeliveryResult">
+            ⚡ <strong>FREE Delivery:</strong> Dispatches within 24 hours. Express insured delivery to your doorstep.
+          </div>
+        </div>
+
+        <!-- 4 Core Service Trust Pillars (Amazon & Flipkart 4-Pill Carousel - No Square Box) -->
+        <div class="pdp-trust-grid">
+          <div class="pdp-trust-item">
+            <span class="pdp-trust-icon">🔄</span>
+            <div>
+              <strong>7 DAYS REPLACEMENT</strong>
+              <small>Hassle-free 7-day exchange</small>
+            </div>
+          </div>
+          <div class="pdp-trust-item">
+            <span class="pdp-trust-icon">🚚</span>
+            <div>
+              <strong>FREE DELIVERY</strong>
+              <small>Insured tracked courier</small>
+            </div>
+          </div>
+          <div class="pdp-trust-item">
+            <span class="pdp-trust-icon">🛡️</span>
+            <div>
+              <strong>100% AUTHENTIC</strong>
+              <small>Verified brand authenticity</small>
+            </div>
+          </div>
+          <div class="pdp-trust-item">
+            <span class="pdp-trust-icon">🔒</span>
+            <div>
+              <strong>SECURE CHECKOUT</strong>
+              <small>100% verified checkout</small>
+            </div>
+          </div>
+        </div>
+
+        <!-- Craftsmanship Assurance Strip (Below Trust Grid) -->
+        <div class="pdp-craft-assurance">
+          <div class="pdp-assurance-item">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span>100% VERIFIED AUTHENTIC DROP</span>
+          </div>
+          <div class="pdp-assurance-item">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+            <span>VERIFIED ARTISANAL CRAFTSMANSHIP</span>
+          </div>
+          <div class="pdp-assurance-item">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <span>DISPATCHES WITHIN 24 HOURS</span>
+          </div>
+        </div>
+
+        <!-- Seller Information (Amazon / Flipkart Style) -->
+        <div class="pdp-seller-strip">
+          <span>Sold by <strong>The Street Co Studio</strong> (4.9 ★) · Fulfilled via <strong>Zoho Inventory</strong>.</span>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ══════════ EXPANDED PRODUCT DETAILS ACCORDION / TABS ══════════ -->
+    <div class="pdp-tabs-section" id="pdpTabsSection">
+      <div class="pdp-tab-headers" role="tablist">
+        <button class="pdp-tab-btn active" type="button" role="tab" data-tab="lore" aria-selected="true">
+          <span>PRODUCT OVERVIEW</span>
+        </button>
+        <button class="pdp-tab-btn" type="button" role="tab" data-tab="specs" aria-selected="false">
+          <span>⚙️ SPECIFICATIONS &amp; CARE</span>
+        </button>
+        <button class="pdp-tab-btn" type="button" role="tab" data-tab="shipping" aria-selected="false">
+          <span>📦 COURIER &amp; UNBOXING</span>
+        </button>
+        <button class="pdp-tab-btn" type="button" role="tab" data-tab="reviews" id="pdpTabBtnReviews" aria-selected="false">
+          <span>★ VERIFIED REVIEWS (<span id="pdpTabReviewCount">128</span>)</span>
+        </button>
+      </div>
+
+      <!-- Tab Content 1: Product Overview & Full Description -->
+      <div class="pdp-tab-pane active" id="pdpPaneLore" role="tabpanel">
+        <div class="pdp-lore-content" id="pdpDynamicLoreContent">
+          <div class="pdp-overview-wrapper">
+            <h4 class="pdp-overview-heading" id="pdpStoryTitle">PRODUCT OVERVIEW</h4>
+            <div class="pdp-full-description-text" id="pdpFullDesc"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Content 2: Specifications & Care -->
+      <div class="pdp-tab-pane" id="pdpPaneSpecs" role="tabpanel" style="display:none;">
+        <div class="pdp-specs-table" id="pdpSpecsTable">
+          <div class="pdp-spec-row" id="pdpRowComposition">
+            <span class="pdp-spec-key">FABRIC &amp; MATERIAL</span>
+            <span class="pdp-spec-val" id="pdpSpecComposition"></span>
+          </div>
+          <div class="pdp-spec-row" id="pdpRowFit">
+            <span class="pdp-spec-key">FIT &amp; SILHOUETTE</span>
+            <span class="pdp-spec-val" id="pdpSpecFit"></span>
+          </div>
+          <div class="pdp-spec-row" id="pdpRowNeckline">
+            <span class="pdp-spec-key">NECKLINE &amp; SLEEVES</span>
+            <span class="pdp-spec-val" id="pdpSpecNeckline"></span>
+          </div>
+          <div class="pdp-spec-row" id="pdpRowSku">
+            <span class="pdp-spec-key">SKU IDENTIFIER</span>
+            <span class="pdp-spec-val" id="pdpSpecSku"></span>
+          </div>
+          <div class="pdp-spec-row" id="pdpRowStock">
+            <span class="pdp-spec-key">INVENTORY STOCK</span>
+            <span class="pdp-spec-val" id="pdpSpecStock"></span>
+          </div>
+          <div class="pdp-spec-row" id="pdpRowCare">
+            <span class="pdp-spec-key">CARE &amp; PRESERVATION</span>
+            <span class="pdp-spec-val" id="pdpSpecCare"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Content 3: Courier & Unboxing -->
+      <div class="pdp-tab-pane" id="pdpPaneShipping" role="tabpanel" style="display:none;">
+        <div class="pdp-shipping-info">
+          <div class="pdp-unboxing-card">
+            <h4>PACKAGING &amp; DELIVERY</h4>
+            <p>Every order is handled with utmost care. Your apparel is steam-ironed, sealed in an eco-friendly dust bag, and packaged in a reinforced tamper-evident box.</p>
+            <ul class="pdp-shipping-checklist">
+              <li>✓ Authenticated brand label with verified SKU barcode</li>
+              <li>✓ Protective waterproof inner garment bag</li>
+              <li>✓ Dispatched within 24 hours of order confirmation</li>
+              <li>✓ Live SMS &amp; Email delivery tracking updates</li>
+            </ul>
+          </div>
+          <div class="pdp-delivery-timeline">
+            <h4>DISPATCH &amp; TRANSIT TIMELINES</h4>
+            <p>Orders are dispatched directly via our fulfillment hub. Deliveries across India arrive within 2–4 business days with insured courier tracking.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Content 4: Verified Customer Reviews -->
+      <div class="pdp-tab-pane" id="pdpPaneReviews" role="tabpanel" style="display:none;">
+        <div class="pdp-reviews-wrapper">
+          
+          <!-- Rating Breakdown Header -->
+          <div class="pdp-reviews-summary">
+            <div class="pdp-summary-score">
+              <span class="pdp-big-score">4.9</span>
+              <div class="pdp-summary-stars">★★★★★</div>
+              <small>Based on 128 verified buyers</small>
+            </div>
+            <div class="pdp-rating-bars">
+              <div class="pdp-bar-row">
+                <span>5 ★</span>
+                <div class="pdp-bar-track"><div class="pdp-bar-fill" style="width:92%"></div></div>
+                <span>92%</span>
+              </div>
+              <div class="pdp-bar-row">
+                <span>4 ★</span>
+                <div class="pdp-bar-track"><div class="pdp-bar-fill" style="width:8%"></div></div>
+                <span>8%</span>
+              </div>
+              <div class="pdp-bar-row">
+                <span>3 ★</span>
+                <div class="pdp-bar-track"><div class="pdp-bar-fill" style="width:0%"></div></div>
+                <span>0%</span>
+              </div>
+            </div>
+            <div class="pdp-review-cta-box">
+              <p>Purchased this item? Share your customer review.</p>
+              <button class="pdp-open-review-form-btn" id="pdpOpenReviewFormBtn" type="button">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M12 20h9"/>
+                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                </svg>
+                <span>WRITE A REVIEW</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Interactive Review Submission Form (Hidden until clicked) -->
+          <form class="pdp-review-form" id="pdpReviewForm" style="display:none;">
+            <h5>SUBMIT YOUR PRODUCT REVIEW</h5>
+            <div class="pdp-form-row">
+              <div class="pdp-form-group">
+                <label for="reviewAuthorInput">Customer Name / Callsign *</label>
+                <input type="text" id="reviewAuthorInput" required placeholder="e.g. Shisui_U" />
+              </div>
+              <div class="pdp-form-group">
+                <label for="reviewRatingSelect">Rating *</label>
+                <select id="reviewRatingSelect">
+                  <option value="5">★★★★★ (5 Stars - Flawless Craft)</option>
+                  <option value="4">★★★★☆ (4 Stars - Exceptional)</option>
+                  <option value="3">★★★☆☆ (3 Stars - Average)</option>
+                </select>
+              </div>
+            </div>
+            <div class="pdp-form-group">
+              <label for="reviewHeadlineInput">Review Headline *</label>
+              <input type="text" id="reviewHeadlineInput" required placeholder="e.g. Unmatched quality, heavy fabric and perfect drape" />
+            </div>
+            <div class="pdp-form-group">
+              <label for="reviewTextInput">Detailed Feedback *</label>
+              <textarea id="reviewTextInput" rows="3" required placeholder="Describe your experience with this artifact's materials, sizing, and finish..."></textarea>
+            </div>
+            <div class="pdp-form-actions">
+              <button type="submit" class="pdp-submit-review-btn">SUBMIT REVIEW</button>
+              <button type="button" class="pdp-cancel-review-btn" id="pdpCancelReviewBtn">CANCEL</button>
+            </div>
+          </form>
+
+          <!-- Reviews List -->
+          <div class="pdp-reviews-list" id="pdpReviewsList">
+            <!-- Populated dynamically by JS with verified testimonials -->
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══════════ FREQUENTLY FORGED TOGETHER (CROSS-SELL) ══════════ -->
+    <div class="pdp-cross-sell">
+      <div class="pdp-cross-sell__header">
+        <h4>FREQUENTLY BOUGHT TOGETHER</h4>
+        <span class="pdp-cross-sell__subtitle">Complete your streetwear outfit</span>
+      </div>
+      <div class="pdp-cross-sell__grid" id="pdpCrossSellGrid">
+        <!-- Populated dynamically by JS -->
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Enlarged Product View Modal with Two-Finger Pinch-to-Zoom -->
+<div class="amazon-zoom-modal" id="amazonZoomModal" aria-hidden="true" role="dialog" aria-label="Enlarged Product View">
+  <div class="amazon-zoom-backdrop" id="amazonZoomBackdrop" title="Click to close zoom view"></div>
+  
+  <div class="amazon-zoom-container" id="amazonZoomContainer">
+    <!-- Top Bar with Clean Close Button -->
+    <div class="amazon-zoom-header">
+      <div class="amazon-zoom-header-left"></div>
+      <div class="amazon-zoom-header-right">
+        <button type="button" class="amazon-zoom-close-btn" id="amazonZoomCloseBtn" aria-label="Close Enlarged View" title="Close Enlarged View (Esc)">✕</button>
+      </div>
+    </div>
+
+    <!-- Main Stage: Image Viewport with Pinch-to-Zoom & Pan -->
+    <div class="amazon-zoom-stage" id="amazonZoomStage">
+      <div class="amazon-zoom-img-wrapper" id="amazonZoomImgWrapper">
+        <img id="amazonZoomImg" class="amazon-zoom-img" src="" alt="Enlarged Artifact View" draggable="false" />
+      </div>
+    </div>
+
+    <!-- Bottom Thumbnail Strip to easily switch angles while enlarged -->
+    <div class="amazon-zoom-footer">
+      <div class="amazon-zoom-thumbs" id="amazonZoomThumbs">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ IMPERIAL CHECKOUT & ORDER FLOW MODAL (MULTI-STEP) ══════════ -->
+<div class="checkout-modal" id="checkoutFlowModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="checkoutFlowTitle">
+  <div class="checkout-modal__backdrop" id="checkoutFlowBackdrop"></div>
+  <div class="checkout-modal__dialog" id="checkoutModalDialog">
+    
+    <!-- Modal Header -->
+    <div class="checkout-modal__header">
+      <div class="checkout-modal__header-left">
+        <div>
+          <h2 class="checkout-modal__title" id="checkoutFlowTitle">THE STREET CO CHECKOUT</h2>
+        </div>
+      </div>
+      <button type="button" class="checkout-modal__close-btn" id="checkoutFlowCloseBtn" aria-label="Close checkout">✕</button>
+    </div>
+
+    <!-- Stepper Breadcrumbs Bar -->
+    <div class="checkout-stepper" id="checkoutStepper">
+      <div class="checkout-step-item active" data-step="1" id="stepIndicator1">
+        <span class="checkout-step-num">1</span>
+        <span class="checkout-step-label">Address &amp; Delivery</span>
+      </div>
+      <div class="checkout-step-line" id="stepLine1"></div>
+      <div class="checkout-step-item" data-step="2" id="stepIndicator2">
+        <span class="checkout-step-num">2</span>
+        <span class="checkout-step-label">Payment</span>
+      </div>
+      <div class="checkout-step-line" id="stepLine2"></div>
+      <div class="checkout-step-item" data-step="3" id="stepIndicator3">
+        <span class="checkout-step-num">3</span>
+        <span class="checkout-step-label">Confirm Order</span>
+      </div>
+      <div class="checkout-step-line" id="stepLine3"></div>
+      <div class="checkout-step-item" data-step="4" id="stepIndicator4">
+        <span class="checkout-step-num">4</span>
+        <span class="checkout-step-label">Confirmation</span>
+      </div>
+    </div>
+
+    <!-- Checkout Main Grid (Forms + Dynamic Summary) -->
+    <div class="checkout-modal__content-wrap">
+      
+      <!-- Left Column: Step Views -->
+      <div class="checkout-modal__views">
+        
+        <!-- ══════════ STEP 1: ADDRESS AND DELIVERY INPUT ══════════ -->
+        <div class="checkout-step-view active" id="checkoutStep1" role="tabpanel" aria-labelledby="stepIndicator1">
+          <div class="checkout-step-heading">
+            <div class="checkout-step-heading-nav">
+              <span class="checkout-step-pill">STEP 1 OF 4</span>
+              <button type="button" class="checkout-refresh-link" id="checkoutRefreshAddressBtn" title="Reset all address &amp; delivery fields">↺ Refresh / Clear Fields</button>
+            </div>
+            <h3>1. Delivery Address</h3>
+            <p>Enter your shipping address for order delivery.</p>
+          </div>
+
+          <form class="checkout-form" id="checkoutAddressForm" onsubmit="return false;">
+            
+            <!-- Recipient Information -->
+            <div class="checkout-form-section">
+              <span class="checkout-section-badge">RECIPIENT CONTACT</span>
+              <div class="checkout-form-row checkout-form-row--2col">
+                <div class="checkout-form-group">
+                  <label for="checkoutName">Full Recipient Name <span class="req">*</span></label>
+                  <input type="text" id="checkoutName" class="checkout-input" placeholder="e.g. Rahul Sharma" required autocomplete="name">
+                  <span class="checkout-input-error" id="checkoutNameError"></span>
+                </div>
+                <div class="checkout-form-group">
+                  <label for="checkoutPhone">Mobile Number (10 digits) <span class="req">*</span></label>
+                  <div class="checkout-phone-input-wrap">
+                    <span class="checkout-phone-prefix">+91</span>
+                    <input type="tel" id="checkoutPhone" class="checkout-input checkout-input--phone" placeholder="98765 43210" maxlength="10" required autocomplete="tel">
+                  </div>
+                  <span class="checkout-input-error" id="checkoutPhoneError"></span>
+                </div>
+              </div>
+
+              <div class="checkout-form-group">
+                <label for="checkoutEmail">Email Address <small>(For order confirmation, invoice &amp; tracking)</small></label>
+                <input type="email" id="checkoutEmail" class="checkout-input" placeholder="e.g. rahul.sharma@example.com" autocomplete="email">
+              </div>
+            </div>
+
+            <!-- Shipping Location -->
+            <div class="checkout-form-section">
+              <span class="checkout-section-badge">DELIVERY LOCATION</span>
+              
+              <div class="checkout-form-row checkout-form-row--2col">
+                <div class="checkout-form-group">
+                  <label for="checkoutPincode">PIN Code (6 digits) <span class="req">*</span></label>
+                  <input type="text" id="checkoutPincode" class="checkout-input" placeholder="e.g. 400001" maxlength="6" required autocomplete="postal-code">
+                  <span class="checkout-input-helper" id="checkoutPincodeHelper">Standard free delivery available for all India PINs</span>
+                  <span class="checkout-input-error" id="checkoutPincodeError"></span>
+                </div>
+                <div class="checkout-form-group">
+                  <label for="checkoutAddressType">Address Type</label>
+                  <div class="checkout-type-pills" id="checkoutTypePills">
+                    <button type="button" class="checkout-type-pill active" data-type="Home">🏠 Home</button>
+                    <button type="button" class="checkout-type-pill" data-type="Work">💼 Work (10AM-6PM)</button>
+                    <button type="button" class="checkout-type-pill" data-type="Other">📍 Other</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="checkout-form-group">
+                <label for="checkoutAddress1">Flat, House No., Building, Apartment <span class="req">*</span></label>
+                <input type="text" id="checkoutAddress1" class="checkout-input" placeholder="e.g. Flat 402, Building 3, Sunrise Apartments" required autocomplete="address-line1">
+                <span class="checkout-input-error" id="checkoutAddress1Error"></span>
+              </div>
+
+              <div class="checkout-form-group">
+                <label for="checkoutAddress2">Area, Street, Sector, Road <span class="req">*</span></label>
+                <input type="text" id="checkoutAddress2" class="checkout-input" placeholder="e.g. MG Road, Near City Mall, Sector 15" required autocomplete="address-line2">
+                <span class="checkout-input-error" id="checkoutAddress2Error"></span>
+              </div>
+
+              <div class="checkout-form-row checkout-form-row--3col">
+                <div class="checkout-form-group">
+                  <label for="checkoutLandmark">Landmark (Optional)</label>
+                  <input type="text" id="checkoutLandmark" class="checkout-input" placeholder="e.g. Opposite Metro Station">
+                </div>
+                <div class="checkout-form-group">
+                  <label for="checkoutCity">Town / City <span class="req">*</span></label>
+                  <input type="text" id="checkoutCity" class="checkout-input" placeholder="e.g. Mumbai" required autocomplete="address-level2">
+                  <span class="checkout-input-error" id="checkoutCityError"></span>
+                </div>
+                <div class="checkout-form-group">
+                  <label for="checkoutState">State <span class="req">*</span></label>
+                  <input type="text" id="checkoutState" class="checkout-input" placeholder="e.g. Maharashtra" required autocomplete="address-level1">
+                  <span class="checkout-input-error" id="checkoutStateError"></span>
+                </div>
+              </div>
+
+              <!-- Company GSTIN (Optional with Checkbox) -->
+              <div class="checkout-checkbox-group">
+                <label class="checkout-checkbox-label" for="checkoutIsB2B">
+                  <input type="checkbox" id="checkoutIsB2B" class="checkout-checkbox">
+                  <span>Add Company GSTIN (Optional)</span>
+                </label>
+              </div>
+
+              <!-- GSTIN Text Box (Shown only when user ticks the checkbox) -->
+              <div class="checkout-form-group" id="checkoutGstFields" style="display:none;margin-top:10px;">
+                <label for="checkoutGstin">Company GSTIN <small style="opacity:0.6;">(15-digit)</small></label>
+                <input type="text" id="checkoutGstin" class="checkout-input" placeholder="e.g. 27AAAAA0000A1Z5" maxlength="15" style="text-transform: uppercase;">
+                <span class="checkout-field-hint">Enter your 15-character GST identification number for input tax credit.</span>
+              </div>
+            </div>
+
+            <!-- Delivery Speed Selector -->
+            <div class="checkout-form-section">
+              <span class="checkout-section-badge">DELIVERY SPEED</span>
+              <div class="checkout-delivery-options">
+                <label class="checkout-delivery-card active" id="deliveryOptionFree">
+                  <input type="radio" name="checkoutDeliverySpeed" value="free" checked>
+                  <div class="checkout-delivery-card__content">
+                    <div class="checkout-delivery-card__title-row">
+                      <strong>Standard Delivery</strong>
+                      <span class="checkout-delivery-price free">FREE</span>
+                    </div>
+                    <p class="checkout-delivery-card__desc">Safe doorstep delivery across all Indian PIN codes.</p>
+                  </div>
+                </label>
+
+                <label class="checkout-delivery-card" id="deliveryOptionExpress">
+                  <input type="radio" name="checkoutDeliverySpeed" value="express">
+                  <div class="checkout-delivery-card__content">
+                    <div class="checkout-delivery-card__title-row">
+                      <strong>⚡ Express Delivery</strong>
+                      <span class="checkout-delivery-price">₹149 INR</span>
+                    </div>
+                    <p class="checkout-delivery-card__desc">Priority dispatch direct to your address.</p>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <!-- Step 1 Actions -->
+            <div class="checkout-step-actions">
+              <button type="button" class="checkout-btn-primary" id="checkoutToPaymentBtn">
+                <span>CONTINUE TO PAYMENT →</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- ══════════ STEP 2: PAYMENT PAGE ══════════ -->
+        <div class="checkout-step-view" id="checkoutStep2" role="tabpanel" aria-labelledby="stepIndicator2" style="display:none;">
+          <div class="checkout-step-heading">
+            <div class="checkout-step-heading-nav">
+              <button type="button" class="checkout-back-link" id="checkoutBackToAddressBtn">← Edit Address</button>
+              <span class="checkout-step-pill">STEP 2 OF 4</span>
+            </div>
+            <h3>2. Select Payment Method</h3>
+            <p>Select your preferred payment method.</p>
+          </div>
+
+          <!-- Payment Options Accordion (No tick, click opens payment method) -->
+          <div class="checkout-payment-methods" id="checkoutPaymentMethods">
+            
+            <!-- Method 1: UPI (Unavailable) -->
+            <div class="checkout-pay-option checkout-pay-option--unavailable" data-method="upi" data-unavailable="true">
+              <div class="checkout-pay-header" role="button" tabindex="-1" aria-expanded="false">
+                <div class="checkout-pay-title-group">
+                  <span class="checkout-pay-icon">⚡</span>
+                  <div class="checkout-pay-info">
+                    <strong>UPI (Google Pay, PhonePe, Paytm, Any UPI)</strong>
+                    <small style="color:#f87171;">Temporarily unavailable · Gateway maintenance</small>
+                  </div>
+                </div>
+                <div class="checkout-pay-badges">
+                  <span class="pay-chip pay-chip--unavailable">UNAVAILABLE</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Method 2: Credit / Debit Cards (Unavailable) -->
+            <div class="checkout-pay-option checkout-pay-option--unavailable" data-method="card" data-unavailable="true">
+              <div class="checkout-pay-header" role="button" tabindex="-1" aria-expanded="false">
+                <div class="checkout-pay-title-group">
+                  <span class="checkout-pay-icon">💳</span>
+                  <div class="checkout-pay-info">
+                    <strong>Credit / Debit / ATM Cards</strong>
+                    <small style="color:#f87171;">Temporarily unavailable · Gateway maintenance</small>
+                  </div>
+                </div>
+                <div class="checkout-pay-badges">
+                  <span class="pay-chip pay-chip--unavailable">UNAVAILABLE</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Method 3: Net Banking (Unavailable) -->
+            <div class="checkout-pay-option checkout-pay-option--unavailable" data-method="netbanking" data-unavailable="true">
+              <div class="checkout-pay-header" role="button" tabindex="-1" aria-expanded="false">
+                <div class="checkout-pay-title-group">
+                  <span class="checkout-pay-icon">🏛️</span>
+                  <div class="checkout-pay-info">
+                    <strong>Net Banking</strong>
+                    <small style="color:#f87171;">Temporarily unavailable · Gateway maintenance</small>
+                  </div>
+                </div>
+                <div class="checkout-pay-badges">
+                  <span class="pay-chip pay-chip--unavailable">UNAVAILABLE</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Method 4: Cash on Delivery (COD) (Active & Available) -->
+            <div class="checkout-pay-option active" data-method="cod">
+              <div class="checkout-pay-header" role="button" tabindex="0" aria-expanded="true">
+                <div class="checkout-pay-title-group">
+                  <span class="checkout-pay-icon">📦</span>
+                  <div class="checkout-pay-info">
+                    <strong>Cash on Delivery (COD)</strong>
+                    <small>Pay in cash or scan UPI QR at your doorstep · Zero extra fee</small>
+                  </div>
+                </div>
+                <div class="checkout-pay-badges">
+                  <span class="pay-chip pay-chip--green">AVAILABLE</span>
+                  <span class="checkout-pay-arrow">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                  </span>
+                </div>
+              </div>
+              <div class="checkout-pay-body" style="display:block;">
+                <p class="checkout-cod-info">You can pay with cash or any UPI app when your order arrives at your location.</p>
+
+                <!-- Action Button on Right Side to Continue With This Payment -->
+                <div class="checkout-pay-action-row">
+                  <button type="button" class="checkout-pay-continue-btn" data-pay-method="cod">
+                    <span>CONTINUE WITH CASH ON DELIVERY (COD) →</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 2 Actions Fallback -->
+          <div class="checkout-step-actions" id="checkoutStep2Actions" style="display:none;">
+            <button type="button" class="checkout-btn-primary" id="checkoutToReviewBtn">
+              <span>REVIEW &amp; CONFIRM ORDER →</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- ══════════ STEP 3: CONFORM ORDER (REVIEW & CONFIRM) ══════════ -->
+        <div class="checkout-step-view" id="checkoutStep3" role="tabpanel" aria-labelledby="stepIndicator3" style="display:none;">
+          <div class="checkout-step-heading">
+            <div class="checkout-step-heading-nav">
+              <button type="button" class="checkout-back-link" id="checkoutBackToPaymentBtn">← Edit Payment</button>
+              <span class="checkout-step-pill">STEP 3 OF 4</span>
+            </div>
+            <h3>3. Review &amp; Confirm Order</h3>
+            <p>Please inspect your delivery address, chosen payment method, and complete order summary before confirming your order.</p>
+          </div>
+
+          <!-- Confirmation Review Cards -->
+          <div class="checkout-review-cards">
+            
+            <!-- Address Review Box -->
+            <div class="checkout-review-card">
+              <div class="checkout-review-card__header">
+                <div class="checkout-review-card__title">
+                  <span class="review-icon">📍</span>
+                  <strong>DELIVERY ADDRESS</strong>
+                </div>
+                <button type="button" class="checkout-review-edit-btn" id="reviewEditAddressBtn" style="color: #ffffff !important;">Change</button>
+              </div>
+              <div class="checkout-review-card__body">
+                <div class="checkout-review-recipient">
+                  <strong id="reviewRecipientName">Rahul Sharma</strong>
+                  <span id="reviewRecipientPhone">+91 9876543210</span>
+                  <span class="checkout-address-type-tag" id="reviewAddressTypeTag">Home</span>
+                </div>
+                <p class="checkout-review-full-address" id="reviewFullAddress">
+                  Flat 402, Building 3, Sunrise Apartments, MG Road, Near City Mall, Sector 15, Mumbai, Maharashtra - 400001
+                </p>
+                <div class="checkout-review-gstin-row" id="reviewGstinRow" style="display:none;margin-top:6px;font-family:var(--mono);font-size:0.68rem;color:var(--smoke);">
+                  GSTIN: <strong id="reviewGstinVal" style="color:var(--bone);"></strong>
+                </div>
+                <div class="checkout-review-delivery-mode" id="reviewDeliveryMode">
+                  <span class="mode-icon">🚚</span>
+                  <span>Standard Delivery (FREE)</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Payment Method Review Box -->
+            <div class="checkout-review-card">
+              <div class="checkout-review-card__header">
+                <div class="checkout-review-card__title">
+                  <span class="review-icon">💳</span>
+                  <strong>PAYMENT METHOD</strong>
+                </div>
+                <button type="button" class="checkout-review-edit-btn" id="reviewEditPaymentBtn" style="color: #ffffff !important;">Change</button>
+              </div>
+              <div class="checkout-review-card__body">
+                <div class="checkout-review-pay-selected" id="reviewPaymentSelected">
+                  <strong>Cash on Delivery (COD)</strong>
+                  <span id="reviewPaymentDetail">Cash on Delivery (COD) · Pay upon arrival</span>
+                  <span class="checkout-pay-verified-tag">Available ✓</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Order Summary Review Box -->
+            <div class="checkout-review-card">
+              <div class="checkout-review-card__header">
+                <div class="checkout-review-card__title">
+                  <span class="review-icon">📋</span>
+                  <strong>ORDER SUMMARY (<span id="reviewItemCount">1</span>)</strong>
+                </div>
+              </div>
+              <div class="checkout-review-items" id="reviewItemsList">
+                <!-- Dynamically generated items -->
+              </div>
+              <!-- Order Summary Cost Breakdown -->
+              <div class="checkout-review-calc" id="reviewOrderCalc">
+                <div class="calc-row">
+                  <span>Subtotal</span>
+                  <strong id="reviewSubtotalInr">₹4,999</strong>
+                </div>
+                <div class="calc-row">
+                  <span>Delivery</span>
+                  <strong class="text-free" id="reviewDeliveryFee">FREE</strong>
+                </div>
+                <div class="calc-row" id="reviewDiscountRow" style="display:none;">
+                  <span>Discount</span>
+                  <strong class="text-discount" id="reviewDiscountVal">-₹500</strong>
+                </div>
+                <div class="calc-row-divider"></div>
+                <div class="calc-row calc-row--total">
+                  <span>Total Amount</span>
+                  <strong class="calc-total-inr" id="reviewTotalInr">₹4,999 INR</strong>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Step 3 Action: CONFORM / CONFIRM ORDER -->
+          <div class="checkout-step-actions checkout-step-actions--confirm">
+            <button type="button" class="checkout-btn-confirm" id="checkoutConfirmOrderBtn">
+              <span class="confirm-icon">⚡</span>
+              <span class="confirm-text">CONFIRM &amp; PLACE ORDER</span>
+              <span class="confirm-sub">Place Your Order</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- ══════════ STEP 4: ORDER CONFIRMATION & ORDER SUMMARY ══════════ -->
+        <div class="checkout-step-view checkout-step-view--confirmed" id="checkoutStep4" role="tabpanel" aria-labelledby="stepIndicator4" style="display:none;">
+          
+          <!-- Clean Order Confirmation Header (No Seal Graphic) -->
+          <div class="checkout-confirmed-hero" style="text-align: center; margin-bottom: 1.4rem;">
+            <h3 class="checkout-confirmed-title" style="margin-bottom: 0.35rem;">ORDER CONFIRMATION</h3>
+            <p class="checkout-confirmed-sub">Thank you for your order. Your order has been placed successfully.</p>
+          </div>
+
+          <!-- ONE SINGLE CARD CONTAINING EVERYTHING -->
+          <div class="checkout-single-confirmed-card">
+
+            <!-- 1. Order ID & Copy Bar -->
+            <div class="confirmed-card-id-row">
+              <div class="confirmed-id-meta">
+                <span class="confirmed-id-label">ORDER ID</span>
+                <strong class="confirmed-id-val" id="confirmedOrderId">111111</strong>
+              </div>
+              <button type="button" class="checkout-copy-id-btn" id="checkoutCopyIdBtn" title="Copy Order ID">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                <span>COPY ORDER ID</span>
+              </button>
+            </div>
+
+            <!-- 2. Delivery, Payment & Recipient Info (DELIVERING TO first, then PAYMENT) -->
+            <div class="confirmed-card-info-grid" style="grid-template-columns: repeat(2, 1fr);">
+              <div class="confirmed-info-cell">
+                <span class="info-cell-label">DELIVERING TO</span>
+                <strong class="info-cell-val" id="confirmedRecipient">Rahul Sharma</strong>
+                <small class="info-cell-sub" id="confirmedShortAddress">Flat 402, Mumbai 400001</small>
+              </div>
+              <div class="confirmed-info-cell">
+                <span class="info-cell-label">PAYMENT</span>
+                <strong class="info-cell-val text-success" id="confirmedPayStatus">Cash on Delivery · Verified</strong>
+                <small class="info-cell-sub" id="confirmedPayMethod">Cash on Delivery (COD)</small>
+              </div>
+            </div>
+
+            <!-- 3. Product Summary (Items Ordered) -->
+            <div class="confirmed-card-section">
+              <div class="confirmed-card-section__header">
+                <span class="section-title">PRODUCT SUMMARY</span>
+                <span class="section-count" id="confirmedSummaryItemCount">1 Item</span>
+              </div>
+              <div class="confirmed-items-list" id="confirmedItemsList">
+                <!-- Dynamically populated -->
+              </div>
+            </div>
+
+            <!-- 4. Price Breakdown & Total -->
+            <div class="confirmed-card-calc">
+              <div class="confirmed-calc-row">
+                <span>Subtotal</span>
+                <strong id="confirmedSummarySubtotal">₹4,999</strong>
+              </div>
+              <div class="confirmed-calc-row">
+                <span>Delivery Fee</span>
+                <strong class="text-free" id="confirmedSummaryDelivery">FREE</strong>
+              </div>
+              <div class="confirmed-calc-row" id="confirmedSummaryDiscountRow" style="display:none;">
+                <span>Discount</span>
+                <strong class="text-discount" id="confirmedSummaryDiscount">-₹0</strong>
+              </div>
+              <div class="confirmed-calc-divider"></div>
+              <div class="confirmed-calc-row confirmed-calc-row--total">
+                <div class="calc-total-label-wrap">
+                  <strong class="calc-total-title">Total Amount</strong>
+                </div>
+                <div class="calc-total-amount-wrap">
+                  <strong class="confirmed-calc-total-inr" id="confirmedSummaryTotal">₹4,999 INR</strong>
+                  <small class="confirmed-calc-total-ryo" id="confirmedSummaryRyo" style="display:none;"></small>
+                </div>
+              </div>
+            </div>
+
+            <!-- 5. Continue Shopping / Track Order Action -->
+            <div class="confirmed-card-action">
+              <button type="button" class="checkout-btn-track" id="checkoutTrackCourierBtn">
+                <span class="btn-icon">🛍️</span>
+                <span>CONTINUE SHOPPING</span>
+              </button>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- Right Column: Interactive Order Summary (Visible on Steps 1, 2, 3) -->
+      <aside class="checkout-modal__sidebar" id="checkoutSidebar">
+        <div class="checkout-summary-box">
+          <div class="checkout-summary-header">
+            <h4>ORDER SUMMARY</h4>
+            <span class="checkout-summary-count" id="checkoutSidebarItemCount">1 Item</span>
+          </div>
+
+          <!-- Items Mini List -->
+          <div class="checkout-sidebar-items" id="checkoutSidebarItems">
+            <!-- Dynamically populated -->
+          </div>
+
+          <!-- Price Calculations -->
+          <div class="checkout-sidebar-calc">
+            <div class="calc-row">
+              <span>Subtotal</span>
+              <strong id="checkoutSubtotalInr">₹4,999</strong>
+            </div>
+            <div class="calc-row">
+              <span>Delivery</span>
+              <strong class="text-free" id="checkoutDeliveryFee">FREE</strong>
+            </div>
+            <div class="calc-row" id="checkoutDiscountRow" style="display:none;">
+              <span>Promo Discount</span>
+              <strong class="text-discount" id="checkoutDiscountVal">-₹500</strong>
+            </div>
+            <div class="calc-row-divider"></div>
+            <div class="calc-row calc-row--total">
+              <span>Total Amount</span>
+              <div class="calc-total-wrap">
+                <strong class="calc-total-inr" id="checkoutTotalInr">₹4,999 INR</strong>
+                <small class="calc-total-ryo" id="checkoutTotalRyo" style="display:none;"></small>
+              </div>
+            </div>
+          </div>
+
+          <!-- Trust Badges -->
+          <div class="checkout-sidebar-trust">
+            <div class="trust-badge-item">
+              <span>🛡️</span>
+              <small>100% Genuine Provenance</small>
+            </div>
+            <div class="trust-badge-item">
+              <span>🔄</span>
+              <small>7-Day Replacement Guarantee</small>
+            </div>
+            <div class="trust-badge-item">
+              <span>🔒</span>
+              <small>100% Safe &amp; Secure Checkout</small>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ CLOTHING SIZE & FIT GUIDE MODAL ══════════ -->
+<div class="courier-modal" id="sizeGuideModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="sizeGuideModalTitle">
+  <div class="courier-modal__backdrop" id="sizeGuideModalBackdrop"></div>
+  <div class="courier-modal__box" style="max-width:580px;">
+    <div class="courier-modal__header">
+      <div>
+        <span class="courier-modal__tag">APPAREL &amp; STREETWEAR SIZING</span>
+        <h3 class="courier-modal__title" id="sizeGuideModalTitle">CLOTHING SIZE &amp; FIT GUIDE</h3>
+      </div>
+      <button type="button" class="courier-modal__close-btn" id="sizeGuideModalCloseBtn" aria-label="Close size guide">✕</button>
+    </div>
+
+    <p style="font-family:var(--mono);font-size:.65rem;color:var(--smoke);margin-bottom:1.2rem;line-height:1.6;">
+      All cloaks, trench coats, hoodies, and tops are engineered with a modern, tailored streetwear drape. For an oversized fit, we recommend sizing up one size.
+    </p>
+
+    <!-- Sizing Table -->
+    <div style="overflow-x:auto;margin-bottom:1.4rem;">
+      <table style="width:100%;border-collapse:collapse;font-family:var(--mono);font-size:.65rem;text-align:left;">
+        <thead>
+          <tr style="border-bottom:1px solid rgba(232,228,220,.2);color:var(--bone);">
+            <th style="padding:.6rem .5rem;">SIZE</th>
+            <th style="padding:.6rem .5rem;">CHEST</th>
+            <th style="padding:.6rem .5rem;">LENGTH</th>
+            <th style="padding:.6rem .5rem;">SHOULDER</th>
+            <th style="padding:.6rem .5rem;">HEIGHT</th>
+          </tr>
+        </thead>
+        <tbody style="color:var(--smoke);">
+          <tr style="border-bottom:1px solid rgba(232,228,220,.06);">
+            <td style="padding:.6rem .5rem;font-weight:700;color:var(--bone);">S</td>
+            <td style="padding:.6rem .5rem;">36 - 38" (94 cm)</td>
+            <td style="padding:.6rem .5rem;">45" (114 cm)</td>
+            <td style="padding:.6rem .5rem;">18.5"</td>
+            <td style="padding:.6rem .5rem;">5'4" - 5'7"</td>
+          </tr>
+          <tr style="border-bottom:1px solid rgba(232,228,220,.06);background:rgba(232,228,220,.03);">
+            <td style="padding:.6rem .5rem;font-weight:700;color:var(--bone);">M (Standard)</td>
+            <td style="padding:.6rem .5rem;">39 - 41" (102 cm)</td>
+            <td style="padding:.6rem .5rem;">48" (122 cm)</td>
+            <td style="padding:.6rem .5rem;">19.5"</td>
+            <td style="padding:.6rem .5rem;">5'8" - 5'10"</td>
+          </tr>
+          <tr style="border-bottom:1px solid rgba(232,228,220,.06);">
+            <td style="padding:.6rem .5rem;font-weight:700;color:var(--bone);">L</td>
+            <td style="padding:.6rem .5rem;">42 - 44" (110 cm)</td>
+            <td style="padding:.6rem .5rem;">51" (129 cm)</td>
+            <td style="padding:.6rem .5rem;">20.5"</td>
+            <td style="padding:.6rem .5rem;">5'11" - 6'1"</td>
+          </tr>
+          <tr style="border-bottom:1px solid rgba(232,228,220,.06);background:rgba(232,228,220,.03);">
+            <td style="padding:.6rem .5rem;font-weight:700;color:var(--bone);">XL</td>
+            <td style="padding:.6rem .5rem;">45 - 47" (118 cm)</td>
+            <td style="padding:.6rem .5rem;">53" (135 cm)</td>
+            <td style="padding:.6rem .5rem;">21.5"</td>
+            <td style="padding:.6rem .5rem;">6'1" - 6'3"</td>
+          </tr>
+          <tr style="border-bottom:1px solid rgba(232,228,220,.06);">
+            <td style="padding:.6rem .5rem;font-weight:700;color:var(--bone);">XXL</td>
+            <td style="padding:.6rem .5rem;">48 - 50" (126 cm)</td>
+            <td style="padding:.6rem .5rem;">54" (137 cm)</td>
+            <td style="padding:.6rem .5rem;">22.5"</td>
+            <td style="padding:.6rem .5rem;">6'3"+</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="background:rgba(232,228,220,.04);border:1px solid rgba(232,228,220,.08);border-radius:6px;padding:.9rem;margin-bottom:1.4rem;">
+      <p style="font-family:var(--mono);font-size:.6rem;color:var(--bone);margin:0 0 .3rem 0;font-weight:700;">GARMENT CARE &amp; FABRIC SPECIFICATIONS:</p>
+      <p style="font-family:var(--mono);font-size:.55rem;color:var(--smoke);margin:0;line-height:1.5;">
+        Crafted from 100% Japanese heavyweight gabardine twill with crimson silk satin lining. Hand wash cold or dry clean only to preserve embroidered vermilion cloud seals. Pre-shrunk fabric ensures no shrinkage.
+      </p>
+    </div>
+
+    <div class="courier-modal__footer" style="margin-top:0;">
+      <button type="button" class="courier-modal__ok-btn" id="sizeGuideModalOkBtn">CLOSE SIZE GUIDE</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ LEGAL & POLICIES MODAL ══════════ -->
+<div class="courier-modal" id="legalPolicyModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="legalPolicyModalTitle">
+  <div class="courier-modal__backdrop" id="legalPolicyModalBackdrop"></div>
+  <div class="courier-modal__box" style="max-width:540px;">
+    <div class="courier-modal__header">
+      <div>
+        <span class="courier-modal__tag" id="legalPolicyModalTag">STORE POLICIES &amp; PROTOCOLS</span>
+        <h3 class="courier-modal__title" id="legalPolicyModalTitle">PRIVACY POLICY</h3>
+      </div>
+      <button type="button" class="courier-modal__close-btn" id="legalPolicyModalCloseBtn" aria-label="Close policy modal">✕</button>
+    </div>
+
+    <div id="legalPolicyModalBody" style="font-family:var(--mono);font-size:.65rem;color:var(--smoke);line-height:1.65;margin-bottom:1.6rem;max-height:60vh;overflow-y:auto;padding-right:.4rem;">
+      <!-- Content populated dynamically -->
+    </div>
+
+    <div class="courier-modal__footer" style="margin-top:0;">
+      <button type="button" class="courier-modal__ok-btn" id="legalPolicyModalOkBtn">CLOSE</button>
+    </div>
+  </div>
+</div>
+
+<!-- Zoho SalesIQ Live Chat Integration (Forced English Locale) -->
+<script>
+  window.$zoho = window.$zoho || {};
+  $zoho.salesiq = $zoho.salesiq || {
+    values: {
+      language: "en"
+    },
+    ready: function() {
+      try {
+        $zoho.salesiq.language('en');
+      } catch (_) {}
+    }
+  };
+</script>
+<script id="zsiqscript" src="https://salesiq.zoho.in/widget?wc=siq41047df11558854d7ca9d3d70aba4c74886ff898ecc046fc4b4f956479350736" defer></script>
+
+<script src="main.js"></script>
+</body>
+</html>

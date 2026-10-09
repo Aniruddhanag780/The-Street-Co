@@ -2720,7 +2720,7 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
           if (result.sms.success) {
             console.log(`[Twilio] Automated confirmation SMS sent to ${result.sms.to} (SID: ${result.sms.sid})`);
             if (typeof showToast === 'function') {
-              showToast('ORDER SMS DISPATCHED', `Order confirmation SMS sent to ${result.sms.to}`, 'cart');
+              showToast('ORDER SMS DISPATCHED', `Order confirmation SMS sent to ${result.sms.to}`, 'info');
             }
           } else if (result.sms.configured === false) {
             console.info('[Twilio] SMS notice:', result.sms.notice);
@@ -6018,7 +6018,7 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
       const showCopiedSuccess = () => {
         pdpShareBtn.classList.add('copied');
         if (shareLabel) shareLabel.textContent = 'COPIED!';
-        showToast('LINK COPIED', `${itemName} share link copied to clipboard`, 'cart');
+        showToast('LINK COPIED', `${itemName} share link copied to clipboard`, 'info');
         setTimeout(() => {
           pdpShareBtn.classList.remove('copied');
           if (shareLabel) shareLabel.textContent = originalText;
@@ -6033,7 +6033,7 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
             text: `Check out ${itemName} on The Street Co`,
             url: shareUrl,
           });
-          showToast('SHARED', `${itemName} link shared successfully`, 'cart');
+          showToast('SHARED', `${itemName} link shared successfully`, 'info');
           return;
         } catch (err) {
           if (err && err.name === 'AbortError') return;
@@ -6557,7 +6557,7 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
     } catch (_) {}
     renderRecentlyViewedSection();
     renderSearchRecentlyViewedDropdowns();
-    showToast('RECENT VIEWS CLEARED', 'Archive inspection history wiped', 'cart');
+    showToast('RECENT VIEWS CLEARED', 'Archive inspection history wiped', 'info');
   }
 
   function renderRecentlyViewedSection() {
@@ -7146,3 +7146,74 @@ try {
   localStorage.removeItem("itachi_auth_user");
   localStorage.removeItem("itachi_admin_secret");
 } catch (_) {}
+
+// ══════════════════════════════════════════════════════════════
+// PROGRESSIVE WEB APP (PWA) SERVICE WORKER & INSTALL EXPERIENCE
+// ══════════════════════════════════════════════════════════════
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').then(
+      (reg) => console.log('[PWA] ServiceWorker registered with scope:', reg.scope),
+      (err) => console.warn('[PWA] ServiceWorker registration notice:', err)
+    );
+  });
+}
+
+(function initPWAInstall() {
+  let deferredPwaPrompt = null;
+  const pwaInstallBtn = document.getElementById('pwaInstallBtn');
+
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+    window.navigator.standalone === true;
+
+  if (isStandalone) {
+    if (pwaInstallBtn) pwaInstallBtn.style.display = 'none';
+    return;
+  }
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPwaPrompt = e;
+    if (pwaInstallBtn) {
+      pwaInstallBtn.style.display = 'inline-flex';
+    }
+  });
+
+  window.addEventListener('appinstalled', () => {
+    deferredPwaPrompt = null;
+    if (pwaInstallBtn) pwaInstallBtn.style.display = 'none';
+    if (typeof showToast === 'function') {
+      showToast('APP INSTALLED', 'The Street Co was successfully installed on your device!', 'bag');
+    }
+  });
+
+  if (pwaInstallBtn) {
+    pwaInstallBtn.addEventListener('click', async () => {
+      if (deferredPwaPrompt) {
+        deferredPwaPrompt.prompt();
+        const { outcome } = await deferredPwaPrompt.userChoice;
+        if (outcome === 'accepted') {
+          pwaInstallBtn.style.display = 'none';
+        }
+        deferredPwaPrompt = null;
+      } else {
+        const isIOS = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
+        if (isIOS) {
+          if (typeof showToast === 'function') {
+            showToast('INSTALL ON IOS', 'Tap the Share icon in Safari, then tap "Add to Home Screen".', 'bag');
+          }
+        } else {
+          if (typeof showToast === 'function') {
+            showToast('INSTALL APP', 'Click the 3 dots (⋮) in Chrome and select "Install The Street Co".', 'bag');
+          }
+        }
+      }
+    });
+
+    const isIOS = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
+    if (isIOS && !isStandalone) {
+      pwaInstallBtn.style.display = 'inline-flex';
+    }
+  }
+})();
+

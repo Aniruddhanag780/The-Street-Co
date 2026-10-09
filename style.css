@@ -275,11 +275,34 @@ html, body {
   transform:scale(1.35);background:var(--blood-hot);
 }
 
+.chrome__install-btn{
+  display:inline-flex;align-items:center;gap:.42rem;cursor:pointer;
+  position:relative;overflow:hidden;
+  background:rgba(232,228,220,.05);border:1px solid rgba(232,228,220,.16);
+  border-radius:8px;
+  padding:.38rem .75rem;color:var(--bone);
+  font-family:var(--mono);font-size:.56rem;letter-spacing:.22em;font-weight:700;
+  transition:background .35s var(--ease),color .35s var(--ease),box-shadow .35s var(--ease),transform .25s var(--ease),border-color .25s var(--ease);
+  white-space:nowrap;flex-shrink:0;
+  touch-action:manipulation;
+}
+.chrome__install-btn::after{
+  content:'';position:absolute;inset:0;border-radius:inherit;
+  background:radial-gradient(circle at 50% 120%,rgba(192,18,31,.45),transparent 65%);
+  opacity:0;transition:opacity .45s var(--ease);pointer-events:none;
+}
+.chrome__install-btn:hover{
+  background:#0e0b0d;border-color:rgba(192,18,31,.6);color:#fff;
+  box-shadow:0 0 18px rgba(255,43,43,.25);transform:translateY(-1px);
+}
+.chrome__install-btn:hover::after{opacity:1}
+.chrome__install-btn:active{transform:scale(0.95);background:#090809;}
+
 @media (max-width:720px){
   .chrome__nav{
     gap:.42rem;
   }
-  .chrome__nav a, .chrome__link, .chrome__wishlist-btn, .chrome__cart-btn, .chrome__sound{
+  .chrome__nav a, .chrome__link, .chrome__wishlist-btn, .chrome__cart-btn, .chrome__install-btn, .chrome__sound{
     padding:.32rem .55rem;
     font-size:.52rem;
     letter-spacing:.18em;
@@ -3763,7 +3786,7 @@ footer#end{
   display:flex;align-items:baseline;gap:.2rem;
 }
 .pdp-currency{
-  font-family:var(--mono);font-size:1.2rem;color:var(--blood-hot);font-weight:800;
+  font-family:var(--mono);font-size:1.2rem;color:#ffffff;font-weight:800;
 }
 .pdp-amount{
   font-family:var(--mono);font-size:1.85rem;font-weight:900;color:var(--bone);
@@ -4731,15 +4754,16 @@ footer#end{
   flex-shrink:0;
 }
 .shop__search-clear:hover{color:#fff;background:rgba(192,18,31,.5);}
-/* Search Bar Submit Button (Clean, Static, No Animations) */
+/* Search Bar Submit Button (Seamlessly matches search bar background, no border) */
 .shop__search-submit,
+#shopSearchSubmitBtn,
 #collecSearchSubmitBtn{
   position:relative;
-  background:rgba(232,228,220,.08);
-  border:1px solid rgba(232,228,220,.18);
+  background:transparent;
+  border:none;
   border-radius:9999px;
   color:var(--bone);
-  padding:0 1.6rem;
+  padding:0 1.4rem;
   height:44px;
   font-family:var(--mono);
   font-size:.66rem;
@@ -4751,16 +4775,22 @@ footer#end{
   gap:.55rem;
   flex-shrink:0;
   touch-action:manipulation;
+  transition:color .25s ease, transform .2s ease;
 }
 .shop__search-submit:hover,
+#shopSearchSubmitBtn:hover,
 #collecSearchSubmitBtn:hover{
-  background:#0e0b0d;
-  border-color:var(--blood-hot);
-  color:#fff;
+  background:transparent;
+  border:none;
+  color:var(--blood-hot);
+  transform:scale(1.04);
 }
 .shop__search-submit:active,
+#shopSearchSubmitBtn:active,
 #collecSearchSubmitBtn:active{
-  background:#090809;
+  background:transparent;
+  border:none;
+  transform:scale(0.96);
 }
 .shop__search-submit svg,
 #collecSearchSubmitBtn svg{

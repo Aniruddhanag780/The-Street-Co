@@ -2782,6 +2782,28 @@ app.get('/email-preview', (req, res) => {
   res.sendFile(path.join(__dirname, 'email-preview.html'));
 });
 
+// Progressive Web App (PWA) Manifest & Service Worker
+app.get('/manifest.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.sendFile(path.join(__dirname, 'manifest.json'));
+});
+
+app.get('/sw.js', (req, res) => {
+  res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+  res.setHeader('Service-Worker-Allowed', '/');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.sendFile(path.join(__dirname, 'sw.js'));
+});
+
+app.get(['/pwa-192x192.png', '/pwa-512x512.png', '/pwa-maskable-192x192.png', '/pwa-maskable-512x512.png', '/apple-touch-icon.png'], (req, res) => {
+  res.setHeader('Content-Type', 'image/png');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  res.sendFile(path.join(__dirname, path.basename(req.path)));
+});
+
 // Serve index.html with dynamic Open Graph URLs tailored to current host (for accurate social previews on any domain)
 function sendDynamicIndex(req, res) {
   const host = req.get('x-forwarded-host') || req.get('host') || 'itachii.netlify.app';

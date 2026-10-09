@@ -254,8 +254,16 @@ async function sendOrderConfirmationEmailGmail(order, hostOrigin = '') {
     const itemFinalTotal = Math.max(0, totalItemPriceNum - itemDiscountAmt);
     const itemFinalUnit = Math.max(0, Math.round(itemFinalTotal / itemQty));
 
+    // Resolve item order picture
+    let itemImg = item.image || item.imageUrl || (item.images && item.images[0]) || '';
+    if (!itemImg) {
+      itemImg = `${resolvedOrigin}/product-minato.jpg`;
+    } else if (itemImg.startsWith('/')) {
+      itemImg = `${resolvedOrigin}${itemImg}`;
+    }
+
     const unitPriceDisplay = hasCoupon && itemDiscountAmt > 0
-      ? `<span style="text-decoration:line-through;color:#888888;font-size:12px;margin-right:4px;">₹${Math.round(unitPriceNum).toLocaleString('en-IN')}</span> <strong style="color:#ed3031;font-size:13px;">₹${Math.round(itemFinalUnit).toLocaleString('en-IN')}</strong> <span style="background:#fee2e2;color:#dc2626;font-size:10px;font-weight:700;padding:2px 5px;border-radius:3px;margin-left:4px;">COUPON DISCOUNT</span>`
+      ? `<span style="text-decoration:line-through;color:#888888;font-size:12px;margin-right:4px;">₹${Math.round(unitPriceNum).toLocaleString('en-IN')}</span> <strong style="color:#ed3031;font-size:13px;">₹${Math.round(itemFinalUnit).toLocaleString('en-IN')}</strong>`
       : `₹ ${Math.round(unitPriceNum).toLocaleString('en-IN')}`;
 
     const totalPriceDisplay = hasCoupon && itemDiscountAmt > 0
@@ -263,26 +271,40 @@ async function sendOrderConfirmationEmailGmail(order, hostOrigin = '') {
       : `₹ ${Math.round(totalItemPriceNum).toLocaleString('en-IN')}`;
 
     return `
-        <table cellpadding="0" cellspacing="0" width="100%" border="0" style="color:#282c3f;font-family:'Source Sans Pro', sans-serif;font-size:14px;line-height:22px;margin-bottom:15px;border-bottom:1px solid #e4e4e4;padding-bottom:15px;">
+        <table cellpadding="0" cellspacing="0" width="100%" border="0" style="width:100%;color:#282c3f;font-family:'Source Sans Pro', sans-serif;font-size:14px;line-height:22px;margin-bottom:16px;border-bottom:1px solid #e4e4e4;padding-bottom:14px;">
+          <!-- Top Row: Left Side = Order Picture, Right Side = All Texts -->
           <tr>
-            <td colspan="2" style="color:#111111;font-weight:700;font-size:15px;padding-bottom:3px;">
-              ${itemTitle}
+            <td style="width:90px;vertical-align:top;padding-right:15px;padding-bottom:10px;">
+              <img src="${itemImg}" alt="${itemTitle}" width="85" height="85" style="width:85px;height:85px;max-width:85px;object-fit:cover;border-radius:6px;border:1px solid #e4e4e4;display:block;" />
+            </td>
+            <td style="vertical-align:top;padding-bottom:10px;">
+              <div style="color:#111111;font-weight:700;font-size:15px;line-height:20px;padding-bottom:3px;word-break:break-word;">
+                ${itemTitle}
+              </div>
+              <div style="color:#686B78;font-size:13px;line-height:18px;padding-bottom:6px;">
+                ${itemSubtitle}
+              </div>
+              <div style="color:#444444;font-size:13px;line-height:18px;">
+                Size: <strong>${itemSize}</strong> &nbsp;|&nbsp; Qty: <strong>${itemQty}</strong>
+                ${hasCoupon && itemDiscountAmt > 0 ? '<span style="background:#fee2e2;color:#dc2626;font-size:10px;font-weight:700;padding:2px 6px;border-radius:3px;letter-spacing:0.3px;margin-left:8px;display:inline-block;">COUPON APPLIED</span>' : ''}
+              </div>
             </td>
           </tr>
+
+          <!-- Bottom: All Prices -->
           <tr>
-            <td colspan="2" style="color:#686B78;font-size:13px;padding-bottom:4px;">${itemSubtitle}</td>
-          </tr>
-          <tr>
-            <td style="text-align:left;color:#444444;font-size:13px;">Size: <strong>${itemSize}</strong> | Qty: <strong>${itemQty}</strong></td>
-            <td style="text-align:right;"></td>
-          </tr>
-          <tr>
-            <td style="color:#686B78;font-size:13px;">Price</td>
-            <td style="text-align:right;color:#111111;font-size:13px;">${unitPriceDisplay}</td>
-          </tr>
-          <tr style="font-weight:700;">
-            <td style="color:#111111;padding-top:4px;">Item Total</td>
-            <td style="text-align:right;color:#ed3031;font-size:14px;padding-top:4px;">${totalPriceDisplay}</td>
+            <td colspan="2" style="border-top:1px dashed #ebebeb;padding-top:8px;">
+              <table cellpadding="0" cellspacing="0" width="100%" border="0" style="width:100%;">
+                <tr>
+                  <td style="width:58%;text-align:left;color:#686B78;font-size:13px;padding:2px 0;vertical-align:middle;">Price</td>
+                  <td style="width:42%;text-align:right;color:#111111;font-size:13px;padding:2px 0;vertical-align:middle;white-space:nowrap;">${unitPriceDisplay}</td>
+                </tr>
+                <tr style="font-weight:700;">
+                  <td style="width:58%;text-align:left;color:#111111;font-size:14px;padding-top:4px;vertical-align:middle;">Item Total</td>
+                  <td style="width:42%;text-align:right;color:#ed3031;font-size:14px;padding-top:4px;vertical-align:middle;white-space:nowrap;">${totalPriceDisplay}</td>
+                </tr>
+              </table>
+            </td>
           </tr>
         </table>
     `;

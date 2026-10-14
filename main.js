@@ -4176,7 +4176,33 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
     }
   ];
 
-  let collectionsData = [];
+  const ZOHO_INITIAL_ITEM = {
+    id: 'TS-MIN-001',
+    sku: 'TS-MIN-001',
+    zoho_item_id: '4226403000000037080',
+    name: 'Fourth Hokage Minato Inspired Oversized T-Shirt - Premium Flame Print Anime Streetwear',
+    title: 'Fourth Hokage Minato Inspired Oversized T-Shirt - Premium Flame Print Anime Streetwear',
+    collectionName: 'Minato Namikaze',
+    collection: 'minato',
+    category: 'Oversized T-Shirts',
+    category_name: 'Oversized T-Shirts',
+    desc: 'Official Fourth Hokage Minato Namikaze inspired oversized streetwear t-shirt. Features iconic flame motifs, premium 240+ GSM heavyweight combed cotton, custom drop shoulder aesthetic, and high-density screen printing. Direct live inventory fulfillment.',
+    description: 'Official Fourth Hokage Minato Namikaze inspired oversized streetwear t-shirt. Features iconic flame motifs, premium 240+ GSM heavyweight combed cotton, custom drop shoulder aesthetic, and high-density screen printing. Direct live inventory fulfillment.',
+    priceInr: 1599,
+    price: 1599,
+    originalMrp: 1799,
+    originalPrice: 1799,
+    hasDiscount: true,
+    discountPercent: 11,
+    stock: 98,
+    inStock: true,
+    unit: 'pcs',
+    images: ['/api/zoho-inventory/documents/4226403000000037086', '/product-minato.jpg'],
+    imageUrl: '/api/zoho-inventory/documents/4226403000000037086',
+    iconSvg: `<svg viewBox="0 0 40 40" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="20" cy="20" r="14" stroke="var(--blood-hot)"/><text x="20" y="25" text-anchor="middle" font-family="sans-serif" font-size="12" fill="var(--bone)">閃</text></svg>`
+  };
+
+  let collectionsData = [ZOHO_INITIAL_ITEM, ...CANONICAL_RELICS];
 
   const collectionsPage = document.getElementById('collectionsPage');
   const openCollectionsBtn = document.getElementById('openCollectionsBtn');
@@ -4196,57 +4222,39 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
 
   let collectionsPreviousScrollY = 0;
 
-  function openCollectionsPage() {
-    if (collectionsPage) {
-      const curY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
-      collectionsPreviousScrollY = curY > 200 ? curY : (document.getElementById('shop')?.offsetTop || 0);
-
-      collectionsPage.classList.add('open');
-      collectionsPage.setAttribute('aria-hidden', 'false');
-      document.body.classList.add('bag-open');
-      document.documentElement.classList.add('bag-open');
-      renderCollections();
-      if (collecSearchInput) collecSearchInput.focus();
-
-      try {
-        if (!history.state || !history.state.collectionsOpen) {
-          history.pushState({ collectionsOpen: true }, '', window.location.href);
-        }
-      } catch (_) {}
+  function openCollectionsPage(col = '') {
+    const shopSec = document.getElementById('shop');
+    if (col) {
+      Object.keys(activeShopFilters).forEach(k => activeShopFilters[k].clear());
+      activeShopFilters.collection.add(col);
+      renderActiveFilterChips();
+      updateFilterCheckboxesState();
+      renderShopGrid();
+    }
+    if (shopSec) {
+      shopSec.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }
 
-  function closeCollectionsPage(skipHistoryBack = false) {
-    if (collectionsPage && collectionsPage.classList.contains('open')) {
-      collectionsPage.classList.remove('open');
-      collectionsPage.setAttribute('aria-hidden', 'true');
-      document.body.classList.remove('bag-open');
-      document.documentElement.classList.remove('bag-open');
-
-      if (!skipHistoryBack) {
-        try {
-          if (history.state && history.state.collectionsOpen) {
-            history.back();
-          }
-        } catch (_) {}
-      }
-
-      // Always restore user to previous page / shop position instead of homepage
-      const targetY = collectionsPreviousScrollY > 200 
-        ? collectionsPreviousScrollY 
-        : (document.getElementById('shop')?.offsetTop || 0);
-      window.scrollTo({ top: targetY, behavior: 'instant' });
+  function closeCollectionsPage() {
+    const shopSec = document.getElementById('shop');
+    if (shopSec) {
+      shopSec.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }
 
-  if (openCollectionsBtn) openCollectionsBtn.addEventListener('click', openCollectionsPage);
+  if (openCollectionsBtn) {
+    openCollectionsBtn.addEventListener('click', () => openCollectionsPage());
+  }
   if (navCollectionsLink) {
     navCollectionsLink.addEventListener('click', (e) => {
       e.preventDefault();
       openCollectionsPage();
     });
   }
-  if (closeCollectionsBtn) closeCollectionsBtn.addEventListener('click', closeCollectionsPage);
+  if (closeCollectionsBtn) {
+    closeCollectionsBtn.addEventListener('click', closeCollectionsPage);
+  }
 
   // Search input handler
   if (collecSearchInput) {
@@ -4532,93 +4540,401 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
     });
   }
 
-  // ═══════════ DYNAMIC SHOP PAGE GRID & FILTERING ═══════════
+  // ═══════════ DYNAMIC SHOP PAGE GRID, SIDEBAR FILTERS & SOULED STORE EXPERIENCE ═══════════
   const shopGrid = document.getElementById('shopGrid');
-  const shopFilterPills = document.getElementById('shopFilterPills');
+  const shopProductCount = document.getElementById('shopProductCount');
   const shopSyncLabel = document.getElementById('shopSyncLabel');
+  const shopFilterPills = document.getElementById('shopFilterPills');
   let currentShopCategory = 'all';
+  const shopSearchInput = document.getElementById('shopSearchInput');
+  const shopSearchClearBtn = document.getElementById('shopSearchClearBtn');
+  const shopSearchRecentDropdown = document.getElementById('shopSearchRecentDropdown');
+  const shopSearchRecentList = document.getElementById('shopSearchRecentList');
+  const shopSearchWrapper = document.getElementById('shopSearchWrapper');
+  let currentShopSearchQuery = '';
+  const shopSortSelect = document.getElementById('shopSortSelect');
+  const shopActiveChips = document.getElementById('shopActiveChips');
+  const shopClearAllChipsBtn = document.getElementById('shopClearAllChipsBtn');
+  const shopClearAllFiltersBtn = document.getElementById('shopClearAllFiltersBtn');
+  const filterSidebarContent = document.getElementById('filterSidebarContent');
+  const shopFilterSidebar = document.getElementById('shopFilterSidebar');
+  const shopProductsArea = document.getElementById('shopProductsArea');
+  const shopMobileFilterBtn = document.getElementById('shopMobileFilterBtn');
+
+  // Multi-facet shop filters state
+  const activeShopFilters = {
+    category: new Set(),
+    collection: new Set(),
+    size: new Set(),
+    fit: new Set(),
+    price: new Set(),
+    color: new Set(),
+    availability: new Set()
+  };
+  let currentShopSort = 'popularity';
+
+  const FILTER_DEFINITIONS = {
+    category: [
+      { id: 'Oversized T-Shirts', label: 'Oversized T-Shirts' },
+      { id: 'Classic T-Shirts', label: 'Classic T-Shirts' },
+      { id: 'Hoodies & Sweatshirts', label: 'Hoodies & Sweatshirts' },
+      { id: 'Jackets & Outerwear', label: 'Jackets & Outerwear' },
+      { id: 'Cargo Pants & Joggers', label: 'Cargo Pants & Joggers' },
+      { id: 'Accessories & Jewelry', label: 'Accessories & Jewelry' }
+    ],
+    collection: [
+      { id: 'Minato Namikaze', label: 'Minato Namikaze' },
+      { id: 'Akatsuki Shadows', label: 'Akatsuki Shadows' },
+      { id: 'Uchiha Clan', label: 'Uchiha Clan' },
+      { id: 'Street Core', label: 'Street Core' },
+      { id: 'Shinobi Armory', label: 'Shinobi Armory' }
+    ],
+    size: [
+      { id: 'S', label: 'S (Chest 38")' },
+      { id: 'M', label: 'M (Chest 40")' },
+      { id: 'L', label: 'L (Chest 42")' },
+      { id: 'XL', label: 'XL (Chest 44")' },
+      { id: 'XXL', label: 'XXL (Chest 46")' }
+    ],
+    fit: [
+      { id: 'Oversized Fit', label: 'Oversized Fit' },
+      { id: 'Relaxed Fit', label: 'Relaxed Fit' },
+      { id: 'Regular Fit', label: 'Regular Fit' },
+      { id: 'Tailored Streetwear', label: 'Tailored Streetwear' }
+    ],
+    price: [
+      { id: 'under-1000', label: 'Under ₹1,000' },
+      { id: '1000-2500', label: '₹1,000 – ₹2,500' },
+      { id: '2500-5000', label: '₹2,500 – ₹5,000' },
+      { id: 'above-5000', label: 'Above ₹5,000' }
+    ],
+    color: [
+      { id: 'Black', label: 'Obsidian Black' },
+      { id: 'White', label: 'Ivory White' },
+      { id: 'Red', label: 'Crimson Red' },
+      { id: 'Grey', label: 'Charcoal Grey' },
+      { id: 'Navy', label: 'Midnight Navy' }
+    ],
+    availability: [
+      { id: 'in-stock', label: 'In Stock Only' },
+      { id: 'discounted', label: 'Special Offers & Discounts' }
+    ]
+  };
+
+  function matchesPriceFilter(price, filterId) {
+    if (filterId === 'under-1000') return price < 1000;
+    if (filterId === '1000-2500') return price >= 1000 && price <= 2500;
+    if (filterId === '2500-5000') return price > 2500 && price <= 5000;
+    if (filterId === 'above-5000') return price > 5000;
+    return true;
+  }
+
+  function renderFilterSidebarUI() {
+    Object.keys(FILTER_DEFINITIONS).forEach(groupKey => {
+      const listContainer = document.getElementById(`filterList${groupKey.charAt(0).toUpperCase() + groupKey.slice(1)}`);
+      if (!listContainer) return;
+
+      const options = FILTER_DEFINITIONS[groupKey];
+      listContainer.innerHTML = options.map(opt => {
+        const isChecked = activeShopFilters[groupKey].has(opt.id);
+        const count = getFilterMatchCount(groupKey, opt.id);
+        return `
+          <label class="filter-item ${isChecked ? 'checked' : ''}">
+            <input type="checkbox" class="filter-checkbox" data-group="${groupKey}" data-val="${opt.id}" ${isChecked ? 'checked' : ''} />
+            <span class="filter-custom-check">
+              <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </span>
+            <span class="filter-label-text">${opt.label}</span>
+            <span class="filter-count">(${count})</span>
+          </label>
+        `;
+      }).join('');
+    });
+
+    // Attach checkbox change event listeners
+    if (filterSidebarContent) {
+      filterSidebarContent.querySelectorAll('.filter-checkbox').forEach(input => {
+        input.addEventListener('change', (e) => {
+          const group = e.target.dataset.group;
+          const val = e.target.dataset.val;
+          if (e.target.checked) {
+            activeShopFilters[group].add(val);
+          } else {
+            activeShopFilters[group].delete(val);
+          }
+          renderActiveFilterChips();
+          renderShopGrid();
+          updateFilterCheckboxesState();
+        });
+      });
+    }
+  }
+
+  function getFilterMatchCount(groupKey, valId) {
+    if (!collectionsData) return 0;
+    return collectionsData.filter(item => {
+      const price = Number(item.priceInr || 0);
+      if (groupKey === 'category') {
+        const cat = (item.category || item.category_name || '').toLowerCase();
+        return cat.includes(valId.toLowerCase()) || valId.toLowerCase().includes(cat);
+      }
+      if (groupKey === 'collection') {
+        const col = (item.collectionName || item.collection || '').toLowerCase();
+        return col.includes(valId.toLowerCase()) || valId.toLowerCase().includes(col);
+      }
+      if (groupKey === 'size') {
+        const sizes = Array.isArray(item.sizes) ? item.sizes : ['S', 'M', 'L', 'XL', 'XXL'];
+        return sizes.includes(valId);
+      }
+      if (groupKey === 'fit') {
+        const fit = (item.fit || item.specs || 'Oversized Fit').toLowerCase();
+        return fit.includes(valId.toLowerCase());
+      }
+      if (groupKey === 'price') {
+        return matchesPriceFilter(price, valId);
+      }
+      if (groupKey === 'color') {
+        const color = (item.color || item.name || '').toLowerCase();
+        return color.includes(valId.toLowerCase());
+      }
+      if (groupKey === 'availability') {
+        if (valId === 'in-stock') return item.inStock !== false;
+        if (valId === 'discounted') return Boolean(item.hasDiscount || (item.originalMrp && item.originalMrp > price));
+      }
+      return true;
+    }).length;
+  }
+
+  function updateFilterCheckboxesState() {
+    if (!filterSidebarContent) return;
+    filterSidebarContent.querySelectorAll('.filter-item').forEach(lbl => {
+      const input = lbl.querySelector('.filter-checkbox');
+      if (input) {
+        const isChecked = activeShopFilters[input.dataset.group].has(input.dataset.val);
+        input.checked = isChecked;
+        lbl.classList.toggle('checked', isChecked);
+      }
+    });
+  }
+
+  function renderActiveFilterChips() {
+    if (!shopActiveChips) return;
+    const chips = [];
+
+    Object.keys(activeShopFilters).forEach(groupKey => {
+      activeShopFilters[groupKey].forEach(val => {
+        let label = val;
+        const def = (FILTER_DEFINITIONS[groupKey] || []).find(d => d.id === val);
+        if (def) label = def.label;
+        chips.push({ group: groupKey, val, label });
+      });
+    });
+
+    if (chips.length === 0) {
+      shopActiveChips.innerHTML = '';
+      if (shopClearAllChipsBtn) shopClearAllChipsBtn.style.display = 'none';
+      if (shopClearAllFiltersBtn) shopClearAllFiltersBtn.style.display = 'none';
+      return;
+    }
+
+    if (shopClearAllChipsBtn) shopClearAllChipsBtn.style.display = 'inline-flex';
+    if (shopClearAllFiltersBtn) shopClearAllFiltersBtn.style.display = 'inline-block';
+
+    shopActiveChips.innerHTML = chips.map(c => `
+      <span class="shop-filter-chip">
+        <span>${c.label}</span>
+        <button type="button" class="chip-remove-btn" data-chip-group="${c.group}" data-chip-val="${c.val}" aria-label="Remove filter ${c.label}">✕</button>
+      </span>
+    `).join('');
+
+    shopActiveChips.querySelectorAll('.chip-remove-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const g = btn.dataset.chipGroup;
+        const v = btn.dataset.chipVal;
+        activeShopFilters[g].delete(v);
+        renderActiveFilterChips();
+        updateFilterCheckboxesState();
+        renderShopGrid();
+      });
+    });
+  }
+
+  function clearAllActiveFilters() {
+    Object.keys(activeShopFilters).forEach(k => activeShopFilters[k].clear());
+    currentShopSearchQuery = '';
+    if (shopSearchInput) {
+      shopSearchInput.value = '';
+      if (shopSearchClearBtn) shopSearchClearBtn.style.display = 'none';
+    }
+    renderActiveFilterChips();
+    updateFilterCheckboxesState();
+    renderShopGrid();
+  }
+
+  if (shopClearAllChipsBtn) shopClearAllChipsBtn.addEventListener('click', clearAllActiveFilters);
+  if (shopClearAllFiltersBtn) shopClearAllFiltersBtn.addEventListener('click', clearAllActiveFilters);
+
+  // Accordion toggle headers in sidebar
+  if (filterSidebarContent) {
+    filterSidebarContent.querySelectorAll('.filter-accordion__header').forEach(header => {
+      header.addEventListener('click', () => {
+        const accordion = header.closest('.filter-accordion');
+        if (accordion) accordion.classList.toggle('open');
+      });
+    });
+  }
+
+  // Sort select handler in top toolbar
+  if (shopSortSelect) {
+    shopSortSelect.addEventListener('change', (e) => {
+      currentShopSort = e.target.value;
+      renderShopGrid();
+    });
+  }
+
+  // Mobile filter toggle
+  if (shopMobileFilterBtn && shopFilterSidebar) {
+    shopMobileFilterBtn.addEventListener('click', () => {
+      shopFilterSidebar.classList.toggle('mobile-open');
+    });
+  }
 
   function renderShopGrid() {
     if (!shopGrid) return;
 
     if (!collectionsData || collectionsData.length === 0) {
       shopGrid.innerHTML = `
-        <div class="shop-empty-state" style="grid-column: 1 / -1; text-align: center; padding: 3.5rem 1.5rem; background: rgba(14,14,17,0.7); border: 1px dashed rgba(232,228,220,0.15); border-radius: 8px;">
+        <div class="shop-loading-card" style="grid-column: 1 / -1; text-align: center; padding: 3rem 1.5rem; background: rgba(14,14,17,0.7); border: 1px dashed rgba(232,228,220,0.15); border-radius: 8px;">
           <div style="font-size: 2.2rem; margin-bottom: 0.8rem;">📦</div>
-          <h3 style="font-family:'Cinzel',serif; letter-spacing:0.1em; color:var(--bone); font-size:1.15rem; margin-bottom: 0.5rem;">ZOHO INVENTORY READY</h3>
+          <h3 style="font-family:'Cinzel',serif; letter-spacing:0.1em; color:var(--bone); font-size:1.15rem; margin-bottom: 0.5rem;">APPAREL CATALOG READY</h3>
           <p style="color:var(--ash); font-size:0.85rem; max-width: 480px; margin: 0 auto 1.4rem; line-height: 1.6;">
-            Products are now managed directly from your Zoho Inventory. Create items in your Zoho dashboard (<strong>Items &rarr; + New</strong>) with title, SKU, ₹ INR rate, stock, and photo to publish them live here.
+            Products are being synchronized from your store catalog and Zoho Inventory.
           </p>
-          <a href="/zoho-inventory" class="shop-pill active" style="text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
-            <span>OPEN ZOHO INVENTORY PORTAL</span>
-            <span>&rarr;</span>
-          </a>
         </div>
       `;
-      if (shopSyncLabel) {
-        shopSyncLabel.textContent = 'ZOHO INVENTORY · 0 PRODUCTS';
-      }
+      if (shopProductCount) shopProductCount.textContent = 'Showing 0 Products';
       return;
     }
 
-    let items = collectionsData;
-    if (currentShopCategory !== 'all') {
-      items = collectionsData.filter(i => (i.category || '').toLowerCase() === currentShopCategory.toLowerCase());
+    let items = collectionsData.filter(item => {
+      const price = Number(item.priceInr || 0);
+
+      // Category filter (OR inside category group)
+      if (activeShopFilters.category.size > 0) {
+        const itemCat = (item.category || item.category_name || '').toLowerCase();
+        const itemName = (item.name || item.title || '').toLowerCase();
+        const hasMatch = Array.from(activeShopFilters.category).some(catVal => {
+          const cv = catVal.toLowerCase();
+          return itemCat.includes(cv) || cv.includes(itemCat) || itemName.includes(cv);
+        });
+        if (!hasMatch) return false;
+      }
+
+      // Collection filter (OR inside collection group)
+      if (activeShopFilters.collection.size > 0) {
+        const itemCol = (item.collectionName || item.collection || '').toLowerCase();
+        const itemName = (item.name || item.title || '').toLowerCase();
+        const hasMatch = Array.from(activeShopFilters.collection).some(colVal => {
+          const clv = colVal.toLowerCase();
+          return itemCol.includes(clv) || clv.includes(itemCol) || itemName.includes(clv);
+        });
+        if (!hasMatch) return false;
+      }
+
+      // Size filter
+      if (activeShopFilters.size.size > 0) {
+        const itemSizes = Array.isArray(item.sizes) ? item.sizes : ['S', 'M', 'L', 'XL', 'XXL'];
+        const hasMatch = Array.from(activeShopFilters.size).some(s => itemSizes.includes(s));
+        if (!hasMatch) return false;
+      }
+
+      // Fit filter
+      if (activeShopFilters.fit.size > 0) {
+        const itemFit = (item.fit || item.specs || 'Oversized Fit').toLowerCase();
+        const hasMatch = Array.from(activeShopFilters.fit).some(f => itemFit.includes(f.toLowerCase()));
+        if (!hasMatch) return false;
+      }
+
+      // Price filter (OR inside price group)
+      if (activeShopFilters.price.size > 0) {
+        const hasMatch = Array.from(activeShopFilters.price).some(pId => matchesPriceFilter(price, pId));
+        if (!hasMatch) return false;
+      }
+
+      // Color filter
+      if (activeShopFilters.color.size > 0) {
+        const itemColor = (item.color || item.name || '').toLowerCase();
+        const hasMatch = Array.from(activeShopFilters.color).some(c => itemColor.includes(c.toLowerCase()));
+        if (!hasMatch) return false;
+      }
+
+      // Availability filter
+      if (activeShopFilters.availability.size > 0) {
+        if (activeShopFilters.availability.has('in-stock') && item.inStock === false) return false;
+        if (activeShopFilters.availability.has('discounted') && !(item.hasDiscount || (item.originalMrp && item.originalMrp > price))) return false;
+      }
+
+      // Hero search query
+      if (currentShopSearchQuery) {
+        const q = currentShopSearchQuery.toLowerCase();
+        const matchesName = (item.name || '').toLowerCase().includes(q);
+        const matchesDesc = (item.desc || '').toLowerCase().includes(q);
+        const matchesCollec = (item.collectionName || '').toLowerCase().includes(q);
+        const matchesCategory = (item.category || item.category_name || '').toLowerCase();
+        const matchesSpecs = (item.specs || '').toLowerCase().includes(q);
+        if (!matchesName && !matchesDesc && !matchesCollec && !matchesCategory.includes(q) && !matchesSpecs) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+
+    // Apply Sorting
+    if (currentShopSort === 'price-asc') {
+      items.sort((a, b) => (Number(a.priceInr) || 0) - (Number(b.priceInr) || 0));
+    } else if (currentShopSort === 'price-desc') {
+      items.sort((a, b) => (Number(b.priceInr) || 0) - (Number(a.priceInr) || 0));
+    } else if (currentShopSort === 'discount') {
+      items.sort((a, b) => (Number(b.discountPercent) || 0) - (Number(a.discountPercent) || 0));
+    } else if (currentShopSort === 'newest') {
+      items.sort((a, b) => (b.id || '').localeCompare(a.id || ''));
     }
-    if (currentShopSearchQuery) {
-      const q = currentShopSearchQuery.toLowerCase();
-      items = items.filter(i => {
-        const matchesName = (i.name || '').toLowerCase().includes(q);
-        const matchesDesc = (i.desc || '').toLowerCase().includes(q);
-        const matchesCollec = (i.collectionName || '').toLowerCase().includes(q);
-        const matchesCategory = (i.category || '').toLowerCase().includes(q);
-        const matchesSeal = (i.seal || '').toLowerCase().includes(q);
-        const matchesSpecs = (i.specs || '').toLowerCase().includes(q);
-        return matchesName || matchesDesc || matchesCollec || matchesCategory || matchesSeal || matchesSpecs;
-      });
+
+    if (shopProductCount) {
+      shopProductCount.textContent = `Showing ${items.length} Product${items.length === 1 ? '' : 's'}`;
     }
 
     if (items.length === 0) {
       shopGrid.innerHTML = `
-        <div class="shop-loading-card">
-          <p>NO PRODUCTS FOUND MATCHING YOUR CRITERIA</p>
-          <button class="shop-pill active" id="resetShopCategoryBtn" type="button" style="margin-top:.6rem">RESET FILTERS</button>
+        <div class="shop-empty-filtered-card">
+          <div style="font-size: 2.2rem; margin-bottom: 0.8rem;">🔍</div>
+          <h4>NO PRODUCTS FOUND</h4>
+          <p>We couldn't find any products matching the selected combination of filters.</p>
+          <button type="button" class="shop-reset-filters-btn" id="shopEmptyResetBtn">CLEAR ALL FILTERS</button>
         </div>
       `;
-      const resetBtn = document.getElementById('resetShopCategoryBtn');
-      if (resetBtn) {
-        resetBtn.addEventListener('click', () => {
-          currentShopCategory = 'all';
-          currentShopSearchQuery = '';
-          if (shopSearchInput) {
-            shopSearchInput.value = '';
-            if (shopSearchClearBtn) shopSearchClearBtn.style.display = 'none';
-          }
-          if (shopFilterPills) {
-            shopFilterPills.querySelectorAll('.shop-pill').forEach((p, idx) => {
-              p.classList.toggle('active', idx === 0);
-            });
-          }
-          renderShopGrid();
-        });
-      }
+      const btn = document.getElementById('shopEmptyResetBtn');
+      if (btn) btn.addEventListener('click', clearAllActiveFilters);
       return;
     }
 
     shopGrid.innerHTML = items.map(item => {
       const sku = item.sku || item.id;
       const isWish = isWishlisted(sku);
-      const sealText = item.seal || '忍';
-      const tagText = item.tag || (item.category ? `${item.category.toUpperCase()} EDITION` : 'CANONICAL RELIC');
-      const collectionText = item.collectionName ? item.collectionName.toUpperCase() : 'THE STREET CO';
-      const priceInr = Number(item.priceInr) || (item.priceUsd ? Math.round(item.priceUsd * 83) : 4999);
+      const priceInr = Number(item.priceInr) || 4999;
       const priceRyo = item.priceRyo ? Number(item.priceRyo) : Math.round(priceInr * 1.54);
-      const mainImg = (Array.isArray(item.images) && item.images.length > 0) ? item.images[0] : (item.imageUrl || '');
-      const photosCount = (Array.isArray(item.images) && item.images.length > 0) ? item.images.length : (item.imageUrl ? 1 : 0);
+      const mainImg = (Array.isArray(item.images) && item.images.length > 0) ? item.images[0] : (item.imageUrl || '/product-minato.jpg');
+      const photosCount = (Array.isArray(item.images) && item.images.length > 0) ? item.images.length : (item.imageUrl ? 1 : 1);
+      const hasDiscount = Boolean(item.hasDiscount || (item.originalMrp && item.originalMrp > priceInr));
+      const discountPct = item.discountPercent || (hasDiscount ? Math.round(((item.originalMrp - priceInr) / item.originalMrp) * 100) : 0);
 
       return `
         <article class="shop-card product-card" data-category="${(item.category || '').toLowerCase()}" data-sku="${sku}">
           <div class="shop-card__badge-row">
+            ${item.zoho_item_id ? `<span class="product-badge-zoho"><span class="shop__sync-dot" style="width:5px;height:5px;"></span> ZOHO LIVE</span>` : ''}
+            ${hasDiscount ? `<span class="product-badge-discount">${discountPct}% OFF</span>` : `<span class="product-badge-tag">${(item.category || 'STREETWEAR').toUpperCase()}</span>`}
             <button class="item-heart-btn ${isWish ? 'active' : ''}" type="button"
                     data-wishlist-toggle="${sku}"
                     data-sku="${sku}"
@@ -4634,18 +4950,18 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
           </div>
           <div class="shop-card__visual" data-gallery-open="${sku}" role="button" tabindex="0" title="Click to view full image gallery (${photosCount} photos)">
             ${mainImg 
-              ? `<img src="${mainImg}" alt="${item.name}" loading="lazy" onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='/product-minato.jpg';}else{this.style.display='none'; if (this.nextElementSibling) this.nextElementSibling.style.display='grid';}" /><div class="shop-card__svg-fallback" style="display:none;">${item.iconSvg || `<svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="rgba(232,228,220,0.3)" stroke-width="1.4"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`}</div>`
-              : `<div class="shop-card__svg-fallback">${item.iconSvg || `<svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="rgba(232,228,220,0.3)" stroke-width="1.4"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`}</div>`}
+              ? `<img src="${mainImg}" alt="${item.name}" loading="lazy" onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='/product-minato.jpg';}else{this.style.display='none';}" />`
+              : `<div class="shop-card__svg-fallback">${item.iconSvg || '👕'}</div>`}
             ${photosCount > 1 ? `<span class="shop-card__gallery-badge"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>${photosCount} PHOTOS</span>` : ''}
           </div>
+          <span class="shop-card__theme-tag">${item.collectionName || 'OFFICIAL STREETWEAR'}</span>
           <h3 class="shop-card__title" data-gallery-open="${sku}" style="cursor:pointer;">${item.name}</h3>
-          <p class="shop-card__en">${item.category_name ? item.category_name.toUpperCase() + ' · ' : ''}SKU: ${sku}</p>
-          <p class="shop-card__desc">${(item.desc || '').replace(/Product Overview/i, '').split('\n').map(s => s.trim()).filter(Boolean)[0] || item.desc || ''}</p>
+          <p class="shop-card__desc">${(item.desc || '').replace(/Product Overview/i, '').split('\n').map(s => s.trim()).filter(Boolean)[0] || item.specs || 'Drop Shoulder Heavyweight 240+ GSM Pure Cotton.'}</p>
           <div class="shop-card__action-row">
             <div class="shop-card__price">
               <div class="shop-card__price-wrap">
                 <span class="shop-card__price-usd">₹${priceInr.toLocaleString('en-IN')}</span>
-                ${item.hasDiscount && item.originalMrp > priceInr ? `<del class="shop-card__price-mrp">₹${item.originalMrp.toLocaleString('en-IN')}</del><span class="shop-card__discount-badge">${item.discountPercent}% OFF</span>` : ''}
+                ${hasDiscount && item.originalMrp ? `<del class="shop-card__price-mrp">₹${item.originalMrp.toLocaleString('en-IN')}</del>` : ''}
               </div>
             </div>
             <button class="shop-card__btn" type="button"
@@ -4653,14 +4969,13 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
                     data-sku="${sku}"
                     data-name="${item.name.replace(/"/g, '&quot;')}"
                     data-price-ryo="${priceRyo}"
-                    data-price-inr="${priceInr}"
-                    data-seal="${sealText}">
+                    data-price-inr="${priceInr}">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
                 <line x1="3" y1="6" x2="21" y2="6"/>
                 <path d="M16 10a4 4 0 0 1-8 0"/>
               </svg>
-              <span>ADD TO CART</span>
+              <span>ADD TO BAG</span>
             </button>
           </div>
         </article>
@@ -4676,9 +4991,7 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
           id: sku,
           sku: sku,
           name: btn.dataset.name,
-          priceRyo: parseInt(btn.dataset.priceRyo, 10),
-          priceInr: parseInt(btn.dataset.priceInr, 10) || 4999,
-          seal: btn.dataset.seal
+          priceInr: parseInt(btn.dataset.priceInr, 10) || 4999
         };
         handleAddToCart(btn, item);
       });
@@ -4693,9 +5006,7 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
           id: sku,
           sku: sku,
           name: btn.dataset.name,
-          priceRyo: parseInt(btn.dataset.priceRyo, 10),
-          priceInr: parseInt(btn.dataset.priceInr, 10) || 4999,
-          seal: btn.dataset.seal
+          priceInr: parseInt(btn.dataset.priceInr, 10) || 4999
         };
         toggleWishlist(item, btn);
       });
@@ -4720,23 +5031,117 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
         if (item) openRelicGallery(item, 'shop');
       });
     });
+  }
 
-    if (shopSyncLabel) {
-      shopSyncLabel.textContent = `ZOHO INVENTORY · ${collectionsData.length} ACTIVE PRODUCT${collectionsData.length === 1 ? '' : 'S'}`;
+  // ═══════════ SCROLL ISOLATION EXPERIENCE ═══════════
+  // User spec: Cursor over filters -> scroll filters. Cursor over products -> scroll products.
+  // Cursor over left/right empty area -> scroll entire app window.
+  (function initScrollZones() {
+    const filterSidebar = document.getElementById('shopFilterSidebar');
+    const productsArea = document.getElementById('shopProductsArea');
+
+    if (filterSidebar) {
+      filterSidebar.addEventListener('wheel', (e) => {
+        const canScrollUp = filterSidebar.scrollTop > 0;
+        const canScrollDown = filterSidebar.scrollTop < (filterSidebar.scrollHeight - filterSidebar.clientHeight);
+        if ((e.deltaY < 0 && canScrollUp) || (e.deltaY > 0 && canScrollDown)) {
+          filterSidebar.scrollTop += e.deltaY;
+          e.preventDefault();
+        }
+      }, { passive: false });
     }
-  }
 
-  // Setup category pills on the main Shop section
-  if (shopFilterPills) {
-    shopFilterPills.querySelectorAll('.shop-pill').forEach(pill => {
-      pill.addEventListener('click', () => {
-        shopFilterPills.querySelectorAll('.shop-pill').forEach(p => p.classList.remove('active'));
-        pill.classList.add('active');
-        currentShopCategory = pill.dataset.shopCat;
-        renderShopGrid();
+    if (productsArea) {
+      productsArea.addEventListener('wheel', (e) => {
+        const canScrollUp = productsArea.scrollTop > 0;
+        const canScrollDown = productsArea.scrollTop < (productsArea.scrollHeight - productsArea.clientHeight);
+        if ((e.deltaY < 0 && canScrollUp) || (e.deltaY > 0 && canScrollDown)) {
+          productsArea.scrollTop += e.deltaY;
+          e.preventDefault();
+        }
+      }, { passive: false });
+    }
+  })();
+
+
+  // ═══════════ DELHIVERY LOGISTICS ORDER TRACKING MODAL ═══════════
+  window.openDelhiveryTrackingModal = function() {
+    const modal = document.getElementById('delhiveryTrackModal');
+    if (!modal) return;
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+
+    // Populate recent orders in tracking modal if any exist
+    const recentOrdersContainer = document.getElementById('delhiveryRecentOrders');
+    if (recentOrdersContainer) {
+      const orders = (typeof getSavedOrders === 'function') ? getSavedOrders() : [];
+      if (orders && orders.length > 0) {
+        recentOrdersContainer.innerHTML = `
+          <span class="delhivery-recent-title">YOUR RECENT ORDERS:</span>
+          ${orders.slice(0, 3).map(o => {
+            const code = o.orderCode || o.orderId || 'TS-99214';
+            return `
+              <div class="delhivery-order-chip" data-track-code="${code}">
+                <div>
+                  <strong>Order #${code}</strong>
+                  <small>₹${(o.totalInr || 0).toLocaleString('en-IN')} · ${o.items ? o.items.length : 1} item(s)</small>
+                </div>
+                <button type="button" class="delhivery-chip-btn">TRACK NOW ↗</button>
+              </div>
+            `;
+          }).join('')}
+        `;
+        recentOrdersContainer.querySelectorAll('.delhivery-order-chip').forEach(chip => {
+          chip.addEventListener('click', () => {
+            const code = chip.dataset.trackCode;
+            const input = document.getElementById('delhiveryAwbInput');
+            if (input) input.value = code;
+            window.open(`https://www.delhivery.com/tracking?waybill=${encodeURIComponent(code)}`, '_blank', 'noopener,noreferrer');
+          });
+        });
+      } else {
+        recentOrdersContainer.innerHTML = '';
+      }
+    }
+  };
+
+  (function initDelhiveryModal() {
+    const modal = document.getElementById('delhiveryTrackModal');
+    const backdrop = document.getElementById('delhiveryTrackBackdrop');
+    const closeBtn = document.getElementById('delhiveryTrackCloseBtn');
+    const doneBtn = document.getElementById('delhiveryTrackDoneBtn');
+    const submitBtn = document.getElementById('delhiveryTrackSubmitBtn');
+    const input = document.getElementById('delhiveryAwbInput');
+
+    function closeModal() {
+      if (!modal) return;
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+
+    if (backdrop) backdrop.addEventListener('click', closeModal);
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    if (doneBtn) doneBtn.addEventListener('click', closeModal);
+
+    function doTrack() {
+      const awb = input ? input.value.trim() : '';
+      if (!awb) {
+        window.open('https://www.delhivery.com/tracking', '_blank', 'noopener,noreferrer');
+        return;
+      }
+      window.open(`https://www.delhivery.com/tracking?waybill=${encodeURIComponent(awb)}`, '_blank', 'noopener,noreferrer');
+    }
+
+    if (submitBtn) submitBtn.addEventListener('click', doTrack);
+    if (input) {
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          doTrack();
+        }
       });
-    });
-  }
+    }
+  })();
 
   // ═══════════ ZOHO INVENTORY REAL-TIME SYNCHRONIZATION ═══════════
   async function syncProductsFromDb(shouldRender = true) {
@@ -4787,8 +5192,13 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
         };
       });
 
-      if (shopSyncLabel) {
-        shopSyncLabel.textContent = `ZOHO INVENTORY · ${collectionsData.length} ACTIVE PRODUCT${collectionsData.length === 1 ? '' : 'S'}`;
+      const syncBadgeEl = document.getElementById('shopSyncLabel');
+      if (syncBadgeEl) {
+        syncBadgeEl.innerHTML = `<span class="shop__sync-dot"></span><span>ZOHO INVENTORY · ${collectionsData.length} ACTIVE PRODUCTS</span>`;
+      }
+
+      if (shopProductCount) {
+        shopProductCount.textContent = `Showing ${collectionsData.length} Products`;
       }
 
       // Dynamic Filter Pills from Zoho Inventory for Shop & Collections
@@ -4801,16 +5211,17 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
         : Array.from(new Set(collectionsData.map(i => i.collectionName).filter(Boolean)));
 
       // 1. Update Shop Filter Pills
-      if (shopFilterPills) {
+      const filterPillsEl = document.getElementById('shopFilterPills');
+      if (filterPillsEl) {
         let shopPillsHtml = `<button class="shop-pill ${currentShopCategory === 'all' ? 'active' : ''}" type="button" data-shop-cat="all">All Products (${collectionsData.length})</button>`;
         rawCats.forEach(cat => {
           const count = collectionsData.filter(i => (i.category_name || i.category || '').toLowerCase().includes(cat.toLowerCase())).length;
           shopPillsHtml += `<button class="shop-pill ${currentShopCategory.toLowerCase() === cat.toLowerCase() ? 'active' : ''}" type="button" data-shop-cat="${cat}">${cat} (${count})</button>`;
         });
-        shopFilterPills.innerHTML = shopPillsHtml;
-        shopFilterPills.querySelectorAll('.shop-pill').forEach(pill => {
+        filterPillsEl.innerHTML = shopPillsHtml;
+        filterPillsEl.querySelectorAll('.shop-pill').forEach(pill => {
           pill.addEventListener('click', () => {
-            shopFilterPills.querySelectorAll('.shop-pill').forEach(p => p.classList.remove('active'));
+            filterPillsEl.querySelectorAll('.shop-pill').forEach(p => p.classList.remove('active'));
             pill.classList.add('active');
             currentShopCategory = pill.dataset.shopCat;
             renderShopGrid();
@@ -4857,6 +5268,8 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
       }
 
       if (shouldRender) {
+        renderFilterSidebarUI();
+        renderActiveFilterChips();
         renderShopGrid();
         renderCollections();
       }
@@ -6473,18 +6886,10 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
   const recentlyViewedGrid = document.getElementById('recentlyViewedGrid');
   const recentlyViewedClearBtn = document.getElementById('recentlyViewedClearBtn');
 
-  // Shop & Collections Search Bar Dropdown Elements
-  const shopSearchInput = document.getElementById('shopSearchInput');
-  const shopSearchClearBtn = document.getElementById('shopSearchClearBtn');
-  const shopSearchRecentDropdown = document.getElementById('shopSearchRecentDropdown');
-  const shopSearchRecentList = document.getElementById('shopSearchRecentList');
-  const shopSearchWrapper = document.getElementById('shopSearchWrapper');
-
+  // Collections Search Bar Dropdown Elements
   const collecSearchRecentDropdown = document.getElementById('collecSearchRecentDropdown');
   const collecSearchRecentList = document.getElementById('collecSearchRecentList');
   const collecSearchWrapper = document.getElementById('collecSearchWrapper');
-
-  let currentShopSearchQuery = '';
 
   function getRecentlyViewed() {
     try {
@@ -6938,11 +7343,7 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
         } else if (action === 'filter-collection') {
           e.preventDefault();
           const col = link.dataset.collection;
-          openCollectionsPage();
-          if (col) {
-            const pill = document.querySelector(`#collectionPills .collec-pill[data-collec="${col}"]`);
-            if (pill) pill.click();
-          }
+          openCollectionsPage(col);
         } else if (action === 'open-collections') {
           e.preventDefault();
           openCollectionsPage();
@@ -6954,11 +7355,14 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
           openCart('wishlist');
         } else if (action === 'open-delhivery' || action === 'open-tracking') {
           e.preventDefault();
-          const lastOrders = (typeof getSavedOrders === 'function') ? getSavedOrders() : [];
-          if (lastOrders && lastOrders.length > 0) {
-            showToast('ORDER STATUS', `Order #${lastOrders[0].orderCode || lastOrders[0].orderId} is confirmed and in transit.`, 'bag');
+          if (typeof openDelhiveryTrackingModal === 'function') {
+            openDelhiveryTrackingModal();
           } else {
-            showToast('ORDER TRACKING', 'Please check your order confirmation details or contact support with your Order ID.', 'bag');
+            const modal = document.getElementById('delhiveryTrackModal');
+            if (modal) {
+              modal.classList.add('open');
+              modal.setAttribute('aria-hidden', 'false');
+            }
           }
         } else if (action === 'size-guide') {
           e.preventDefault();
@@ -7125,6 +7529,8 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
   }
 
   // Initial setup & database sync
+  renderFilterSidebarUI();
+  renderActiveFilterChips();
   renderCollections();
   renderShopGrid();
   renderRecentlyViewedSection();

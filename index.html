@@ -32,7 +32,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;800&family=Zen+Kaku+Gothic+New:wght@300;500;900&family=Cinzel:wght@400;700;900&family=Space+Grotesk:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css" />
+<link rel="stylesheet" href="style.css?v=20261012" />
 <link rel="manifest" href="/manifest.json" />
 <meta name="theme-color" content="#0b0a0f" />
 <meta name="mobile-web-app-capable" content="yes" />
@@ -76,11 +76,11 @@
   </svg>
 </div>
 
+
 <!-- ══════════ FIXED CHROME ══════════ -->
 <header class="chrome" id="topChrome">
   <nav class="chrome__nav">
     <a href="#shop" class="chrome__link">SHOP</a>
-    <a href="#collections" class="chrome__link" id="navCollectionsLink">COLLECTIONS</a>
     <button class="chrome__wishlist-btn" id="shopWishlistBtn" type="button" aria-label="Wishlist" title="Saved Relics Wishlist">
       <svg class="chrome__wishlist-icon-svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
@@ -177,14 +177,29 @@
   </div>
 </section>
 
-<!-- ══════════ SHOP — THE STREET CO ══════════ -->
+<!-- ══════════ SHOP — THE STREET CO (THE SOULED STORE EXPERIENCE) ══════════ -->
 <section class="shop" id="shop">
   <div class="shop__inner">
+    
+    <!-- Breadcrumb Row -->
+    <div class="shop__breadcrumb-row" data-reveal>
+      <nav class="shop-breadcrumbs" aria-label="Breadcrumb">
+        <a href="#shop" class="crumb-link">Home</a>
+        <span class="crumb-sep">/</span>
+        <a href="#shop" class="crumb-link">The Street Co</a>
+        <span class="crumb-sep">/</span>
+        <span class="crumb-current" id="shopCurrentCrumb">All Streetwear</span>
+      </nav>
+    </div>
+
+    <!-- Shop Heading & Hero Search -->
     <div class="shop__head">
-      <span class="eyebrow" data-reveal>EXCLUSIVE STREETWEAR &amp; APPAREL</span>
-      <h2 data-reveal>THE <span>STREET CO</span><br>OFFICIAL SHOP</h2>
+      <div class="shop__title-wrap" data-reveal>
+        <span class="eyebrow">OFFICIAL APPAREL &amp; ESSENTIALS</span>
+        <h2>THE <span>STREET CO</span><br>STREETWEAR STORE</h2>
+      </div>
       
-      <!-- ══════════ PROMINENT SEARCH BAR (ELEGANT PILL GEOMETRY · NO SQUARE BOX) ══════════ -->
+      <!-- ══════════ PROMINENT SEARCH BAR (ELEGANT PILL GEOMETRY) ══════════ -->
       <div class="shop__search-hero" data-reveal>
         <div class="shop__search-wrapper" id="shopSearchWrapper">
           <div class="shop__search-box shop__search-box--hero">
@@ -192,7 +207,7 @@
               <circle cx="11" cy="11" r="8"/>
               <line x1="21" y1="21" x2="16.65" y2="16.65"/>
             </svg>
-            <input type="text" id="shopSearchInput" class="shop__search-input" placeholder="Search oversized tees, hoodies, jackets, accessories..." autocomplete="off" spellcheck="false"/>
+            <input type="text" id="shopSearchInput" class="shop__search-input" placeholder="Search oversized tees, hoodies, jackets, cargoes, accessories..." autocomplete="off" spellcheck="false"/>
             <button type="button" id="shopSearchClearBtn" class="shop__search-clear" style="display:none;" aria-label="Clear search">✕</button>
             <button type="button" id="shopSearchSubmitBtn" class="shop__search-submit" aria-label="Submit Search" title="Search Products">
               <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -216,122 +231,156 @@
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- Category Filter Bar (Centered, Clean Geometry) -->
-      <div class="shop__controls-bar" data-reveal>
-        <div class="shop__pills" id="shopFilterPills">
-          <button class="shop-pill active" type="button" data-shop-cat="all">All Products</button>
-          <button class="shop-pill" type="button" data-shop-cat="t-shirt">T-Shirt</button>
+    <!-- ══════════ STORE TOP TOOLBAR (PRODUCT COUNT · ACTIVE CHIPS · SORT DROPDOWN) ══════════ -->
+    <div class="shop__store-toolbar" data-reveal>
+      <div class="shop__toolbar-left">
+        <span class="shop-product-count" id="shopProductCount">Showing Products</span>
+        <div class="shop-sync-pill" id="shopSyncLabel">
+          <span class="shop__sync-dot"></span>
+          <span>ZOHO INVENTORY LIVE</span>
+        </div>
+        <button type="button" class="shop-mobile-filter-trigger" id="shopMobileFilterBtn">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+          <span>FILTERS</span>
+        </button>
+      </div>
+
+      <!-- Active Filter Tags / Chips -->
+      <div class="shop__toolbar-center" id="shopActiveChipsWrap">
+        <div class="shop-active-chips" id="shopActiveChips"></div>
+        <button type="button" class="shop-clear-all-text-btn" id="shopClearAllChipsBtn" style="display:none;">CLEAR ALL</button>
+      </div>
+
+      <!-- Sort Dropdown on Right -->
+      <div class="shop__toolbar-right">
+        <div class="shop-sort-wrap">
+          <label for="shopSortSelect" class="shop-sort-label">SORT BY:</label>
+          <select id="shopSortSelect" class="shop-sort-select">
+            <option value="popularity">Popularity / Recommended</option>
+            <option value="price-asc">Price: Low to High</option>
+            <option value="price-desc">Price: High to Low</option>
+            <option value="newest">Newest First</option>
+            <option value="discount">Highest Discount</option>
+          </select>
         </div>
       </div>
     </div>
 
-    <!-- Product Grid: Live Synced with Zoho Inventory Catalog -->
-    <div class="shop__grid" id="shopGrid">
-      <div class="shop-loading-card" style="grid-column: 1 / -1; text-align: center; padding: 2.5rem 1.5rem; background: rgba(14,14,17,0.7); border: 1px solid rgba(232,228,220,0.08); border-radius: 6px;">
-        <span class="shop__sync-dot" style="display:inline-block; margin-bottom:.5rem;"></span>
-        <p style="font-family:'Cinzel',serif; letter-spacing:0.1em; color:var(--bone); font-size:0.95rem;">APPAREL &amp; PRODUCT CATALOG</p>
-        <small style="color:var(--ash); font-family:monospace; font-size:0.75rem;">Loading official catalog...</small>
-      </div>
-    </div>
+    <!-- ══════════ STORE LAYOUT (LEFT FILTERS SIDEBAR · RIGHT PRODUCTS AREA) ══════════ -->
+    <div class="shop__store-layout" id="shopStoreLayout">
+      
+      <!-- ── LEFT COLUMN: FILTERS SIDEBAR (TICKABLE ACCORDION FILTERS) ── -->
+      <aside class="shop__filter-sidebar" id="shopFilterSidebar">
+        <div class="filter-sidebar__header">
+          <div class="filter-sidebar__title-row">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+            </svg>
+            <h3>FILTERS</h3>
+          </div>
+          <button type="button" class="filter-clear-all-btn" id="shopClearAllFiltersBtn">CLEAR ALL</button>
+        </div>
 
-    <!-- SEE ALL COLLECTIONS CTA BUTTON -->
-    <div class="shop__collections-cta" data-reveal>
-      <button class="shop__collections-btn" id="openCollectionsBtn" type="button">
-        <span class="shop__collections-glow" aria-hidden="true"></span>
-        <span class="shop__collections-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect width="7" height="7" x="3" y="3" rx="1.5"/>
-            <rect width="7" height="7" x="14" y="3" rx="1.5"/>
-            <rect width="7" height="7" x="14" y="14" rx="1.5"/>
-            <rect width="7" height="7" x="3" y="14" rx="1.5"/>
-          </svg>
-        </span>
-        <span class="shop__collections-label">EXPLORE ALL COLLECTIONS</span>
-        <span class="shop__collections-arrow" aria-hidden="true">→</span>
-      </button>
+        <div class="filter-sidebar__content" id="filterSidebarContent">
+          
+          <!-- Filter Group 1: Category -->
+          <div class="filter-accordion open" data-group="category">
+            <button type="button" class="filter-accordion__header">
+              <span>CATEGORY</span>
+              <svg class="filter-acc-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="filter-accordion__body" id="filterListCategory">
+              <!-- Checkboxes populated dynamically -->
+            </div>
+          </div>
+
+          <!-- Filter Group 2: Theme / Collection -->
+          <div class="filter-accordion open" data-group="collection">
+            <button type="button" class="filter-accordion__header">
+              <span>THEME &amp; COLLECTION</span>
+              <svg class="filter-acc-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="filter-accordion__body" id="filterListCollection">
+              <!-- Checkboxes populated dynamically -->
+            </div>
+          </div>
+
+          <!-- Filter Group 3: Size -->
+          <div class="filter-accordion open" data-group="size">
+            <button type="button" class="filter-accordion__header">
+              <span>SIZE</span>
+              <svg class="filter-acc-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="filter-accordion__body" id="filterListSize">
+              <!-- Checkboxes populated dynamically -->
+            </div>
+          </div>
+
+          <!-- Filter Group 4: Fit -->
+          <div class="filter-accordion open" data-group="fit">
+            <button type="button" class="filter-accordion__header">
+              <span>FIT</span>
+              <svg class="filter-acc-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="filter-accordion__body" id="filterListFit">
+              <!-- Checkboxes populated dynamically -->
+            </div>
+          </div>
+
+          <!-- Filter Group 5: Price Range -->
+          <div class="filter-accordion open" data-group="price">
+            <button type="button" class="filter-accordion__header">
+              <span>PRICE RANGE</span>
+              <svg class="filter-acc-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="filter-accordion__body" id="filterListPrice">
+              <!-- Checkboxes populated dynamically -->
+            </div>
+          </div>
+
+          <!-- Filter Group 6: Color -->
+          <div class="filter-accordion open" data-group="color">
+            <button type="button" class="filter-accordion__header">
+              <span>COLOR / SHADE</span>
+              <svg class="filter-acc-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="filter-accordion__body" id="filterListColor">
+              <!-- Checkboxes populated dynamically -->
+            </div>
+          </div>
+
+          <!-- Filter Group 7: Availability -->
+          <div class="filter-accordion open" data-group="availability">
+            <button type="button" class="filter-accordion__header">
+              <span>AVAILABILITY</span>
+              <svg class="filter-acc-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="filter-accordion__body" id="filterListAvailability">
+              <!-- Checkboxes populated dynamically -->
+            </div>
+          </div>
+
+        </div>
+      </aside>
+
+      <!-- ── RIGHT COLUMN: PRODUCTS SCROLLABLE AREA ── -->
+      <main class="shop__products-area" id="shopProductsArea">
+        <!-- Live Product Grid: Rendered dynamically -->
+        <div class="shop__grid" id="shopGrid">
+          <div class="shop-loading-card" style="grid-column: 1 / -1; text-align: center; padding: 2.5rem 1.5rem; background: rgba(14,14,17,0.7); border: 1px solid rgba(232,228,220,0.08); border-radius: 6px;">
+            <span class="shop__sync-dot" style="display:inline-block; margin-bottom:.5rem;"></span>
+            <p style="font-family:'Cinzel',serif; letter-spacing:0.1em; color:var(--bone); font-size:0.95rem;">APPAREL &amp; PRODUCT CATALOG</p>
+            <small style="color:var(--ash); font-family:monospace; font-size:0.75rem;">Loading official catalog...</small>
+          </div>
+        </div>
+      </main>
+
     </div>
 
   </div>
 </section>
-
-  <!-- DEDICATED ALL COLLECTIONS SCREEN / PAGE -->
-  <section class="collections-page" id="collectionsPage" aria-hidden="true">
-    <div class="collections-page__head">
-      <div class="collections-page__head-inner">
-        <button class="collections-page__back" id="closeCollectionsBtn" type="button">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <line x1="19" y1="12" x2="5" y2="12"/>
-            <polyline points="12 19 5 12 12 5"/>
-          </svg>
-          <span>BACK TO SHOP</span>
-        </button>
-      </div>
-    </div>
-
-    <div class="collections-page__content">
-      <!-- Search & Filters Toolbar (Prominent Pill Style - No Square Box) -->
-      <div class="collections-toolbar">
-        <div class="shop__search-wrapper collections-search-hero-wrapper" id="collecSearchWrapper">
-          <div class="shop__search-box shop__search-box--hero">
-            <svg class="shop__search-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <circle cx="11" cy="11" r="8"/>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
-            <input type="text" id="collecSearchInput" class="shop__search-input" placeholder="Search oversized tees, hoodies, jackets, accessories..." autocomplete="off" spellcheck="false"/>
-            <button type="button" id="collecClearSearch" class="shop__search-clear" style="display:none;" aria-label="Clear search">✕</button>
-          </div>
-
-          <!-- Dropdown for Recently Viewed in Search Bar -->
-          <div class="search-recent-dropdown" id="collecSearchRecentDropdown" style="display:none;">
-            <div class="search-recent__header">
-              <span class="search-recent__label">
-                <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                RECENTLY VIEWED ARTIFACTS
-              </span>
-              <button type="button" class="search-recent__clear" data-action="clear-recently-viewed">CLEAR ALL</button>
-            </div>
-            <div class="search-recent__list" id="collecSearchRecentList"></div>
-          </div>
-        </div>
-
-        <!-- Collection Category Tabs (Live from Zoho Inventory) -->
-        <div class="collections-filters">
-          <div class="collections-filter-group">
-            <span class="collections-filter-label">COLLECTIONS:</span>
-            <div class="collections-pills" id="collectionPills">
-              <button class="collec-pill active" type="button" data-collec="all">All Collections</button>
-              <button class="collec-pill" type="button" data-collec="minato">Minato</button>
-            </div>
-          </div>
-
-          <div class="collections-filter-group">
-            <span class="collections-filter-label">CATEGORY:</span>
-            <div class="collections-pills" id="categoryPills">
-              <button class="collec-pill active" type="button" data-cat="all">All Categories</button>
-              <button class="collec-pill" type="button" data-cat="t-shirt">T-Shirt</button>
-            </div>
-          </div>
-
-          <div class="collections-sort-group">
-            <label for="collecSortSelect" class="collections-filter-label">SORT:</label>
-            <select id="collecSortSelect" class="collections-sort-select">
-              <option value="featured">Featured Archive</option>
-              <option value="price-asc">Price: Low to High</option>
-              <option value="price-desc">Price: High to Low</option>
-              <option value="name">Name: A to Z</option>
-              <option value="name-desc">Name: Z to A</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <!-- Catalog Grid -->
-      <div class="collections-grid" id="collectionsGrid">
-        <!-- Rendered dynamically by JS with complete dataset -->
-      </div>
-    </div>
-  </section>
 
 <!-- ══════════ ACT III — JUTSU GRID ══════════ -->
 <section class="jutsu" id="jutsu">
@@ -489,20 +538,13 @@
       </div>
     </div>
 
-    <!-- Col 2: SHOP -->
+    <!-- Col 2: SHOP & COLLECTIONS -->
     <div class="footer__col">
       <h4 class="footer__col-heading">SHOP</h4>
       <ul class="footer__link-list">
         <li><a href="#shop" class="footer__link" data-footer-action="filter-category" data-category="all">Shop All Products</a></li>
         <li><a href="#shop" class="footer__link" data-footer-action="scroll" data-target="#shop">New Arrivals</a></li>
-      </ul>
-    </div>
-
-    <!-- Col 3: COLLECTIONS -->
-    <div class="footer__col">
-      <h4 class="footer__col-heading">COLLECTIONS</h4>
-      <ul class="footer__link-list">
-        <li><a href="#collections" class="footer__link" data-footer-action="open-collections">View All Collections</a></li>
+        <li><a href="#shop" class="footer__link" data-footer-action="scroll" data-target="#shop">All Collections</a></li>
       </ul>
     </div>
 
@@ -1693,6 +1735,65 @@
         </div>
       </aside>
 
+    </div>
+  </div>
+</div>
+
+
+
+<!-- ══════════ DELHIVERY ORDER TRACKING MODAL ══════════ -->
+<div class="courier-modal" id="delhiveryTrackModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="delhiveryTrackTitle">
+  <div class="courier-modal__backdrop" id="delhiveryTrackBackdrop"></div>
+  <div class="courier-modal__box delhivery-modal-box">
+    <div class="courier-modal__header">
+      <div>
+        <div class="delhivery-brand-badge">
+          <span class="delhivery-dot"></span>
+          <span>OFFICIAL LOGISTICS PARTNER · DELHIVERY EXPRESS</span>
+        </div>
+        <h3 class="courier-modal__title" id="delhiveryTrackTitle">TRACK YOUR ORDER</h3>
+      </div>
+      <button type="button" class="courier-modal__close-btn" id="delhiveryTrackCloseBtn" aria-label="Close tracking modal">✕</button>
+    </div>
+
+    <div class="delhivery-modal__content">
+      <p class="delhivery-modal__desc">
+        All shipments from The Street Co are fulfilled via <strong>Delhivery Express</strong> with door-to-door tracking across all 28,000+ Indian PIN codes.
+      </p>
+
+      <!-- Tracking Search Box -->
+      <div class="delhivery-search-wrap">
+        <label for="delhiveryAwbInput" class="delhivery-input-label">ENTER DELHIVERY WAYBILL / TRACKING / ORDER ID:</label>
+        <div class="delhivery-input-row">
+          <input type="text" id="delhiveryAwbInput" class="delhivery-input" placeholder="e.g. TS-DEL-10294 or UCHIHA-48192" autocomplete="off" spellcheck="false" />
+          <button type="button" class="delhivery-track-submit-btn" id="delhiveryTrackSubmitBtn">
+            <span>TRACK ON DELHIVERY</span>
+            <span class="btn-arrow">↗</span>
+          </button>
+        </div>
+        <small class="delhivery-hint">Direct live tracking powered by Delhivery Logistics (delhivery.com/tracking)</small>
+      </div>
+
+      <!-- Recent Orders Quick-Track (populated dynamically if orders exist) -->
+      <div class="delhivery-recent-orders" id="delhiveryRecentOrders">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <!-- Direct Delhivery Portal Link -->
+      <div class="delhivery-direct-link-card">
+        <div class="direct-link-info">
+          <strong>Direct Courier Portal Access</strong>
+          <span>Visit official Delhivery portal for AWB &amp; SMS tracking status</span>
+        </div>
+        <a href="https://www.delhivery.com/tracking" target="_blank" rel="noopener noreferrer" class="delhivery-portal-external-btn">
+          <span>DELHIVERY.COM</span>
+          <span>↗</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="courier-modal__footer">
+      <button type="button" class="courier-modal__ok-btn" id="delhiveryTrackDoneBtn">DONE</button>
     </div>
   </div>
 </div>

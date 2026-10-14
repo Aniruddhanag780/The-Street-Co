@@ -865,12 +865,216 @@ function saveJsonCache(filePath, data) {
   } catch (_) {}
 }
 
-// Initial Streetwear catalog (16 canonical products)
+// Initial Streetwear catalog (canonical products and apparel)
 // All products use:
 // 1. `sku`: Unique catalog SKU code (e.g. 'akatsuki-cloak')
 // 2. `priceInr`: Pricing in Indian Rupees (INR ₹)
 // 3. `images`: Array of 4-5 curated image URLs for multi-angle gallery view
 const DEFAULT_PRODUCTS = [
+  // Streetwear Apparel & Essentials
+  {
+    sku: 'TS-MIN-001',
+    id: 'TS-MIN-001',
+    name: 'Fourth Hokage Minato Inspired Oversized T-Shirt',
+    title: 'Fourth Hokage Minato Inspired Oversized T-Shirt - Premium Flame Print Anime Streetwear',
+    collection: 'minato',
+    collectionName: 'Minato Namikaze',
+    category: 'Oversized T-Shirts',
+    category_name: 'Oversized T-Shirts',
+    fit: 'Oversized Fit',
+    color: 'Ivory White',
+    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
+    tag: 'OFFICIAL DROP',
+    priceInr: 1599,
+    originalMrp: 1799,
+    hasDiscount: true,
+    discountPercent: 11,
+    stock: 98,
+    seal: '火',
+    desc: 'Unleash the spirit of the Hidden Leaf\'s fastest shinobi. Premium drop-shoulder oversized tee with iconic Hokage cloak burgundy fire print and heavy 240+ GSM combed cotton.',
+    specs: '240 GSM Combed Cotton · Drop Shoulder Boxy Fit · High Density Kanji Print',
+    images: [
+      '/product-minato.jpg',
+      '/product-ts-min-001.jpg',
+      'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=800&q=80',
+      'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=800&q=80'
+    ],
+    imageUrl: '/product-minato.jpg'
+  },
+  {
+    sku: 'susanoo-tee',
+    id: 'susanoo-tee',
+    name: 'Susanoo Armor Heavyweight Oversized T-Shirt',
+    title: 'Susanoo Spectral Ribcage Heavyweight Graphic Oversized T-Shirt',
+    collection: 'uchiha',
+    collectionName: 'Uchiha Clan',
+    category: 'Oversized T-Shirts',
+    category_name: 'Oversized T-Shirts',
+    fit: 'Oversized Fit',
+    color: 'Obsidian Black',
+    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
+    tag: 'BESTSELLER',
+    priceInr: 1499,
+    originalMrp: 1999,
+    hasDiscount: true,
+    discountPercent: 25,
+    stock: 54,
+    seal: '須',
+    desc: 'Deep obsidian heavyweight boxy streetwear tee featuring high-density vermilion and celestial violet Susanoo skeletal armor graphics on front and back.',
+    specs: '240 GSM Heavyweight Terry Cotton · Drop Shoulder · Ribbed Neck Collar',
+    images: [
+      'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=800&q=80',
+      'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=800&q=80',
+      'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=800&q=80',
+      'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=800&q=80'
+    ],
+    imageUrl: 'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=800&q=80'
+  },
+  {
+    sku: 'sharingan-hoodie',
+    id: 'sharingan-hoodie',
+    name: 'Sharingan Gaze Heavyweight Streetwear Hoodie',
+    title: 'Sharingan Gaze 380 GSM Heavy French Terry Streetwear Hoodie',
+    collection: 'uchiha',
+    collectionName: 'Uchiha Clan',
+    category: 'Hoodies & Sweatshirts',
+    category_name: 'Hoodies & Sweatshirts',
+    fit: 'Regular Fit',
+    color: 'Obsidian Black',
+    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
+    tag: 'NEW ARRIVAL',
+    priceInr: 2999,
+    originalMrp: 3999,
+    hasDiscount: true,
+    discountPercent: 25,
+    stock: 36,
+    seal: '瞳',
+    desc: 'Heavyweight 380 GSM brushed fleece streetwear hoodie with embroidered crimson tomoe eye seals on double-layered hood and front kangaroo pocket.',
+    specs: '380 GSM Heavy French Terry · Thermal Lined Hood · Custom Drawstrings',
+    images: [
+      'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=800&q=80',
+      'https://images.unsplash.com/photo-1509967419530-da38b4704bc6?w=800&q=80',
+      'https://images.unsplash.com/photo-1578587018452-892bacefd3f2?w=800&q=80',
+      'https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=800&q=80'
+    ],
+    imageUrl: 'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=800&q=80'
+  },
+  {
+    sku: 'akatsuki-bomber',
+    id: 'akatsuki-bomber',
+    name: 'Akatsuki Cloud Reversible Streetwear Bomber Jacket',
+    title: 'Akatsuki Cloud Reversible Streetwear Flight Bomber Jacket',
+    collection: 'akatsuki',
+    collectionName: 'Akatsuki Shadows',
+    category: 'Jackets & Outerwear',
+    category_name: 'Jackets & Outerwear',
+    fit: 'Regular Fit',
+    color: 'Obsidian Black',
+    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
+    tag: 'LIMITED EDITION',
+    priceInr: 4499,
+    originalMrp: 5999,
+    hasDiscount: true,
+    discountPercent: 25,
+    stock: 20,
+    seal: '雲',
+    desc: 'Reversible matte obsidian nylon MA-1 flight bomber with water-resistant shell, heavy ribbed cuffs, crimson silk lining, and vermilion cloud chest embroidery.',
+    specs: 'High-Density Matte Nylon · Heavy Brass Zippers · Reversible Silk Lining',
+    images: [
+      'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=800&q=80',
+      'https://images.unsplash.com/photo-1544441893-675973e31985?w=800&q=80',
+      'https://images.unsplash.com/photo-1495105787522-5334e3ffa0ef?w=800&q=80',
+      'https://images.unsplash.com/photo-1548883354-7622d03aca27?w=800&q=80'
+    ],
+    imageUrl: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=800&q=80'
+  },
+  {
+    sku: 'shinobi-cargo',
+    id: 'shinobi-cargo',
+    name: 'Tactical Multi-Pocket Shinobi Cargo Pants',
+    title: 'Tactical Multi-Pocket Shinobi Cargo Pants - Heavy Twill Streetwear',
+    collection: 'street-core',
+    collectionName: 'Street Core',
+    category: 'Cargo Pants & Joggers',
+    category_name: 'Cargo Pants & Joggers',
+    fit: 'Relaxed Fit',
+    color: 'Charcoal Grey',
+    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
+    tag: 'STREET CORE',
+    priceInr: 2499,
+    originalMrp: 3299,
+    hasDiscount: true,
+    discountPercent: 24,
+    stock: 42,
+    seal: '忍',
+    desc: 'Engineered heavy cotton twill utility cargo pants featuring 6 gusseted 3D tactical pockets, magnetic snap buckles, and adjustable cinch bungee ankle hems.',
+    specs: '100% Heavy Twill Cotton · 6 Modular Pockets · Adjustable Bungee Cuffs',
+    images: [
+      'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=800&q=80',
+      'https://images.unsplash.com/photo-1517445312882-bc9910d016b7?w=800&q=80',
+      'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=800&q=80',
+      'https://images.unsplash.com/photo-1506152983158-b4a74a01c721?w=800&q=80'
+    ],
+    imageUrl: 'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=800&q=80'
+  },
+  {
+    sku: 'itachi-dropcut-tee',
+    id: 'itachi-dropcut-tee',
+    name: 'Uchiha Clan Crimson Flame Drop-Cut T-Shirt',
+    title: 'Uchiha Clan Crimson Flame Drop-Cut Streetwear T-Shirt',
+    collection: 'uchiha',
+    collectionName: 'Uchiha Clan',
+    category: 'Classic T-Shirts',
+    category_name: 'Classic T-Shirts',
+    fit: 'Relaxed Fit',
+    color: 'Crimson Red',
+    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
+    tag: 'POPULAR',
+    priceInr: 1299,
+    originalMrp: 1699,
+    hasDiscount: true,
+    discountPercent: 23,
+    stock: 58,
+    seal: '炎',
+    desc: 'Signature curved-hem drop-cut streetwear tee in deep crimson dye wash, finished with minimalist Uchiha fan monochrome insignia on upper chest.',
+    specs: '210 GSM Bio-Washed Cotton · Curved Drop Hem · Silicon Wash Softness',
+    images: [
+      'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=800&q=80',
+      'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=800&q=80',
+      'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=800&q=80',
+      'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=800&q=80'
+    ],
+    imageUrl: 'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=800&q=80'
+  },
+  {
+    sku: 'shinobi-joggers',
+    id: 'shinobi-joggers',
+    name: 'Leaf Shinobi Heavyweight Terry Joggers',
+    title: 'Leaf Shinobi Heavyweight French Terry Streetwear Joggers',
+    collection: 'street-core',
+    collectionName: 'Street Core',
+    category: 'Cargo Pants & Joggers',
+    category_name: 'Cargo Pants & Joggers',
+    fit: 'Relaxed Fit',
+    color: 'Obsidian Black',
+    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
+    tag: 'COMFORT ESSENTIAL',
+    priceInr: 1899,
+    originalMrp: 2499,
+    hasDiscount: true,
+    discountPercent: 24,
+    stock: 45,
+    seal: '木',
+    desc: 'Relaxed-drape French terry streetwear joggers with deep zippered side stash pockets, elasticated drawstring waistband, and tailored ankle ribs.',
+    specs: '360 GSM French Terry · Concealed Zip Pockets · Reinforced Knee Stitching',
+    images: [
+      'https://images.unsplash.com/photo-1552902865-b72c031ac5ea?w=800&q=80',
+      'https://images.unsplash.com/photo-1517445312882-bc9910d016b7?w=800&q=80',
+      'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=800&q=80',
+      'https://images.unsplash.com/photo-1506152983158-b4a74a01c721?w=800&q=80'
+    ],
+    imageUrl: 'https://images.unsplash.com/photo-1552902865-b72c031ac5ea?w=800&q=80'
+  },
   // Collection 1: Akatsuki Shadows
   {
     sku: 'akatsuki-cloak',
@@ -878,9 +1082,16 @@ const DEFAULT_PRODUCTS = [
     name: 'Akatsuki Cloud Trench Cloak',
     collection: 'akatsuki',
     collectionName: 'Akatsuki Shadows',
-    category: 'Apparel',
+    category: 'Jackets & Outerwear',
+    category_name: 'Jackets & Outerwear',
+    fit: 'Oversized Fit',
+    color: 'Obsidian Black',
+    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
     tag: 'LIMITED RE-ISSUE',
     priceInr: 11999,
+    originalMrp: 14999,
+    hasDiscount: true,
+    discountPercent: 20,
     priceRyo: 18500,
     stock: 12,
     seal: '雲',
@@ -892,7 +1103,8 @@ const DEFAULT_PRODUCTS = [
       'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800&q=80',
       'https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=800&q=80',
       'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=800&q=80'
-    ]
+    ],
+    imageUrl: 'https://images.unsplash.com/photo-1544441893-675973e31985?w=800&q=80'
   },
   {
     sku: 'shu-ring',
@@ -900,7 +1112,10 @@ const DEFAULT_PRODUCTS = [
     name: 'Akatsuki "Shu" Signet Ring',
     collection: 'akatsuki',
     collectionName: 'Akatsuki Shadows',
-    category: 'Jewelry',
+    category: 'Accessories & Jewelry',
+    category_name: 'Accessories & Jewelry',
+    color: 'Crimson Red',
+    sizes: ['7', '8', '9', '10', '11'],
     tag: '925 STERLING SILVER',
     priceInr: 7999,
     priceRyo: 12000,
@@ -914,7 +1129,8 @@ const DEFAULT_PRODUCTS = [
       'https://images.unsplash.com/photo-1598560917505-59a3ad559071?w=800&q=80',
       'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=800&q=80',
       'https://images.unsplash.com/photo-1573408301185-9146fe634ad0?w=800&q=80'
-    ]
+    ],
+    imageUrl: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=800&q=80'
   },
   {
     sku: 'akatsuki-kasa',
@@ -922,7 +1138,10 @@ const DEFAULT_PRODUCTS = [
     name: 'Straw Kasa Woven Hat with Veil',
     collection: 'akatsuki',
     collectionName: 'Akatsuki Shadows',
-    category: 'Apparel',
+    category: 'Accessories & Jewelry',
+    category_name: 'Accessories & Jewelry',
+    color: 'Ivory White',
+    sizes: ['Free Size'],
     tag: 'HANDWOVEN BAMBOO',
     priceInr: 5499,
     priceRyo: 8600,
@@ -936,7 +1155,8 @@ const DEFAULT_PRODUCTS = [
       'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=800&q=80',
       'https://images.unsplash.com/photo-1528164344705-475426879c0d?w=800&q=80',
       'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=800&q=80'
-    ]
+    ],
+    imageUrl: 'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=800&q=80'
   },
   {
     sku: 'shadow-holster',
@@ -944,7 +1164,10 @@ const DEFAULT_PRODUCTS = [
     name: 'Shadow Leather Kunai Leg Holster',
     collection: 'akatsuki',
     collectionName: 'Akatsuki Shadows',
-    category: 'Armory',
+    category: 'Accessories & Jewelry',
+    category_name: 'Accessories & Jewelry',
+    color: 'Obsidian Black',
+    sizes: ['Free Size'],
     tag: 'FULL-GRAIN LEATHER',
     priceInr: 4499,
     priceRyo: 6900,
@@ -958,7 +1181,8 @@ const DEFAULT_PRODUCTS = [
       'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=800&q=80',
       'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=800&q=80',
       'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=800&q=80'
-    ]
+    ],
+    imageUrl: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=800&q=80'
   },
 
   // Collection 2: Uchiha Heritage
@@ -1753,43 +1977,67 @@ app.delete('/api/coupons/:code', (req, res) => {
   }
 });
 
-// Products: List all (powered in real-time by Zoho Inventory)
+// Products: List all (powered in real-time by Zoho Inventory & Streetwear Catalog)
 const handleListProducts = async (req, res) => {
+  let zohoItems = [];
+  let zohoCats = { categories: [], collections: [] };
+
   if (zohoInventory.isZohoConfigured()) {
     try {
-      const [zohoResult, zohoCats] = await Promise.all([
-        zohoInventory.fetchZohoItems(),
+      const [zohoResult, catsResult] = await Promise.all([
+        zohoInventory.fetchZohoItems().catch(() => null),
         zohoInventory.fetchZohoCategories().catch(() => ({ categories: [], collections: [] }))
       ]);
 
-      const items = (zohoResult && Array.isArray(zohoResult.items) && zohoResult.items.length > 0)
-        ? zohoResult.items
-        : ((zohoInventory.tokenState && Array.isArray(zohoInventory.tokenState.cachedItems)) ? zohoInventory.tokenState.cachedItems : []);
-
-      if (items.length > 0) {
-        const normalized = items.map(normalizeProduct);
-        return res.json({
-          source: 'zoho_inventory',
-          organization_id: zohoInventory.config.orgId,
-          count: normalized.length,
-          products: normalized,
-          categories: (zohoCats && Array.isArray(zohoCats.categories)) ? zohoCats.categories : [{ id: 't-shirt', name: 'T-Shirt' }],
-          collections: (zohoCats && Array.isArray(zohoCats.collections)) ? zohoCats.collections : [{ id: 'minato', name: 'Minato' }],
-          lastSync: (zohoResult && zohoResult.lastSync) || (zohoInventory.tokenState && zohoInventory.tokenState.lastSync) || new Date().toISOString()
-        });
+      if (zohoResult && Array.isArray(zohoResult.items) && zohoResult.items.length > 0) {
+        zohoItems = zohoResult.items;
+      } else if (zohoInventory.tokenState && Array.isArray(zohoInventory.tokenState.cachedItems)) {
+        zohoItems = zohoInventory.tokenState.cachedItems;
       }
+      if (catsResult) zohoCats = catsResult;
     } catch (zohoErr) {
       console.warn('[Zoho Inventory] Real-time sync notice:', zohoErr.message);
     }
   }
 
-  res.json({
-    source: 'zoho_inventory',
-    count: 0,
-    products: [],
-    categories: [{ id: 't-shirt', name: 'T-Shirt' }],
-    collections: [{ id: 'minato', name: 'Minato' }],
-    message: 'Products are managed in Zoho Inventory. Add items in Zoho Inventory to display them here.'
+  // Combine Zoho items first, then DEFAULT_PRODUCTS for any remaining catalog items
+  const combined = [...zohoItems];
+  const seenSkus = new Set(zohoItems.map(i => (i.sku || i.id || '').toLowerCase()));
+  for (const p of DEFAULT_PRODUCTS) {
+    if (!seenSkus.has((p.sku || p.id || '').toLowerCase())) {
+      combined.push(p);
+    }
+  }
+
+  const normalized = combined.map(normalizeProduct);
+
+  const categories = [
+    { id: 'all', name: 'All Products' },
+    { id: 'oversized-t-shirts', name: 'Oversized T-Shirts' },
+    { id: 'classic-t-shirts', name: 'Classic T-Shirts' },
+    { id: 'hoodies', name: 'Hoodies & Sweatshirts' },
+    { id: 'jackets', name: 'Jackets & Outerwear' },
+    { id: 'cargo-pants', name: 'Cargo Pants & Joggers' },
+    { id: 'accessories', name: 'Accessories & Jewelry' }
+  ];
+
+  const collections = [
+    { id: 'all', name: 'All Collections' },
+    { id: 'minato', name: 'Minato Namikaze' },
+    { id: 'akatsuki', name: 'Akatsuki Shadows' },
+    { id: 'uchiha', name: 'Uchiha Clan' },
+    { id: 'street-core', name: 'Street Core' },
+    { id: 'armory', name: 'Shinobi Armory' }
+  ];
+
+  return res.json({
+    source: zohoItems.length > 0 ? 'zoho_inventory' : 'street_co_catalog',
+    organization_id: zohoInventory.config.orgId,
+    count: normalized.length,
+    products: normalized,
+    categories,
+    collections,
+    lastSync: new Date().toISOString()
   });
 };
 app.get('/api/products', handleListProducts);

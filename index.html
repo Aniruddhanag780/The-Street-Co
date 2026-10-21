@@ -32,7 +32,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Cinzel:wght@400;700&family=Space+Grotesk:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20261020_9" />
+<link rel="stylesheet" href="style.css?v=20261021_2" />
 <link rel="manifest" href="/manifest.json" />
 <meta name="theme-color" content="#ffffff" />
 <meta name="mobile-web-app-capable" content="yes" />
@@ -286,9 +286,10 @@
       <div class="shop__toolbar-left">
         <span class="shop-product-count" id="shopProductCount" style="display:none !important;"></span>
         <div class="shop-sync-pill" id="shopSyncLabel" style="display:none !important;"></div>
-        <button type="button" class="shop-mobile-filter-trigger" id="shopMobileFilterBtn">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
-          FILTERS
+        <button type="button" class="shop-mobile-filter-trigger" id="shopMobileFilterBtn" aria-label="Open filter options" aria-expanded="false" aria-controls="shopFilterSidebar">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+          <span>FILTERS</span>
+          <span class="shop-mobile-filter-badge" id="shopMobileFilterBadge" style="display:none;">0</span>
         </button>
       </div>
 
@@ -316,8 +317,11 @@
     <!-- ══════════ STORE LAYOUT (LEFT FILTERS SIDEBAR · RIGHT PRODUCTS AREA) ══════════ -->
     <div class="shop__store-layout" id="shopStoreLayout">
       
+      <!-- Backdrop for mobile filter drawer (click outside to cut/close) -->
+      <div class="shop-filter-backdrop" id="shopFilterBackdrop" aria-label="Close filters backdrop" tabindex="-1"></div>
+
       <!-- ── LEFT COLUMN: FILTERS SIDEBAR (TICKABLE ACCORDION FILTERS) ── -->
-      <aside class="shop__filter-sidebar" id="shopFilterSidebar">
+      <aside class="shop__filter-sidebar" id="shopFilterSidebar" aria-label="Shop Filters">
         <div class="filter-sidebar__header">
           <div class="filter-sidebar__title-row">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -327,7 +331,13 @@
           </div>
           <div class="filter-sidebar__header-actions" style="display:flex; align-items:center; gap:0.5rem;">
             <button type="button" class="filter-clear-all-btn" id="shopClearAllFiltersBtn">CLEAR ALL</button>
-            <button type="button" class="filter-mobile-close-btn" id="shopFilterMobileCloseBtn" aria-label="Close filters">✕</button>
+            <button type="button" class="filter-mobile-close-btn" id="shopFilterMobileCloseBtn" aria-label="Close filter drawer">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+              <span>CLOSE</span>
+            </button>
           </div>
         </div>
 
@@ -355,12 +365,138 @@
               <span>Theme &amp; Collection</span>
               <svg class="filter-acc-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
-            <div class="filter-accordion__body" id="filterListCollection">
-              <label class="filter-item"><input type="checkbox" class="filter-checkbox" data-group="collection" data-val="Minato Namikaze" /><span class="filter-custom-check"><svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span><span class="filter-label-text">Minato Namikaze</span><span class="filter-count">(6)</span></label>
-              <label class="filter-item"><input type="checkbox" class="filter-checkbox" data-group="collection" data-val="Akatsuki Shadows" /><span class="filter-custom-check"><svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span><span class="filter-label-text">Akatsuki Shadows</span><span class="filter-count">(5)</span></label>
-              <label class="filter-item"><input type="checkbox" class="filter-checkbox" data-group="collection" data-val="Uchiha Clan" /><span class="filter-custom-check"><svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span><span class="filter-label-text">Uchiha Clan</span><span class="filter-count">(4)</span></label>
-              <label class="filter-item"><input type="checkbox" class="filter-checkbox" data-group="collection" data-val="Street Core" /><span class="filter-custom-check"><svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span><span class="filter-label-text">Street Core</span><span class="filter-count">(8)</span></label>
-              <label class="filter-item"><input type="checkbox" class="filter-checkbox" data-group="collection" data-val="Shinobi Armory" /><span class="filter-custom-check"><svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span><span class="filter-label-text">Shinobi Armory</span><span class="filter-count">(5)</span></label>
+            <div class="filter-accordion__body filter-collection-boxes" id="filterListCollection">
+              <!-- 01. Minato Namikaze -->
+              <label class="filter-collec-square" data-val="Minato Namikaze" title="Minato Namikaze">
+                <input type="checkbox" class="filter-checkbox filter-box-sr" data-group="collection" data-val="Minato Namikaze" />
+                <img src="/product-minato.jpg" alt="Minato Namikaze" class="filter-collec-square__bg" loading="lazy" />
+                <div class="filter-collec-square__scrim"></div>
+                <span class="filter-collec-square__kanji" aria-hidden="true">閃</span>
+                <div class="filter-collec-square__top">
+                  <span class="filter-collec-square__index">01</span>
+                  <div class="filter-collec-square__check" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                  </div>
+                </div>
+                <div class="filter-collec-square__meta">
+                  <span class="filter-collec-square__sub">Yellow Flash</span>
+                  <span class="filter-collec-square__name">Minato Namikaze</span>
+                  <span class="filter-collec-square__count">6 items</span>
+                </div>
+                <div class="filter-collec-square__glow" aria-hidden="true"></div>
+              </label>
+
+              <!-- 02. Akatsuki Shadows -->
+              <label class="filter-collec-square" data-val="Akatsuki Shadows" title="Akatsuki Shadows">
+                <input type="checkbox" class="filter-checkbox filter-box-sr" data-group="collection" data-val="Akatsuki Shadows" />
+                <img src="https://images.unsplash.com/photo-1544441893-675973e31985?w=400&q=80" alt="Akatsuki Shadows" class="filter-collec-square__bg" loading="lazy" />
+                <div class="filter-collec-square__scrim"></div>
+                <span class="filter-collec-square__kanji" aria-hidden="true">雲</span>
+                <div class="filter-collec-square__top">
+                  <span class="filter-collec-square__index">02</span>
+                  <div class="filter-collec-square__check" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                  </div>
+                </div>
+                <div class="filter-collec-square__meta">
+                  <span class="filter-collec-square__sub">Crimson Cloud</span>
+                  <span class="filter-collec-square__name">Akatsuki Shadows</span>
+                  <span class="filter-collec-square__count">5 items</span>
+                </div>
+                <div class="filter-collec-square__glow" aria-hidden="true"></div>
+              </label>
+
+              <!-- 03. Uchiha Clan -->
+              <label class="filter-collec-square" data-val="Uchiha Clan" title="Uchiha Clan">
+                <input type="checkbox" class="filter-checkbox filter-box-sr" data-group="collection" data-val="Uchiha Clan" />
+                <img src="https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=400&q=80" alt="Uchiha Clan" class="filter-collec-square__bg" loading="lazy" />
+                <div class="filter-collec-square__scrim"></div>
+                <span class="filter-collec-square__kanji" aria-hidden="true">団</span>
+                <div class="filter-collec-square__top">
+                  <span class="filter-collec-square__index">03</span>
+                  <div class="filter-collec-square__check" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                  </div>
+                </div>
+                <div class="filter-collec-square__meta">
+                  <span class="filter-collec-square__sub">Flame Legacy</span>
+                  <span class="filter-collec-square__name">Uchiha Clan</span>
+                  <span class="filter-collec-square__count">4 items</span>
+                </div>
+                <div class="filter-collec-square__glow" aria-hidden="true"></div>
+              </label>
+
+              <!-- 04. Crow Genjutsu -->
+              <label class="filter-collec-square" data-val="Crow Genjutsu" title="Crow Genjutsu">
+                <input type="checkbox" class="filter-checkbox filter-box-sr" data-group="collection" data-val="Crow Genjutsu" />
+                <img src="https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=400&q=80" alt="Crow Genjutsu" class="filter-collec-square__bg" loading="lazy" />
+                <div class="filter-collec-square__scrim"></div>
+                <span class="filter-collec-square__kanji" aria-hidden="true">鴉</span>
+                <div class="filter-collec-square__top">
+                  <span class="filter-collec-square__index">04</span>
+                  <div class="filter-collec-square__check" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                  </div>
+                </div>
+                <div class="filter-collec-square__meta">
+                  <span class="filter-collec-square__sub">Raven Mirage</span>
+                  <span class="filter-collec-square__name">Crow Genjutsu</span>
+                  <span class="filter-collec-square__count">4 items</span>
+                </div>
+                <div class="filter-collec-square__glow" aria-hidden="true"></div>
+              </label>
+
+              <!-- 05. Street Core -->
+              <label class="filter-collec-square" data-val="Street Core" title="Street Core">
+                <input type="checkbox" class="filter-checkbox filter-box-sr" data-group="collection" data-val="Street Core" />
+                <img src="https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=400&q=80" alt="Street Core" class="filter-collec-square__bg" loading="lazy" />
+                <div class="filter-collec-square__scrim"></div>
+                <span class="filter-collec-square__kanji" aria-hidden="true">街</span>
+                <div class="filter-collec-square__top">
+                  <span class="filter-collec-square__index">05</span>
+                  <div class="filter-collec-square__check" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                  </div>
+                </div>
+                <div class="filter-collec-square__meta">
+                  <span class="filter-collec-square__sub">Tokyo Shadow</span>
+                  <span class="filter-collec-square__name">Street Core</span>
+                  <span class="filter-collec-square__count">8 items</span>
+                </div>
+                <div class="filter-collec-square__glow" aria-hidden="true"></div>
+              </label>
+
+              <!-- 06. Shinobi Armory -->
+              <label class="filter-collec-square" data-val="Shinobi Armory" title="Shinobi Armory">
+                <input type="checkbox" class="filter-checkbox filter-box-sr" data-group="collection" data-val="Shinobi Armory" />
+                <img src="https://images.unsplash.com/photo-1589256469067-ea99122bbdc4?w=400&q=80" alt="Shinobi Armory" class="filter-collec-square__bg" loading="lazy" />
+                <div class="filter-collec-square__scrim"></div>
+                <span class="filter-collec-square__kanji" aria-hidden="true">刃</span>
+                <div class="filter-collec-square__top">
+                  <span class="filter-collec-square__index">06</span>
+                  <div class="filter-collec-square__check" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                  </div>
+                </div>
+                <div class="filter-collec-square__meta">
+                  <span class="filter-collec-square__sub">Tactical Steel</span>
+                  <span class="filter-collec-square__name">Shinobi Armory</span>
+                  <span class="filter-collec-square__count">5 items</span>
+                </div>
+                <div class="filter-collec-square__glow" aria-hidden="true"></div>
+              </label>
             </div>
           </div>
 
@@ -435,6 +571,21 @@
             </div>
           </div>
 
+        </div>
+
+        <!-- Sticky Drawer Footer with Reset & Apply Buttons -->
+        <div class="filter-sidebar__footer" id="filterSidebarFooter">
+          <button type="button" class="filter-footer__reset-btn" id="filterFooterResetBtn" aria-label="Reset all filters">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+              <path d="M3 3v5h5"/>
+            </svg>
+            <span>RESET</span>
+          </button>
+          <button type="button" class="filter-footer__apply-btn" id="filterFooterApplyBtn" aria-label="Apply filters and view results">
+            <span>APPLY FILTERS</span>
+            <span class="filter-footer__apply-count" id="filterFooterApplyCount"></span>
+          </button>
         </div>
       </aside>
 
@@ -1106,17 +1257,18 @@
           <div class="collec-hub-card" data-collec-filter="Minato Namikaze" role="button" tabindex="0">
             <div class="collec-hub-card__visual">
               <img src="/product-minato.jpg" alt="Minato Namikaze" loading="lazy" />
-              <span class="collec-hub-card__badge">FEATURED</span>
-            </div>
-            <div class="collec-hub-card__details">
-              <div class="collec-hub-card__head">
-                <h4 class="collec-hub-card__name">Minato Namikaze</h4>
-                <span class="collec-hub-card__count">6 Items</span>
+              <div class="collec-hub-card__overlay"></div>
+              <div class="collec-hub-card__top">
+                <span class="collec-hub-card__kanji">閃</span>
+                <span class="collec-hub-card__badge">6 ITEMS</span>
               </div>
-              <p class="collec-hub-card__sub">The Yellow Flash · 4th Hokage Vermilion &amp; Ivory Streetwear</p>
-              <div class="collec-hub-card__cta">
-                <span>EXPLORE COLLECTION</span>
-                <span class="collec-hub-arrow">&rarr;</span>
+              <div class="collec-hub-card__bottom">
+                <span class="collec-hub-card__series">YELLOW FLASH · 4TH HOKAGE</span>
+                <h4 class="collec-hub-card__name">Minato Namikaze</h4>
+                <div class="collec-hub-card__action">
+                  <span>EXPLORE</span>
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </div>
               </div>
             </div>
           </div>
@@ -1125,17 +1277,18 @@
           <div class="collec-hub-card" data-collec-filter="Akatsuki Shadows" role="button" tabindex="0">
             <div class="collec-hub-card__visual">
               <img src="https://images.unsplash.com/photo-1544441893-675973e31985?w=600&q=80" alt="Akatsuki Shadows" loading="lazy" />
-              <span class="collec-hub-card__badge">SYNDICATE</span>
-            </div>
-            <div class="collec-hub-card__details">
-              <div class="collec-hub-card__head">
-                <h4 class="collec-hub-card__name">Akatsuki Shadows</h4>
-                <span class="collec-hub-card__count">5 Items</span>
+              <div class="collec-hub-card__overlay"></div>
+              <div class="collec-hub-card__top">
+                <span class="collec-hub-card__kanji">雲</span>
+                <span class="collec-hub-card__badge">5 ITEMS</span>
               </div>
-              <p class="collec-hub-card__sub">Obsidian Cloud Robes, Shu Signet Rings &amp; Woven Kasa</p>
-              <div class="collec-hub-card__cta">
-                <span>EXPLORE COLLECTION</span>
-                <span class="collec-hub-arrow">&rarr;</span>
+              <div class="collec-hub-card__bottom">
+                <span class="collec-hub-card__series">CRIMSON CLOUD · SYNDICATE</span>
+                <h4 class="collec-hub-card__name">Akatsuki Shadows</h4>
+                <div class="collec-hub-card__action">
+                  <span>EXPLORE</span>
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </div>
               </div>
             </div>
           </div>
@@ -1144,55 +1297,78 @@
           <div class="collec-hub-card" data-collec-filter="Uchiha Clan" role="button" tabindex="0">
             <div class="collec-hub-card__visual">
               <img src="https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=600&q=80" alt="Uchiha Clan" loading="lazy" />
-              <span class="collec-hub-card__badge">ELITE</span>
-            </div>
-            <div class="collec-hub-card__details">
-              <div class="collec-hub-card__head">
-                <h4 class="collec-hub-card__name">Uchiha Clan</h4>
-                <span class="collec-hub-card__count">4 Items</span>
+              <div class="collec-hub-card__overlay"></div>
+              <div class="collec-hub-card__top">
+                <span class="collec-hub-card__kanji">団</span>
+                <span class="collec-hub-card__badge">4 ITEMS</span>
               </div>
-              <p class="collec-hub-card__sub">Mangekyo Sharingan, Susanoo Graphics &amp; Kimono Silhouettes</p>
-              <div class="collec-hub-card__cta">
-                <span>EXPLORE COLLECTION</span>
-                <span class="collec-hub-arrow">&rarr;</span>
+              <div class="collec-hub-card__bottom">
+                <span class="collec-hub-card__series">MANGEKYO · FLAME LEGACY</span>
+                <h4 class="collec-hub-card__name">Uchiha Clan</h4>
+                <div class="collec-hub-card__action">
+                  <span>EXPLORE</span>
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- 4. Street Core -->
+          <!-- 4. Crow Genjutsu -->
+          <div class="collec-hub-card" data-collec-filter="Crow Genjutsu" role="button" tabindex="0">
+            <div class="collec-hub-card__visual">
+              <img src="https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=600&q=80" alt="Crow Genjutsu" loading="lazy" />
+              <div class="collec-hub-card__overlay"></div>
+              <div class="collec-hub-card__top">
+                <span class="collec-hub-card__kanji">鴉</span>
+                <span class="collec-hub-card__badge">4 ITEMS</span>
+              </div>
+              <div class="collec-hub-card__bottom">
+                <span class="collec-hub-card__series">SHADOW FEATHERS · ILLUSION</span>
+                <h4 class="collec-hub-card__name">Crow Genjutsu</h4>
+                <div class="collec-hub-card__action">
+                  <span>EXPLORE</span>
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 5. Street Core -->
           <div class="collec-hub-card" data-collec-filter="Street Core" role="button" tabindex="0">
             <div class="collec-hub-card__visual">
               <img src="https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=600&q=80" alt="Street Core" loading="lazy" />
-              <span class="collec-hub-card__badge">OVERSIZED</span>
-            </div>
-            <div class="collec-hub-card__details">
-              <div class="collec-hub-card__head">
-                <h4 class="collec-hub-card__name">Street Core</h4>
-                <span class="collec-hub-card__count">8 Items</span>
+              <div class="collec-hub-card__overlay"></div>
+              <div class="collec-hub-card__top">
+                <span class="collec-hub-card__kanji">街</span>
+                <span class="collec-hub-card__badge">8 ITEMS</span>
               </div>
-              <p class="collec-hub-card__sub">Cyber Tokyo Heavyweight Tees &amp; Relaxed Fit Streetwear</p>
-              <div class="collec-hub-card__cta">
-                <span>EXPLORE COLLECTION</span>
-                <span class="collec-hub-arrow">&rarr;</span>
+              <div class="collec-hub-card__bottom">
+                <span class="collec-hub-card__series">CYBER TOKYO · OVERSIZED</span>
+                <h4 class="collec-hub-card__name">Street Core</h4>
+                <div class="collec-hub-card__action">
+                  <span>EXPLORE</span>
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- 5. Shinobi Armory -->
+          <!-- 6. Shinobi Armory -->
           <div class="collec-hub-card" data-collec-filter="Shinobi Armory" role="button" tabindex="0">
             <div class="collec-hub-card__visual">
               <img src="https://images.unsplash.com/photo-1589256469067-ea99122bbdc4?w=600&q=80" alt="Shinobi Armory" loading="lazy" />
-              <span class="collec-hub-card__badge">TACTICAL</span>
-            </div>
-            <div class="collec-hub-card__details">
-              <div class="collec-hub-card__head">
-                <h4 class="collec-hub-card__name">Shinobi Armory</h4>
-                <span class="collec-hub-card__count">5 Items</span>
+              <div class="collec-hub-card__overlay"></div>
+              <div class="collec-hub-card__top">
+                <span class="collec-hub-card__kanji">武</span>
+                <span class="collec-hub-card__badge">5 ITEMS</span>
               </div>
-              <p class="collec-hub-card__sub">Modular Cargo Pants, Utility Holsters &amp; Armory Essentials</p>
-              <div class="collec-hub-card__cta">
-                <span>EXPLORE COLLECTION</span>
-                <span class="collec-hub-arrow">&rarr;</span>
+              <div class="collec-hub-card__bottom">
+                <span class="collec-hub-card__series">TACTICAL UTILITY · ARMORY</span>
+                <h4 class="collec-hub-card__name">Shinobi Armory</h4>
+                <div class="collec-hub-card__action">
+                  <span>EXPLORE</span>
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </div>
               </div>
             </div>
           </div>
@@ -1836,15 +2012,34 @@
   <div class="checkout-modal__backdrop" id="checkoutFlowBackdrop"></div>
   <div class="checkout-modal__dialog" id="checkoutModalDialog">
     
-    <!-- Modal Header -->
-    <div class="checkout-modal__header">
+    <!-- Full-Page Checkout Header -->
+    <header class="checkout-modal__header">
       <div class="checkout-modal__header-left">
-        <div>
+        <button type="button" class="checkout-modal__back-store-btn" id="checkoutBackToStoreBtn" aria-label="Return to store">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+          <span>RETURN TO SHOP</span>
+        </button>
+        <div class="checkout-modal__brand-meta">
           <h2 class="checkout-modal__title" id="checkoutFlowTitle">THE STREET CO CHECKOUT</h2>
+          <span class="checkout-modal__secure-badge">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+            <span>256-BIT SSL ENCRYPTED · OFFICIAL PROVENANCE</span>
+          </span>
         </div>
       </div>
-      <button type="button" class="checkout-modal__close-btn" id="checkoutFlowCloseBtn" aria-label="Close checkout">✕</button>
-    </div>
+      <button type="button" class="checkout-modal__close-btn" id="checkoutFlowCloseBtn" aria-label="Close checkout">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+        <span class="checkout-modal__close-text">CLOSE</span>
+      </button>
+    </header>
 
     <!-- Stepper Breadcrumbs Bar -->
     <div class="checkout-stepper" id="checkoutStepper">
@@ -1917,40 +2112,55 @@
             <div class="checkout-form-section">
               <span class="checkout-section-badge">DELIVERY LOCATION</span>
               
-              <div class="checkout-form-row checkout-form-row--2col">
-                <div class="checkout-form-group">
-                  <label for="checkoutPincode">PIN Code (6 digits) <span class="req">*</span></label>
-                  <input type="text" id="checkoutPincode" class="checkout-input" placeholder="e.g. 400001" maxlength="6" required autocomplete="postal-code">
-                  <span class="checkout-input-helper" id="checkoutPincodeHelper">Standard free delivery available for all India PINs</span>
-                  <span class="checkout-input-error" id="checkoutPincodeError"></span>
+              <!-- Clean Google Maps Location Autocomplete Bar -->
+              <div class="checkout-form-group checkout-gmap-search-group" id="checkoutGmapSearchGroup">
+                <div class="checkout-gmap-label-bar">
+                  <label for="checkoutLocationSearch" class="checkout-gmap-label">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" class="gmap-pin-icon">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                      <circle cx="12" cy="10" r="3"></circle>
+                    </svg>
+                    <span>SEARCH LOCATION (GOOGLE MAPS)</span>
+                  </label>
+                  <button type="button" class="checkout-gps-btn" id="checkoutDetectLocationBtn" title="Detect and use current GPS location">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <line x1="22" y1="12" x2="18" y2="12"></line>
+                      <line x1="6" y1="12" x2="2" y2="12"></line>
+                      <line x1="12" y1="6" x2="12" y2="2"></line>
+                      <line x1="12" y1="22" x2="12" y2="18"></line>
+                    </svg>
+                    <span>Use Current Location</span>
+                  </button>
                 </div>
-                <div class="checkout-form-group">
-                  <label for="checkoutAddressType">Address Type</label>
-                  <div class="checkout-type-pills" id="checkoutTypePills">
-                    <button type="button" class="checkout-type-pill active" data-type="Home">🏠 Home</button>
-                    <button type="button" class="checkout-type-pill" data-type="Work">💼 Work (10AM-6PM)</button>
-                    <button type="button" class="checkout-type-pill" data-type="Other">📍 Other</button>
-                  </div>
+                <div class="checkout-gmap-input-wrapper">
+                  <span class="checkout-gmap-input-pin">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#e05a47" stroke-width="2.4">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                      <circle cx="12" cy="10" r="3"></circle>
+                    </svg>
+                  </span>
+                  <input type="text" id="checkoutLocationSearch" class="checkout-input checkout-input--gmap" placeholder="Type area, city or landmark to autofill..." autocomplete="off">
+                  <button type="button" class="checkout-gmap-clear-btn" id="checkoutLocationClearBtn" title="Clear search" style="display:none;" aria-label="Clear location input">✕</button>
                 </div>
+                <div class="checkout-autofill-banner" id="checkoutAutofillBanner" style="display:none;">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#22c55e" stroke-width="2.5">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                  <span id="checkoutAutofillBannerText">Location filled via Google Maps</span>
+                </div>
+                <div class="checkout-location-dropdown" id="checkoutLocationDropdown" style="display:none;"></div>
               </div>
 
+              <!-- Only 1 Bar for House Address -->
               <div class="checkout-form-group">
-                <label for="checkoutAddress1">Flat, House No., Building, Apartment <span class="req">*</span></label>
-                <input type="text" id="checkoutAddress1" class="checkout-input" placeholder="e.g. Flat 402, Building 3, Sunrise Apartments" required autocomplete="address-line1">
+                <label for="checkoutAddress1">House Address <span class="req">*</span></label>
+                <input type="text" id="checkoutAddress1" class="checkout-input" placeholder="Flat / House No., Building, Street & Area" required autocomplete="street-address">
                 <span class="checkout-input-error" id="checkoutAddress1Error"></span>
               </div>
 
-              <div class="checkout-form-group">
-                <label for="checkoutAddress2">Area, Street, Sector, Road <span class="req">*</span></label>
-                <input type="text" id="checkoutAddress2" class="checkout-input" placeholder="e.g. MG Road, Near City Mall, Sector 15" required autocomplete="address-line2">
-                <span class="checkout-input-error" id="checkoutAddress2Error"></span>
-              </div>
-
+              <!-- City, State & PIN Code in one clean row -->
               <div class="checkout-form-row checkout-form-row--3col">
-                <div class="checkout-form-group">
-                  <label for="checkoutLandmark">Landmark (Optional)</label>
-                  <input type="text" id="checkoutLandmark" class="checkout-input" placeholder="e.g. Opposite Metro Station">
-                </div>
                 <div class="checkout-form-group">
                   <label for="checkoutCity">Town / City <span class="req">*</span></label>
                   <input type="text" id="checkoutCity" class="checkout-input" placeholder="e.g. Mumbai" required autocomplete="address-level2">
@@ -1961,49 +2171,27 @@
                   <input type="text" id="checkoutState" class="checkout-input" placeholder="e.g. Maharashtra" required autocomplete="address-level1">
                   <span class="checkout-input-error" id="checkoutStateError"></span>
                 </div>
+                <div class="checkout-form-group">
+                  <label for="checkoutPincode">PIN Code <span class="req">*</span></label>
+                  <input type="text" id="checkoutPincode" class="checkout-input" placeholder="e.g. 400001" maxlength="6" required autocomplete="postal-code">
+                  <span class="checkout-input-error" id="checkoutPincodeError"></span>
+                </div>
               </div>
 
-              <!-- Company GSTIN (Optional with Checkbox) -->
-              <div class="checkout-checkbox-group">
-                <label class="checkout-checkbox-label" for="checkoutIsB2B">
-                  <input type="checkbox" id="checkoutIsB2B" class="checkout-checkbox">
-                  <span>Add Company GSTIN (Optional)</span>
-                </label>
+              <!-- Hidden auxiliary inputs to preserve script compatibility without clutter -->
+              <input type="hidden" id="checkoutAddress2" value="">
+              <input type="hidden" id="checkoutLandmark" value="">
+              <div style="display:none;" id="checkoutTypePills">
+                <button type="button" class="checkout-type-pill active" data-type="Home">Home</button>
               </div>
+              <input type="checkbox" id="checkoutIsB2B" style="display:none;">
+              <input type="text" id="checkoutGstin" style="display:none;">
 
-              <!-- GSTIN Text Box (Shown only when user ticks the checkbox) -->
-              <div class="checkout-form-group" id="checkoutGstFields" style="display:none;margin-top:10px;">
-                <label for="checkoutGstin">Company GSTIN <small style="opacity:0.6;">(15-digit)</small></label>
-                <input type="text" id="checkoutGstin" class="checkout-input" placeholder="e.g. 27AAAAA0000A1Z5" maxlength="15" style="text-transform: uppercase;">
-                <span class="checkout-field-hint">Enter your 15-character GST identification number for input tax credit.</span>
-              </div>
-            </div>
-
-            <!-- Delivery Speed Selector -->
-            <div class="checkout-form-section">
-              <span class="checkout-section-badge">DELIVERY SPEED</span>
-              <div class="checkout-delivery-options">
-                <label class="checkout-delivery-card active" id="deliveryOptionFree">
-                  <input type="radio" name="checkoutDeliverySpeed" value="free" checked>
-                  <div class="checkout-delivery-card__content">
-                    <div class="checkout-delivery-card__title-row">
-                      <strong>Standard Delivery</strong>
-                      <span class="checkout-delivery-price free">FREE</span>
-                    </div>
-                    <p class="checkout-delivery-card__desc">Safe doorstep delivery across all Indian PIN codes.</p>
-                  </div>
-                </label>
-
-                <label class="checkout-delivery-card" id="deliveryOptionExpress">
-                  <input type="radio" name="checkoutDeliverySpeed" value="express">
-                  <div class="checkout-delivery-card__content">
-                    <div class="checkout-delivery-card__title-row">
-                      <strong>⚡ Express Delivery</strong>
-                      <span class="checkout-delivery-price">₹149 INR</span>
-                    </div>
-                    <p class="checkout-delivery-card__desc">Priority dispatch direct to your address.</p>
-                  </div>
-                </label>
+              <!-- Clean simple delivery note -->
+              <div class="checkout-simple-delivery-banner">
+                <span class="delivery-check-pill">✓ FREE DELIVERY</span>
+                <span class="delivery-check-text">Standard doorstep delivery across India · 100% insured transit</span>
+                <input type="radio" name="checkoutDeliverySpeed" value="free" checked style="display:none;">
               </div>
             </div>
 
@@ -2016,96 +2204,47 @@
           </form>
         </div>
 
-        <!-- ══════════ STEP 2: PAYMENT PAGE ══════════ -->
+        <!-- ══════════ STEP 2: PAYMENT PAGE (SIMPLE & LIGHT THEME) ══════════ -->
         <div class="checkout-step-view" id="checkoutStep2" role="tabpanel" aria-labelledby="stepIndicator2" style="display:none;">
           <div class="checkout-step-heading">
             <div class="checkout-step-heading-nav">
               <button type="button" class="checkout-back-link" id="checkoutBackToAddressBtn">← Edit Address</button>
               <span class="checkout-step-pill">STEP 2 OF 4</span>
             </div>
-            <h3>2. Select Payment Method</h3>
-            <p>Select your preferred payment method.</p>
+            <h3>2. Payment Method</h3>
+            <p>Select your payment method below to proceed.</p>
           </div>
 
-          <!-- Payment Options Accordion (No tick, click opens payment method) -->
           <div class="checkout-payment-methods" id="checkoutPaymentMethods">
-            
-            <!-- Method 1: UPI (Unavailable) -->
-            <div class="checkout-pay-option checkout-pay-option--unavailable" data-method="upi" data-unavailable="true">
-              <div class="checkout-pay-header" role="button" tabindex="-1" aria-expanded="false">
-                <div class="checkout-pay-title-group">
-                  <span class="checkout-pay-icon">⚡</span>
-                  <div class="checkout-pay-info">
-                    <strong>UPI (Google Pay, PhonePe, Paytm, Any UPI)</strong>
-                    <small style="color:#f87171;">Temporarily unavailable · Gateway maintenance</small>
-                  </div>
-                </div>
-                <div class="checkout-pay-badges">
-                  <span class="pay-chip pay-chip--unavailable">UNAVAILABLE</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Method 2: Credit / Debit Cards (Unavailable) -->
-            <div class="checkout-pay-option checkout-pay-option--unavailable" data-method="card" data-unavailable="true">
-              <div class="checkout-pay-header" role="button" tabindex="-1" aria-expanded="false">
-                <div class="checkout-pay-title-group">
-                  <span class="checkout-pay-icon">💳</span>
-                  <div class="checkout-pay-info">
-                    <strong>Credit / Debit / ATM Cards</strong>
-                    <small style="color:#f87171;">Temporarily unavailable · Gateway maintenance</small>
-                  </div>
-                </div>
-                <div class="checkout-pay-badges">
-                  <span class="pay-chip pay-chip--unavailable">UNAVAILABLE</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Method 3: Net Banking (Unavailable) -->
-            <div class="checkout-pay-option checkout-pay-option--unavailable" data-method="netbanking" data-unavailable="true">
-              <div class="checkout-pay-header" role="button" tabindex="-1" aria-expanded="false">
-                <div class="checkout-pay-title-group">
-                  <span class="checkout-pay-icon">🏛️</span>
-                  <div class="checkout-pay-info">
-                    <strong>Net Banking</strong>
-                    <small style="color:#f87171;">Temporarily unavailable · Gateway maintenance</small>
-                  </div>
-                </div>
-                <div class="checkout-pay-badges">
-                  <span class="pay-chip pay-chip--unavailable">UNAVAILABLE</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Method 4: Cash on Delivery (COD) (Active & Available) -->
+            <!-- Simple Clean COD Option -->
             <div class="checkout-pay-option active" data-method="cod">
               <div class="checkout-pay-header" role="button" tabindex="0" aria-expanded="true">
                 <div class="checkout-pay-title-group">
                   <span class="checkout-pay-icon">📦</span>
                   <div class="checkout-pay-info">
                     <strong>Cash on Delivery (COD)</strong>
-                    <small>Pay in cash or scan UPI QR at your doorstep · Zero extra fee</small>
+                    <small>Pay with cash or scan UPI QR code upon arrival at your doorstep</small>
                   </div>
                 </div>
                 <div class="checkout-pay-badges">
-                  <span class="pay-chip pay-chip--green">AVAILABLE</span>
-                  <span class="checkout-pay-arrow">
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-                  </span>
+                  <span class="pay-chip pay-chip--green">SELECTED</span>
                 </div>
               </div>
               <div class="checkout-pay-body" style="display:block;">
-                <p class="checkout-cod-info">You can pay with cash or any UPI app when your order arrives at your location.</p>
+                <p class="checkout-cod-info">✓ Pay conveniently at your doorstep. Zero extra fee or processing charges.<br>✓ Pay via Cash or Google Pay / PhonePe / Paytm / UPI QR upon package arrival.</p>
 
-                <!-- Action Button on Right Side to Continue With This Payment -->
                 <div class="checkout-pay-action-row">
                   <button type="button" class="checkout-pay-continue-btn" data-pay-method="cod">
-                    <span>CONTINUE WITH CASH ON DELIVERY (COD) →</span>
+                    <span>CONTINUE TO REVIEW ORDER →</span>
                   </button>
                 </div>
               </div>
             </div>
+          </div>
+
+          <!-- Note on Gateway -->
+          <div class="checkout-pay-notice">
+            <span>ℹ️ Online Card &amp; Net Banking payment gateway upgrades in progress. Doorstep COD and UPI QR are fully supported.</span>
           </div>
 
           <!-- Step 2 Actions Fallback -->
@@ -2448,7 +2587,7 @@
     <div style="overflow-x:auto;margin-bottom:1.4rem;">
       <table style="width:100%;border-collapse:collapse;font-family:var(--mono);font-size:.65rem;text-align:left;">
         <thead>
-          <tr style="border-bottom:1px solid rgba(232,228,220,.2);color:var(--bone);">
+          <tr style="border-bottom:2px solid #000000;color:#000000;font-weight:800;">
             <th style="padding:.6rem .5rem;">SIZE</th>
             <th style="padding:.6rem .5rem;">CHEST</th>
             <th style="padding:.6rem .5rem;">LENGTH</th>
@@ -2456,37 +2595,37 @@
             <th style="padding:.6rem .5rem;">HEIGHT</th>
           </tr>
         </thead>
-        <tbody style="color:var(--smoke);">
-          <tr style="border-bottom:1px solid rgba(232,228,220,.06);">
-            <td style="padding:.6rem .5rem;font-weight:700;color:var(--bone);">S</td>
+        <tbody style="color:#525252;">
+          <tr style="border-bottom:1px solid #e5e5e5;">
+            <td style="padding:.6rem .5rem;font-weight:800;color:#000000;">S</td>
             <td style="padding:.6rem .5rem;">36 - 38" (94 cm)</td>
             <td style="padding:.6rem .5rem;">45" (114 cm)</td>
             <td style="padding:.6rem .5rem;">18.5"</td>
             <td style="padding:.6rem .5rem;">5'4" - 5'7"</td>
           </tr>
-          <tr style="border-bottom:1px solid rgba(232,228,220,.06);background:rgba(232,228,220,.03);">
-            <td style="padding:.6rem .5rem;font-weight:700;color:var(--bone);">M (Standard)</td>
+          <tr style="border-bottom:1px solid #e5e5e5;background:#fafafa;">
+            <td style="padding:.6rem .5rem;font-weight:800;color:#000000;">M (Standard)</td>
             <td style="padding:.6rem .5rem;">39 - 41" (102 cm)</td>
             <td style="padding:.6rem .5rem;">48" (122 cm)</td>
             <td style="padding:.6rem .5rem;">19.5"</td>
             <td style="padding:.6rem .5rem;">5'8" - 5'10"</td>
           </tr>
-          <tr style="border-bottom:1px solid rgba(232,228,220,.06);">
-            <td style="padding:.6rem .5rem;font-weight:700;color:var(--bone);">L</td>
+          <tr style="border-bottom:1px solid #e5e5e5;">
+            <td style="padding:.6rem .5rem;font-weight:800;color:#000000;">L</td>
             <td style="padding:.6rem .5rem;">42 - 44" (110 cm)</td>
             <td style="padding:.6rem .5rem;">51" (129 cm)</td>
             <td style="padding:.6rem .5rem;">20.5"</td>
             <td style="padding:.6rem .5rem;">5'11" - 6'1"</td>
           </tr>
-          <tr style="border-bottom:1px solid rgba(232,228,220,.06);background:rgba(232,228,220,.03);">
-            <td style="padding:.6rem .5rem;font-weight:700;color:var(--bone);">XL</td>
+          <tr style="border-bottom:1px solid #e5e5e5;background:#fafafa;">
+            <td style="padding:.6rem .5rem;font-weight:800;color:#000000;">XL</td>
             <td style="padding:.6rem .5rem;">45 - 47" (118 cm)</td>
             <td style="padding:.6rem .5rem;">53" (135 cm)</td>
             <td style="padding:.6rem .5rem;">21.5"</td>
             <td style="padding:.6rem .5rem;">6'1" - 6'3"</td>
           </tr>
-          <tr style="border-bottom:1px solid rgba(232,228,220,.06);">
-            <td style="padding:.6rem .5rem;font-weight:700;color:var(--bone);">XXL</td>
+          <tr style="border-bottom:1px solid #e5e5e5;">
+            <td style="padding:.6rem .5rem;font-weight:800;color:#000000;">XXL</td>
             <td style="padding:.6rem .5rem;">48 - 50" (126 cm)</td>
             <td style="padding:.6rem .5rem;">54" (137 cm)</td>
             <td style="padding:.6rem .5rem;">22.5"</td>
@@ -2496,9 +2635,9 @@
       </table>
     </div>
 
-    <div style="background:rgba(232,228,220,.04);border:1px solid rgba(232,228,220,.08);border-radius:6px;padding:.9rem;margin-bottom:1.4rem;">
-      <p style="font-family:var(--mono);font-size:.6rem;color:var(--bone);margin:0 0 .3rem 0;font-weight:700;">GARMENT CARE &amp; FABRIC SPECIFICATIONS:</p>
-      <p style="font-family:var(--mono);font-size:.55rem;color:var(--smoke);margin:0;line-height:1.5;">
+    <div style="background:#fafafa;border:1px solid #e5e5e5;border-radius:6px;padding:.9rem;margin-bottom:1.4rem;">
+      <p style="font-family:var(--mono);font-size:.62rem;color:#000000;margin:0 0 .3rem 0;font-weight:800;">GARMENT CARE &amp; FABRIC SPECIFICATIONS:</p>
+      <p style="font-family:var(--mono);font-size:.56rem;color:#525252;margin:0;line-height:1.5;">
         Crafted from 100% Japanese heavyweight gabardine twill with crimson silk satin lining. Hand wash cold or dry clean only to preserve embroidered vermilion cloud seals. Pre-shrunk fabric ensures no shrinkage.
       </p>
     </div>
@@ -2545,8 +2684,9 @@
     }
   };
 </script>
-<script id="zsiqscript" src="https://salesiq.zoho.in/widget?wc=siq41047df11558854d7ca9d3d70aba4c74886ff898ecc046fc4b4f956479350736" defer></script>
+<!-- Google Maps Places API for Checkout Location Autocomplete -->
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCacMuQVy2va7lmDRLiuVaMPdC3mOq1x1U&libraries=places&loading=async" async defer></script>
 
-<script src="main.js"></script>
+<script src="main.js?v=20261021_5"></script>
 </body>
 </html>

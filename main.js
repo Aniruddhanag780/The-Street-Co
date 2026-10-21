@@ -18,6 +18,19 @@ window.trackGAEvent = function(eventName, eventParams = {}) {
   } catch (_) {}
 };
 
+// Global Mobile Navigation Active State Helper
+function setActiveBottomNav(activeItem) {
+  if (typeof activeItem === "string") {
+    activeItem = document.getElementById(activeItem);
+  }
+  if (!activeItem) return;
+  document.querySelectorAll(".mobile-bottom-bar__item").forEach(item => {
+    if (item !== activeItem) item.classList.remove("active");
+  });
+  activeItem.classList.add("active");
+}
+window.setActiveBottomNav = setActiveBottomNav;
+
 // Authentic Luxury Preloader
 (function initLuxuryPreloader() {
   const loaderEl = document.getElementById("loader");
@@ -299,6 +312,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const mobileNavTrack = document.getElementById("mobileNavTrack");
 
   function setActiveBottomNav(activeItem) {
+    if (typeof activeItem === "string") {
+      activeItem = document.getElementById(activeItem);
+    }
     if (!activeItem) return;
     if (activeItem.classList.contains("active")) return;
     document.querySelectorAll(".mobile-bottom-bar__item").forEach(item => {
@@ -320,6 +336,12 @@ document.addEventListener("DOMContentLoaded", () => {
   if (mobileNavHome) {
     mobileNavHome.addEventListener("click", (e) => {
       e.preventDefault();
+      if (typeof window.closeCollectionsPage === 'function') {
+        window.closeCollectionsPage();
+      } else {
+        const cp = document.getElementById('collectionsPage');
+        if (cp) cp.classList.remove('open');
+      }
       lockNavScrollSync(900);
       setActiveBottomNav(mobileNavHome);
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -329,6 +351,12 @@ document.addEventListener("DOMContentLoaded", () => {
   if (mobileNavShop) {
     mobileNavShop.addEventListener("click", (e) => {
       e.preventDefault();
+      if (typeof window.closeCollectionsPage === 'function') {
+        window.closeCollectionsPage();
+      } else {
+        const cp = document.getElementById('collectionsPage');
+        if (cp) cp.classList.remove('open');
+      }
       lockNavScrollSync(900);
       setActiveBottomNav(mobileNavShop);
       const shopEl = document.getElementById("shop");
@@ -341,7 +369,17 @@ document.addEventListener("DOMContentLoaded", () => {
       e.preventDefault();
       lockNavScrollSync(1200);
       setActiveBottomNav(mobileNavCollections);
-      openCollectionsPage();
+      if (typeof window.openCollectionsPage === 'function') {
+        window.openCollectionsPage();
+      } else {
+        const cp = document.getElementById('collectionsPage');
+        if (cp) {
+          cp.classList.add('open');
+          cp.setAttribute('aria-hidden', 'false');
+          document.body.classList.add('bag-open');
+          document.documentElement.classList.add('bag-open');
+        }
+      }
     });
   }
 
@@ -377,7 +415,8 @@ document.addEventListener("DOMContentLoaded", () => {
   window.syncMobileBottomNav = function() {
     if (window.innerWidth > 768) return;
     if (isNavClickLocked) return;
-    if (collectionsPage && collectionsPage.classList.contains('open')) {
+    const cp = document.getElementById('collectionsPage');
+    if (cp && cp.classList.contains('open')) {
       if (mobileNavCollections) setActiveBottomNav(mobileNavCollections);
       return;
     }
@@ -925,6 +964,11 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
         mobileCartBadge.style.setProperty('display', 'none', 'important');
       }
     }
+    const hubCartBadge = document.getElementById('hubCartBadge');
+    if (hubCartBadge) {
+      hubCartBadge.textContent = String(totalQty);
+      hubCartBadge.style.display = totalQty > 0 ? 'inline-flex' : 'none';
+    }
     if (cartBtn) {
       cartBtn.classList.toggle('has-items', totalQty > 0);
       if (totalQty > 0) {
@@ -1264,6 +1308,12 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
   ];
 
   // Step 1 Form Inputs
+  const checkoutLocationSearch = document.getElementById('checkoutLocationSearch');
+  const checkoutLocationClearBtn = document.getElementById('checkoutLocationClearBtn');
+  const checkoutDetectLocationBtn = document.getElementById('checkoutDetectLocationBtn');
+  const checkoutAutofillBanner = document.getElementById('checkoutAutofillBanner');
+  const checkoutLocationDropdown = document.getElementById('checkoutLocationDropdown');
+  const checkoutBackToStoreBtn = document.getElementById('checkoutBackToStoreBtn');
   const checkoutNameInput = document.getElementById('checkoutName');
   const checkoutPhoneInput = document.getElementById('checkoutPhone');
   const checkoutEmailInput = document.getElementById('checkoutEmail');
@@ -1345,6 +1395,10 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
 
   // Reset / Refresh Address and Delivery Input Fields
   function resetAddressAndDeliveryFields(options = { clearStorage: false }) {
+    if (checkoutLocationSearch) checkoutLocationSearch.value = '';
+    if (checkoutLocationClearBtn) checkoutLocationClearBtn.style.display = 'none';
+    if (checkoutAutofillBanner) checkoutAutofillBanner.style.display = 'none';
+    if (checkoutLocationDropdown) checkoutLocationDropdown.style.display = 'none';
     if (checkoutNameInput) checkoutNameInput.value = '';
     if (checkoutPhoneInput) checkoutPhoneInput.value = '';
     if (checkoutEmailInput) checkoutEmailInput.value = '';
@@ -1762,11 +1816,10 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
 
     validateField(checkoutNameInput, document.getElementById('checkoutNameError'), 'Please enter recipient name');
     validateField(checkoutPhoneInput, document.getElementById('checkoutPhoneError'), 'Please enter a valid 10-digit mobile number', v => /^\d{10}$/.test(v.replace(/\s+/g, '')));
-    validateField(checkoutPincodeInput, document.getElementById('checkoutPincodeError'), 'Please enter a valid 6-digit postal PIN', v => /^\d{6}$/.test(v.trim()));
-    validateField(checkoutAddress1Input, document.getElementById('checkoutAddress1Error'), 'Flat / house coordinates required');
-    validateField(checkoutAddress2Input, document.getElementById('checkoutAddress2Error'), 'Area / street sector required');
+    validateField(checkoutAddress1Input, document.getElementById('checkoutAddress1Error'), 'Please enter your house address');
     validateField(checkoutCityInput, document.getElementById('checkoutCityError'), 'Town / city required');
-    validateField(checkoutStateInput, document.getElementById('checkoutStateError'), 'State / province required');
+    validateField(checkoutStateInput, document.getElementById('checkoutStateError'), 'State required');
+    validateField(checkoutPincodeInput, document.getElementById('checkoutPincodeError'), 'Please enter a valid 6-digit postal PIN', v => /^\d{6}$/.test(v.trim()));
 
     if (!isValid) return;
 
@@ -1848,8 +1901,9 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     }
     if (reviewTypeTag) reviewTypeTag.textContent = addr.type || 'Home';
     if (reviewAddress) {
-      const landmarkPart = addr.landmark ? ` (Near ${addr.landmark}),` : '';
-      reviewAddress.textContent = `${addr.address1}, ${addr.address2}${landmarkPart} ${addr.city}, ${addr.state} - ${addr.pincode}`;
+      const extra = [addr.address2, addr.landmark].filter(Boolean).join(', ');
+      const extraPart = extra ? `, ${extra}` : '';
+      reviewAddress.textContent = `${addr.address1 || ''}${extraPart}, ${addr.city || ''}, ${addr.state || ''} - ${addr.pincode || ''}`.replace(/^,\s*/, '');
     }
     const reviewGstinRow = document.getElementById('reviewGstinRow');
     const reviewGstinVal = document.getElementById('reviewGstinVal');
@@ -3126,9 +3180,10 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     });
   }
 
-  // Close Checkout Modal Triggers
-  if (checkoutFlowCloseBtn) checkoutFlowCloseBtn.addEventListener('click', closeCheckoutModal);
-  if (checkoutFlowBackdrop) checkoutFlowBackdrop.addEventListener('click', closeCheckoutModal);
+  // Close Checkout Modal Triggers & Full-Page Return
+  if (checkoutFlowCloseBtn) checkoutFlowCloseBtn.addEventListener('click', () => closeCheckoutModal());
+  if (checkoutBackToStoreBtn) checkoutBackToStoreBtn.addEventListener('click', () => closeCheckoutModal());
+  if (checkoutFlowBackdrop) checkoutFlowBackdrop.addEventListener('click', () => closeCheckoutModal());
 
   // Hook Cart Drawer "PROCEED TO CHECKOUT" button to multi-step checkout
   if (checkoutBtn) {
@@ -3140,6 +3195,321 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       openCheckoutModal([...cart], 'cart');
     });
   }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // GOOGLE MAPS PLACES AUTOCOMPLETE & GEOLOCATION AUTOFILL CONTROLLER
+  // ═══════════════════════════════════════════════════════════════════════
+  let googleAutocompleteInstance = null;
+
+  function autofillCheckoutAddressFields(data, source = 'Google Maps') {
+    if (!data) return;
+
+    if (data.pincode && checkoutPincodeInput) {
+      checkoutPincodeInput.value = data.pincode;
+      checkoutPincodeInput.classList.remove('error');
+      const err = document.getElementById('checkoutPincodeError');
+      if (err) { err.textContent = ''; err.classList.remove('show'); }
+    }
+    if (data.address1 && checkoutAddress1Input) {
+      checkoutAddress1Input.value = data.address1;
+      checkoutAddress1Input.classList.remove('error');
+      const err = document.getElementById('checkoutAddress1Error');
+      if (err) { err.textContent = ''; err.classList.remove('show'); }
+    }
+    if (data.address2 && checkoutAddress2Input) {
+      checkoutAddress2Input.value = data.address2;
+      checkoutAddress2Input.classList.remove('error');
+      const err = document.getElementById('checkoutAddress2Error');
+      if (err) { err.textContent = ''; err.classList.remove('show'); }
+    }
+    if (data.landmark && checkoutLandmarkInput) {
+      checkoutLandmarkInput.value = data.landmark;
+    }
+    if (data.city && checkoutCityInput) {
+      checkoutCityInput.value = data.city;
+      checkoutCityInput.classList.remove('error');
+      const err = document.getElementById('checkoutCityError');
+      if (err) { err.textContent = ''; err.classList.remove('show'); }
+    }
+    if (data.state && checkoutStateInput) {
+      checkoutStateInput.value = data.state;
+      checkoutStateInput.classList.remove('error');
+      const err = document.getElementById('checkoutStateError');
+      if (err) { err.textContent = ''; err.classList.remove('show'); }
+    }
+
+    // Update checkoutSession address state
+    if (checkoutSession && checkoutSession.address) {
+      checkoutSession.address.pincode = checkoutPincodeInput ? checkoutPincodeInput.value : '';
+      checkoutSession.address.address1 = checkoutAddress1Input ? checkoutAddress1Input.value : '';
+      checkoutSession.address.address2 = checkoutAddress2Input ? checkoutAddress2Input.value : '';
+      checkoutSession.address.landmark = checkoutLandmarkInput ? checkoutLandmarkInput.value : '';
+      checkoutSession.address.city = checkoutCityInput ? checkoutCityInput.value : '';
+      checkoutSession.address.state = checkoutStateInput ? checkoutStateInput.value : '';
+    }
+
+    // Display high-contrast light autofill success banner
+    if (checkoutAutofillBanner) {
+      const bannerText = document.getElementById('checkoutAutofillBannerText');
+      if (bannerText) {
+        bannerText.textContent = `Address autofilled via ${source}! All boxes populated. Feel free to edit or fill any missing details.`;
+      }
+      checkoutAutofillBanner.style.display = 'flex';
+    }
+    if (checkoutLocationClearBtn) {
+      checkoutLocationClearBtn.style.display = 'grid';
+    }
+  }
+
+  function parseGooglePlaceComponents(place) {
+    if (!place) return null;
+    let streetNumber = '';
+    let route = '';
+    let sublocality1 = '';
+    let sublocality2 = '';
+    let locality = '';
+    let adminArea = '';
+    let postalCode = '';
+    let neighborhood = '';
+
+    if (Array.isArray(place.address_components)) {
+      place.address_components.forEach(comp => {
+        const types = comp.types || [];
+        if (types.includes('street_number')) streetNumber = comp.long_name || comp.short_name;
+        if (types.includes('route')) route = comp.long_name || comp.short_name;
+        if (types.includes('sublocality_level_1') || types.includes('sublocality')) sublocality1 = comp.long_name;
+        if (types.includes('sublocality_level_2')) sublocality2 = comp.long_name;
+        if (types.includes('neighborhood')) neighborhood = comp.long_name;
+        if (types.includes('locality')) locality = comp.long_name;
+        if (types.includes('administrative_area_level_2') && !locality) locality = comp.long_name;
+        if (types.includes('administrative_area_level_1')) adminArea = comp.long_name;
+        if (types.includes('postal_code')) postalCode = comp.long_name;
+      });
+    }
+
+    const placeName = place.name || '';
+    const premise = [streetNumber, (placeName && placeName !== route && placeName !== locality) ? placeName : ''].filter(Boolean).join(' ');
+    const street = [route, sublocality2].filter(Boolean).join(', ') || sublocality1 || place.formatted_address || '';
+
+    return {
+      address1: premise || route || placeName || (place.formatted_address ? place.formatted_address.split(',')[0] : ''),
+      address2: street || sublocality1 || '',
+      landmark: neighborhood || sublocality1 || '',
+      city: locality || '',
+      state: adminArea || '',
+      pincode: postalCode || ''
+    };
+  }
+
+  function initGoogleMapsLocationAutocomplete() {
+    const searchInput = document.getElementById('checkoutLocationSearch');
+    if (!searchInput) return;
+
+    // Attach Google Places Autocomplete if API available
+    function setupGooglePlaces() {
+      if (window.google && window.google.maps && window.google.maps.places) {
+        try {
+          if (!googleAutocompleteInstance) {
+            googleAutocompleteInstance = new google.maps.places.Autocomplete(searchInput, {
+              types: ['geocode', 'establishment'],
+              fields: ['address_components', 'formatted_address', 'name', 'geometry']
+            });
+
+            googleAutocompleteInstance.addListener('place_changed', () => {
+              const place = googleAutocompleteInstance.getPlace();
+              if (!place) return;
+              const parsed = parseGooglePlaceComponents(place);
+              if (parsed) {
+                if (place.formatted_address) {
+                  searchInput.value = place.formatted_address;
+                }
+                autofillCheckoutAddressFields(parsed, 'Google Maps');
+              }
+            });
+          }
+          return true;
+        } catch (err) {
+          console.warn('Google Places Autocomplete initialization notice:', err);
+        }
+      }
+      return false;
+    }
+
+    if (!setupGooglePlaces()) {
+      let pollAttempts = 0;
+      const pollTimer = setInterval(() => {
+        pollAttempts++;
+        if (setupGooglePlaces() || pollAttempts > 20) {
+          clearInterval(pollTimer);
+        }
+      }, 500);
+    }
+
+    // Input typing & instant autocomplete fallback (Photon / Nominatim)
+    let searchDebounceTimer = null;
+    searchInput.addEventListener('input', (e) => {
+      const q = e.target.value.trim();
+      if (checkoutLocationClearBtn) {
+        checkoutLocationClearBtn.style.display = q.length > 0 ? 'grid' : 'none';
+      }
+      if (q.length < 3) {
+        if (checkoutLocationDropdown) checkoutLocationDropdown.style.display = 'none';
+        return;
+      }
+
+      // If Google Maps is loading or restricted, fallback geocoder provides instant dropdown
+      clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = setTimeout(() => {
+        fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=5`)
+          .then(res => res.json())
+          .then(data => {
+            if (!data || !data.features || data.features.length === 0) {
+              if (checkoutLocationDropdown) checkoutLocationDropdown.style.display = 'none';
+              return;
+            }
+            if (!checkoutLocationDropdown) return;
+            checkoutLocationDropdown.innerHTML = data.features.map((feat, idx) => {
+              const p = feat.properties || {};
+              const title = [p.name, p.street, p.housenumber].filter(Boolean).join(' ') || p.name || 'Location';
+              const subtitle = [p.district, p.city, p.state, p.postcode, p.country].filter(Boolean).join(', ');
+              return `
+                <div class="checkout-loc-item" data-idx="${idx}">
+                  <span class="checkout-loc-name">📍 ${title}</span>
+                  <small class="checkout-loc-detail">${subtitle}</small>
+                </div>
+              `;
+            }).join('');
+            checkoutLocationDropdown.style.display = 'block';
+
+            checkoutLocationDropdown.querySelectorAll('.checkout-loc-item').forEach(item => {
+              item.addEventListener('click', () => {
+                const idx = parseInt(item.dataset.idx, 10);
+                const feat = data.features[idx];
+                if (!feat) return;
+                const p = feat.properties || {};
+                searchInput.value = [p.name, p.street, p.city, p.state].filter(Boolean).join(', ');
+                autofillCheckoutAddressFields({
+                  address1: [p.housenumber, p.name !== p.city ? p.name : ''].filter(Boolean).join(' ') || p.name || '',
+                  address2: [p.street, p.district].filter(Boolean).join(', ') || p.district || '',
+                  landmark: p.suburb || p.district || '',
+                  city: p.city || p.county || '',
+                  state: p.state || '',
+                  pincode: p.postcode || ''
+                }, 'Location Search');
+                checkoutLocationDropdown.style.display = 'none';
+              });
+            });
+          })
+          .catch(() => {
+            if (checkoutLocationDropdown) checkoutLocationDropdown.style.display = 'none';
+          });
+      }, 350);
+    });
+
+    // Clear search button
+    if (checkoutLocationClearBtn) {
+      checkoutLocationClearBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        checkoutLocationClearBtn.style.display = 'none';
+        if (checkoutAutofillBanner) checkoutAutofillBanner.style.display = 'none';
+        if (checkoutLocationDropdown) checkoutLocationDropdown.style.display = 'none';
+        searchInput.focus();
+      });
+    }
+
+    // Close dropdown on click outside
+    document.addEventListener('click', (e) => {
+      if (checkoutLocationDropdown && !e.target.closest('#checkoutGmapSearchGroup')) {
+        checkoutLocationDropdown.style.display = 'none';
+      }
+    });
+
+    // GPS "Use Current Location" button
+    const detectGpsBtn = document.getElementById('checkoutDetectLocationBtn');
+    if (detectGpsBtn) {
+      detectGpsBtn.addEventListener('click', () => {
+        if (!navigator.geolocation) {
+          showToast('GPS UNAVAILABLE', 'Geolocation is not supported by your browser.', 'error');
+          return;
+        }
+        detectGpsBtn.disabled = true;
+        const originalContent = detectGpsBtn.innerHTML;
+        detectGpsBtn.innerHTML = `<span>Locating...</span>`;
+
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+
+            function restoreBtn() {
+              detectGpsBtn.disabled = false;
+              detectGpsBtn.innerHTML = originalContent;
+            }
+
+            if (window.google && window.google.maps && window.google.maps.Geocoder) {
+              const geocoder = new google.maps.Geocoder();
+              geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+                restoreBtn();
+                if (status === 'OK' && results && results[0]) {
+                  searchInput.value = results[0].formatted_address;
+                  const parsed = parseGooglePlaceComponents(results[0]);
+                  if (parsed) autofillCheckoutAddressFields(parsed, 'Google Maps GPS');
+                } else {
+                  // Fallback reverse geocoder
+                  fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+                    .then(r => r.json())
+                    .then(geo => {
+                      if (geo && geo.address) {
+                        searchInput.value = geo.display_name || '';
+                        const a = geo.address;
+                        autofillCheckoutAddressFields({
+                          address1: [a.house_number, a.building || a.road].filter(Boolean).join(' ') || geo.display_name.split(',')[0],
+                          address2: [a.suburb || a.neighbourhood, a.road].filter(Boolean).join(', ') || '',
+                          landmark: a.neighbourhood || '',
+                          city: a.city || a.town || a.county || '',
+                          state: a.state || '',
+                          pincode: a.postcode || ''
+                        }, 'GPS Geolocation');
+                      }
+                    }).catch(() => {});
+                }
+              });
+            } else {
+              fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+                .then(r => r.json())
+                .then(geo => {
+                  restoreBtn();
+                  if (geo && geo.address) {
+                    searchInput.value = geo.display_name || '';
+                    const a = geo.address;
+                    autofillCheckoutAddressFields({
+                      address1: [a.house_number, a.building || a.road].filter(Boolean).join(' ') || geo.display_name.split(',')[0],
+                      address2: [a.suburb || a.neighbourhood, a.road].filter(Boolean).join(', ') || '',
+                      landmark: a.neighbourhood || '',
+                      city: a.city || a.town || a.county || '',
+                      state: a.state || '',
+                      pincode: a.postcode || ''
+                    }, 'GPS Geolocation');
+                  }
+                })
+                .catch(() => {
+                  restoreBtn();
+                });
+            }
+          },
+          (err) => {
+            detectGpsBtn.disabled = false;
+            detectGpsBtn.innerHTML = originalContent;
+            showToast('LOCATION PERMISSION', 'Please enable location permissions in browser.', 'error');
+          },
+          { enableHighAccuracy: true, timeout: 8000 }
+        );
+      });
+    }
+  }
+
+  // Initialize location autocomplete
+  initGoogleMapsLocationAutocomplete();
 
 
   // ═══════════ REAL-TIME SHADOW COURIER TRACKING CONTROLLER ═══════════
@@ -3620,23 +3990,35 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       applyCollectionFilter(col);
       return;
     }
-    if (collectionsPage) {
-      collectionsPage.classList.add('open');
-      collectionsPage.setAttribute('aria-hidden', 'false');
+    const cp = collectionsPage || document.getElementById('collectionsPage');
+    if (cp) {
+      cp.classList.add('open');
+      cp.setAttribute('aria-hidden', 'false');
       document.body.classList.add('bag-open');
       document.documentElement.classList.add('bag-open');
-      if (mobileNavCollections) setActiveBottomNav(mobileNavCollections);
+      const mobileNavCollec = document.getElementById('mobileNavCollections');
+      if (typeof setActiveBottomNav === 'function') {
+        setActiveBottomNav(mobileNavCollec);
+      } else if (typeof window.setActiveBottomNav === 'function') {
+        window.setActiveBottomNav(mobileNavCollec);
+      }
     }
   }
+  window.openCollectionsPage = openCollectionsPage;
 
   function closeCollectionsPage() {
-    if (collectionsPage) {
-      collectionsPage.classList.remove('open');
-      collectionsPage.setAttribute('aria-hidden', 'true');
+    const cp = collectionsPage || document.getElementById('collectionsPage');
+    if (cp) {
+      cp.classList.remove('open');
+      cp.setAttribute('aria-hidden', 'true');
       document.body.classList.remove('bag-open');
       document.documentElement.classList.remove('bag-open');
+      if (typeof window.syncMobileBottomNav === 'function') {
+        window.syncMobileBottomNav();
+      }
     }
   }
+  window.closeCollectionsPage = closeCollectionsPage;
 
   function applyCollectionFilter(colName) {
     if (typeof activeShopFilters !== 'undefined') {
@@ -3650,7 +4032,10 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     if (shopSec) {
       shopSec.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-    if (mobileNavShop) setActiveBottomNav(mobileNavShop);
+    const mobileNavShopEl = document.getElementById('mobileNavShop');
+    if (mobileNavShopEl && typeof setActiveBottomNav === 'function') {
+      setActiveBottomNav(mobileNavShopEl);
+    }
   }
 
   function applyCategoryFilter(catName) {
@@ -3665,7 +4050,10 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     if (shopSec) {
       shopSec.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-    if (mobileNavShop) setActiveBottomNav(mobileNavShop);
+    const mobileNavShopEl = document.getElementById('mobileNavShop');
+    if (mobileNavShopEl && typeof setActiveBottomNav === 'function') {
+      setActiveBottomNav(mobileNavShopEl);
+    }
   }
 
   // Backdrop click closes Collections Hub
@@ -3674,7 +4062,61 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     collectionsHubBackdrop.addEventListener('click', closeCollectionsPage);
   }
 
-  // Collections Hub Tab Switching (Theme Collections vs Apparel Categories)
+  // Close button in Collections Hub Header
+  if (closeCollectionsBtn) {
+    closeCollectionsBtn.addEventListener('click', closeCollectionsPage);
+  }
+
+  // Header Search button inside Hub
+  const hubHeaderSearchBtn = document.getElementById('hubHeaderSearchBtn');
+  if (hubHeaderSearchBtn) {
+    hubHeaderSearchBtn.addEventListener('click', () => {
+      closeCollectionsPage();
+      const shopSec = document.getElementById('shop');
+      if (shopSec) shopSec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const searchInp = document.getElementById('shopSearchInput');
+      if (searchInp) {
+        setTimeout(() => searchInp.focus(), 350);
+      }
+      const mobileNavShopEl = document.getElementById('mobileNavShop');
+      if (mobileNavShopEl && typeof setActiveBottomNav === 'function') {
+        setActiveBottomNav(mobileNavShopEl);
+      }
+    });
+  }
+
+  // Header Bag button inside Hub
+  const hubHeaderBagBtn = document.getElementById('hubHeaderBagBtn');
+  if (hubHeaderBagBtn) {
+    hubHeaderBagBtn.addEventListener('click', () => {
+      closeCollectionsPage();
+      if (typeof openCart === 'function') {
+        openCart('bag');
+      }
+    });
+  }
+
+  // Shop All Products Quick Bar
+  const hubQuickShopAll = document.getElementById('hubQuickShopAll');
+  if (hubQuickShopAll) {
+    hubQuickShopAll.addEventListener('click', () => {
+      closeCollectionsPage();
+      if (typeof activeShopFilters !== 'undefined') {
+        Object.keys(activeShopFilters).forEach(k => activeShopFilters[k].clear());
+        renderActiveFilterChips();
+        updateFilterCheckboxesState();
+        renderShopGrid();
+      }
+      const shopSec = document.getElementById('shop');
+      if (shopSec) shopSec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const mobileNavShopEl = document.getElementById('mobileNavShop');
+      if (mobileNavShopEl && typeof setActiveBottomNav === 'function') {
+        setActiveBottomNav(mobileNavShopEl);
+      }
+    });
+  }
+
+  // Collections Hub Tab Switching (ALL / CATEGORIES / THEMES)
   const hubTabs = document.querySelectorAll('.collections-hub-tab');
   hubTabs.forEach(tab => {
     tab.addEventListener('click', () => {
@@ -3686,36 +4128,74 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       tab.setAttribute('aria-selected', 'true');
 
       const targetTab = tab.dataset.hubTab;
-      const collectionsPanel = document.getElementById('hubPanelCollections');
-      const categoriesPanel = document.getElementById('hubPanelCategories');
+      const secCategories = document.getElementById('hubSectionCategories');
+      const secCollections = document.getElementById('hubSectionCollections');
 
       if (targetTab === 'categories') {
-        if (collectionsPanel) collectionsPanel.classList.remove('active');
-        if (categoriesPanel) categoriesPanel.classList.add('active');
+        if (secCategories) secCategories.style.display = 'block';
+        if (secCollections) secCollections.style.display = 'none';
+      } else if (targetTab === 'collections') {
+        if (secCategories) secCategories.style.display = 'none';
+        if (secCollections) secCollections.style.display = 'block';
       } else {
-        if (categoriesPanel) categoriesPanel.classList.remove('active');
-        if (collectionsPanel) collectionsPanel.classList.add('active');
+        // 'all'
+        if (secCategories) secCategories.style.display = 'block';
+        if (secCollections) secCollections.style.display = 'block';
       }
     });
   });
 
-  // Clicking on any Collection Card takes user directly to that collection in shop
-  document.querySelectorAll('.collec-hub-card').forEach(card => {
-    card.addEventListener('click', () => {
-      const col = card.dataset.collecFilter;
-      closeCollectionsPage();
-      applyCollectionFilter(col);
+  // Section Accordion Toggles
+  const hubToggleCategories = document.getElementById('hubToggleCategories');
+  if (hubToggleCategories) {
+    hubToggleCategories.addEventListener('click', () => {
+      const panel = document.getElementById('hubPanelCategories');
+      const chev = hubToggleCategories.querySelector('.hub-acc-chevron');
+      if (panel) {
+        const isHidden = panel.style.display === 'none';
+        panel.style.display = isHidden ? 'grid' : 'none';
+        if (chev) chev.style.transform = isHidden ? 'none' : 'rotate(180deg)';
+      }
     });
-  });
+  }
 
-  // Clicking on any Category Card takes user directly to that category in shop
-  document.querySelectorAll('.category-hub-card').forEach(card => {
-    card.addEventListener('click', () => {
-      const cat = card.dataset.catFilter;
-      closeCollectionsPage();
-      applyCategoryFilter(cat);
+  const hubToggleCollections = document.getElementById('hubToggleCollections');
+  if (hubToggleCollections) {
+    hubToggleCollections.addEventListener('click', () => {
+      const panel = document.getElementById('hubPanelCollections');
+      const chev = hubToggleCollections.querySelector('.hub-acc-chevron');
+      if (panel) {
+        const isHidden = panel.style.display === 'none';
+        panel.style.display = isHidden ? 'grid' : 'none';
+        if (chev) chev.style.transform = isHidden ? 'none' : 'rotate(180deg)';
+      }
     });
-  });
+  }
+
+  // Delegated Click Handler on Collections Hub for ANY card/image/text with filter data
+  if (collectionsPage) {
+    collectionsPage.addEventListener('click', (e) => {
+      const catCard = e.target.closest('[data-cat-filter]');
+      if (catCard) {
+        const cat = catCard.dataset.catFilter;
+        if (cat) {
+          closeCollectionsPage();
+          applyCategoryFilter(cat);
+          return;
+        }
+      }
+
+      const collecCard = e.target.closest('[data-collec-filter]');
+      if (collecCard) {
+        const col = collecCard.dataset.collecFilter;
+        if (col) {
+          closeCollectionsPage();
+          applyCollectionFilter(col);
+          return;
+        }
+      }
+    });
+  }
 
   if (openCollectionsBtn) {
     openCollectionsBtn.addEventListener('click', () => openCollectionsPage());
@@ -3725,9 +4205,6 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       e.preventDefault();
       openCollectionsPage();
     });
-  }
-  if (closeCollectionsBtn) {
-    closeCollectionsBtn.addEventListener('click', closeCollectionsPage);
   }
 
   // Search input handler
@@ -4141,6 +4618,13 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
   const shopFilterSidebar = document.getElementById('shopFilterSidebar');
   const shopProductsArea = document.getElementById('shopProductsArea');
   const shopMobileFilterBtn = document.getElementById('shopMobileFilterBtn');
+  const shopMobileFilterBadge = document.getElementById('shopMobileFilterBadge');
+  const shopFilterBackdrop = document.getElementById('shopFilterBackdrop');
+  const shopFilterMobileCloseBtn = document.getElementById('shopFilterMobileCloseBtn');
+  const filterSidebarFooter = document.getElementById('filterSidebarFooter');
+  const filterFooterResetBtn = document.getElementById('filterFooterResetBtn');
+  const filterFooterApplyBtn = document.getElementById('filterFooterApplyBtn');
+  const filterFooterApplyCount = document.getElementById('filterFooterApplyCount');
 
   // Multi-facet shop filters state
   const activeShopFilters = {
@@ -4164,11 +4648,48 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       { id: 'Accessories & Jewelry', label: 'Accessories & Jewelry' }
     ],
     collection: [
-      { id: 'Minato Namikaze', label: 'Minato Namikaze' },
-      { id: 'Akatsuki Shadows', label: 'Akatsuki Shadows' },
-      { id: 'Uchiha Clan', label: 'Uchiha Clan' },
-      { id: 'Street Core', label: 'Street Core' },
-      { id: 'Shinobi Armory', label: 'Shinobi Armory' }
+      {
+        id: 'Minato Namikaze',
+        label: 'Minato Namikaze',
+        subtitle: 'Yellow Flash',
+        kanji: '閃',
+        img: '/product-minato.jpg'
+      },
+      {
+        id: 'Akatsuki Shadows',
+        label: 'Akatsuki Shadows',
+        subtitle: 'Crimson Cloud',
+        kanji: '雲',
+        img: 'https://images.unsplash.com/photo-1544441893-675973e31985?w=400&q=80'
+      },
+      {
+        id: 'Uchiha Clan',
+        label: 'Uchiha Clan',
+        subtitle: 'Flame Legacy',
+        kanji: '団',
+        img: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=400&q=80'
+      },
+      {
+        id: 'Crow Genjutsu',
+        label: 'Crow Genjutsu',
+        subtitle: 'Raven Mirage',
+        kanji: '鴉',
+        img: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=400&q=80'
+      },
+      {
+        id: 'Street Core',
+        label: 'Street Core',
+        subtitle: 'Tokyo Shadow',
+        kanji: '街',
+        img: 'https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=400&q=80'
+      },
+      {
+        id: 'Shinobi Armory',
+        label: 'Shinobi Armory',
+        subtitle: 'Tactical Steel',
+        kanji: '刃',
+        img: 'https://images.unsplash.com/photo-1589256469067-ea99122bbdc4?w=400&q=80'
+      }
     ],
     size: [
       { id: 'S', label: 'S (Chest 38")' },
@@ -4226,6 +4747,42 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       if (!listContainer) return;
 
       const options = FILTER_DEFINITIONS[groupKey];
+
+      if (groupKey === 'collection') {
+        listContainer.classList.add('filter-collection-boxes');
+        listContainer.innerHTML = options.map((opt, idx) => {
+          const isChecked = activeShopFilters.collection.has(opt.id);
+          const count = getFilterMatchCount('collection', opt.id);
+          const bgImg = opt.img || '/product-minato.jpg';
+          const kanji = opt.kanji || '忍';
+          const sub = opt.subtitle || 'Collection';
+          const idxStr = String(idx + 1).padStart(2, '0');
+          return `
+            <label class="filter-collec-square ${isChecked ? 'checked active' : ''}" data-val="${opt.id}" title="${opt.label}">
+              <input type="checkbox" class="filter-checkbox filter-box-sr" data-group="collection" data-val="${opt.id}" ${isChecked ? 'checked' : ''} />
+              <img src="${bgImg}" alt="${opt.label}" class="filter-collec-square__bg" loading="lazy" />
+              <div class="filter-collec-square__scrim"></div>
+              <span class="filter-collec-square__kanji" aria-hidden="true">${kanji}</span>
+              <div class="filter-collec-square__top">
+                <span class="filter-collec-square__index">${idxStr}</span>
+                <div class="filter-collec-square__check" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                </div>
+              </div>
+              <div class="filter-collec-square__meta">
+                <span class="filter-collec-square__sub">${sub}</span>
+                <span class="filter-collec-square__name">${opt.label}</span>
+                <span class="filter-collec-square__count">${count} items</span>
+              </div>
+              <div class="filter-collec-square__glow" aria-hidden="true"></div>
+            </label>
+          `;
+        }).join('');
+        return;
+      }
+
       listContainer.innerHTML = options.map(opt => {
         const isChecked = activeShopFilters[groupKey].has(opt.id);
         const count = getFilterMatchCount(groupKey, opt.id);
@@ -4276,7 +4833,9 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       }
       if (groupKey === 'collection') {
         const col = (item.collectionName || item.collection || '').toLowerCase();
-        return col.includes(valId.toLowerCase()) || valId.toLowerCase().includes(col);
+        const itemName = (item.name || item.title || '').toLowerCase();
+        const target = valId.toLowerCase();
+        return col.includes(target) || target.includes(col) || itemName.includes(target);
       }
       if (groupKey === 'size') {
         const sizes = Array.isArray(item.sizes) ? item.sizes : ['S', 'M', 'L', 'XL', 'XXL'];
@@ -4304,198 +4863,21 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
 
   function updateFilterCheckboxesState() {
     if (!filterSidebarContent) return;
-    filterSidebarContent.querySelectorAll('.filter-item').forEach(lbl => {
+    filterSidebarContent.querySelectorAll('.filter-item, .filter-collec-square').forEach(lbl => {
       const input = lbl.querySelector('.filter-checkbox');
       if (input) {
         const isChecked = activeShopFilters[input.dataset.group].has(input.dataset.val);
         input.checked = isChecked;
         lbl.classList.toggle('checked', isChecked);
+        lbl.classList.toggle('active', isChecked);
       }
     });
   }
 
-  function renderActiveFilterChips() {
-    if (!shopActiveChips) return;
-    const chips = [];
+  function getFilteredShopCatalogItems() {
+    if (!collectionsData || collectionsData.length === 0) return [];
 
-    Object.keys(activeShopFilters).forEach(groupKey => {
-      activeShopFilters[groupKey].forEach(val => {
-        let label = val;
-        const def = (FILTER_DEFINITIONS[groupKey] || []).find(d => d.id === val);
-        if (def) label = def.label;
-        chips.push({ group: groupKey, val, label });
-      });
-    });
-
-    if (chips.length === 0) {
-      shopActiveChips.innerHTML = '';
-      if (shopClearAllChipsBtn) shopClearAllChipsBtn.style.display = 'none';
-      if (shopClearAllFiltersBtn) shopClearAllFiltersBtn.style.display = 'none';
-      return;
-    }
-
-    if (shopClearAllChipsBtn) shopClearAllChipsBtn.style.display = 'inline-flex';
-    if (shopClearAllFiltersBtn) shopClearAllFiltersBtn.style.display = 'inline-block';
-
-    shopActiveChips.innerHTML = chips.map(c => `
-      <span class="shop-filter-chip">
-        <span>${c.label}</span>
-        <button type="button" class="chip-remove-btn" data-chip-group="${c.group}" data-chip-val="${c.val}" aria-label="Remove filter ${c.label}">✕</button>
-      </span>
-    `).join('');
-
-    shopActiveChips.querySelectorAll('.chip-remove-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const g = btn.dataset.chipGroup;
-        const v = btn.dataset.chipVal;
-        activeShopFilters[g].delete(v);
-        renderActiveFilterChips();
-        updateFilterCheckboxesState();
-        renderShopGrid();
-      });
-    });
-  }
-
-  function clearAllActiveFilters() {
-    Object.keys(activeShopFilters).forEach(k => activeShopFilters[k].clear());
-    currentShopSearchQuery = '';
-    if (shopSearchInput) {
-      shopSearchInput.value = '';
-      if (shopSearchClearBtn) shopSearchClearBtn.style.display = 'none';
-    }
-    renderActiveFilterChips();
-    updateFilterCheckboxesState();
-    renderShopGrid();
-  }
-
-  if (shopClearAllChipsBtn) shopClearAllChipsBtn.addEventListener('click', clearAllActiveFilters);
-  if (shopClearAllFiltersBtn) shopClearAllFiltersBtn.addEventListener('click', clearAllActiveFilters);
-
-  // Accordion toggle headers in sidebar
-  if (filterSidebarContent) {
-    filterSidebarContent.querySelectorAll('.filter-accordion__header').forEach(header => {
-      header.addEventListener('click', () => {
-        const accordion = header.closest('.filter-accordion');
-        if (accordion) accordion.classList.toggle('open');
-      });
-    });
-  }
-
-  // Sort select handler in top toolbar
-  if (shopSortSelect) {
-    shopSortSelect.addEventListener('change', (e) => {
-      currentShopSort = e.target.value;
-      renderShopGrid();
-    });
-  }
-
-  // Mobile filter toggle
-  if (shopMobileFilterBtn && shopFilterSidebar) {
-    shopMobileFilterBtn.addEventListener('click', () => {
-      shopFilterSidebar.classList.toggle('mobile-open');
-    });
-  }
-  const shopFilterMobileCloseBtn = document.getElementById('shopFilterMobileCloseBtn');
-  if (shopFilterMobileCloseBtn && shopFilterSidebar) {
-    shopFilterMobileCloseBtn.addEventListener('click', () => {
-      shopFilterSidebar.classList.remove('mobile-open');
-    });
-  }
-
-  function openNewProductsFilter(e) {
-    if (e && e.preventDefault) e.preventDefault();
-
-    // 1. Reset text search so it doesn't conflict
-    if (shopSearchInput) {
-      shopSearchInput.value = '';
-      currentShopSearchQuery = '';
-      if (shopSearchClearBtn) shopSearchClearBtn.style.display = 'none';
-    }
-
-    // 2. Clear other category/collection filters and set availability to new-products
-    activeShopFilters.category.clear();
-    activeShopFilters.collection.clear();
-    activeShopFilters.availability.clear();
-    activeShopFilters.availability.add('new-products');
-
-    // 3. Ensure the Availability accordion is expanded and visible
-    const availAccordion = document.querySelector('.filter-accordion[data-group="availability"]');
-    if (availAccordion && !availAccordion.classList.contains('open')) {
-      availAccordion.classList.add('open');
-    }
-
-    // 4. Re-render UI components
-    renderActiveFilterChips();
-    renderShopGrid();
-    updateFilterCheckboxesState();
-
-    // 5. Update header navigation active states
-    document.querySelectorAll('[data-nav-category]').forEach(l => l.classList.remove('active'));
-    const newInNav = document.querySelector('[data-nav-category="new"]');
-    if (newInNav) newInNav.classList.add('active');
-
-    // 6. Update breadcrumb
-    const shopCurrentCrumb = document.getElementById('shopCurrentCrumb');
-    if (shopCurrentCrumb) {
-      shopCurrentCrumb.textContent = 'New Products';
-    }
-
-    // 7. On mobile screens, open filter sidebar drawer
-    if (window.innerWidth <= 980 && shopFilterSidebar) {
-      shopFilterSidebar.classList.add('mobile-open');
-    }
-
-    // 8. Smoothly scroll to the shop section
-    const shopEl = document.getElementById('shop');
-    if (shopEl) {
-      shopEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-
-    // 9. Highlight the New Products filter item
-    setTimeout(() => {
-      const newProdItem = document.querySelector('.filter-item input[data-val="new-products"]')?.closest('.filter-item');
-      if (newProdItem) {
-        newProdItem.classList.add('filter-highlight');
-        setTimeout(() => newProdItem.classList.remove('filter-highlight'), 1800);
-      }
-    }, 350);
-  }
-  window.openNewProductsFilter = openNewProductsFilter;
-
-  // Global listeners for any New In links / buttons
-  document.querySelectorAll('a[href="#new-in"], [data-nav-category="new"], #heroShopNewArrivalsBtn').forEach(el => {
-    el.addEventListener('click', (e) => {
-      openNewProductsFilter(e);
-    });
-  });
-
-  function renderShopGrid() {
-    if (!shopGrid) return;
-
-    // Clean up any active hover slideshow timers on cards before re-render
-    shopGrid.querySelectorAll('.shop-card').forEach(card => {
-      if (card._hoverCycleTimer) {
-        clearInterval(card._hoverCycleTimer);
-        card._hoverCycleTimer = null;
-      }
-    });
-
-    if (!collectionsData || collectionsData.length === 0) {
-      shopGrid.innerHTML = `
-        <div class="shop-loading-card" style="grid-column: 1 / -1; text-align: center; padding: 3rem 1.5rem; background: rgba(14,14,17,0.7); border: 1px dashed rgba(232,228,220,0.15); border-radius: 8px;">
-          <div style="font-size: 2.2rem; margin-bottom: 0.8rem;">📦</div>
-          <h3 style="font-family:'Cinzel',serif; letter-spacing:0.1em; color:var(--bone); font-size:1.15rem; margin-bottom: 0.5rem;">APPAREL CATALOG READY</h3>
-          <p style="color:var(--ash); font-size:0.85rem; max-width: 480px; margin: 0 auto 1.4rem; line-height: 1.6;">
-            Products are being synchronized from your store catalog and Zoho Inventory.
-          </p>
-        </div>
-      `;
-      if (shopProductCount) shopProductCount.textContent = 'Showing 0 Products';
-      return;
-    }
-
-    let items = collectionsData.filter(item => {
+    return collectionsData.filter(item => {
       const price = Number(item.priceInr || 0);
 
       // Category filter (OR inside category group)
@@ -4569,6 +4951,304 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
 
       return true;
     });
+  }
+
+  function updateActiveFilterBadge() {
+    let totalActive = 0;
+    Object.keys(activeShopFilters).forEach(g => {
+      totalActive += activeShopFilters[g].size;
+    });
+
+    if (shopMobileFilterBadge) {
+      if (totalActive > 0) {
+        shopMobileFilterBadge.textContent = String(totalActive);
+        shopMobileFilterBadge.style.display = 'inline-flex';
+      } else {
+        shopMobileFilterBadge.style.display = 'none';
+      }
+    }
+
+    if (filterFooterApplyCount) {
+      const matchCount = getFilteredShopCatalogItems().length;
+      filterFooterApplyCount.textContent = `(${matchCount})`;
+    }
+  }
+
+  function renderActiveFilterChips() {
+    updateActiveFilterBadge();
+    if (!shopActiveChips) return;
+    const chips = [];
+
+    Object.keys(activeShopFilters).forEach(groupKey => {
+      activeShopFilters[groupKey].forEach(val => {
+        let label = val;
+        const def = (FILTER_DEFINITIONS[groupKey] || []).find(d => d.id === val);
+        if (def) label = def.label;
+        chips.push({ group: groupKey, val, label });
+      });
+    });
+
+    if (chips.length === 0) {
+      shopActiveChips.innerHTML = '';
+      if (shopClearAllChipsBtn) shopClearAllChipsBtn.style.display = 'none';
+      if (shopClearAllFiltersBtn) shopClearAllFiltersBtn.style.display = 'none';
+      updateActiveFilterBadge();
+      return;
+    }
+
+    if (shopClearAllChipsBtn) shopClearAllChipsBtn.style.display = 'inline-flex';
+    if (shopClearAllFiltersBtn) shopClearAllFiltersBtn.style.display = 'inline-block';
+
+    shopActiveChips.innerHTML = chips.map(c => `
+      <span class="shop-filter-chip">
+        <span>${c.label}</span>
+        <button type="button" class="chip-remove-btn" data-chip-group="${c.group}" data-chip-val="${c.val}" aria-label="Remove filter ${c.label}">✕</button>
+      </span>
+    `).join('');
+
+    shopActiveChips.querySelectorAll('.chip-remove-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const g = btn.dataset.chipGroup;
+        const v = btn.dataset.chipVal;
+        activeShopFilters[g].delete(v);
+        renderActiveFilterChips();
+        updateFilterCheckboxesState();
+        renderShopGrid();
+      });
+    });
+  }
+
+  function clearAllActiveFilters() {
+    Object.keys(activeShopFilters).forEach(k => activeShopFilters[k].clear());
+    currentShopSearchQuery = '';
+    if (shopSearchInput) {
+      shopSearchInput.value = '';
+      if (shopSearchClearBtn) shopSearchClearBtn.style.display = 'none';
+    }
+    renderActiveFilterChips();
+    updateFilterCheckboxesState();
+    renderShopGrid();
+  }
+
+  if (shopClearAllChipsBtn) shopClearAllChipsBtn.addEventListener('click', clearAllActiveFilters);
+  if (shopClearAllFiltersBtn) shopClearAllFiltersBtn.addEventListener('click', clearAllActiveFilters);
+
+  // Accordion toggle headers in sidebar
+  if (filterSidebarContent) {
+    filterSidebarContent.querySelectorAll('.filter-accordion__header').forEach(header => {
+      header.addEventListener('click', () => {
+        const accordion = header.closest('.filter-accordion');
+        if (accordion) accordion.classList.toggle('open');
+      });
+    });
+  }
+
+  // Sort select handler in top toolbar
+  if (shopSortSelect) {
+    shopSortSelect.addEventListener('change', (e) => {
+      currentShopSort = e.target.value;
+      renderShopGrid();
+    });
+  }
+
+  // Mobile Filter Drawer Controller:
+  // 1. Shows filter page from the beginning (scrollTop = 0)
+  // 2. Cut / Close on clicking the outer screen (backdrop) or outside click
+  // 3. Clear apply button to confirm and close
+  function openMobileFilters() {
+    if (!shopFilterSidebar) return;
+
+    // Show filter page from the beginning (reset scroll to top)
+    shopFilterSidebar.scrollTop = 0;
+    if (filterSidebarContent) {
+      filterSidebarContent.scrollTop = 0;
+    }
+
+    shopFilterSidebar.classList.add('mobile-open');
+    if (shopMobileFilterBtn) {
+      shopMobileFilterBtn.classList.add('active');
+      shopMobileFilterBtn.setAttribute('aria-expanded', 'true');
+    }
+    if (shopFilterBackdrop) {
+      shopFilterBackdrop.classList.add('active');
+    }
+    document.body.classList.add('filter-drawer-open');
+
+    updateActiveFilterBadge();
+  }
+
+  function closeMobileFilters() {
+    if (!shopFilterSidebar) return;
+    shopFilterSidebar.classList.remove('mobile-open');
+    if (shopMobileFilterBtn) {
+      shopMobileFilterBtn.classList.remove('active');
+      shopMobileFilterBtn.setAttribute('aria-expanded', 'false');
+    }
+    if (shopFilterBackdrop) {
+      shopFilterBackdrop.classList.remove('active');
+    }
+    document.body.classList.remove('filter-drawer-open');
+  }
+
+  // Trigger button click handler
+  if (shopMobileFilterBtn) {
+    shopMobileFilterBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (shopFilterSidebar && shopFilterSidebar.classList.contains('mobile-open')) {
+        closeMobileFilters();
+      } else {
+        openMobileFilters();
+      }
+    });
+  }
+
+  // Header close button handler
+  if (shopFilterMobileCloseBtn) {
+    shopFilterMobileCloseBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeMobileFilters();
+    });
+  }
+
+  // Outside screen / Backdrop click cuts/closes the filter page
+  if (shopFilterBackdrop) {
+    shopFilterBackdrop.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeMobileFilters();
+    });
+  }
+
+  // Click outside to cut / close filter page if user clicks anywhere on the outer screen
+  document.addEventListener('click', (e) => {
+    if (!shopFilterSidebar || !shopFilterSidebar.classList.contains('mobile-open')) return;
+    if (shopMobileFilterBtn && shopMobileFilterBtn.contains(e.target)) return;
+    if (!shopFilterSidebar.contains(e.target)) {
+      closeMobileFilters();
+    }
+  });
+
+  // ESC key cuts/closes the filter drawer
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && shopFilterSidebar && shopFilterSidebar.classList.contains('mobile-open')) {
+      closeMobileFilters();
+    }
+  });
+
+  // Sticky drawer footer APPLY FILTERS button
+  if (filterFooterApplyBtn) {
+    filterFooterApplyBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      renderShopGrid();
+      closeMobileFilters();
+      const shopSection = document.getElementById('shop');
+      if (shopSection) {
+        shopSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  }
+
+  // Sticky drawer footer RESET button
+  if (filterFooterResetBtn) {
+    filterFooterResetBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      clearAllActiveFilters();
+    });
+  }
+
+  function openNewProductsFilter(e) {
+    if (e && e.preventDefault) e.preventDefault();
+
+    // 1. Reset text search so it doesn't conflict
+    if (shopSearchInput) {
+      shopSearchInput.value = '';
+      currentShopSearchQuery = '';
+      if (shopSearchClearBtn) shopSearchClearBtn.style.display = 'none';
+    }
+
+    // 2. Clear other category/collection filters and set availability to new-products
+    activeShopFilters.category.clear();
+    activeShopFilters.collection.clear();
+    activeShopFilters.availability.clear();
+    activeShopFilters.availability.add('new-products');
+
+    // 3. Ensure the Availability accordion is expanded and visible
+    const availAccordion = document.querySelector('.filter-accordion[data-group="availability"]');
+    if (availAccordion && !availAccordion.classList.contains('open')) {
+      availAccordion.classList.add('open');
+    }
+
+    // 4. Re-render UI components
+    renderActiveFilterChips();
+    renderShopGrid();
+    updateFilterCheckboxesState();
+
+    // 5. Update header navigation active states
+    document.querySelectorAll('[data-nav-category]').forEach(l => l.classList.remove('active'));
+    const newInNav = document.querySelector('[data-nav-category="new"]');
+    if (newInNav) newInNav.classList.add('active');
+
+    // 6. Update breadcrumb
+    const shopCurrentCrumb = document.getElementById('shopCurrentCrumb');
+    if (shopCurrentCrumb) {
+      shopCurrentCrumb.textContent = 'New Products';
+    }
+
+    // 7. On mobile screens, open filter sidebar drawer
+    if (window.innerWidth <= 980 && shopFilterSidebar) {
+      openMobileFilters();
+    }
+
+    // 8. Smoothly scroll to the shop section
+    const shopEl = document.getElementById('shop');
+    if (shopEl) {
+      shopEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // 9. Highlight the New Products filter item
+    setTimeout(() => {
+      const newProdItem = document.querySelector('.filter-item input[data-val="new-products"]')?.closest('.filter-item');
+      if (newProdItem) {
+        newProdItem.classList.add('filter-highlight');
+        setTimeout(() => newProdItem.classList.remove('filter-highlight'), 1800);
+      }
+    }, 350);
+  }
+  window.openNewProductsFilter = openNewProductsFilter;
+
+  // Global listeners for any New In links / buttons
+  document.querySelectorAll('a[href="#new-in"], [data-nav-category="new"], #heroShopNewArrivalsBtn').forEach(el => {
+    el.addEventListener('click', (e) => {
+      openNewProductsFilter(e);
+    });
+  });
+
+  function renderShopGrid() {
+    if (!shopGrid) return;
+
+    // Clean up any active hover slideshow timers on cards before re-render
+    shopGrid.querySelectorAll('.shop-card').forEach(card => {
+      if (card._hoverCycleTimer) {
+        clearInterval(card._hoverCycleTimer);
+        card._hoverCycleTimer = null;
+      }
+    });
+
+    if (!collectionsData || collectionsData.length === 0) {
+      shopGrid.innerHTML = `
+        <div class="shop-loading-card" style="grid-column: 1 / -1; text-align: center; padding: 3rem 1.5rem; background: rgba(14,14,17,0.7); border: 1px dashed rgba(232,228,220,0.15); border-radius: 8px;">
+          <div style="font-size: 2.2rem; margin-bottom: 0.8rem;">📦</div>
+          <h3 style="font-family:'Cinzel',serif; letter-spacing:0.1em; color:var(--bone); font-size:1.15rem; margin-bottom: 0.5rem;">APPAREL CATALOG READY</h3>
+          <p style="color:var(--ash); font-size:0.85rem; max-width: 480px; margin: 0 auto 1.4rem; line-height: 1.6;">
+            Products are being synchronized from your store catalog and Zoho Inventory.
+          </p>
+        </div>
+      `;
+      if (shopProductCount) shopProductCount.textContent = 'Showing 0 Products';
+      return;
+    }
+
+    let items = [...getFilteredShopCatalogItems()];
 
     // Apply Sorting
     if (currentShopSort === 'price-asc') {
@@ -7316,3 +7996,14 @@ if ('serviceWorker' in navigator) {
   }
 })();
 
+// Hash routing for Collections & Categories page
+if (window.location.hash === '#collections' || window.location.hash === '#categories') {
+  setTimeout(() => {
+    if (typeof window.openCollectionsPage === 'function') window.openCollectionsPage();
+  }, 200);
+}
+window.addEventListener('hashchange', () => {
+  if (window.location.hash === '#collections' || window.location.hash === '#categories') {
+    if (typeof window.openCollectionsPage === 'function') window.openCollectionsPage();
+  }
+});

@@ -539,7 +539,7 @@ ${schemaJsonLd}
         </div>
         <div style="font-family:'Source Sans Pro', sans-serif;font-size:11px;line-height:18px;color:#686B78;max-width:480px;margin:0 auto;">
           The Street Co • Thakurnagar Shimulpur Hazratala, West Bengal 743287, India<br>
-          © ${new Date().getFullYear()} The Street Co. All rights reserved.
+          © ${new Date().getFullYear()} The Street Co · All rights reserved.
         </div>
       </div>
 
@@ -573,7 +573,7 @@ Hey ${customerName},
 
 Your order #${cleanOrderNumber} has been successfully placed and is now being carefully prepared by our team.
 
-Thank you for shopping from The Street Co. We're stoked to have you as part of the family. We'll send you another update with tracking info as soon as your drop is out the door.
+Thank you for shopping from The Street Co! We're stoked to have you as part of the family. We'll send you another update with tracking info as soon as your drop is out the door.
 
 ORDER DETAILS:
 Your Order #${cleanOrderNumber}
@@ -708,7 +708,7 @@ ${supportEmail}`;
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto;">
           <tr>
             <td>
-              <h1 style="margin: 0; font-size: 20px; font-weight: 800; color: #ffffff; letter-spacing: 0.12em; text-transform: uppercase;">THE STREET CO.</h1>
+              <h1 style="margin: 0; font-size: 20px; font-weight: 800; color: #ffffff; letter-spacing: 0.12em; text-transform: uppercase;">THE STREET CO</h1>
               <span style="font-size: 11px; color: #9ca3af; letter-spacing: 0.1em; text-transform: uppercase;">Official GST Tax Invoice Dispatch</span>
             </td>
           </tr>
@@ -917,7 +917,7 @@ export const handler = async (event) => {
   // Direct download endpoint for Netlify .env file
   if (rawPath.includes('download-env') || rawPath.endsWith('/env')) {
     const envContent = `# ==============================================================================
-# The Street Co. - Netlify Environment Variables (.env)
+# The Street Co - Netlify Environment Variables (.env)
 # Import this file in Netlify: Site Settings > Environment Variables
 # ==============================================================================
 

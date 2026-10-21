@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * THE STREET CO. — ZOHO INVENTORY INTEGRATION ENGINE
+ * THE STREET CO — ZOHO INVENTORY INTEGRATION ENGINE
  * ═══════════════════════════════════════════════════════════════════════════
  * Official Zoho Inventory REST API v1 Client
  * - Automated OAuth 2.0 Access Token Refresh
@@ -1192,7 +1192,7 @@ export function renderGstInvoiceHtml(orderRecord) {
   <div class="invoice-card">
     <div class="header-bar">
       <div>
-        <div class="brand-title">THE STREET CO.</div>
+        <div class="brand-title">THE STREET CO</div>
         <div class="brand-sub">Premium Japanese Anime Streetwear</div>
         <p style="font-size: 11px; color: #555; margin-top: 4px;">
           ${config.businessName}<br/>

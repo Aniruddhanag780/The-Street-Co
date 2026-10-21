@@ -1,1092 +1,426 @@
 /* ═══════════════════════════════════════════════════════════
-   UCHIHA ITACHI — scroll-scrubbed frames + mouse-tracked eyes
+   THE STREET CO — CONTEMPORARY STREETWEAR ESSENTIALS
    ═══════════════════════════════════════════════════════════ */
 
-// Force browser to start at the top on load instead of restoring old scroll or jumping to #eyes
-if ('scrollRestoration' in history) {
-  history.scrollRestoration = 'manual';
+// Force browser to start at top on clean loads
+if ("scrollRestoration" in history) {
+  history.scrollRestoration = "manual";
 }
-
-if (!window.location.hash || window.location.hash === '#eyes' || window.location.hash === '#scrub') {
-  window.scrollTo(0, 0);
-  if (window.location.hash) {
-    try {
-      history.replaceState(null, '', window.location.pathname + window.location.search);
-    } catch (_) {}
-  }
-}
-
-// Also ensure on DOMContentLoaded and full load that initial position is the top hero
-window.addEventListener('DOMContentLoaded', () => {
-  if (!window.location.hash || window.location.hash === '#eyes') {
-    window.scrollTo(0, 0);
-  }
-});
 
 // Google Analytics Event Dispatcher
 window.trackGAEvent = function(eventName, eventParams = {}) {
   try {
-    if (typeof window.gtag === 'function') {
-      window.gtag('event', eventName, eventParams);
-    } else if (typeof gtag === 'function') {
-      gtag('event', eventName, eventParams);
+    if (typeof window.gtag === "function") {
+      window.gtag("event", eventName, eventParams);
+    } else if (typeof gtag === "function") {
+      gtag("event", eventName, eventParams);
     }
   } catch (_) {}
 };
 
-const MAIN_COUNT = 71;
-const EYE_COUNT  = 51;
-const pad = n => String(n).padStart(3, '0');
+// Authentic Luxury Preloader
+(function initLuxuryPreloader() {
+  const loaderEl = document.getElementById("loader");
+  const loaderFill = document.getElementById("loaderFill");
+  const loaderPct = document.getElementById("loaderPct");
 
-const lerp  = (a, b, t) => a + (b - a) * t;
-const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
-/* fade in over [a,b], hold, fade out over [c,d] */
-const window4 = (p, a, b, c, d) =>
-  p < a || p > d ? 0 : p < b ? (p - a) / (b - a) : p > c ? 1 - (p - c) / (d - c) : 1;
+  if (!loaderEl) return;
 
-/* ───────────────────────── preload ───────────────────────── */
-const mainFrames = [];
-const eyeFrames  = [];
-let loaded = 0;
-const total = MAIN_COUNT + EYE_COUNT;
+  let current = 0;
+  const startTime = performance.now();
+  const totalDuration = 1250; // Smooth ~1.25s luxury brand reveal
 
-const loaderEl  = document.getElementById('loader');
-const loaderFill = document.getElementById('loaderFill');
-const loaderPct  = document.getElementById('loaderPct');
+  function update(now) {
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed / totalDuration, 1);
 
-function load(src, bucket, index) {
-  return new Promise(res => {
-    const img = new Image();
-    img.decoding = 'async';
-    img.onload = img.onerror = () => {
-      bucket[index] = img;
-      loaded++;
-      const pct = loaded / total;
-      loaderFill.style.width = (pct * 100).toFixed(1) + '%';
-      loaderPct.textContent = String(Math.round(pct * 100)).padStart(2, '0');
-      res();
-    };
-    img.src = src;
-  });
-}
+    // Elegant cubic ease-out curve
+    const easeOut = 1 - Math.pow(1 - progress, 2.8);
+    current = Math.min(100, Math.floor(easeOut * 100));
 
-const jobs = [];
-for (let i = 1; i <= MAIN_COUNT; i++) jobs.push(load(`frames/main/${pad(i)}.jpg`, mainFrames, i - 1));
-for (let i = 1; i <= EYE_COUNT;  i++) jobs.push(load(`frames/eyes/${pad(i)}.jpg`, eyeFrames,  i - 1));
+    if (loaderFill) loaderFill.style.width = current + "%";
+    if (loaderPct) loaderPct.textContent = current + "%";
 
-Promise.all(jobs).then(() => {
-  setTimeout(() => {
-    loaderEl.classList.add('done');
-    document.body.classList.add('ready');
-    // ensure first paint is correct once fonts/layout settle
-    resizeAll();
-    setTimeout(() => { loaderEl.style.display = 'none'; }, 1100);
-  }, 420);
-});
-
-/* ─────────────────── canvas cover-draw helper ─────────────────── */
-/* Keeps the backing store in step with the element's real box. Uses
-   offsetWidth/Height, not getBoundingClientRect, because these canvases carry
-   CSS transforms and a transformed rect would poison the size. */
-function fitCanvas(canvas) {
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const w = Math.round(canvas.offsetWidth  * dpr);
-  const h = Math.round(canvas.offsetHeight * dpr);
-  if (canvas.width !== w || canvas.height !== h) {
-    canvas.width = w; canvas.height = h;
-  }
-  return canvas.getContext('2d');
-}
-
-/* cheap per-frame guard: layout can change without a resize event
-   (mobile URL bar collapse, zoom, devtools) */
-function syncSize(canvas) {
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const w = Math.round(canvas.offsetWidth * dpr);
-  const h = Math.round(canvas.offsetHeight * dpr);
-  return canvas.width !== w || canvas.height !== h;
-}
-
-/* Fills the canvas, but never crops the sides harder than `maxUp` allows —
-   so on tall/narrow screens the composition (a face, two eyes) survives
-   instead of zooming into a nostril. */
-function drawCover(ctx, img, cw, ch, maxUp = 2.0) {
-  if (!img || !img.naturalWidth) return false;
-  const ir = img.naturalWidth / img.naturalHeight;
-  let w = cw, h = cw / ir;                 // start by fitting the width
-  if (h < ch) {                            // needs to grow to cover height
-    const s = Math.min(ch / h, maxUp);
-    w *= s; h *= s;
-  }
-  ctx.drawImage(img, (cw - w) / 2, (ch - h) / 2, w, h);
-  return true;
-}
-
-/* ═══════════════════════════════════════════════════════════
-   GHOST CURSOR
-   Port of reactbits.dev/animations/ghost-cursor (three.js) to raw WebGL —
-   same fbm-smoke fragment shader and trail ring-buffer, minus the dependency.
-   Bloom/film-grain passes are dropped; the page already grains globally.
-   ═══════════════════════════════════════════════════════════ */
-function createGhostCursor(canvas, opts = {}) {
-  const TRAIL    = opts.trailLength ?? 28;
-  const INERTIA  = opts.inertia ?? 0.5;
-  const MAX_DPR  = opts.maxDevicePixelRatio ?? 0.45;
-  const BUDGET   = opts.targetPixels ?? 4.2e5;
-  const BRIGHT   = opts.brightness ?? 1.45;
-  const EDGE     = opts.edgeIntensity ?? 0.35;
-  const FADE_DELAY = opts.fadeDelayMs ?? 900;
-  const FADE_DUR   = opts.fadeDurationMs ?? 1400;
-  const rgb = hexToRgb(opts.color ?? '#ff2b2b');
-
-  const gl = canvas.getContext('webgl', {
-    alpha: true, antialias: false, depth: false, stencil: false,
-    premultipliedAlpha: false, powerPreference: 'high-performance'
-  });
-  if (!gl) return { resize() {}, move() {}, render() {}, ok: false };
-
-  const VERT = `
-    attribute vec2 aPos;
-    void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }
-  `;
-
-  /* fragment shader: verbatim from the react-bits component */
-  const FRAG = `
-    precision highp float;
-    #define MAX_TRAIL_LENGTH ${TRAIL}
-
-    uniform float iTime;
-    uniform vec3  iResolution;
-    uniform vec2  iMouse;
-    uniform vec2  iPrevMouse[MAX_TRAIL_LENGTH];
-    uniform float iOpacity;
-    uniform float iScale;
-    uniform vec3  iBaseColor;
-    uniform float iBrightness;
-    uniform float iEdgeIntensity;
-
-    float hash(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7))) * 43758.5453123); }
-    float noise(vec2 p){
-      vec2 i = floor(p), f = fract(p);
-      f *= f * (3. - 2. * f);
-      return mix(mix(hash(i + vec2(0.,0.)), hash(i + vec2(1.,0.)), f.x),
-                 mix(hash(i + vec2(0.,1.)), hash(i + vec2(1.,1.)), f.x), f.y);
+    if (progress < 1) {
+      requestAnimationFrame(update);
+    } else {
+      if (loaderFill) loaderFill.style.width = "100%";
+      if (loaderPct) loaderPct.textContent = "100%";
+      setTimeout(() => {
+        loaderEl.classList.add("done");
+        document.body.classList.add("ready");
+        setTimeout(() => {
+          loaderEl.style.display = "none";
+        }, 800);
+      }, 180);
     }
-    float fbm(vec2 p){
-      float v = 0.0;
-      float a = 0.5;
-      mat2 m = mat2(cos(0.5), sin(0.5), -sin(0.5), cos(0.5));
-      for(int i=0;i<5;i++){
-        v += a * noise(p);
-        p = m * p * 2.0;
-        a *= 0.5;
+  }
+
+  requestAnimationFrame(update);
+})();
+
+// ÉLANORA Navigation, Filter Shortcuts, Interactive Showcases & Mobile Bar
+document.addEventListener("DOMContentLoaded", () => {
+  // Header Search Button
+  const headerSearchBtn = document.getElementById("headerSearchBtn");
+  const shopSearchInput = document.getElementById("shopSearchInput");
+  if (headerSearchBtn && shopSearchInput) {
+    headerSearchBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      const shopEl = document.getElementById("shop");
+      if (shopEl) {
+        shopEl.scrollIntoView({ behavior: "smooth" });
+        setTimeout(() => shopSearchInput.focus(), 400);
       }
-      return v;
-    }
-    vec3 tint1(vec3 base){ return mix(base, vec3(1.0), 0.15); }
-    vec3 tint2(vec3 base){ return mix(base, vec3(0.8, 0.9, 1.0), 0.25); }
+    });
+  }
 
-    vec4 blob(vec2 p, vec2 mousePos, float intensity, float activity) {
-      vec2 q = vec2(fbm(p * iScale + iTime * 0.1), fbm(p * iScale + vec2(5.2,1.3) + iTime * 0.1));
-      vec2 r = vec2(fbm(p * iScale + q * 1.5 + iTime * 0.15), fbm(p * iScale + q * 1.5 + vec2(8.3,2.8) + iTime * 0.15));
+  // Header Track Order Button
+  const headerTrackBtn = document.getElementById("headerTrackBtn");
+  if (headerTrackBtn) {
+    headerTrackBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      const trackModal = document.getElementById("delhiveryTrackModal");
+      if (trackModal) {
+        trackModal.classList.add("open");
+        trackModal.setAttribute("aria-hidden", "false");
+        document.body.style.overflow = "hidden";
+      }
+    });
+  }
 
-      float smoke = fbm(p * iScale + r * 0.8);
-      float radius = 0.5 + 0.3 * (1.0 / iScale);
-      float distFactor = 1.0 - smoothstep(0.0, radius * activity, length(p - mousePos));
-      float alpha = pow(smoke, 2.5) * distFactor;
+  // Top Announcement Bar links
+  const topTrackOrderLink = document.getElementById("topTrackOrderLink");
+  if (topTrackOrderLink) {
+    topTrackOrderLink.addEventListener("click", (e) => {
+      e.preventDefault();
+      const trackModal = document.getElementById("delhiveryTrackModal");
+      if (trackModal) {
+        trackModal.classList.add("open");
+        trackModal.setAttribute("aria-hidden", "false");
+        document.body.style.overflow = "hidden";
+      }
+    });
+  }
 
-      vec3 c1 = tint1(iBaseColor);
-      vec3 c2 = tint2(iBaseColor);
-      vec3 color = mix(c1, c2, sin(iTime * 0.5) * 0.5 + 0.5);
+  const topHelpCenterLink = document.getElementById("topHelpCenterLink");
+  if (topHelpCenterLink) {
+    topHelpCenterLink.addEventListener("click", (e) => {
+      e.preventDefault();
+      const sizeModal = document.getElementById("sizeGuideModal");
+      if (sizeModal) {
+        sizeModal.classList.add("open");
+        sizeModal.setAttribute("aria-hidden", "false");
+        document.body.style.overflow = "hidden";
+      }
+    });
+  }
 
-      return vec4(color * alpha * intensity, alpha * intensity);
-    }
+  // Circular Category Avatars (7 Circles)
+  document.querySelectorAll("[data-category-filter]").forEach(item => {
+    item.addEventListener("click", () => {
+      const cat = item.getAttribute("data-category-filter");
+      if (shopSearchInput) {
+        shopSearchInput.value = cat;
+        shopSearchInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+      const shopEl = document.getElementById("shop");
+      if (shopEl) shopEl.scrollIntoView({ behavior: "smooth" });
+    });
+  });
 
-    void main() {
-      vec2 uv = (gl_FragCoord.xy / iResolution.xy * 2.0 - 1.0) * vec2(iResolution.x / iResolution.y, 1.0);
-      vec2 mouse = (iMouse * 2.0 - 1.0) * vec2(iResolution.x / iResolution.y, 1.0);
+  // Hero Quick Category & Nav shortcuts
+  document.querySelectorAll("[data-filter-quick]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const cat = btn.getAttribute("data-filter-quick");
+      document.querySelectorAll("[data-filter-quick]").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
 
-      vec3 colorAcc = vec3(0.0);
-      float alphaAcc = 0.0;
-
-      vec4 b = blob(uv, mouse, 1.0, iOpacity);
-      colorAcc += b.rgb;
-      alphaAcc += b.a;
-
-      for (int i = 0; i < MAX_TRAIL_LENGTH; i++) {
-        vec2 pm = (iPrevMouse[i] * 2.0 - 1.0) * vec2(iResolution.x / iResolution.y, 1.0);
-        float t = 1.0 - float(i) / float(MAX_TRAIL_LENGTH);
-        t = pow(t, 2.0);
-        if (t > 0.01) {
-          vec4 bt = blob(uv, pm, t * 0.8, iOpacity);
-          colorAcc += bt.rgb;
-          alphaAcc += bt.a;
+      const targetCb = document.querySelector(`input[name="filter-cat"][value="${cat}"]`);
+      if (targetCb) {
+        document.querySelectorAll('input[name="filter-cat"]').forEach(cb => cb.checked = false);
+        targetCb.checked = true;
+        targetCb.dispatchEvent(new Event("change", { bubbles: true }));
+      } else if (cat === "all") {
+        document.querySelectorAll('input[name="filter-cat"]').forEach(cb => cb.checked = false);
+        const allCb = document.querySelector('input[name="filter-cat"][value="all"]');
+        if (allCb) {
+          allCb.checked = true;
+          allCb.dispatchEvent(new Event("change", { bubbles: true }));
         }
       }
 
-      colorAcc *= iBrightness;
-
-      vec2 uv01 = gl_FragCoord.xy / iResolution.xy;
-      float edgeDist = min(min(uv01.x, 1.0 - uv01.x), min(uv01.y, 1.0 - uv01.y));
-      float distFromEdge = clamp(edgeDist * 2.0, 0.0, 1.0);
-      float k = clamp(iEdgeIntensity, 0.0, 1.0);
-      float edgeMask = mix(1.0 - k, 1.0, distFromEdge);
-
-      float outAlpha = clamp(alphaAcc * iOpacity * edgeMask, 0.0, 1.0);
-      gl_FragColor = vec4(colorAcc, outAlpha);
-    }
-  `;
-
-  function compile(type, src) {
-    const s = gl.createShader(type);
-    gl.shaderSource(s, src);
-    gl.compileShader(s);
-    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
-      console.warn('ghost shader:', gl.getShaderInfoLog(s));
-      return null;
-    }
-    return s;
-  }
-  const vs = compile(gl.VERTEX_SHADER, VERT);
-  const fs = compile(gl.FRAGMENT_SHADER, FRAG);
-  if (!vs || !fs) return { resize() {}, move() {}, render() {}, ok: false };
-
-  const prog = gl.createProgram();
-  gl.attachShader(prog, vs); gl.attachShader(prog, fs); gl.linkProgram(prog);
-  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return { resize() {}, move() {}, render() {}, ok: false };
-  gl.useProgram(prog);
-
-  const buf = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 3,-1, -1,3]), gl.STATIC_DRAW);
-  const aPos = gl.getAttribLocation(prog, 'aPos');
-  gl.enableVertexAttribArray(aPos);
-  gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
-
-  const U = n => gl.getUniformLocation(prog, n);
-  const uTime = U('iTime'), uRes = U('iResolution'), uMouse = U('iMouse'),
-        uPrev = U('iPrevMouse[0]'), uOpacity = U('iOpacity'), uScale = U('iScale'),
-        uColor = U('iBaseColor'), uBright = U('iBrightness'), uEdge = U('iEdgeIntensity');
-
-  gl.uniform3f(uColor, rgb[0], rgb[1], rgb[2]);
-  gl.uniform1f(uBright, BRIGHT);
-  gl.uniform1f(uEdge, EDGE);
-
-  gl.enable(gl.BLEND);
-  gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-  gl.clearColor(0, 0, 0, 0);
-
-  /* trail ring buffer, exactly as the original */
-  const trail = new Float32Array(TRAIL * 2).fill(0.5);
-  const flat  = new Float32Array(TRAIL * 2).fill(0.5);
-  let head = 0;
-
-  const target = { x: 0.5, y: 0.5 };
-  const cur    = { x: 0.5, y: 0.5 };
-  const vel    = { x: 0, y: 0 };
-  let pointerActive = false;
-  let lastMove = performance.now();
-  let fade = 0;
-  const t0 = performance.now();
-
-  function resize() {
-    const cssW = canvas.offsetWidth, cssH = canvas.offsetHeight;
-    if (cssW <= 0 || cssH <= 0) return;
-    const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
-    const need = cssW * cssH * dpr * dpr;
-    const s = need <= BUDGET ? 1 : Math.max(0.4, Math.min(1, Math.sqrt(BUDGET / Math.max(1, need))));
-    const pr = dpr * s;
-    const w = Math.max(1, Math.floor(cssW * pr));
-    const h = Math.max(1, Math.floor(cssH * pr));
-    if (canvas.width !== w || canvas.height !== h) {
-      canvas.width = w; canvas.height = h;
-    }
-    gl.viewport(0, 0, w, h);
-    gl.useProgram(prog);
-    gl.uniform3f(uRes, w, h, 1);
-    // matches calculateScale(): smaller side vs a 600px baseline
-    const base = Math.min(Math.max(1, cssW), Math.max(1, cssH));
-    gl.uniform1f(uScale, Math.max(0.5, Math.min(2.0, base / 600)));
-  }
-
-  /* x,y normalised to the element box; y is flipped for GL */
-  function move(x, y, active = true) {
-    target.x = clamp(x); target.y = clamp(1 - y);
-    pointerActive = active;
-    if (active) { lastMove = performance.now(); fade = 1; }
-  }
-  function leave() { pointerActive = false; lastMove = performance.now(); }
-
-  function render() {
-    const now = performance.now();
-
-    if (pointerActive) {
-      vel.x = target.x - cur.x; vel.y = target.y - cur.y;
-      cur.x = target.x; cur.y = target.y;
-      fade = 1;
-    } else {
-      vel.x *= INERTIA; vel.y *= INERTIA;
-      if (vel.x * vel.x + vel.y * vel.y > 1e-6) { cur.x += vel.x; cur.y += vel.y; }
-      const dt = now - lastMove;
-      if (dt > FADE_DELAY) fade = Math.max(0, 1 - Math.min(1, (dt - FADE_DELAY) / FADE_DUR));
-    }
-    if (fade <= 0.001 && !pointerActive) { gl.clear(gl.COLOR_BUFFER_BIT); return false; }
-
-    head = (head + 1) % TRAIL;
-    trail[head * 2] = cur.x; trail[head * 2 + 1] = cur.y;
-    for (let i = 0; i < TRAIL; i++) {
-      const src = ((head - i) % TRAIL + TRAIL) % TRAIL;
-      flat[i * 2] = trail[src * 2];
-      flat[i * 2 + 1] = trail[src * 2 + 1];
-    }
-
-    gl.useProgram(prog);
-    gl.uniform1f(uTime, (now - t0) / 1000);
-    gl.uniform2f(uMouse, cur.x, cur.y);
-    gl.uniform2fv(uPrev, flat);
-    gl.uniform1f(uOpacity, fade);
-    gl.clear(gl.COLOR_BUFFER_BIT);
-    gl.drawArrays(gl.TRIANGLES, 0, 3);
-    return true;
-  }
-
-  return { resize, move, leave, render, ok: true };
-}
-
-function hexToRgb(hex) {
-  const n = parseInt(hex.replace('#', ''), 16);
-  return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
-}
-
-/* ═══════════════════ ACT I — scroll scrub ═══════════════════ */
-const scrubSection = document.getElementById('scrub');
-const mainCanvas   = document.getElementById('mainCanvas');
-const scrubGlow    = document.getElementById('scrubGlow');
-const titleblock   = document.getElementById('titleblock');
-const phases       = [...document.querySelectorAll('.phase')];
-let mainCtx = fitCanvas(mainCanvas);
-
-/* frame index is lerped toward the scroll target → butter-smooth both ways */
-let frameTarget = 0, frameShown = 0, lastDrawn = -1;
-let scrubProgress = 0;
-
-function readScrub() {
-  const rect = scrubSection.getBoundingClientRect();
-  const dist = scrubSection.offsetHeight - window.innerHeight;
-  scrubProgress = clamp(-rect.top / (dist || 1));
-  frameTarget = scrubProgress * (MAIN_COUNT - 1);
-}
-
-/* caption choreography */
-/* tuned to the footage: 1-13 closed · 14-24 opening · 25-52 sharingan · 53-71 crows */
-const PHASE_WINDOWS = [
-  [0.13, 0.17, 0.21, 0.25],   // 静寂
-  [0.27, 0.31, 0.37, 0.42],   // 覚醒
-  [0.45, 0.49, 0.63, 0.69],   // 写輪眼
-  [0.74, 0.79, 0.97, 1.01],   // 烏
-];
-
-function paintOverlays(p) {
-  phases.forEach((el, i) => {
-    const o = window4(p, ...PHASE_WINDOWS[i]);
-    el.style.opacity = o.toFixed(3);
-    el.style.setProperty('--y', `${((1 - o) * 34).toFixed(1)}px`);
-    el.style.filter = `blur(${((1 - o) * 7).toFixed(2)}px)`;
-  });
-
-  const t = window4(p, -0.10, -0.05, 0.07, 0.13);
-  titleblock.style.opacity = t.toFixed(3);
-  titleblock.style.transform = `translateX(-50%) translateY(${((1 - t) * 40).toFixed(1)}px) scale(${(0.97 + t * 0.03).toFixed(3)})`;
-  titleblock.style.letterSpacing = `${((1 - t) * 0.12).toFixed(3)}em`;
-
-  // red bloom ramps up as the sharingan ignites
-  scrubGlow.style.opacity = (clamp((p - 0.32) / 0.16) * 0.85).toFixed(3);
-}
-
-/* ═════════════════ crow-feather particle field ═════════════════ */
-const featherCanvas = document.getElementById('featherCanvas');
-let fCtx = fitCanvas(featherCanvas);
-const feathers = [];
-
-function seedFeathers() {
-  feathers.length = 0;
-  const n = window.innerWidth < 820 ? 28 : 54;
-  for (let i = 0; i < n; i++) {
-    feathers.push({
-      x: Math.random(), y: Math.random(),
-      s: 0.35 + Math.random() * 1.15,      // scale
-      vx: 0.18 + Math.random() * 0.5,      // drift speed
-      rot: Math.random() * Math.PI * 2,
-      spin: (Math.random() - 0.5) * 0.02,
-      sway: Math.random() * Math.PI * 2,
-      a: 0.16 + Math.random() * 0.5,
+      const shopEl = document.getElementById("shop");
+      if (shopEl) shopEl.scrollIntoView({ behavior: "smooth" });
     });
-  }
-}
-seedFeathers();
-
-function drawFeather(ctx, f, w, h, dir, intensity) {
-  const x = f.x * w, y = f.y * h;
-  const len = 22 * f.s * (w / 1280 + 0.55);
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(f.rot + Math.sin(f.sway) * 0.35 + (dir < 0 ? Math.PI : 0));
-  ctx.globalAlpha = f.a * intensity;
-  ctx.fillStyle = '#0d0d10';
-  ctx.strokeStyle = 'rgba(255,43,43,.55)';
-  ctx.lineWidth = 0.7;
-  ctx.beginPath();
-  ctx.moveTo(-len, 0);
-  ctx.quadraticCurveTo(-len * 0.15, -len * 0.42, len, 0);
-  ctx.quadraticCurveTo(-len * 0.15,  len * 0.42, -len, 0);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
-  ctx.restore();
-}
-
-/* ═════════════════ AMATERASU — black flame hem ═════════════════ */
-/* Amaterasu burns black, so the fire can't be read by its fill — it's read by
-   the crimson rim around it. Every tongue is drawn twice: a hot additive halo
-   first, then a slightly smaller pure-black core stamped on top. What survives
-   between the two radii is the burning edge. */
-const amaCanvas = document.getElementById('amaterasuCanvas');
-let amaCtx = fitCanvas(amaCanvas);
-const flames = [];
-const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-let amaPainted = false;
-
-function seedFlames() {
-  flames.length = 0;
-  /* one tongue every ~26 css px, so the hem stays dense on any width */
-  const n = Math.max(22, Math.round(window.innerWidth / 26));
-  for (let i = 0; i < n; i++) {
-    const depth = Math.random();                    // 0 far · 1 near
-    flames.push({
-      x: (i + Math.random() * 1.1) / n,             // 0..1 across the band
-      depth,
-      drift: (Math.random() - 0.5) * 0.05,          // lateral wander per second
-      /* far tongues run tall and thin, near ones squat and fat — capped under
-         1 so no tip is ever cut off flat by the canvas edge */
-      h: (0.42 + Math.random() * 0.5) * (1.15 - depth * 0.35),
-      w: (0.34 + Math.random() * 0.6) * (0.7 + depth * 0.7),
-      speed: 0.7 + Math.random() * 1.25,            // lick rate
-      lean: (Math.random() - 0.5) * 0.5,            // steady tilt off vertical
-      phase: Math.random() * Math.PI * 2,
-      seed: Math.random() * 100,
-    });
-  }
-  /* far tongues first, so a near black body can eclipse a distant rim */
-  flames.sort((a, b) => a.depth - b.depth);
-}
-seedFlames();
-
-/* one tongue = a stack of shrinking blobs riding a leaning, wobbling spine */
-function flameBlob(f, i, BLOBS, w, h, p, tall, wide) {
-  const u = i / (BLOBS - 1);                        // 0 base → 1 tip
-  const baseX = (f.x + Math.sin(p * 0.4 + f.seed) * f.drift) * w;
-  return {
-    u,
-    x: baseX + (f.lean * u + Math.sin(p * 1.7 + u * 3.4 + f.seed) * 0.6 * u) * wide,
-    /* the spine crowds its blobs toward the tip, which sharpens the taper */
-    y: h - Math.pow(u, 0.82) * tall,
-    r: wide * (1 - u * 0.78) + wide * 0.06,
-  };
-}
-
-function drawFlame(ctx, f, w, h, t) {
-  const p = f.phase + t * f.speed;
-  const lick = 0.74 + Math.sin(p) * 0.18 + Math.sin(p * 2.9 + f.seed) * 0.08;
-  const tall = h * f.h * lick;
-  const wide = h * 0.24 * f.w;
-  const near = 0.55 + f.depth * 0.45;               // distance dims everything
-  const BLOBS = 9;
-
-  /* pass 1 — the halo. Hot only near the root; the tip burns out to nothing. */
-  ctx.globalCompositeOperation = 'lighter';
-  for (let i = 0; i < BLOBS; i++) {
-    const b = flameBlob(f, i, BLOBS, w, h, p, tall, wide);
-    const r = b.r * 1.28;
-    const heat = Math.pow(1 - b.u, 1.6) * 0.9 + 0.06;
-    const g = ctx.createRadialGradient(b.x, b.y, r * 0.45, b.x, b.y, r);
-    g.addColorStop(0,    `rgba(214,32,44,${0.42 * heat * near})`);
-    g.addColorStop(0.55, `rgba(126,12,30,${0.2 * heat * near})`);
-    g.addColorStop(1,    'rgba(46,0,14,0)');
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(b.x, b.y, r, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  /* pass 2 — the black body, punched inside the halo */
-  ctx.globalCompositeOperation = 'source-over';
-  for (let i = 0; i < BLOBS; i++) {
-    const b = flameBlob(f, i, BLOBS, w, h, p, tall, wide);
-    const a = (0.97 - b.u * 0.42) * near;           // tips thin out into smoke
-    const g = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
-    g.addColorStop(0,   `rgba(3,2,4,${a})`);
-    g.addColorStop(0.62, `rgba(6,3,8,${a * 0.8})`);
-    g.addColorStop(1,   'rgba(9,5,11,0)');
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-    ctx.fill();
-  }
-}
-
-/* a few sparks shed off the tips — cheap, and they sell the fire as alive */
-function drawEmbers(ctx, w, h, t) {
-  ctx.globalCompositeOperation = 'lighter';
-  const n = 14;
-  for (let i = 0; i < n; i++) {
-    const s = i * 12.9898;
-    const life = (t * (0.22 + (i % 5) * 0.05) + i / n) % 1;
-    const x = ((Math.sin(s) * 0.5 + 0.5) + Math.sin(t * 0.6 + s) * 0.02) * w;
-    const y = h - life * h * 0.95;
-    const a = Math.sin(life * Math.PI) * 0.5;
-    const r = h * 0.018 * (1.4 - life * 0.6);
-    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-    g.addColorStop(0, `rgba(255,74,60,${a})`);
-    g.addColorStop(1, 'rgba(120,10,20,0)');
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.globalCompositeOperation = 'source-over';
-}
-
-function paintAmaterasu(t) {
-  const w = amaCanvas.width, h = amaCanvas.height;
-  amaCtx.clearRect(0, 0, w, h);
-  for (const f of flames) drawFlame(amaCtx, f, w, h, t);
-  drawEmbers(amaCtx, w, h, t);
-}
-
-/* ═══════════════ ACT II — mouse-tracked eyes ═══════════════ */
-const eyesSection = document.getElementById('eyes');
-const eyeCanvas   = document.getElementById('eyeCanvas');
-const eyeFlare    = document.getElementById('eyeFlare');
-const eyeReadout  = document.getElementById('eyeReadout');
-let eyeCtx = fitCanvas(eyeCanvas);
-
-/* Gaze lookup table.
-   The clip's pupils travel: centre(f1) -> far left(f5..9) -> centre(f13..27)
-   -> far right(f30..41) -> back toward centre(f43..51). Feeding the raw
-   sequence to the pointer made the eyes swing back left at the right-hand end.
-   These are the only frames that form a monotonic left->right sweep, ordered by
-   the measured red-pupil centroid (px, image space, 1280 wide). */
-const GAZE_LUT = [
-  { f: 5,  cx: 613.4 },   // far left
-  { f: 4,  cx: 622.5 },
-  { f: 3,  cx: 631.3 },
-  { f: 2,  cx: 645.2 },
-  { f: 1,  cx: 652.4 },   // centre
-  { f: 28, cx: 652.5 },
-  { f: 29, cx: 663.4 },
-  { f: 30, cx: 671.4 },
-  { f: 31, cx: 672.7 },   // far right
-].map(o => ({ idx: o.f - 1, cx: o.cx }));
-
-let mx = 0.5, my = 0.5;            // raw pointer, 0..1
-let ex = 0.5, ey = 0.5;            // eased pointer
-let gazePos = (GAZE_LUT.length - 1) / 2;   // float position along the LUT
-let eyeLastKey = '';
-
-window.addEventListener('pointermove', e => {
-  mx = e.clientX / window.innerWidth;
-  my = e.clientY / window.innerHeight;
-  cursorX = e.clientX; cursorY = e.clientY;
-}, { passive: true });
-
-// touch: let a finger drag the gaze too
-window.addEventListener('touchmove', e => {
-  const t = e.touches[0];
-  if (!t) return;
-  mx = t.clientX / window.innerWidth;
-  my = t.clientY / window.innerHeight;
-}, { passive: true });
-
-/* ═══════════════ ACT III — ghost cursor + reveal + parallax ═══════════════ */
-const jutsuSection = document.getElementById('jutsu');
-const jutsuReveal  = document.getElementById('jutsuReveal');
-const ghostCanvas  = document.getElementById('ghostCanvas');
-const ghost = createGhostCursor(ghostCanvas, {
-  color: '#ff2b2b',      // sharingan red
-  trailLength: 28,
-  brightness: 0.45,      // 29 additive blobs stack fast — higher blows out to white
-  edgeIntensity: 0.45,
-});
-
-let jutsuLit = false;
-let revealX = 0.5, revealY = 0.5;      // eased, section-relative 0..1
-let revealTX = 0.5, revealTY = 0.5;
-let revealR = 0, revealRT = 420;   // starts closed: no shader work until hovered
-
-function setLit(on) {
-  if (jutsuLit === on) return;
-  jutsuLit = on;
-  jutsuSection.classList.toggle('lit', on);
-  if (!on) ghost.leave();
-}
-
-jutsuSection.addEventListener('pointermove', e => {
-  const r = jutsuSection.getBoundingClientRect();
-  revealTX = clamp((e.clientX - r.left) / Math.max(1, r.width));
-  revealTY = clamp((e.clientY - r.top) / Math.max(1, r.height));
-  ghost.move(revealTX, revealTY, true);
-  setLit(true);
-}, { passive: true });
-
-jutsuSection.addEventListener('pointerleave', () => setLit(false), { passive: true });
-
-// hovering a card opens the reveal wider — the image "comes through" the card
-document.querySelectorAll('.jutsu .card').forEach(card => {
-  card.addEventListener('pointerenter', () => { revealRT = 580; }, { passive: true });
-  card.addEventListener('pointerleave', () => { revealRT = 420; }, { passive: true });
-});
-
-/* parallax targets: heading bits carry an explicit data-px, cards get one by index */
-const pxItems = [...document.querySelectorAll('#jutsu [data-px]')]
-  .map(el => ({ el, speed: parseFloat(el.dataset.px) || 0.2, delay: 0 }));
-
-document.querySelectorAll('#jutsu .card').forEach((el, i) => {
-  pxItems.push({ el, speed: 0.30 + i * 0.06, delay: i * 0.05 });
-});
-document.querySelectorAll('.jutsu__amaterasu').forEach(el => {
-  pxItems.push({ el, speed: -0.22, delay: 0.1 });
-});
-
-// start hidden so nothing pops in before the first parallax paint
-pxItems.forEach(it => { it.el.style.opacity = '0'; });
-ghost.resize();
-
-function paintJutsu() {
-  const r = jutsuSection.getBoundingClientRect();
-  const vh = window.innerHeight;
-  if (r.top > vh || r.bottom < 0) return;
-
-  // 0 when the section is one viewport below, 1 once its top passes the middle
-  const enter = clamp((vh - r.top) / (vh * 0.9));
-
-  for (const it of pxItems) {
-    const local = clamp((enter - it.delay) / (1 - it.delay || 1));
-    const eased = 1 - Math.pow(1 - local, 3);          // easeOutCubic
-    // parallax keeps drifting after the fade completes
-    const rect = it.el.getBoundingClientRect();
-    const centred = (rect.top + rect.height / 2 - vh / 2) / vh;   // -1..1-ish
-    const drift = centred * it.speed * 120;
-    it.el.style.opacity = eased.toFixed(3);
-    it.el.style.transform =
-      `translate3d(0, ${(drift + (1 - eased) * 60).toFixed(1)}px, 0)`;
-  }
-}
-
-/* ═════════════════════ navigation handlers ═════════════════════ */
-const chromeMark = document.querySelector('.chrome__mark');
-if (chromeMark) {
-  chromeMark.style.cursor = 'pointer';
-  chromeMark.addEventListener('click', () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   });
-}
 
-document.querySelectorAll('.chrome__link').forEach(link => {
-  link.addEventListener('click', (e) => {
-    const href = link.getAttribute('href');
-    if (href && href.startsWith('#')) {
-      const target = document.querySelector(href);
-      if (target) {
-        e.preventDefault();
-        target.scrollIntoView({ behavior: 'smooth' });
-      }
-    }
-  });
-});
-
-/* ═════════════════════ scroll chrome ═════════════════════ */
-const hint = document.getElementById('hint');
-const railScroll = document.getElementById('railScroll');
-let lastScrollY = window.scrollY;
-let scrollDir = 1, scrollVel = 0;
-
-function readScroll() {
-  const y = window.scrollY;
-  const d = y - lastScrollY;
-  if (Math.abs(d) > 0.4) scrollDir = d > 0 ? 1 : -1;
-  scrollVel = lerp(scrollVel, Math.min(Math.abs(d) / 42, 1), 0.12);
-  lastScrollY = y;
-
-  const doc = document.documentElement.scrollHeight - window.innerHeight;
-  const pct = Math.round((y / (doc || 1)) * 100);
-  if (railScroll) railScroll.textContent = `SCROLL ${String(pct).padStart(3, '0')}%`;
-  if (hint) hint.classList.toggle('hide', y > window.innerHeight * 0.4);
-}
-
-/* ═══════════════════════════════════════════════════════════
-   STORM — lightning flashes + synthesised thunder
-   A strike is a burst of flickers; STRIKE_GAP is the beat between the
-   flickers inside one strike. Strikes themselves recur on a random
-   interval so it reads as weather rather than a strobe.
-   ═══════════════════════════════════════════════════════════ */
-const STRIKE_GAP   = 500;          // ms between flickers within a strike
-const STRIKE_EVERY = [3200, 7000]; // ms between strikes (random in range)
-
-const stormFlash = document.getElementById('stormFlash');
-const stormBolt  = document.getElementById('stormBolt');
-const boltPath   = document.getElementById('boltPath');
-const boltGlow   = document.getElementById('boltGlow');
-const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-/* ── thunder: filtered noise + sub rumble, no audio files ── */
-let audioCtx = null, thunderOn = true;
-
-function initAudio() {
-  if (audioCtx) return audioCtx;
-  const AC = window.AudioContext || window.webkitAudioContext;
-  if (!AC) return null;
-  audioCtx = new AC();
-  return audioCtx;
-}
-
-// Auto-unlock audio on the first gesture (scroll, touch, click, key) so default ON works across all mobile & desktop browsers
-function unlockAudioDefault() {
-  if (!thunderOn) return;
-  const ctx = initAudio();
-  if (ctx && ctx.state === 'suspended') {
-    ctx.resume().catch(() => {});
-  }
-}
-['pointerdown', 'touchstart', 'scroll', 'keydown', 'click'].forEach(evt => {
-  window.addEventListener(evt, unlockAudioDefault, { once: true, passive: true });
-});
-
-// Try immediate activation if browser permissions allow
-try {
-  const earlyCtx = initAudio();
-  if (earlyCtx && earlyCtx.state === 'suspended') {
-    earlyCtx.resume().catch(() => {});
-  }
-} catch (_) {}
-
-function playThunder(power = 1) {
-  if (!thunderOn) return;
-  const ctx = initAudio();
-  if (!ctx || ctx.state === 'suspended') return;
-
-  const now = ctx.currentTime;
-  const dur = 2.2 + Math.random() * 2.4 * power;
-
-  // noise burst = the crack
-  const frames = Math.floor(ctx.sampleRate * dur);
-  const buf = ctx.createBuffer(1, frames, ctx.sampleRate);
-  const d = buf.getChannelData(0);
-  let last = 0;
-  for (let i = 0; i < frames; i++) {
-    const white = Math.random() * 2 - 1;
-    last = (last + 0.02 * white) / 1.02;          // brown-ish noise
-    d[i] = last * 3.2;
-  }
-  const src = ctx.createBufferSource();
-  src.buffer = buf;
-
-  const lp = ctx.createBiquadFilter();
-  lp.type = 'lowpass';
-  lp.frequency.setValueAtTime(1400 * power, now);
-  lp.frequency.exponentialRampToValueAtTime(90, now + dur);   // distance rolloff
-
-  const hp = ctx.createBiquadFilter();
-  hp.type = 'highpass'; hp.frequency.value = 28;
-
-  const gain = ctx.createGain();
-  gain.gain.setValueAtTime(0.0001, now);
-  gain.gain.exponentialRampToValueAtTime(0.55 * power, now + 0.04);  // crack
-  gain.gain.exponentialRampToValueAtTime(0.16 * power, now + 0.5);   // body
-  gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);         // rumble tail
-
-  // sub-bass shove you feel more than hear
-  const sub = ctx.createOscillator();
-  sub.type = 'sine';
-  sub.frequency.setValueAtTime(58, now);
-  sub.frequency.exponentialRampToValueAtTime(24, now + dur * 0.8);
-  const subGain = ctx.createGain();
-  subGain.gain.setValueAtTime(0.0001, now);
-  subGain.gain.exponentialRampToValueAtTime(0.32 * power, now + 0.12);
-  subGain.gain.exponentialRampToValueAtTime(0.0001, now + dur * 0.85);
-
-  src.connect(hp); hp.connect(lp); lp.connect(gain); gain.connect(ctx.destination);
-  sub.connect(subGain); subGain.connect(ctx.destination);
-
-  src.start(now); src.stop(now + dur);
-  sub.start(now); sub.stop(now + dur);
-}
-
-/* ── Synthesized Chakra Seal sound effects and interactions ── */
-function playChakraSound(type = 'digit') {
-  if (!thunderOn) return;
-  const ctx = initAudio();
-  if (!ctx || ctx.state === 'suspended') return;
-  const now = ctx.currentTime;
-
-  try {
-    if (type === 'digit') {
-      const osc = ctx.createOscillator();
-      const g = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(540, now);
-      osc.frequency.exponentialRampToValueAtTime(780, now + 0.05);
-      g.gain.setValueAtTime(0.06, now);
-      g.gain.exponentialRampToValueAtTime(0.0001, now + 0.05);
-      osc.connect(g);
-      g.connect(ctx.destination);
-      osc.start(now);
-      osc.stop(now + 0.05);
-    } else if (type === 'seal') {
-      [329.63, 493.88, 659.25, 987.77].forEach((freq, idx) => {
-        const osc = ctx.createOscillator();
-        const g = ctx.createGain();
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(freq, now + idx * 0.04);
-        g.gain.setValueAtTime(0.09, now + idx * 0.04);
-        g.gain.exponentialRampToValueAtTime(0.0001, now + 1.2);
-        osc.connect(g);
-        g.connect(ctx.destination);
-        osc.start(now + idx * 0.04);
-        osc.stop(now + 1.2);
+  // Collection Switcher Tabs (section#shop)
+  document.querySelectorAll("[data-collection-tab]").forEach(tab => {
+    tab.addEventListener("click", () => {
+      const cat = tab.getAttribute("data-collection-tab");
+      document.querySelectorAll("[data-collection-tab]").forEach(t => {
+        t.classList.remove("active");
+        t.setAttribute("aria-selected", "false");
       });
-    } else if (type === 'error') {
-      const osc = ctx.createOscillator();
-      const g = ctx.createGain();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(150, now);
-      osc.frequency.linearRampToValueAtTime(85, now + 0.16);
-      g.gain.setValueAtTime(0.1, now);
-      g.gain.exponentialRampToValueAtTime(0.0001, now + 0.16);
-      osc.connect(g);
-      g.connect(ctx.destination);
-      osc.start(now);
-      osc.stop(now + 0.16);
-    }
-  } catch (_) {}
-}
+      tab.classList.add("active");
+      tab.setAttribute("aria-selected", "true");
 
-/* ── bolt geometry: recursive jagged polyline with forks ── */
-function makeBolt() {
-  const x0 = 80 + Math.random() * 840;
-  let x = x0, y = 0;
-  let dPath = `M ${x.toFixed(0)} 0`;
-  const steps = 14 + Math.floor(Math.random() * 8);
-  const forks = [];
-  const drift = (Math.random() - 0.5) * 40;
-
-  for (let i = 1; i <= steps; i++) {
-    y = (i / steps) * (620 + Math.random() * 300);
-    x += drift + (Math.random() - 0.5) * 130;
-    x = Math.max(20, Math.min(980, x));
-    dPath += ` L ${x.toFixed(0)} ${y.toFixed(0)}`;
-    if (Math.random() < 0.30 && i > 3) {
-      let fx = x, fy = y, f = `M ${x.toFixed(0)} ${y.toFixed(0)}`;
-      const fs = 2 + Math.floor(Math.random() * 4);
-      for (let k = 0; k < fs; k++) {
-        fx += (Math.random() - 0.5) * 150;
-        fy += 40 + Math.random() * 80;
-        f += ` L ${fx.toFixed(0)} ${fy.toFixed(0)}`;
+      const crumbCurrent = document.getElementById("shopCurrentCrumb");
+      if (crumbCurrent) {
+        crumbCurrent.textContent = cat === "all" ? "All Collections" : (tab.textContent + " Collection");
       }
-      forks.push(f);
-    }
-  }
-  return { d: dPath + ' ' + forks.join(' '), x: x0 / 1000 };
-}
 
-let stormTimer = null;
-
-function flicker(el, peak, ms) {
-  el.style.transition = 'none';
-  el.style.opacity = String(peak);
-  requestAnimationFrame(() => {
-    el.style.transition = `opacity ${ms}ms cubic-bezier(.22,1,.36,1)`;
-    el.style.opacity = '0';
-  });
-}
-
-function strike() {
-  const heavy = Math.random() < 0.55;           // heavy = visible bolt
-  const power = heavy ? 1 : 0.55 + Math.random() * 0.25;
-
-  if (heavy) {
-    const b = makeBolt();
-    boltPath.setAttribute('d', b.d);
-    boltGlow.setAttribute('d', b.d);
-    stormFlash.style.setProperty('--bx', (b.x * 100).toFixed(0) + '%');
-    flicker(stormBolt, 1, 190);
-  } else {
-    stormFlash.style.setProperty('--bx', (15 + Math.random() * 70).toFixed(0) + '%');
-  }
-
-  flicker(stormFlash, heavy ? 0.9 : 0.42, heavy ? 380 : 300);
-
-  // the second beat of the same strike, one STRIKE_GAP later
-  const beats = heavy ? 1 + Math.floor(Math.random() * 2) : 1;
-  for (let i = 1; i <= beats; i++) {
-    setTimeout(() => {
-      flicker(stormFlash, (heavy ? 0.7 : 0.3) * (1 - i * 0.2), 260);
-      if (heavy && i === 1) flicker(stormBolt, 0.75, 140);
-    }, STRIKE_GAP * i);
-  }
-
-  // thunder trails the flash by the speed of sound
-  setTimeout(() => playThunder(power), heavy ? 260 : 620);
-
-  const [lo, hi] = STRIKE_EVERY;
-  stormTimer = setTimeout(strike, lo + Math.random() * (hi - lo));
-}
-
-if (!reducedMotion) stormTimer = setTimeout(strike, 1800);
-
-/* ── sound handling (sound stays active, toggle button removed) ── */
-const soundToggle = document.getElementById('soundToggle');
-const soundState  = document.getElementById('soundState');
-if (soundToggle) {
-  soundToggle.addEventListener('click', async () => {
-    thunderOn = !thunderOn;
-    soundToggle.setAttribute('aria-pressed', String(thunderOn));
-    if (soundState) soundState.textContent = thunderOn ? 'ON' : 'OFF';
-    if (thunderOn) {
-      const ctx = initAudio();
-      if (ctx && ctx.state === 'suspended') await ctx.resume();
-      playThunder(0.7);
-    }
-  });
-}
-
-/* ═════════════════════ resize ═════════════════════ */
-function resizeAll() {
-  mainCtx = fitCanvas(mainCanvas);
-  fCtx    = fitCanvas(featherCanvas);
-  eyeCtx  = fitCanvas(eyeCanvas);
-  amaCtx  = fitCanvas(amaCanvas);
-  lastDrawn = -1; eyeLastKey = '';
-  seedFeathers();
-  seedFlames(); amaPainted = false;
-  ghost.resize();
-}
-let rt;
-window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(resizeAll, 140); });
-
-/* ═════════════════════ main loop ═════════════════════ */
-function tick() {
-  readScroll();
-  readScrub();
-
-  if (syncSize(mainCanvas) || syncSize(eyeCanvas) ||
-      syncSize(featherCanvas) || syncSize(amaCanvas)) resizeAll();
-
-  /* — Amaterasu: the hem never stops burning (one static pass if the user
-       asked for reduced motion) — */
-  if (!reduceMotion) paintAmaterasu(performance.now() / 1000);
-  else if (!amaPainted) { paintAmaterasu(0); amaPainted = true; }
-
-  /* — Act I: scrubbed frames — */
-  frameShown = lerp(frameShown, frameTarget, 0.14);
-  const idx = Math.round(clamp(frameShown, 0, MAIN_COUNT - 1));
-  if (idx !== lastDrawn) {
-    const w = mainCanvas.width, h = mainCanvas.height;
-    mainCtx.clearRect(0, 0, w, h);
-    if (drawCover(mainCtx, mainFrames[idx], w, h)) lastDrawn = idx;
-  }
-  paintOverlays(scrubProgress);
-
-  /* — feathers: fly forward on scroll down, backward on scroll up — */
-  const fw = featherCanvas.width, fh = featherCanvas.height;
-  const intensity = clamp((scrubProgress - 0.70) / 0.14) * (0.45 + scrollVel * 0.55);
-  fCtx.clearRect(0, 0, fw, fh);
-  if (intensity > 0.01) {
-    const speed = (0.0009 + scrollVel * 0.006) * scrollDir;
-    for (const f of feathers) {
-      f.x += f.vx * speed;
-      f.y += Math.sin(f.sway) * 0.0006 + f.vx * speed * 0.18;
-      f.sway += 0.02 + f.vx * 0.01;
-      f.rot  += f.spin * (0.3 + scrollVel);
-      if (f.x > 1.15) f.x = -0.15;
-      if (f.x < -0.15) f.x = 1.15;
-      if (f.y > 1.15) f.y = -0.15;
-      if (f.y < -0.15) f.y = 1.15;
-      drawFeather(fCtx, f, fw, fh, scrollDir, intensity);
-    }
-  }
-
-  /* — Act II: gaze follows the pointer — */
-  ex = lerp(ex, mx, 0.075);
-  ey = lerp(ey, my, 0.075);
-
-  const eyeRect = eyesSection.getBoundingClientRect();
-  const eyeVisible = eyeRect.top < window.innerHeight && eyeRect.bottom > 0;
-
-  if (eyeVisible) {
-    /* pointer X walks the monotonic gaze table — left stays left, right stays
-       right. The image itself never moves; only which frame is shown changes. */
-    gazePos = lerp(gazePos, ex * (GAZE_LUT.length - 1), 0.13);
-    const g = clamp(gazePos, 0, GAZE_LUT.length - 1);
-    const i0 = Math.floor(g), i1 = Math.min(i0 + 1, GAZE_LUT.length - 1);
-    const t = g - i0;
-    const key = `${i0}|${t.toFixed(2)}`;
-
-    if (key !== eyeLastKey) {
-      const w = eyeCanvas.width, h = eyeCanvas.height;
-      eyeCtx.clearRect(0, 0, w, h);
-      // crossfade the two nearest gaze frames so the sweep reads continuous
-      eyeCtx.globalAlpha = 1;
-      const okA = drawCover(eyeCtx, eyeFrames[GAZE_LUT[i0].idx], w, h, 1.18);
-      if (t > 0.01 && i1 !== i0) {
-        eyeCtx.globalAlpha = t;
-        drawCover(eyeCtx, eyeFrames[GAZE_LUT[i1].idx], w, h, 1.18);
-        eyeCtx.globalAlpha = 1;
+      if (shopSearchInput) {
+        shopSearchInput.value = cat === "all" ? "" : cat;
+        shopSearchInput.dispatchEvent(new Event("input", { bubbles: true }));
       }
-      if (okA) eyeLastKey = key;
+
+      const targetCb = document.querySelector(`input[name="filter-cat"][value="${cat}"]`);
+      if (targetCb) {
+        document.querySelectorAll('input[name="filter-cat"]').forEach(cb => cb.checked = false);
+        targetCb.checked = true;
+        targetCb.dispatchEvent(new Event("change", { bubbles: true }));
+      } else if (cat === "all") {
+        document.querySelectorAll('input[name="filter-cat"]').forEach(cb => cb.checked = false);
+        const allCb = document.querySelector('input[name="filter-cat"][value="all"]');
+        if (allCb) {
+          allCb.checked = true;
+          allCb.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+      }
+    });
+  });
+
+  // Nav category shortcuts
+  document.querySelectorAll("[data-nav-category]").forEach(link => {
+    link.addEventListener("click", (e) => {
+      e.preventDefault();
+      const cat = link.getAttribute("data-nav-category");
+      document.querySelectorAll("[data-nav-category]").forEach(l => l.classList.remove("active"));
+      link.classList.add("active");
+
+      if (cat === "new") {
+        if (typeof window.openNewProductsFilter === "function") {
+          window.openNewProductsFilter(e);
+        } else {
+          const shopEl = document.getElementById("shop");
+          if (shopEl) shopEl.scrollIntoView({ behavior: "smooth" });
+        }
+        return;
+      }
+
+      if (shopSearchInput && cat !== "all") {
+        shopSearchInput.value = cat === "collections" ? "" : cat;
+        shopSearchInput.dispatchEvent(new Event("input", { bubbles: true }));
+      } else if (shopSearchInput && cat === "all") {
+        shopSearchInput.value = "";
+        shopSearchInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+
+      const targetCb = document.querySelector(`input[name="filter-cat"][value="${cat}"]`);
+      if (targetCb) {
+        document.querySelectorAll('input[name="filter-cat"]').forEach(cb => cb.checked = false);
+        targetCb.checked = true;
+        targetCb.dispatchEvent(new Event("change", { bubbles: true }));
+      } else if (cat === "all") {
+        document.querySelectorAll('input[name="filter-cat"]').forEach(cb => cb.checked = false);
+        const allCb = document.querySelector('input[name="filter-cat"][value="all"]');
+        if (allCb) {
+          allCb.checked = true;
+          allCb.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+      }
+
+      const shopEl = document.getElementById("shop");
+      if (shopEl) shopEl.scrollIntoView({ behavior: "smooth" });
+    });
+  });
+
+  // Curated New Arrivals Wishlist clicks
+  document.querySelectorAll("[data-action='quick-wishlist']").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const name = btn.getAttribute("data-name") || "Luxury Piece";
+      btn.style.color = "#DC2626";
+      const shopWishlistBtn = document.getElementById("shopWishlistBtn");
+      if (shopWishlistBtn) {
+        shopWishlistBtn.click();
+      }
+    });
+  });
+
+  // Curated Cards click -> view in shop
+  document.querySelectorAll(".featured-arrival-card").forEach(card => {
+    card.addEventListener("click", () => {
+      const name = card.getAttribute("data-curated-name");
+      if (shopSearchInput && name) {
+        shopSearchInput.value = name;
+        shopSearchInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+      const shopEl = document.getElementById("shop");
+      if (shopEl) shopEl.scrollIntoView({ behavior: "smooth" });
+    });
+  });
+
+  // Dual promo clicks
+  document.querySelectorAll("[data-promo-action]").forEach(link => {
+    link.addEventListener("click", (e) => {
+      e.preventDefault();
+      const action = link.getAttribute("data-promo-action");
+      if (shopSearchInput) {
+        shopSearchInput.value = action === "summer" ? "dress" : "accessories";
+        shopSearchInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+      const shopEl = document.getElementById("shop");
+      if (shopEl) shopEl.scrollIntoView({ behavior: "smooth" });
+    });
+  });
+
+  // Reviews Carousel navigation
+  const reviewsGrid = document.getElementById("reviewsGrid");
+  const reviewsPrevBtn = document.getElementById("reviewsPrevBtn");
+  const reviewsNextBtn = document.getElementById("reviewsNextBtn");
+  if (reviewsGrid && reviewsPrevBtn && reviewsNextBtn) {
+    reviewsPrevBtn.addEventListener("click", () => {
+      reviewsGrid.scrollBy({ left: -320, behavior: "smooth" });
+    });
+    reviewsNextBtn.addEventListener("click", () => {
+      reviewsGrid.scrollBy({ left: 320, behavior: "smooth" });
+    });
+  }
+
+  // Floating Mobile Bottom Navigation (Home, Shop, Collections, Bag)
+  const mobileNavHome = document.getElementById("mobileNavHome");
+  const mobileNavShop = document.getElementById("mobileNavShop");
+  const mobileNavCollections = document.getElementById("mobileNavCollections");
+  const mobileNavCart = document.getElementById("mobileNavCart");
+  const mobileNavWishlist = document.getElementById("mobileNavWishlist");
+  const mobileNavTrack = document.getElementById("mobileNavTrack");
+
+  function setActiveBottomNav(activeItem) {
+    if (!activeItem) return;
+    if (activeItem.classList.contains("active")) return;
+    document.querySelectorAll(".mobile-bottom-bar__item").forEach(item => {
+      if (item !== activeItem) item.classList.remove("active");
+    });
+    activeItem.classList.add("active");
+  }
+
+  let isNavClickLocked = false;
+  let navClickLockTimer = null;
+  function lockNavScrollSync(duration = 900) {
+    isNavClickLocked = true;
+    if (navClickLockTimer) clearTimeout(navClickLockTimer);
+    navClickLockTimer = setTimeout(() => {
+      isNavClickLocked = false;
+    }, duration);
+  }
+
+  if (mobileNavHome) {
+    mobileNavHome.addEventListener("click", (e) => {
+      e.preventDefault();
+      lockNavScrollSync(900);
+      setActiveBottomNav(mobileNavHome);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  }
+
+  if (mobileNavShop) {
+    mobileNavShop.addEventListener("click", (e) => {
+      e.preventDefault();
+      lockNavScrollSync(900);
+      setActiveBottomNav(mobileNavShop);
+      const shopEl = document.getElementById("shop");
+      if (shopEl) shopEl.scrollIntoView({ behavior: "smooth" });
+    });
+  }
+
+  if (mobileNavCollections) {
+    mobileNavCollections.addEventListener("click", (e) => {
+      e.preventDefault();
+      lockNavScrollSync(1200);
+      setActiveBottomNav(mobileNavCollections);
+      openCollectionsPage();
+    });
+  }
+
+  if (mobileNavCart) {
+    mobileNavCart.addEventListener("click", (e) => {
+      e.preventDefault();
+      lockNavScrollSync(1200);
+      setActiveBottomNav(mobileNavCart);
+      const cartBtn = document.getElementById("shopCartBtn");
+      if (cartBtn) cartBtn.click();
+    });
+  }
+
+  if (mobileNavWishlist) {
+    mobileNavWishlist.addEventListener("click", () => {
+      const wishBtn = document.getElementById("shopWishlistBtn");
+      if (wishBtn) wishBtn.click();
+    });
+  }
+
+  if (mobileNavTrack) {
+    mobileNavTrack.addEventListener("click", () => {
+      const trackModal = document.getElementById("delhiveryTrackModal");
+      if (trackModal) {
+        trackModal.classList.add("open");
+        trackModal.setAttribute("aria-hidden", "false");
+        document.body.style.overflow = "hidden";
+      }
+    });
+  }
+
+  // Smooth scroll sync for active bottom bar icon without fluctuating
+  window.syncMobileBottomNav = function() {
+    if (window.innerWidth > 768) return;
+    if (isNavClickLocked) return;
+    if (collectionsPage && collectionsPage.classList.contains('open')) {
+      if (mobileNavCollections) setActiveBottomNav(mobileNavCollections);
+      return;
     }
+    if (document.body.classList.contains("bag-open") || document.body.classList.contains("cart-open")) {
+      if (mobileNavCart) setActiveBottomNav(mobileNavCart);
+      return;
+    }
+    const scrollY = window.scrollY || window.pageYOffset;
+    const shopSec = document.getElementById("shop");
+    const shopTop = shopSec ? (shopSec.getBoundingClientRect().top + scrollY - 260) : 999999;
 
-    eyeFlare.style.setProperty('--mx', (ex * 100).toFixed(1) + '%');
-    eyeFlare.style.setProperty('--my', (ey * 100).toFixed(1) + '%');
+    if (scrollY >= shopTop && mobileNavShop) {
+      setActiveBottomNav(mobileNavShop);
+    } else if (scrollY < shopTop && mobileNavHome) {
+      setActiveBottomNav(mobileNavHome);
+    }
+  };
 
-    const axis = (ex - 0.5) * 200;
-    const dir = axis < -8 ? '左' : axis > 8 ? '右' : '中';
-    eyeReadout.textContent =
-      `視線 ${dir} ${Math.abs(axis).toFixed(1).padStart(4, '0')} / FRAME ` +
-      String(GAZE_LUT[Math.round(g)].idx + 1).padStart(2, '0');
-  }
-
-  /* — Act III: parallax, reveal mask, ghost cursor — */
-  paintJutsu();
-
-  const jr = jutsuSection.getBoundingClientRect();
-  if (jr.top < window.innerHeight && jr.bottom > 0) {
-    revealX = lerp(revealX, revealTX, 0.13);
-    revealY = lerp(revealY, revealTY, 0.13);
-    revealR = lerp(revealR, jutsuLit ? revealRT : 0, 0.09);
-    const rs = jutsuSection.style;
-    rs.setProperty('--rx', (revealX * 100).toFixed(2) + '%');
-    rs.setProperty('--ry', (revealY * 100).toFixed(2) + '%');
-    rs.setProperty('--r',  revealR.toFixed(0) + 'px');
-    if (ghost.ok && (jutsuLit || revealR > 1)) ghost.render();
-  }
-
-  requestAnimationFrame(tick);
-}
-requestAnimationFrame(tick);
+  let scrollNavTimer = null;
+  window.addEventListener("scroll", () => {
+    if (window.innerWidth > 768 || isNavClickLocked) return;
+    if (scrollNavTimer) return;
+    scrollNavTimer = setTimeout(() => {
+      scrollNavTimer = null;
+      if (typeof window.syncMobileBottomNav === 'function') {
+        window.syncMobileBottomNav();
+      }
+    }, 120);
+  }, { passive: true });
+});
 
 /* ═════════════════════ reveals ═════════════════════ */
-/* #jutsu is excluded — it runs the scroll-driven parallax instead */
 document.querySelectorAll(
-  '.quote__jp, .quote blockquote, .quote__mark, .footer__big, .footer__row'
+  ".quote blockquote, .quote__mark, .footer__big, .footer__row, [data-reveal]"
 ).forEach((el, i) => {
-  el.setAttribute('data-reveal', '');
-  if (!el.style.getPropertyValue('--i')) el.style.setProperty('--i', i % 4);
+  el.setAttribute("data-reveal", "");
+  if (!el.style.getPropertyValue("--i")) el.style.setProperty("--i", i % 4);
 });
 
 const io = new IntersectionObserver(entries => {
-  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
-}, { threshold: 0.18 });
-document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } });
+}, { threshold: 0.1 });
+document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
 
 /* ═════════════════════ SHOP LOGIC ═════════════════════ */
 (function initShop() {
@@ -1392,9 +726,31 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
 
   function updateWishlistUI() {
     const wishCount = wishlist.length;
-    if (wishlistCountEl) wishlistCountEl.textContent = String(wishCount);
+    if (wishlistCountEl) {
+      wishlistCountEl.textContent = String(wishCount);
+      wishlistCountEl.setAttribute('data-count', String(wishCount));
+      if (wishCount > 0) {
+        wishlistCountEl.classList.remove('is-zero');
+        wishlistCountEl.style.setProperty('display', 'flex', 'important');
+      } else {
+        wishlistCountEl.classList.add('is-zero');
+        wishlistCountEl.style.setProperty('display', 'none', 'important');
+      }
+    }
     if (collecWishlistCount) collecWishlistCount.textContent = String(wishCount);
     if (cartDrawerWishlistCount) cartDrawerWishlistCount.textContent = String(wishCount);
+    const mobileWishBadge = document.getElementById('mobileWishlistBadge');
+    if (mobileWishBadge) {
+      mobileWishBadge.textContent = String(wishCount);
+      mobileWishBadge.setAttribute('data-count', String(wishCount));
+      if (wishCount > 0) {
+        mobileWishBadge.classList.remove('is-zero');
+        mobileWishBadge.style.setProperty('display', 'flex', 'important');
+      } else {
+        mobileWishBadge.classList.add('is-zero');
+        mobileWishBadge.style.setProperty('display', 'none', 'important');
+      }
+    }
 
     if (shopWishlistBtn) {
       shopWishlistBtn.classList.toggle('has-items', wishCount > 0);
@@ -1542,15 +898,39 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
 
   function updateCartUI() {
     const totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
-    if (cartCountEl) cartCountEl.textContent = String(totalQty);
+    if (cartCountEl) {
+      cartCountEl.textContent = String(totalQty);
+      cartCountEl.setAttribute('data-count', String(totalQty));
+      if (totalQty > 0) {
+        cartCountEl.classList.remove('is-zero');
+        cartCountEl.style.setProperty('display', 'flex', 'important');
+      } else {
+        cartCountEl.classList.add('is-zero');
+        cartCountEl.style.setProperty('display', 'none', 'important');
+      }
+    }
     if (collecCartCount) collecCartCount.textContent = String(totalQty);
     if (cartDrawerCount) {
       cartDrawerCount.textContent = String(totalQty);
     }
+    const mobileCartBadge = document.getElementById('mobileCartBadge');
+    if (mobileCartBadge) {
+      mobileCartBadge.textContent = String(totalQty);
+      mobileCartBadge.setAttribute('data-count', String(totalQty));
+      if (totalQty > 0) {
+        mobileCartBadge.classList.remove('is-zero');
+        mobileCartBadge.style.setProperty('display', 'flex', 'important');
+      } else {
+        mobileCartBadge.classList.add('is-zero');
+        mobileCartBadge.style.setProperty('display', 'none', 'important');
+      }
+    }
     if (cartBtn) {
       cartBtn.classList.toggle('has-items', totalQty > 0);
-      cartBtn.classList.add('bounce');
-      setTimeout(() => cartBtn.classList.remove('bounce'), 350);
+      if (totalQty > 0) {
+        cartBtn.classList.add('bounce');
+        setTimeout(() => cartBtn.classList.remove('bounce'), 350);
+      }
     }
     if (collecCartBtn) {
       collecCartBtn.classList.toggle('has-items', totalQty > 0);
@@ -1807,6 +1187,10 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
             history.back();
           }
         } catch (_) {}
+      }
+
+      if (typeof window.syncMobileBottomNav === 'function') {
+        window.syncMobileBottomNav();
       }
     }
   }
@@ -3787,6 +3171,7 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
     {
       sku: 'akatsuki-cloak',
       id: 'akatsuki-cloak',
+      isNew: true,
       name: 'Akatsuki Cloud Trench Cloak',
       collection: 'akatsuki',
       collectionName: 'Akatsuki Shadows',
@@ -3811,6 +3196,7 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
     {
       sku: 'shu-ring',
       id: 'shu-ring',
+      isNew: true,
       name: 'Akatsuki "Shu" Signet Ring',
       collection: 'akatsuki',
       collectionName: 'Akatsuki Shadows',
@@ -3835,6 +3221,7 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
     {
       sku: 'akatsuki-kasa',
       id: 'akatsuki-kasa',
+      isNew: true,
       name: 'Straw Kasa Woven Hat with Veil',
       collection: 'akatsuki',
       collectionName: 'Akatsuki Shadows',
@@ -4179,6 +3566,7 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
   const ZOHO_INITIAL_ITEM = {
     id: 'TS-MIN-001',
     sku: 'TS-MIN-001',
+    isNew: true,
     zoho_item_id: '4226403000000037080',
     name: 'Fourth Hokage Minato Inspired Oversized T-Shirt - Premium Flame Print Anime Streetwear',
     title: 'Fourth Hokage Minato Inspired Oversized T-Shirt - Premium Flame Print Anime Streetwear',
@@ -4197,8 +3585,13 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
     stock: 98,
     inStock: true,
     unit: 'pcs',
-    images: ['/api/zoho-inventory/documents/4226403000000037086', '/product-minato.jpg'],
-    imageUrl: '/api/zoho-inventory/documents/4226403000000037086',
+    images: [
+      '/product-minato.jpg',
+      'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=800&q=80',
+      'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=800&q=80',
+      'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=800&q=80'
+    ],
+    imageUrl: '/product-minato.jpg',
     iconSvg: `<svg viewBox="0 0 40 40" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="20" cy="20" r="14" stroke="var(--blood-hot)"/><text x="20" y="25" text-anchor="middle" font-family="sans-serif" font-size="12" fill="var(--bone)">閃</text></svg>`
   };
 
@@ -4223,25 +3616,106 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
   let collectionsPreviousScrollY = 0;
 
   function openCollectionsPage(col = '') {
-    const shopSec = document.getElementById('shop');
     if (col) {
-      Object.keys(activeShopFilters).forEach(k => activeShopFilters[k].clear());
-      activeShopFilters.collection.add(col);
-      renderActiveFilterChips();
-      updateFilterCheckboxesState();
-      renderShopGrid();
+      applyCollectionFilter(col);
+      return;
     }
-    if (shopSec) {
-      shopSec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (collectionsPage) {
+      collectionsPage.classList.add('open');
+      collectionsPage.setAttribute('aria-hidden', 'false');
+      document.body.classList.add('bag-open');
+      document.documentElement.classList.add('bag-open');
+      if (mobileNavCollections) setActiveBottomNav(mobileNavCollections);
     }
   }
 
   function closeCollectionsPage() {
+    if (collectionsPage) {
+      collectionsPage.classList.remove('open');
+      collectionsPage.setAttribute('aria-hidden', 'true');
+      document.body.classList.remove('bag-open');
+      document.documentElement.classList.remove('bag-open');
+    }
+  }
+
+  function applyCollectionFilter(colName) {
+    if (typeof activeShopFilters !== 'undefined') {
+      Object.keys(activeShopFilters).forEach(k => activeShopFilters[k].clear());
+      activeShopFilters.collection.add(colName);
+      renderActiveFilterChips();
+      updateFilterCheckboxesState();
+      renderShopGrid();
+    }
     const shopSec = document.getElementById('shop');
     if (shopSec) {
       shopSec.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
+    if (mobileNavShop) setActiveBottomNav(mobileNavShop);
   }
+
+  function applyCategoryFilter(catName) {
+    if (typeof activeShopFilters !== 'undefined') {
+      Object.keys(activeShopFilters).forEach(k => activeShopFilters[k].clear());
+      activeShopFilters.category.add(catName);
+      renderActiveFilterChips();
+      updateFilterCheckboxesState();
+      renderShopGrid();
+    }
+    const shopSec = document.getElementById('shop');
+    if (shopSec) {
+      shopSec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    if (mobileNavShop) setActiveBottomNav(mobileNavShop);
+  }
+
+  // Backdrop click closes Collections Hub
+  const collectionsHubBackdrop = document.getElementById('collectionsHubBackdrop');
+  if (collectionsHubBackdrop) {
+    collectionsHubBackdrop.addEventListener('click', closeCollectionsPage);
+  }
+
+  // Collections Hub Tab Switching (Theme Collections vs Apparel Categories)
+  const hubTabs = document.querySelectorAll('.collections-hub-tab');
+  hubTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      hubTabs.forEach(t => {
+        t.classList.remove('active');
+        t.setAttribute('aria-selected', 'false');
+      });
+      tab.classList.add('active');
+      tab.setAttribute('aria-selected', 'true');
+
+      const targetTab = tab.dataset.hubTab;
+      const collectionsPanel = document.getElementById('hubPanelCollections');
+      const categoriesPanel = document.getElementById('hubPanelCategories');
+
+      if (targetTab === 'categories') {
+        if (collectionsPanel) collectionsPanel.classList.remove('active');
+        if (categoriesPanel) categoriesPanel.classList.add('active');
+      } else {
+        if (categoriesPanel) categoriesPanel.classList.remove('active');
+        if (collectionsPanel) collectionsPanel.classList.add('active');
+      }
+    });
+  });
+
+  // Clicking on any Collection Card takes user directly to that collection in shop
+  document.querySelectorAll('.collec-hub-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const col = card.dataset.collecFilter;
+      closeCollectionsPage();
+      applyCollectionFilter(col);
+    });
+  });
+
+  // Clicking on any Category Card takes user directly to that category in shop
+  document.querySelectorAll('.category-hub-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const cat = card.dataset.catFilter;
+      closeCollectionsPage();
+      applyCategoryFilter(cat);
+    });
+  });
 
   if (openCollectionsBtn) {
     openCollectionsBtn.addEventListener('click', () => openCollectionsPage());
@@ -4445,7 +3919,7 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
       const photosCount = (Array.isArray(item.images) && item.images.length > 0) ? item.images.length : (item.imageUrl ? 1 : 0);
 
       return `
-      <article class="collec-card product-card">
+      <article class="collec-card product-card" data-sku="${sku}">
         <div class="collec-card__top">
           <div class="collec-card__top-right" style="margin-left:auto;">
             <button class="item-heart-btn ${isWish ? 'active' : ''}" type="button"
@@ -4463,11 +3937,10 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
             </button>
           </div>
         </div>
-        <div class="collec-card__visual" data-gallery-open="${sku}" role="button" tabindex="0" title="Click to inspect multi-image gallery (${photosCount} photos)">
+        <div class="collec-card__visual" data-gallery-open="${sku}" role="button" tabindex="0" title="Click to inspect multi-image gallery">
           ${mainImg 
             ? `<img src="${mainImg}" alt="${item.name}" loading="lazy" onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='/product-minato.jpg';}else{this.style.display='none'; if (this.nextElementSibling) this.nextElementSibling.style.display='grid';}" /><div class="shop-card__svg-fallback" style="display:none;">${item.iconSvg}</div>` 
             : `<div class="shop-card__svg-fallback">${item.iconSvg}</div>`}
-          ${photosCount > 1 ? `<span class="shop-card__gallery-badge"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>${photosCount} PHOTOS</span>` : ''}
         </div>
         <span class="collec-card__cat">${item.category} · SKU: ${sku}</span>
         <h4 class="collec-card__title" data-gallery-open="${sku}" style="cursor:pointer;">${item.name}</h4>
@@ -4538,7 +4011,115 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
         if (item) openRelicGallery(item, 'collections');
       });
     });
+
+    attachCardHoverSlideshow(collectionsGrid);
   }
+
+  // ═══════════ PRODUCT CARD HOVER REPEATING IMAGE SLIDESHOW (5s) ═══════════
+  // User spec: If user takes the cursor above the product card, change the product images after 5 sec repeatedly
+  function setupCardHoverSlideshow(card) {
+    if (!card || card._hoverSlideshowInit) return;
+    card._hoverSlideshowInit = true;
+
+    const sku = card.dataset.sku || card.dataset.recentSku || card.querySelector('[data-gallery-open]')?.dataset.galleryOpen;
+    if (!sku) return;
+
+    let timer = null;
+    let currentIndex = 0;
+
+    const getImages = () => {
+      const item = collectionsData.find(i => (i.sku || i.id) === sku);
+      let imgs = [];
+      if (item && Array.isArray(item.images) && item.images.length > 0) {
+        imgs = item.images.filter(u => typeof u === 'string' && u.trim().length > 0);
+      } else if (item && item.imageUrl) {
+        imgs = [item.imageUrl];
+      }
+      return imgs;
+    };
+
+    const getImageElement = () => {
+      return card.querySelector('.shop-card__visual img, .collec-card__visual img, .recent-card__thumb img, .product-card img');
+    };
+
+    card.addEventListener('mouseenter', () => {
+      const imgs = getImages();
+      if (imgs.length <= 1) return;
+
+      const imgEl = getImageElement();
+      if (!imgEl) return;
+
+      if (!card._defaultImageSrc) {
+        card._defaultImageSrc = imgEl.src;
+      }
+
+      // Preload next gallery images silently for zero-delay instant switching
+      imgs.forEach(url => {
+        const pre = new Image();
+        pre.src = url;
+      });
+
+      if (card._hoverCycleTimer) {
+        clearInterval(card._hoverCycleTimer);
+        card._hoverCycleTimer = null;
+      }
+
+      // Change the product images after 5 sec repeatedly while cursor is above the card
+      card._hoverCycleTimer = setInterval(() => {
+        if (!card.matches(':hover') || !document.body.contains(card)) {
+          clearInterval(card._hoverCycleTimer);
+          card._hoverCycleTimer = null;
+          return;
+        }
+
+        currentIndex = (currentIndex + 1) % imgs.length;
+        const nextUrl = imgs[currentIndex];
+
+        imgEl.style.transition = 'opacity 0.25s ease, transform 0.35s ease';
+        imgEl.style.opacity = '0.5';
+        setTimeout(() => {
+          imgEl.src = nextUrl;
+          imgEl.style.opacity = '1';
+        }, 140);
+      }, 5000);
+    });
+
+    card.addEventListener('mouseleave', () => {
+      if (card._hoverCycleTimer) {
+        clearInterval(card._hoverCycleTimer);
+        card._hoverCycleTimer = null;
+      }
+      const imgEl = getImageElement();
+      if (imgEl && card._defaultImageSrc && imgEl.src !== card._defaultImageSrc) {
+        imgEl.style.transition = 'opacity 0.25s ease, transform 0.35s ease';
+        imgEl.style.opacity = '0.7';
+        setTimeout(() => {
+          if (card._defaultImageSrc) imgEl.src = card._defaultImageSrc;
+          imgEl.style.opacity = '1';
+          currentIndex = 0;
+        }, 140);
+      } else {
+        currentIndex = 0;
+      }
+    });
+  }
+
+  function attachCardHoverSlideshow(container) {
+    if (!container) return;
+    container.querySelectorAll('.shop-card, .collec-card, .recent-card, .product-card').forEach(setupCardHoverSlideshow);
+  }
+
+  // Global capture listener ensuring any dynamically rendered product card automatically inherits the hover slideshow
+  document.addEventListener('mouseenter', (e) => {
+    const card = e.target && e.target.closest && e.target.closest('.shop-card, .collec-card, .recent-card, .product-card');
+    if (card && !card._hoverSlideshowInit) {
+      setupCardHoverSlideshow(card);
+      if (card.matches(':hover')) {
+        card.dispatchEvent(new MouseEvent('mouseenter'));
+      }
+    }
+  }, true);
+
 
   // ═══════════ DYNAMIC SHOP PAGE GRID, SIDEBAR FILTERS & SOULED STORE EXPERIENCE ═══════════
   const shopGrid = document.getElementById('shopGrid');
@@ -4616,10 +4197,20 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
       { id: 'Navy', label: 'Midnight Navy' }
     ],
     availability: [
+      { id: 'new-products', label: 'New Products' },
       { id: 'in-stock', label: 'In Stock Only' },
       { id: 'discounted', label: 'Special Offers & Discounts' }
     ]
   };
+
+  function isItemNewProduct(item) {
+    if (!item) return false;
+    if (item.isNew === true || item.isNewArrival === true) return true;
+    const tag = (item.tag || '').toUpperCase();
+    if (tag.includes('NEW') || tag.includes('LAUNCH') || tag.includes('DROP') || tag.includes('RE-ISSUE')) return true;
+    const newSkus = ['TS-MIN-001', 'akatsuki-cloak', 'shu-ring', 'akatsuki-kasa', 'leaf-protector', 'mangekyo-print', 'tessen-fan', 'amaterasu-beads', 'spring-tanto'];
+    return newSkus.includes(item.sku || item.id);
+  }
 
   function matchesPriceFilter(price, filterId) {
     if (filterId === 'under-1000') return price < 1000;
@@ -4651,13 +4242,18 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
       }).join('');
     });
 
-    // Attach checkbox change event listeners
-    if (filterSidebarContent) {
-      filterSidebarContent.querySelectorAll('.filter-checkbox').forEach(input => {
-        input.addEventListener('change', (e) => {
-          const group = e.target.dataset.group;
-          const val = e.target.dataset.val;
-          if (e.target.checked) {
+    // Checkboxes are ready and event delegation is handled on filterSidebarContent
+  }
+
+  // Delegated checkbox change event listener
+  if (filterSidebarContent) {
+    filterSidebarContent.addEventListener('change', (e) => {
+      const target = e.target;
+      if (target && target.classList.contains('filter-checkbox')) {
+        const group = target.dataset.group;
+        const val = target.dataset.val;
+        if (group && val) {
+          if (target.checked) {
             activeShopFilters[group].add(val);
           } else {
             activeShopFilters[group].delete(val);
@@ -4665,9 +4261,9 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
           renderActiveFilterChips();
           renderShopGrid();
           updateFilterCheckboxesState();
-        });
-      });
-    }
+        }
+      }
+    });
   }
 
   function getFilterMatchCount(groupKey, valId) {
@@ -4698,6 +4294,7 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
         return color.includes(valId.toLowerCase());
       }
       if (groupKey === 'availability') {
+        if (valId === 'new-products') return isItemNewProduct(item);
         if (valId === 'in-stock') return item.inStock !== false;
         if (valId === 'discounted') return Boolean(item.hasDiscount || (item.originalMrp && item.originalMrp > price));
       }
@@ -4799,9 +4396,90 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
       shopFilterSidebar.classList.toggle('mobile-open');
     });
   }
+  const shopFilterMobileCloseBtn = document.getElementById('shopFilterMobileCloseBtn');
+  if (shopFilterMobileCloseBtn && shopFilterSidebar) {
+    shopFilterMobileCloseBtn.addEventListener('click', () => {
+      shopFilterSidebar.classList.remove('mobile-open');
+    });
+  }
+
+  function openNewProductsFilter(e) {
+    if (e && e.preventDefault) e.preventDefault();
+
+    // 1. Reset text search so it doesn't conflict
+    if (shopSearchInput) {
+      shopSearchInput.value = '';
+      currentShopSearchQuery = '';
+      if (shopSearchClearBtn) shopSearchClearBtn.style.display = 'none';
+    }
+
+    // 2. Clear other category/collection filters and set availability to new-products
+    activeShopFilters.category.clear();
+    activeShopFilters.collection.clear();
+    activeShopFilters.availability.clear();
+    activeShopFilters.availability.add('new-products');
+
+    // 3. Ensure the Availability accordion is expanded and visible
+    const availAccordion = document.querySelector('.filter-accordion[data-group="availability"]');
+    if (availAccordion && !availAccordion.classList.contains('open')) {
+      availAccordion.classList.add('open');
+    }
+
+    // 4. Re-render UI components
+    renderActiveFilterChips();
+    renderShopGrid();
+    updateFilterCheckboxesState();
+
+    // 5. Update header navigation active states
+    document.querySelectorAll('[data-nav-category]').forEach(l => l.classList.remove('active'));
+    const newInNav = document.querySelector('[data-nav-category="new"]');
+    if (newInNav) newInNav.classList.add('active');
+
+    // 6. Update breadcrumb
+    const shopCurrentCrumb = document.getElementById('shopCurrentCrumb');
+    if (shopCurrentCrumb) {
+      shopCurrentCrumb.textContent = 'New Products';
+    }
+
+    // 7. On mobile screens, open filter sidebar drawer
+    if (window.innerWidth <= 980 && shopFilterSidebar) {
+      shopFilterSidebar.classList.add('mobile-open');
+    }
+
+    // 8. Smoothly scroll to the shop section
+    const shopEl = document.getElementById('shop');
+    if (shopEl) {
+      shopEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // 9. Highlight the New Products filter item
+    setTimeout(() => {
+      const newProdItem = document.querySelector('.filter-item input[data-val="new-products"]')?.closest('.filter-item');
+      if (newProdItem) {
+        newProdItem.classList.add('filter-highlight');
+        setTimeout(() => newProdItem.classList.remove('filter-highlight'), 1800);
+      }
+    }, 350);
+  }
+  window.openNewProductsFilter = openNewProductsFilter;
+
+  // Global listeners for any New In links / buttons
+  document.querySelectorAll('a[href="#new-in"], [data-nav-category="new"], #heroShopNewArrivalsBtn').forEach(el => {
+    el.addEventListener('click', (e) => {
+      openNewProductsFilter(e);
+    });
+  });
 
   function renderShopGrid() {
     if (!shopGrid) return;
+
+    // Clean up any active hover slideshow timers on cards before re-render
+    shopGrid.querySelectorAll('.shop-card').forEach(card => {
+      if (card._hoverCycleTimer) {
+        clearInterval(card._hoverCycleTimer);
+        card._hoverCycleTimer = null;
+      }
+    });
 
     if (!collectionsData || collectionsData.length === 0) {
       shopGrid.innerHTML = `
@@ -4871,6 +4549,7 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
 
       // Availability filter
       if (activeShopFilters.availability.size > 0) {
+        if (activeShopFilters.availability.has('new-products') && !isItemNewProduct(item)) return false;
         if (activeShopFilters.availability.has('in-stock') && item.inStock === false) return false;
         if (activeShopFilters.availability.has('discounted') && !(item.hasDiscount || (item.originalMrp && item.originalMrp > price))) return false;
       }
@@ -4933,7 +4612,6 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
       return `
         <article class="shop-card product-card" data-category="${(item.category || '').toLowerCase()}" data-sku="${sku}">
           <div class="shop-card__badge-row">
-            ${item.zoho_item_id ? `<span class="product-badge-zoho"><span class="shop__sync-dot" style="width:5px;height:5px;"></span> ZOHO LIVE</span>` : ''}
             ${hasDiscount ? `<span class="product-badge-discount">${discountPct}% OFF</span>` : `<span class="product-badge-tag">${(item.category || 'STREETWEAR').toUpperCase()}</span>`}
             <button class="item-heart-btn ${isWish ? 'active' : ''}" type="button"
                     data-wishlist-toggle="${sku}"
@@ -4948,11 +4626,10 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
               </svg>
             </button>
           </div>
-          <div class="shop-card__visual" data-gallery-open="${sku}" role="button" tabindex="0" title="Click to view full image gallery (${photosCount} photos)">
+          <div class="shop-card__visual" data-gallery-open="${sku}" role="button" tabindex="0" title="Click to view full image gallery" style="aspect-ratio:1/1 !important; width:92% !important; max-width:92% !important; height:auto !important; margin:0.15rem auto 0.45rem !important; overflow:hidden !important; display:flex !important; align-items:center !important; justify-content:center !important;">
             ${mainImg 
-              ? `<img src="${mainImg}" alt="${item.name}" loading="lazy" onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='/product-minato.jpg';}else{this.style.display='none';}" />`
+              ? `<img src="${mainImg}" alt="${item.name}" loading="lazy" style="width:100% !important; height:100% !important; object-fit:cover !important; object-position:center top !important; padding:0 !important; margin:0 !important; border:none !important; display:block !important;" onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='/product-minato.jpg';}else{this.style.display='none';}" />`
               : `<div class="shop-card__svg-fallback">${item.iconSvg || '👕'}</div>`}
-            ${photosCount > 1 ? `<span class="shop-card__gallery-badge"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>${photosCount} PHOTOS</span>` : ''}
           </div>
           <span class="shop-card__theme-tag">${item.collectionName || 'OFFICIAL STREETWEAR'}</span>
           <h3 class="shop-card__title" data-gallery-open="${sku}" style="cursor:pointer;">${item.name}</h3>
@@ -5031,6 +4708,8 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
         if (item) openRelicGallery(item, 'shop');
       });
     });
+
+    attachCardHoverSlideshow(shopGrid);
   }
 
   // ═══════════ SCROLL ISOLATION EXPERIENCE ═══════════
@@ -5848,12 +5527,16 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
       pdpPreviousSource = 'collections';
       pdpSavedCollecScrollTop = collectionsPage ? collectionsPage.scrollTop : 0;
       if (pdpBreadcrumbHome) pdpBreadcrumbHome.textContent = 'ALL COLLECTIONS';
+      const pdpBackText = document.getElementById('pdpBackText');
+      if (pdpBackText) pdpBackText.textContent = 'Back to Collections';
       if (relicGalleryCloseBtn) relicGalleryCloseBtn.setAttribute('title', 'Close and return to Collections (✕)');
     } else {
       pdpPreviousSource = 'shop';
       const curY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
       pdpSavedScrollY = curY > 200 ? curY : (document.getElementById('shop')?.offsetTop || 0);
       if (pdpBreadcrumbHome) pdpBreadcrumbHome.textContent = 'ALL PRODUCTS';
+      const pdpBackText = document.getElementById('pdpBackText');
+      if (pdpBackText) pdpBackText.textContent = 'Back to Shop';
       if (relicGalleryCloseBtn) relicGalleryCloseBtn.setAttribute('title', 'Close and return to Shop (✕)');
     }
 
@@ -5937,8 +5620,8 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
       if (overviewText) {
         loreHtml += `
           <div class="pdp-overview-block">
-            <h4 style="font-family:'Cinzel',serif; font-size:1.05rem; color:var(--bone); letter-spacing:0.06em; margin:0 0 0.6rem 0;">PRODUCT OVERVIEW</h4>
-            <p style="color:rgba(232,228,220,0.88); font-size:0.92rem; line-height:1.75; margin:0 0 1rem 0; white-space:pre-line;">${overviewText}</p>
+            <h4 style="font-family:var(--serif); font-size:1.15rem; color:#111827; font-weight:700; letter-spacing:0.04em; margin:0 0 0.65rem 0;">PRODUCT OVERVIEW</h4>
+            <p style="color:#374151; font-family:var(--sans); font-size:0.95rem; line-height:1.75; margin:0 0 1.25rem 0; white-space:pre-line;">${overviewText}</p>
           </div>
         `;
       }
@@ -5946,16 +5629,16 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
       // 2. Product Features
       if (parsed.features && parsed.features.length > 0) {
         loreHtml += `
-          <div style="margin-top:1.5rem; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:1.25rem;">
-            <h4 style="font-family:var(--mono); font-size:0.75rem; color:var(--bone); letter-spacing:0.12em; text-transform:uppercase; margin:0 0 0.85rem 0;">KEY PRODUCT FEATURES</h4>
+          <div style="margin-top:1.5rem; background:#f9fafb; border:1px solid #e5e7eb; border-radius:10px; padding:1.35rem 1.5rem;">
+            <h4 style="font-family:var(--sans); font-size:0.8rem; color:#111827; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; margin:0 0 0.85rem 0;">KEY PRODUCT FEATURES</h4>
             <ul style="list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:0.65rem;">
               ${parsed.features.map(f => {
                 const colonIdx = f.indexOf(':');
                 const title = colonIdx !== -1 ? f.slice(0, colonIdx).trim() : '';
                 const body = colonIdx !== -1 ? f.slice(colonIdx + 1).trim() : f.trim();
-                return `<li style="display:flex; align-items:flex-start; gap:10px; font-size:0.88rem; line-height:1.55; color:rgba(232,228,220,0.9);">
-                  <span style="color:var(--blood-hot); font-weight:bold; line-height:1.3;">✦</span>
-                  <span>${title ? `<strong style="color:var(--bone);">${title}:</strong> ` : ''}${body}</span>
+                return `<li style="display:flex; align-items:flex-start; gap:10px; font-size:0.9rem; line-height:1.6; color:#374151;">
+                  <span style="color:#dc2626; font-weight:bold; line-height:1.3;">✦</span>
+                  <span>${title ? `<strong style="color:#111827; font-weight:700;">${title}:</strong> ` : ''}${body}</span>
                 </li>`;
               }).join('')}
             </ul>
@@ -5966,9 +5649,9 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
       // 3. Style & Pairing Tips
       if (parsed.styleTips) {
         loreHtml += `
-          <div style="margin-top:1.25rem; background:rgba(224,90,71,0.06); border-left:3px solid var(--blood-hot); border-radius:0 8px 8px 0; padding:1rem 1.25rem;">
-            <strong style="color:var(--blood-hot); font-size:0.75rem; letter-spacing:0.1em; text-transform:uppercase; display:block; margin-bottom:0.35rem; font-family:var(--mono);">Style &amp; Pairing Tips</strong>
-            <p style="color:rgba(232,228,220,0.9); font-size:0.88rem; margin:0; line-height:1.65;">${parsed.styleTips}</p>
+          <div style="margin-top:1.25rem; background:#fef2f2; border-left:3px solid #dc2626; border-radius:0 8px 8px 0; padding:1.1rem 1.35rem;">
+            <strong style="color:#dc2626; font-size:0.8rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; display:block; margin-bottom:0.4rem; font-family:var(--sans);">Style &amp; Pairing Tips</strong>
+            <p style="color:#1f2937; font-size:0.9rem; margin:0; line-height:1.65;">${parsed.styleTips}</p>
           </div>
         `;
       }
@@ -5977,13 +5660,13 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
       const specKeys = Object.keys(parsed.specs || {});
       if (specKeys.length > 0) {
         loreHtml += `
-          <div style="margin-top:1.25rem; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:10px; padding:1.1rem 1.25rem;">
-            <strong style="color:var(--bone); font-size:0.75rem; letter-spacing:0.1em; text-transform:uppercase; display:block; margin-bottom:0.75rem; font-family:var(--mono);">Material &amp; Care</strong>
+          <div style="margin-top:1.25rem; background:#f9fafb; border:1px solid #e5e7eb; border-radius:10px; padding:1.2rem 1.35rem;">
+            <strong style="color:#111827; font-size:0.8rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; display:block; margin-bottom:0.75rem; font-family:var(--sans);">Material &amp; Care</strong>
             <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:0.65rem;">
               ${specKeys.map(k => `
-                <div style="font-size:0.84rem; line-height:1.5;">
-                  <span style="color:var(--smoke); font-family:var(--mono); font-size:0.72rem; letter-spacing:0.06em; text-transform:uppercase; display:block;">${k}</span>
-                  <span style="color:var(--bone); font-weight:600;">${parsed.specs[k]}</span>
+                <div style="font-size:0.88rem; line-height:1.5;">
+                  <span style="color:#6b7280; font-family:var(--sans); font-size:0.75rem; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; display:block;">${k}</span>
+                  <span style="color:#111827; font-weight:700;">${parsed.specs[k]}</span>
                 </div>
               `).join('')}
             </div>
@@ -5992,7 +5675,7 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
       }
 
       if (!loreHtml) {
-        loreHtml = `<p style="color:var(--ash); font-size:0.9rem;">Product details are synced directly from Zoho Inventory.</p>`;
+        loreHtml = `<p style="color:#6b7280; font-size:0.95rem;">Product details are synced directly from Zoho Inventory.</p>`;
       }
 
       pdpDynamicLoreContent.innerHTML = loreHtml;
@@ -6738,6 +6421,14 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
     });
   }
 
+  const pdpBackLink = document.getElementById('pdpBackLink');
+  if (pdpBackLink) {
+    pdpBackLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      closeRelicGallery();
+    });
+  }
+
   if (relicGalleryCloseBtn) {
     relicGalleryCloseBtn.addEventListener('click', (e) => {
       e.preventDefault();
@@ -7047,6 +6738,8 @@ document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
         if (fullItem) handleAddToCart(btn, fullItem);
       });
     });
+
+    attachCardHoverSlideshow(recentlyViewedGrid);
   }
 
   function renderSearchRecentlyViewedDropdowns() {

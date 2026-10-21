@@ -561,7 +561,7 @@ ${schemaJsonLd}
         </div>
         <div style="font-family:'Source Sans Pro', sans-serif;font-size:11px;line-height:18px;color:#686B78;max-width:480px;margin:0 auto;">
           The Street Co • Thakurnagar Shimulpur Hazratala, West Bengal 743287, India<br>
-          © ${new Date().getFullYear()} The Street Co. All rights reserved.
+          © ${new Date().getFullYear()} The Street Co · All rights reserved.
         </div>
       </div>
 
@@ -595,7 +595,7 @@ Hey ${customerName},
 
 Your order #${cleanOrderNumber} has been successfully placed and is now being carefully prepared by our team.
 
-Thank you for shopping from The Street Co. We're stoked to have you as part of the family. We'll send you another update with tracking info as soon as your drop is out the door.
+Thank you for shopping from The Street Co! We're stoked to have you as part of the family. We'll send you another update with tracking info as soon as your drop is out the door.
 
 ORDER DETAILS:
 Your Order #${cleanOrderNumber}
@@ -726,7 +726,7 @@ ${supportEmail}`;
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto;">
           <tr>
             <td>
-              <h1 style="margin: 0; font-size: 20px; font-weight: 800; color: #ffffff; letter-spacing: 0.12em; text-transform: uppercase;">THE STREET CO.</h1>
+              <h1 style="margin: 0; font-size: 20px; font-weight: 800; color: #ffffff; letter-spacing: 0.12em; text-transform: uppercase;">THE STREET CO</h1>
               <span style="font-size: 11px; color: #9ca3af; letter-spacing: 0.1em; text-transform: uppercase;">Official GST Tax Invoice Dispatch</span>
             </td>
           </tr>
@@ -895,9 +895,9 @@ const DEFAULT_PRODUCTS = [
     specs: '240 GSM Combed Cotton · Drop Shoulder Boxy Fit · High Density Kanji Print',
     images: [
       '/product-minato.jpg',
-      '/product-ts-min-001.jpg',
       'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=800&q=80',
-      'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=800&q=80'
+      'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=800&q=80',
+      'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=800&q=80'
     ],
     imageUrl: '/product-minato.jpg'
   },
@@ -1744,7 +1744,7 @@ if (!Array.isArray(inMemoryCoupons) || inMemoryCoupons.length === 0) {
 // Direct download endpoint for Netlify .env file
 app.get(['/api/download-env', '/api/env'], (req, res) => {
   const envContent = `# ==============================================================================
-# The Street Co. - Netlify Environment Variables (.env)
+# The Street Co - Netlify Environment Variables (.env)
 # Import this file in Netlify: Site Settings > Environment Variables
 # ==============================================================================
 

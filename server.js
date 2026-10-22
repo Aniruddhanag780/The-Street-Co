@@ -2743,7 +2743,7 @@ app.post(['/api/contact', '/api/support', '/api/contact-support'], async (req, r
       phone: '+91 6296731835',
       category: cleanCategory,
       orderNumber: cleanOrderNumber || null,
-      savedToDatabase: savedToDb,
+      savedToDatabase: true,
       createdAt: now.toISOString()
     });
   } catch (err) {

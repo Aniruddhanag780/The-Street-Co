@@ -1314,6 +1314,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
   const checkoutAutofillBanner = document.getElementById('checkoutAutofillBanner');
   const checkoutLocationDropdown = document.getElementById('checkoutLocationDropdown');
   const checkoutBackToStoreBtn = document.getElementById('checkoutBackToStoreBtn');
+  const checkoutHeaderEditAddressBtn = document.getElementById('checkoutHeaderEditAddressBtn');
   const checkoutNameInput = document.getElementById('checkoutName');
   const checkoutPhoneInput = document.getElementById('checkoutPhone');
   const checkoutEmailInput = document.getElementById('checkoutEmail');
@@ -1407,7 +1408,10 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     if (checkoutAddress2Input) checkoutAddress2Input.value = '';
     if (checkoutLandmarkInput) checkoutLandmarkInput.value = '';
     if (checkoutCityInput) checkoutCityInput.value = '';
-    if (checkoutStateInput) checkoutStateInput.value = '';
+    if (checkoutStateInput) {
+      checkoutStateInput.value = '';
+      checkoutStateInput.classList.add('is-placeholder');
+    }
     const b2bToggle = document.getElementById('checkoutIsB2B');
     if (b2bToggle) b2bToggle.checked = false;
     const gstFields = document.getElementById('checkoutGstFields');
@@ -1722,9 +1726,13 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       }
     });
 
-    // Hide sidebar on all steps so duplicate order summary is never shown
+    // Show sidebar (Order Summary) on steps 1, 2, 3; hide on step 4 (Order Confirmation has its own single card)
     if (checkoutContentWrap) {
-      checkoutContentWrap.classList.add('hide-sidebar');
+      if (stepNumber === 4) {
+        checkoutContentWrap.classList.add('hide-sidebar');
+      } else {
+        checkoutContentWrap.classList.remove('hide-sidebar');
+      }
     }
 
     // Hide stepper and close (X) button on step 4 (Order Confirmation)
@@ -1781,7 +1789,27 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       renderOrderReviewStep();
     }
 
-    // Scroll views container to top
+    // Dynamic top-left header button handling:
+    // Step 1: "RETURN TO SHOP"
+    // Step 2 (Payment page) & Step 3 (Conform page):
+    // "EDIT ADDRESS" in position of Return to Shop; Return to Shop removed!
+    // Step 4 (Order confirmed): Both removed
+    const backToStoreBtn = document.getElementById('checkoutBackToStoreBtn');
+    const headerEditAddressBtn = document.getElementById('checkoutHeaderEditAddressBtn');
+    if (stepNumber === 1) {
+      if (backToStoreBtn) backToStoreBtn.style.display = 'inline-flex';
+      if (headerEditAddressBtn) headerEditAddressBtn.style.display = 'none';
+    } else if (stepNumber === 2) {
+      if (backToStoreBtn) backToStoreBtn.style.display = 'none';
+      if (headerEditAddressBtn) headerEditAddressBtn.style.display = 'inline-flex';
+    } else {
+      // Step 3 (Order Confirm Page) & Step 4 (Order Confirmed):
+      // Completely remove Return to Shop button & Header buttons as requested
+      if (backToStoreBtn) backToStoreBtn.style.display = 'none';
+      if (headerEditAddressBtn) headerEditAddressBtn.style.display = 'none';
+    }
+
+    // Scroll views container to top on step transition
     const viewsWrap = checkoutFlowModal ? checkoutFlowModal.querySelector('.checkout-modal__views') : null;
     if (viewsWrap) viewsWrap.scrollTop = 0;
 
@@ -1814,11 +1842,12 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       return valid;
     }
 
-    validateField(checkoutNameInput, document.getElementById('checkoutNameError'), 'Please enter recipient name');
+    validateField(checkoutNameInput, document.getElementById('checkoutNameError'), 'Please enter recipient full name');
     validateField(checkoutPhoneInput, document.getElementById('checkoutPhoneError'), 'Please enter a valid 10-digit mobile number', v => /^\d{10}$/.test(v.replace(/\s+/g, '')));
-    validateField(checkoutAddress1Input, document.getElementById('checkoutAddress1Error'), 'Please enter your house address');
+    validateField(checkoutAddress1Input, document.getElementById('checkoutAddress1Error'), 'Please enter house address / flat / building');
+    validateField(checkoutAddress2Input, document.getElementById('checkoutAddress2Error'), 'Please enter street, road or area');
     validateField(checkoutCityInput, document.getElementById('checkoutCityError'), 'Town / city required');
-    validateField(checkoutStateInput, document.getElementById('checkoutStateError'), 'State required');
+    validateField(checkoutStateInput, document.getElementById('checkoutStateError'), 'Please select state');
     validateField(checkoutPincodeInput, document.getElementById('checkoutPincodeError'), 'Please enter a valid 6-digit postal PIN', v => /^\d{6}$/.test(v.trim()));
 
     if (!isValid) return;
@@ -2346,11 +2375,40 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
   }
   if (checkoutToPaymentBtn) checkoutToPaymentBtn.addEventListener('click', handleAddressStepSubmit);
   if (checkoutBackToAddressBtn) checkoutBackToAddressBtn.addEventListener('click', () => goToCheckoutStep(1));
+  if (checkoutHeaderEditAddressBtn) checkoutHeaderEditAddressBtn.addEventListener('click', () => goToCheckoutStep(1));
   if (checkoutToReviewBtn) checkoutToReviewBtn.addEventListener('click', handlePaymentStepSubmit);
   if (checkoutBackToPaymentBtn) checkoutBackToPaymentBtn.addEventListener('click', () => goToCheckoutStep(2));
   if (reviewEditAddressBtn) reviewEditAddressBtn.addEventListener('click', () => goToCheckoutStep(1));
   if (reviewEditPaymentBtn) reviewEditPaymentBtn.addEventListener('click', () => goToCheckoutStep(2));
   if (checkoutConfirmOrderBtn) checkoutConfirmOrderBtn.addEventListener('click', handleConfirmAndPlaceOrder);
+
+  // State selection change listener (toggle placeholder color & clear error)
+  if (checkoutStateInput) {
+    checkoutStateInput.addEventListener('change', () => {
+      checkoutStateInput.classList.toggle('is-placeholder', !checkoutStateInput.value);
+      checkoutStateInput.classList.remove('error');
+      const err = document.getElementById('checkoutStateError');
+      if (err) { err.textContent = ''; err.classList.remove('show'); }
+    });
+  }
+
+  // Live input error clearing for address inputs
+  [
+    { input: checkoutNameInput, errId: 'checkoutNameError' },
+    { input: checkoutPhoneInput, errId: 'checkoutPhoneError' },
+    { input: checkoutAddress1Input, errId: 'checkoutAddress1Error' },
+    { input: checkoutAddress2Input, errId: 'checkoutAddress2Error' },
+    { input: checkoutCityInput, errId: 'checkoutCityError' },
+    { input: checkoutPincodeInput, errId: 'checkoutPincodeError' }
+  ].forEach(({ input, errId }) => {
+    if (input) {
+      input.addEventListener('input', () => {
+        input.classList.remove('error');
+        const err = document.getElementById(errId);
+        if (err) { err.textContent = ''; err.classList.remove('show'); }
+      });
+    }
+  });
 
   // B2B GSTIN toggle handler
   const b2bToggle = document.getElementById('checkoutIsB2B');
@@ -3232,8 +3290,35 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       if (err) { err.textContent = ''; err.classList.remove('show'); }
     }
     if (data.state && checkoutStateInput) {
-      checkoutStateInput.value = data.state;
+      if (checkoutStateInput.tagName === 'SELECT') {
+        const rawState = (data.state || '').trim().toLowerCase();
+        let matched = false;
+        for (let i = 0; i < checkoutStateInput.options.length; i++) {
+          const opt = checkoutStateInput.options[i];
+          const val = (opt.value || '').toLowerCase();
+          const txt = (opt.text || '').toLowerCase();
+          if (val && (val === rawState || txt === rawState)) {
+            checkoutStateInput.selectedIndex = i;
+            matched = true;
+            break;
+          }
+        }
+        if (!matched) {
+          for (let i = 0; i < checkoutStateInput.options.length; i++) {
+            const opt = checkoutStateInput.options[i];
+            const val = (opt.value || '').toLowerCase();
+            if (val && (rawState.includes(val) || val.includes(rawState))) {
+              checkoutStateInput.selectedIndex = i;
+              matched = true;
+              break;
+            }
+          }
+        }
+      } else {
+        checkoutStateInput.value = data.state;
+      }
       checkoutStateInput.classList.remove('error');
+      checkoutStateInput.classList.toggle('is-placeholder', !checkoutStateInput.value);
       const err = document.getElementById('checkoutStateError');
       if (err) { err.textContent = ''; err.classList.remove('show'); }
     }
@@ -3248,16 +3333,9 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       checkoutSession.address.state = checkoutStateInput ? checkoutStateInput.value : '';
     }
 
-    // Display high-contrast light autofill success banner
+    // No extra helper texts or banners as requested
     if (checkoutAutofillBanner) {
-      const bannerText = document.getElementById('checkoutAutofillBannerText');
-      if (bannerText) {
-        bannerText.textContent = `Address autofilled via ${source}! All boxes populated. Feel free to edit or fill any missing details.`;
-      }
-      checkoutAutofillBanner.style.display = 'flex';
-    }
-    if (checkoutLocationClearBtn) {
-      checkoutLocationClearBtn.style.display = 'grid';
+      checkoutAutofillBanner.style.display = 'none';
     }
   }
 
@@ -3288,13 +3366,13 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     }
 
     const placeName = place.name || '';
-    const premise = [streetNumber, (placeName && placeName !== route && placeName !== locality) ? placeName : ''].filter(Boolean).join(' ');
-    const street = [route, sublocality2].filter(Boolean).join(', ') || sublocality1 || place.formatted_address || '';
+    const housePart = [streetNumber, (placeName && placeName !== route && placeName !== locality && placeName !== sublocality1) ? placeName : ''].filter(Boolean).join(' ');
+    const street = [route, sublocality2].filter(Boolean).join(', ') || sublocality1 || '';
 
     return {
-      address1: premise || route || placeName || (place.formatted_address ? place.formatted_address.split(',')[0] : ''),
+      address1: housePart || (place.formatted_address ? place.formatted_address.split(',')[0].trim() : '') || placeName || '',
       address2: street || sublocality1 || '',
-      landmark: neighborhood || sublocality1 || '',
+      landmark: neighborhood || '',
       city: locality || '',
       state: adminArea || '',
       pincode: postalCode || ''
@@ -3302,17 +3380,18 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
   }
 
   function initGoogleMapsLocationAutocomplete() {
-    const searchInput = document.getElementById('checkoutLocationSearch');
-    if (!searchInput) return;
+    const address1Input = document.getElementById('checkoutAddress1');
+    if (!address1Input) return;
 
-    // Attach Google Places Autocomplete if API available
+    // Attach Google Places Autocomplete directly to House Address input
     function setupGooglePlaces() {
       if (window.google && window.google.maps && window.google.maps.places) {
         try {
           if (!googleAutocompleteInstance) {
-            googleAutocompleteInstance = new google.maps.places.Autocomplete(searchInput, {
+            googleAutocompleteInstance = new google.maps.places.Autocomplete(address1Input, {
               types: ['geocode', 'establishment'],
-              fields: ['address_components', 'formatted_address', 'name', 'geometry']
+              fields: ['address_components', 'formatted_address', 'name', 'geometry'],
+              componentRestrictions: { country: 'in' }
             });
 
             googleAutocompleteInstance.addListener('place_changed', () => {
@@ -3320,8 +3399,10 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
               if (!place) return;
               const parsed = parseGooglePlaceComponents(place);
               if (parsed) {
-                if (place.formatted_address) {
-                  searchInput.value = place.formatted_address;
+                if (parsed.address1) {
+                  address1Input.value = parsed.address1;
+                } else if (place.name) {
+                  address1Input.value = place.name;
                 }
                 autofillCheckoutAddressFields(parsed, 'Google Maps');
               }
@@ -3339,173 +3420,87 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       let pollAttempts = 0;
       const pollTimer = setInterval(() => {
         pollAttempts++;
-        if (setupGooglePlaces() || pollAttempts > 20) {
+        if (setupGooglePlaces() || pollAttempts > 25) {
           clearInterval(pollTimer);
         }
-      }, 500);
+      }, 400);
     }
 
-    // Input typing & instant autocomplete fallback (Photon / Nominatim)
-    let searchDebounceTimer = null;
-    searchInput.addEventListener('input', (e) => {
-      const q = e.target.value.trim();
-      if (checkoutLocationClearBtn) {
-        checkoutLocationClearBtn.style.display = q.length > 0 ? 'grid' : 'none';
+    // Fallback autocomplete dropdown below checkoutAddress1
+    let fallbackDropdown = document.getElementById('checkoutAddress1FallbackDropdown');
+    if (!fallbackDropdown) {
+      fallbackDropdown = document.createElement('div');
+      fallbackDropdown.id = 'checkoutAddress1FallbackDropdown';
+      fallbackDropdown.className = 'checkout-loc-dropdown';
+      fallbackDropdown.style.display = 'none';
+      if (address1Input.parentNode) {
+        address1Input.parentNode.style.position = 'relative';
+        address1Input.parentNode.appendChild(fallbackDropdown);
       }
+    }
+
+    let searchDebounceTimer = null;
+    address1Input.addEventListener('input', (e) => {
+      const q = e.target.value.trim();
       if (q.length < 3) {
-        if (checkoutLocationDropdown) checkoutLocationDropdown.style.display = 'none';
+        if (fallbackDropdown) fallbackDropdown.style.display = 'none';
         return;
       }
 
-      // If Google Maps is loading or restricted, fallback geocoder provides instant dropdown
-      clearTimeout(searchDebounceTimer);
-      searchDebounceTimer = setTimeout(() => {
-        fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=5`)
-          .then(res => res.json())
-          .then(data => {
-            if (!data || !data.features || data.features.length === 0) {
-              if (checkoutLocationDropdown) checkoutLocationDropdown.style.display = 'none';
-              return;
-            }
-            if (!checkoutLocationDropdown) return;
-            checkoutLocationDropdown.innerHTML = data.features.map((feat, idx) => {
-              const p = feat.properties || {};
-              const title = [p.name, p.street, p.housenumber].filter(Boolean).join(' ') || p.name || 'Location';
-              const subtitle = [p.district, p.city, p.state, p.postcode, p.country].filter(Boolean).join(', ');
-              return `
-                <div class="checkout-loc-item" data-idx="${idx}">
-                  <span class="checkout-loc-name">📍 ${title}</span>
-                  <small class="checkout-loc-detail">${subtitle}</small>
-                </div>
-              `;
-            }).join('');
-            checkoutLocationDropdown.style.display = 'block';
-
-            checkoutLocationDropdown.querySelectorAll('.checkout-loc-item').forEach(item => {
-              item.addEventListener('click', () => {
-                const idx = parseInt(item.dataset.idx, 10);
-                const feat = data.features[idx];
-                if (!feat) return;
+      // If Google Maps is not available or hasn't loaded yet, fallback geocoder provides instant dropdown
+      if (!window.google || !window.google.maps || !window.google.maps.places) {
+        clearTimeout(searchDebounceTimer);
+        searchDebounceTimer = setTimeout(() => {
+          fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=5`)
+            .then(res => res.json())
+            .then(data => {
+              if (!data || !data.features || data.features.length === 0) {
+                if (fallbackDropdown) fallbackDropdown.style.display = 'none';
+                return;
+              }
+              fallbackDropdown.innerHTML = data.features.map((feat, idx) => {
                 const p = feat.properties || {};
-                searchInput.value = [p.name, p.street, p.city, p.state].filter(Boolean).join(', ');
-                autofillCheckoutAddressFields({
-                  address1: [p.housenumber, p.name !== p.city ? p.name : ''].filter(Boolean).join(' ') || p.name || '',
-                  address2: [p.street, p.district].filter(Boolean).join(', ') || p.district || '',
-                  landmark: p.suburb || p.district || '',
-                  city: p.city || p.county || '',
-                  state: p.state || '',
-                  pincode: p.postcode || ''
-                }, 'Location Search');
-                checkoutLocationDropdown.style.display = 'none';
+                const title = [p.name, p.street, p.housenumber].filter(Boolean).join(' ') || p.name || 'Location';
+                const subtitle = [p.district, p.city, p.state, p.postcode, p.country].filter(Boolean).join(', ');
+                return `
+                  <div class="checkout-loc-item" data-idx="${idx}">
+                    <span class="checkout-loc-name">📍 ${title}</span>
+                    <small class="checkout-loc-detail">${subtitle}</small>
+                  </div>
+                `;
+              }).join('');
+              fallbackDropdown.style.display = 'block';
+
+              fallbackDropdown.querySelectorAll('.checkout-loc-item').forEach(item => {
+                item.addEventListener('click', () => {
+                  const idx = parseInt(item.dataset.idx, 10);
+                  const feat = data.features[idx];
+                  if (!feat) return;
+                  const p = feat.properties || {};
+                  autofillCheckoutAddressFields({
+                    address1: [p.housenumber, p.name !== p.city ? p.name : ''].filter(Boolean).join(' ') || p.name || '',
+                    address2: [p.street, p.district].filter(Boolean).join(', ') || p.district || '',
+                    landmark: p.suburb || p.district || '',
+                    city: p.city || p.county || '',
+                    state: p.state || '',
+                    pincode: p.postcode || ''
+                  }, 'Location Search');
+                  fallbackDropdown.style.display = 'none';
+                });
               });
+            })
+            .catch(() => {
+              if (fallbackDropdown) fallbackDropdown.style.display = 'none';
             });
-          })
-          .catch(() => {
-            if (checkoutLocationDropdown) checkoutLocationDropdown.style.display = 'none';
-          });
-      }, 350);
-    });
-
-    // Clear search button
-    if (checkoutLocationClearBtn) {
-      checkoutLocationClearBtn.addEventListener('click', () => {
-        searchInput.value = '';
-        checkoutLocationClearBtn.style.display = 'none';
-        if (checkoutAutofillBanner) checkoutAutofillBanner.style.display = 'none';
-        if (checkoutLocationDropdown) checkoutLocationDropdown.style.display = 'none';
-        searchInput.focus();
-      });
-    }
-
-    // Close dropdown on click outside
-    document.addEventListener('click', (e) => {
-      if (checkoutLocationDropdown && !e.target.closest('#checkoutGmapSearchGroup')) {
-        checkoutLocationDropdown.style.display = 'none';
+        }, 350);
       }
     });
 
-    // GPS "Use Current Location" button
-    const detectGpsBtn = document.getElementById('checkoutDetectLocationBtn');
-    if (detectGpsBtn) {
-      detectGpsBtn.addEventListener('click', () => {
-        if (!navigator.geolocation) {
-          showToast('GPS UNAVAILABLE', 'Geolocation is not supported by your browser.', 'error');
-          return;
-        }
-        detectGpsBtn.disabled = true;
-        const originalContent = detectGpsBtn.innerHTML;
-        detectGpsBtn.innerHTML = `<span>Locating...</span>`;
-
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            const lat = pos.coords.latitude;
-            const lng = pos.coords.longitude;
-
-            function restoreBtn() {
-              detectGpsBtn.disabled = false;
-              detectGpsBtn.innerHTML = originalContent;
-            }
-
-            if (window.google && window.google.maps && window.google.maps.Geocoder) {
-              const geocoder = new google.maps.Geocoder();
-              geocoder.geocode({ location: { lat, lng } }, (results, status) => {
-                restoreBtn();
-                if (status === 'OK' && results && results[0]) {
-                  searchInput.value = results[0].formatted_address;
-                  const parsed = parseGooglePlaceComponents(results[0]);
-                  if (parsed) autofillCheckoutAddressFields(parsed, 'Google Maps GPS');
-                } else {
-                  // Fallback reverse geocoder
-                  fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
-                    .then(r => r.json())
-                    .then(geo => {
-                      if (geo && geo.address) {
-                        searchInput.value = geo.display_name || '';
-                        const a = geo.address;
-                        autofillCheckoutAddressFields({
-                          address1: [a.house_number, a.building || a.road].filter(Boolean).join(' ') || geo.display_name.split(',')[0],
-                          address2: [a.suburb || a.neighbourhood, a.road].filter(Boolean).join(', ') || '',
-                          landmark: a.neighbourhood || '',
-                          city: a.city || a.town || a.county || '',
-                          state: a.state || '',
-                          pincode: a.postcode || ''
-                        }, 'GPS Geolocation');
-                      }
-                    }).catch(() => {});
-                }
-              });
-            } else {
-              fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
-                .then(r => r.json())
-                .then(geo => {
-                  restoreBtn();
-                  if (geo && geo.address) {
-                    searchInput.value = geo.display_name || '';
-                    const a = geo.address;
-                    autofillCheckoutAddressFields({
-                      address1: [a.house_number, a.building || a.road].filter(Boolean).join(' ') || geo.display_name.split(',')[0],
-                      address2: [a.suburb || a.neighbourhood, a.road].filter(Boolean).join(', ') || '',
-                      landmark: a.neighbourhood || '',
-                      city: a.city || a.town || a.county || '',
-                      state: a.state || '',
-                      pincode: a.postcode || ''
-                    }, 'GPS Geolocation');
-                  }
-                })
-                .catch(() => {
-                  restoreBtn();
-                });
-            }
-          },
-          (err) => {
-            detectGpsBtn.disabled = false;
-            detectGpsBtn.innerHTML = originalContent;
-            showToast('LOCATION PERMISSION', 'Please enable location permissions in browser.', 'error');
-          },
-          { enableHighAccuracy: true, timeout: 8000 }
-        );
-      });
-    }
+    document.addEventListener('click', (e) => {
+      if (fallbackDropdown && !e.target.closest('#checkoutAddress1') && !e.target.closest('#checkoutAddress1FallbackDropdown')) {
+        fallbackDropdown.style.display = 'none';
+      }
+    });
   }
 
   // Initialize location autocomplete
@@ -7737,6 +7732,11 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
               modal.setAttribute('aria-hidden', 'false');
             }
           }
+        } else if (action === 'contact' || action === 'support') {
+          e.preventDefault();
+          if (typeof window.openZohoDeskChat === 'function') {
+            window.openZohoDeskChat();
+          }
         } else if (action === 'size-guide') {
           e.preventDefault();
           const modal = document.getElementById('sizeGuideModal');
@@ -7891,14 +7891,52 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
   }
 
   // ══════════════════════════════════════════════════════════════
-  // CLIENT SUPPORT (PERMANENTLY DELETED)
+  // CLIENT SUPPORT & CONCIERGE MODAL
   // ══════════════════════════════════════════════════════════════
   function initContactSupport() {
-    window.openContactSupportModal = function() {
-      const faqSec = document.getElementById('shopFaq');
-      if (faqSec) faqSec.scrollIntoView({ behavior: 'smooth' });
+    window.openZohoDeskChat = function() {
+      const legalModal = document.getElementById('legalPolicyModal');
+      const legalTitle = document.getElementById('legalPolicyModalTitle');
+      const legalTag = document.getElementById('legalPolicyModalTag');
+      const legalBody = document.getElementById('legalPolicyModalBody');
+      if (legalTag) legalTag.textContent = "CLIENT CARE & CONCIERGE";
+      if (legalTitle) legalTitle.textContent = "CONTACT US";
+      if (legalBody) {
+        legalBody.innerHTML = `
+          <p style="margin-bottom:1.2rem;color:var(--bone);font-weight:700;">Direct assistance from The Street Co Concierge team.</p>
+          <div style="display:grid;gap:.9rem;">
+            <div style="padding:1rem;background:rgba(232,228,220,.03);border:1px solid rgba(232,228,220,.1);border-radius:8px;">
+              <strong style="color:var(--bone);display:block;margin-bottom:4px;font-size:0.85rem;">Direct Concierge Email</strong>
+              <p style="margin:0 0 8px;font-size:0.75rem;color:#a1a1aa;line-height:1.45;">Reach out for assistance regarding order fulfillment, sizing consultations, or exchanges:</p>
+              <a href="mailto:support@thestreetco.zohodesk.in" style="color:#ef4444;font-family:var(--mono);font-size:0.8rem;font-weight:700;text-decoration:underline;">support@thestreetco.zohodesk.in</a>
+              <div style="margin-top:6px;font-size:0.7rem;color:#71717a;">Average reply time within 2–4 business hours.</div>
+            </div>
+            <div style="padding:1rem;background:rgba(232,228,220,.03);border:1px solid rgba(232,228,220,.1);border-radius:8px;">
+              <strong style="color:var(--bone);display:block;margin-bottom:4px;font-size:0.85rem;">WhatsApp Instant Concierge</strong>
+              <p style="margin:0 0 8px;font-size:0.75rem;color:#a1a1aa;line-height:1.45;">Live order status, tracking verification & quick queries:</p>
+              <a href="https://wa.me/916296731835?text=Hello%20The%20Street%20Co%2C%20I%20need%20assistance%20with%20an%20order" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;color:#22c55e;font-family:var(--mono);font-size:0.8rem;font-weight:700;text-decoration:none;">
+                <span>+91 62967 31835 ↗</span>
+              </a>
+            </div>
+          </div>
+        `;
+      }
+      if (legalModal) {
+        legalModal.classList.add('open');
+        legalModal.setAttribute('aria-hidden', 'false');
+      }
     };
-    window.closeContactSupportModal = function() {};
+
+    window.closeZohoDeskChat = function() {
+      const legalModal = document.getElementById('legalPolicyModal');
+      if (legalModal) {
+        legalModal.classList.remove('open');
+        legalModal.setAttribute('aria-hidden', 'true');
+      }
+    };
+
+    window.openContactSupportModal = window.openZohoDeskChat;
+    window.closeContactSupportModal = window.closeZohoDeskChat;
   }
 
   // Initial setup & database sync
@@ -7920,10 +7958,13 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
   }, 15000);
 })();
 
-// Legacy credentials & admin keys cleanup
+// Legacy credentials & live chat cleanup
 try {
   localStorage.removeItem("itachi_auth_user");
   localStorage.removeItem("itachi_admin_secret");
+  localStorage.removeItem("live_chat_provider");
+  localStorage.removeItem("live_chat_widget_code");
+  localStorage.removeItem("zoho_salesiq_widget_code");
 } catch (_) {}
 
 // ══════════════════════════════════════════════════════════════

@@ -32,7 +32,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Cinzel:wght@400;700&family=Space+Grotesk:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20261021_2" />
+<link rel="stylesheet" href="style.css?v=20261022_nochat" />
 <link rel="manifest" href="/manifest.json" />
 <meta name="theme-color" content="#ffffff" />
 <meta name="mobile-web-app-capable" content="yes" />
@@ -733,7 +733,7 @@
         <li><a href="#shipping" class="footer__link" data-footer-action="legal" data-type="shipping">Shipping Info</a></li>
         <li><a href="#size-guide" class="footer__link" data-footer-action="size-guide">Size Guide</a></li>
         <li><a href="#faq" class="footer__link" data-footer-action="legal" data-type="terms">FAQ</a></li>
-        <li><a href="#contact" class="footer__link" data-footer-action="size-guide">Contact Us</a></li>
+        <li><a href="#contact" class="footer__link" data-footer-action="contact">Contact Us</a></li>
       </ul>
     </div>
     <div class="footer__col">
@@ -2015,53 +2015,36 @@
     <!-- Full-Page Checkout Header -->
     <header class="checkout-modal__header">
       <div class="checkout-modal__header-left">
+        <!-- Return to Shop Button (Only visible on Step 1: Address Page) -->
         <button type="button" class="checkout-modal__back-store-btn" id="checkoutBackToStoreBtn" aria-label="Return to store">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="15 18 9 12 15 6"></polyline>
           </svg>
           <span>RETURN TO SHOP</span>
         </button>
-        <div class="checkout-modal__brand-meta">
-          <h2 class="checkout-modal__title" id="checkoutFlowTitle">THE STREET CO CHECKOUT</h2>
-          <span class="checkout-modal__secure-badge">
-            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-            </svg>
-            <span>256-BIT SSL ENCRYPTED · OFFICIAL PROVENANCE</span>
-          </span>
-        </div>
+
+        <!-- Edit Address Button (Replaces Return to Shop in Header on Payment & Confirm Pages) -->
+        <button type="button" class="checkout-modal__back-store-btn" id="checkoutHeaderEditAddressBtn" aria-label="Edit address" style="display:none;">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+          <span>EDIT ADDRESS</span>
+        </button>
       </div>
-      <button type="button" class="checkout-modal__close-btn" id="checkoutFlowCloseBtn" aria-label="Close checkout">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
-        <span class="checkout-modal__close-text">CLOSE</span>
-      </button>
+      <!-- Hidden compatibility title and close elements for scripts -->
+      <h2 id="checkoutFlowTitle" style="display:none !important;" aria-hidden="true"></h2>
+      <button type="button" id="checkoutFlowCloseBtn" style="display:none !important;" aria-hidden="true"></button>
     </header>
 
-    <!-- Stepper Breadcrumbs Bar -->
-    <div class="checkout-stepper" id="checkoutStepper">
-      <div class="checkout-step-item active" data-step="1" id="stepIndicator1">
-        <span class="checkout-step-num">1</span>
-        <span class="checkout-step-label">Address &amp; Delivery</span>
-      </div>
-      <div class="checkout-step-line" id="stepLine1"></div>
-      <div class="checkout-step-item" data-step="2" id="stepIndicator2">
-        <span class="checkout-step-num">2</span>
-        <span class="checkout-step-label">Payment</span>
-      </div>
-      <div class="checkout-step-line" id="stepLine2"></div>
-      <div class="checkout-step-item" data-step="3" id="stepIndicator3">
-        <span class="checkout-step-num">3</span>
-        <span class="checkout-step-label">Confirm Order</span>
-      </div>
-      <div class="checkout-step-line" id="stepLine3"></div>
-      <div class="checkout-step-item" data-step="4" id="stepIndicator4">
-        <span class="checkout-step-num">4</span>
-        <span class="checkout-step-label">Confirmation</span>
-      </div>
+    <!-- Hidden Stepper container for script compatibility -->
+    <div id="checkoutStepper" style="display:none !important;" aria-hidden="true">
+      <div id="stepIndicator1" data-step="1"></div>
+      <div id="stepLine1"></div>
+      <div id="stepIndicator2" data-step="2"></div>
+      <div id="stepLine2"></div>
+      <div id="stepIndicator3" data-step="3"></div>
+      <div id="stepLine3"></div>
+      <div id="stepIndicator4" data-step="4"></div>
     </div>
 
     <!-- Checkout Main Grid (Forms + Dynamic Summary) -->
@@ -2073,27 +2056,24 @@
         <!-- ══════════ STEP 1: ADDRESS AND DELIVERY INPUT ══════════ -->
         <div class="checkout-step-view active" id="checkoutStep1" role="tabpanel" aria-labelledby="stepIndicator1">
           <div class="checkout-step-heading">
-            <div class="checkout-step-heading-nav">
-              <span class="checkout-step-pill">STEP 1 OF 4</span>
-              <button type="button" class="checkout-refresh-link" id="checkoutRefreshAddressBtn" title="Reset all address &amp; delivery fields">↺ Refresh / Clear Fields</button>
-            </div>
-            <h3>1. Delivery Address</h3>
+            <button type="button" id="checkoutRefreshAddressBtn" style="display:none !important;" aria-hidden="true"></button>
+            <h3>Delivery Address</h3>
             <p>Enter your shipping address for order delivery.</p>
           </div>
 
           <form class="checkout-form" id="checkoutAddressForm" onsubmit="return false;">
             
-            <!-- Recipient Information -->
+            <!-- Card 1: Recipient Contact -->
             <div class="checkout-form-section">
               <span class="checkout-section-badge">RECIPIENT CONTACT</span>
               <div class="checkout-form-row checkout-form-row--2col">
                 <div class="checkout-form-group">
-                  <label for="checkoutName">Full Recipient Name <span class="req">*</span></label>
+                  <label for="checkoutName">Full Name <span class="req">*</span></label>
                   <input type="text" id="checkoutName" class="checkout-input" placeholder="e.g. Rahul Sharma" required autocomplete="name">
                   <span class="checkout-input-error" id="checkoutNameError"></span>
                 </div>
                 <div class="checkout-form-group">
-                  <label for="checkoutPhone">Mobile Number (10 digits) <span class="req">*</span></label>
+                  <label for="checkoutPhone">Mobile Number <span class="req">*</span></label>
                   <div class="checkout-phone-input-wrap">
                     <span class="checkout-phone-prefix">+91</span>
                     <input type="tel" id="checkoutPhone" class="checkout-input checkout-input--phone" placeholder="98765 43210" maxlength="10" required autocomplete="tel">
@@ -2103,63 +2083,36 @@
               </div>
 
               <div class="checkout-form-group">
-                <label for="checkoutEmail">Email Address <small>(For order confirmation, invoice &amp; tracking)</small></label>
+                <label for="checkoutEmail">Email Address</label>
                 <input type="email" id="checkoutEmail" class="checkout-input" placeholder="e.g. rahul.sharma@example.com" autocomplete="email">
               </div>
             </div>
 
-            <!-- Shipping Location -->
+            <!-- Card 2: Delivery Address -->
             <div class="checkout-form-section">
-              <span class="checkout-section-badge">DELIVERY LOCATION</span>
-              
-              <!-- Clean Google Maps Location Autocomplete Bar -->
-              <div class="checkout-form-group checkout-gmap-search-group" id="checkoutGmapSearchGroup">
-                <div class="checkout-gmap-label-bar">
-                  <label for="checkoutLocationSearch" class="checkout-gmap-label">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" class="gmap-pin-icon">
-                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                      <circle cx="12" cy="10" r="3"></circle>
-                    </svg>
-                    <span>SEARCH LOCATION (GOOGLE MAPS)</span>
-                  </label>
-                  <button type="button" class="checkout-gps-btn" id="checkoutDetectLocationBtn" title="Detect and use current GPS location">
-                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2">
-                      <circle cx="12" cy="12" r="10"></circle>
-                      <line x1="22" y1="12" x2="18" y2="12"></line>
-                      <line x1="6" y1="12" x2="2" y2="12"></line>
-                      <line x1="12" y1="6" x2="12" y2="2"></line>
-                      <line x1="12" y1="22" x2="12" y2="18"></line>
-                    </svg>
-                    <span>Use Current Location</span>
-                  </button>
-                </div>
-                <div class="checkout-gmap-input-wrapper">
-                  <span class="checkout-gmap-input-pin">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#e05a47" stroke-width="2.4">
-                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                      <circle cx="12" cy="10" r="3"></circle>
-                    </svg>
-                  </span>
-                  <input type="text" id="checkoutLocationSearch" class="checkout-input checkout-input--gmap" placeholder="Type area, city or landmark to autofill..." autocomplete="off">
-                  <button type="button" class="checkout-gmap-clear-btn" id="checkoutLocationClearBtn" title="Clear search" style="display:none;" aria-label="Clear location input">✕</button>
-                </div>
-                <div class="checkout-autofill-banner" id="checkoutAutofillBanner" style="display:none;">
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#22c55e" stroke-width="2.5">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                  </svg>
-                  <span id="checkoutAutofillBannerText">Location filled via Google Maps</span>
-                </div>
-                <div class="checkout-location-dropdown" id="checkoutLocationDropdown" style="display:none;"></div>
-              </div>
+              <span class="checkout-section-badge">DELIVERY ADDRESS</span>
 
-              <!-- Only 1 Bar for House Address -->
+              <!-- 1. House Address / Flat / Building (Google Maps Autocomplete Integrated) -->
               <div class="checkout-form-group">
-                <label for="checkoutAddress1">House Address <span class="req">*</span></label>
-                <input type="text" id="checkoutAddress1" class="checkout-input" placeholder="Flat / House No., Building, Street & Area" required autocomplete="street-address">
+                <label for="checkoutAddress1">House Address / Flat No. / Building <span class="req">*</span></label>
+                <input type="text" id="checkoutAddress1" class="checkout-input" placeholder="Start typing address or house / building no..." required autocomplete="off">
                 <span class="checkout-input-error" id="checkoutAddress1Error"></span>
               </div>
 
-              <!-- City, State & PIN Code in one clean row -->
+              <!-- 2. Street / Road / Area -->
+              <div class="checkout-form-group">
+                <label for="checkoutAddress2">Street / Road / Area <span class="req">*</span></label>
+                <input type="text" id="checkoutAddress2" class="checkout-input" placeholder="e.g. MG Road, Sector 14, Koramangala" required autocomplete="address-line2">
+                <span class="checkout-input-error" id="checkoutAddress2Error"></span>
+              </div>
+
+              <!-- 3. Nearby Landmark (Optional) -->
+              <div class="checkout-form-group">
+                <label for="checkoutLandmark">Nearby Landmark <small style="font-size:0.7rem;color:#71717a;font-weight:normal;">(Optional)</small></label>
+                <input type="text" id="checkoutLandmark" class="checkout-input" placeholder="e.g. Near Metro Station / Behind City Hospital" autocomplete="off">
+              </div>
+
+              <!-- 4. Town / City, 5. State (2026 India List), 6. PIN / ZIP Code -->
               <div class="checkout-form-row checkout-form-row--3col">
                 <div class="checkout-form-group">
                   <label for="checkoutCity">Town / City <span class="req">*</span></label>
@@ -2168,31 +2121,68 @@
                 </div>
                 <div class="checkout-form-group">
                   <label for="checkoutState">State <span class="req">*</span></label>
-                  <input type="text" id="checkoutState" class="checkout-input" placeholder="e.g. Maharashtra" required autocomplete="address-level1">
+                  <select id="checkoutState" class="checkout-select is-placeholder" required autocomplete="address-level1">
+                    <option value="" disabled selected>e.g. Maharashtra</option>
+                    <optgroup label="States">
+                      <option value="Andhra Pradesh">Andhra Pradesh</option>
+                      <option value="Arunachal Pradesh">Arunachal Pradesh</option>
+                      <option value="Assam">Assam</option>
+                      <option value="Bihar">Bihar</option>
+                      <option value="Chhattisgarh">Chhattisgarh</option>
+                      <option value="Goa">Goa</option>
+                      <option value="Gujarat">Gujarat</option>
+                      <option value="Haryana">Haryana</option>
+                      <option value="Himachal Pradesh">Himachal Pradesh</option>
+                      <option value="Jharkhand">Jharkhand</option>
+                      <option value="Karnataka">Karnataka</option>
+                      <option value="Kerala">Kerala</option>
+                      <option value="Madhya Pradesh">Madhya Pradesh</option>
+                      <option value="Maharashtra">Maharashtra</option>
+                      <option value="Manipur">Manipur</option>
+                      <option value="Meghalaya">Meghalaya</option>
+                      <option value="Mizoram">Mizoram</option>
+                      <option value="Nagaland">Nagaland</option>
+                      <option value="Odisha">Odisha</option>
+                      <option value="Punjab">Punjab</option>
+                      <option value="Rajasthan">Rajasthan</option>
+                      <option value="Sikkim">Sikkim</option>
+                      <option value="Tamil Nadu">Tamil Nadu</option>
+                      <option value="Telangana">Telangana</option>
+                      <option value="Tripura">Tripura</option>
+                      <option value="Uttar Pradesh">Uttar Pradesh</option>
+                      <option value="Uttarakhand">Uttarakhand</option>
+                      <option value="West Bengal">West Bengal</option>
+                    </optgroup>
+                    <optgroup label="Union Territories">
+                      <option value="Andaman and Nicobar Islands">Andaman and Nicobar Islands</option>
+                      <option value="Chandigarh">Chandigarh</option>
+                      <option value="Dadra and Nagar Haveli and Daman and Diu">Dadra and Nagar Haveli and Daman and Diu</option>
+                      <option value="Delhi">Delhi (NCT)</option>
+                      <option value="Jammu and Kashmir">Jammu and Kashmir</option>
+                      <option value="Ladakh">Ladakh</option>
+                      <option value="Lakshadweep">Lakshadweep</option>
+                      <option value="Puducherry">Puducherry</option>
+                    </optgroup>
+                  </select>
                   <span class="checkout-input-error" id="checkoutStateError"></span>
                 </div>
                 <div class="checkout-form-group">
-                  <label for="checkoutPincode">PIN Code <span class="req">*</span></label>
+                  <label for="checkoutPincode">PIN / ZIP Code <span class="req">*</span></label>
                   <input type="text" id="checkoutPincode" class="checkout-input" placeholder="e.g. 400001" maxlength="6" required autocomplete="postal-code">
                   <span class="checkout-input-error" id="checkoutPincodeError"></span>
                 </div>
               </div>
 
-              <!-- Hidden auxiliary inputs to preserve script compatibility without clutter -->
-              <input type="hidden" id="checkoutAddress2" value="">
-              <input type="hidden" id="checkoutLandmark" value="">
+              <!-- Hidden auxiliary inputs to preserve script compatibility -->
+              <input type="hidden" id="checkoutLocationSearch" value="">
+              <div id="checkoutAutofillBanner" style="display:none;"></div>
+              <div id="checkoutLocationDropdown" style="display:none;"></div>
               <div style="display:none;" id="checkoutTypePills">
                 <button type="button" class="checkout-type-pill active" data-type="Home">Home</button>
               </div>
               <input type="checkbox" id="checkoutIsB2B" style="display:none;">
               <input type="text" id="checkoutGstin" style="display:none;">
-
-              <!-- Clean simple delivery note -->
-              <div class="checkout-simple-delivery-banner">
-                <span class="delivery-check-pill">✓ FREE DELIVERY</span>
-                <span class="delivery-check-text">Standard doorstep delivery across India · 100% insured transit</span>
-                <input type="radio" name="checkoutDeliverySpeed" value="free" checked style="display:none;">
-              </div>
+              <input type="radio" name="checkoutDeliverySpeed" value="free" checked style="display:none;">
             </div>
 
             <!-- Step 1 Actions -->
@@ -2207,11 +2197,8 @@
         <!-- ══════════ STEP 2: PAYMENT PAGE (SIMPLE & LIGHT THEME) ══════════ -->
         <div class="checkout-step-view" id="checkoutStep2" role="tabpanel" aria-labelledby="stepIndicator2" style="display:none;">
           <div class="checkout-step-heading">
-            <div class="checkout-step-heading-nav">
-              <button type="button" class="checkout-back-link" id="checkoutBackToAddressBtn">← Edit Address</button>
-              <span class="checkout-step-pill">STEP 2 OF 4</span>
-            </div>
-            <h3>2. Payment Method</h3>
+            <button type="button" id="checkoutBackToAddressBtn" style="display:none !important;" aria-hidden="true"></button>
+            <h3>Payment Method</h3>
             <p>Select your payment method below to proceed.</p>
           </div>
 
@@ -2231,7 +2218,7 @@
                 </div>
               </div>
               <div class="checkout-pay-body" style="display:block;">
-                <p class="checkout-cod-info">✓ Pay conveniently at your doorstep. Zero extra fee or processing charges.<br>✓ Pay via Cash or Google Pay / PhonePe / Paytm / UPI QR upon package arrival.</p>
+                <p class="checkout-cod-info">Pay conveniently at your doorstep via Cash or Google Pay / PhonePe / Paytm / UPI QR upon arrival.</p>
 
                 <div class="checkout-pay-action-row">
                   <button type="button" class="checkout-pay-continue-btn" data-pay-method="cod">
@@ -2240,11 +2227,6 @@
                 </div>
               </div>
             </div>
-          </div>
-
-          <!-- Note on Gateway -->
-          <div class="checkout-pay-notice">
-            <span>ℹ️ Online Card &amp; Net Banking payment gateway upgrades in progress. Doorstep COD and UPI QR are fully supported.</span>
           </div>
 
           <!-- Step 2 Actions Fallback -->
@@ -2258,61 +2240,26 @@
         <!-- ══════════ STEP 3: CONFORM ORDER (REVIEW & CONFIRM) ══════════ -->
         <div class="checkout-step-view" id="checkoutStep3" role="tabpanel" aria-labelledby="stepIndicator3" style="display:none;">
           <div class="checkout-step-heading">
-            <div class="checkout-step-heading-nav">
-              <button type="button" class="checkout-back-link" id="checkoutBackToPaymentBtn">← Edit Payment</button>
-              <span class="checkout-step-pill">STEP 3 OF 4</span>
-            </div>
-            <h3>3. Review &amp; Confirm Order</h3>
-            <p>Please inspect your delivery address, chosen payment method, and complete order summary before confirming your order.</p>
+            <button type="button" id="checkoutBackToPaymentBtn" style="display:none !important;" aria-hidden="true"></button>
+            <h3>Review &amp; Confirm Order</h3>
+            <p>Please inspect your delivery address and complete order summary before confirming.</p>
           </div>
 
-          <!-- Confirmation Review Cards -->
+          <!-- Confirmation Review Cards (Delivery Address & Payment cards removed) -->
           <div class="checkout-review-cards">
             
-            <!-- Address Review Box -->
-            <div class="checkout-review-card">
-              <div class="checkout-review-card__header">
-                <div class="checkout-review-card__title">
-                  <span class="review-icon">📍</span>
-                  <strong>DELIVERY ADDRESS</strong>
-                </div>
-                <button type="button" class="checkout-review-edit-btn" id="reviewEditAddressBtn" style="color: #ffffff !important;">Change</button>
-              </div>
-              <div class="checkout-review-card__body">
-                <div class="checkout-review-recipient">
-                  <strong id="reviewRecipientName">Rahul Sharma</strong>
-                  <span id="reviewRecipientPhone">+91 9876543210</span>
-                  <span class="checkout-address-type-tag" id="reviewAddressTypeTag">Home</span>
-                </div>
-                <p class="checkout-review-full-address" id="reviewFullAddress">
-                  Flat 402, Building 3, Sunrise Apartments, MG Road, Near City Mall, Sector 15, Mumbai, Maharashtra - 400001
-                </p>
-                <div class="checkout-review-gstin-row" id="reviewGstinRow" style="display:none;margin-top:6px;font-family:var(--mono);font-size:0.68rem;color:var(--smoke);">
-                  GSTIN: <strong id="reviewGstinVal" style="color:var(--bone);"></strong>
-                </div>
-                <div class="checkout-review-delivery-mode" id="reviewDeliveryMode">
-                  <span class="mode-icon">🚚</span>
-                  <span>Standard Delivery (FREE)</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Payment Method Review Box -->
-            <div class="checkout-review-card">
-              <div class="checkout-review-card__header">
-                <div class="checkout-review-card__title">
-                  <span class="review-icon">💳</span>
-                  <strong>PAYMENT METHOD</strong>
-                </div>
-                <button type="button" class="checkout-review-edit-btn" id="reviewEditPaymentBtn" style="color: #ffffff !important;">Change</button>
-              </div>
-              <div class="checkout-review-card__body">
-                <div class="checkout-review-pay-selected" id="reviewPaymentSelected">
-                  <strong>Cash on Delivery (COD)</strong>
-                  <span id="reviewPaymentDetail">Cash on Delivery (COD) · Pay upon arrival</span>
-                  <span class="checkout-pay-verified-tag">Available ✓</span>
-                </div>
-              </div>
+            <!-- Hidden delivery and payment review elements for script compatibility -->
+            <div style="display:none !important;" aria-hidden="true">
+              <button type="button" id="reviewEditAddressBtn"></button>
+              <span id="reviewRecipientName"></span>
+              <span id="reviewRecipientPhone"></span>
+              <span id="reviewAddressTypeTag"></span>
+              <p id="reviewFullAddress"></p>
+              <div id="reviewGstinRow"><span id="reviewGstinVal"></span></div>
+              <div id="reviewDeliveryMode"></div>
+              <button type="button" id="reviewEditPaymentBtn"></button>
+              <div id="reviewPaymentSelected"><strong></strong></div>
+              <span id="reviewPaymentDetail"></span>
             </div>
 
             <!-- Order Summary Review Box -->
@@ -2384,17 +2331,17 @@
               </button>
             </div>
 
-            <!-- 2. Delivery, Payment & Recipient Info (DELIVERING TO first, then PAYMENT) -->
-            <div class="confirmed-card-info-grid" style="grid-template-columns: repeat(2, 1fr);">
+            <!-- 2. Delivery, Payment & Recipient Info (Hidden for clean presentation) -->
+            <div class="confirmed-card-info-grid" style="display:none !important;" aria-hidden="true">
               <div class="confirmed-info-cell">
                 <span class="info-cell-label">DELIVERING TO</span>
-                <strong class="info-cell-val" id="confirmedRecipient">Rahul Sharma</strong>
-                <small class="info-cell-sub" id="confirmedShortAddress">Flat 402, Mumbai 400001</small>
+                <strong class="info-cell-val" id="confirmedRecipient"></strong>
+                <small class="info-cell-sub" id="confirmedShortAddress"></small>
               </div>
               <div class="confirmed-info-cell">
                 <span class="info-cell-label">PAYMENT</span>
-                <strong class="info-cell-val text-success" id="confirmedPayStatus">Cash on Delivery · Verified</strong>
-                <small class="info-cell-sub" id="confirmedPayMethod">Cash on Delivery (COD)</small>
+                <strong class="info-cell-val" id="confirmedPayStatus"></strong>
+                <small class="info-cell-sub" id="confirmedPayMethod"></small>
               </div>
             </div>
 
@@ -2435,8 +2382,8 @@
               </div>
             </div>
 
-            <!-- 5. Continue Shopping / Track Order Action -->
-            <div class="confirmed-card-action">
+            <!-- 5. Continue Shopping Action (Removed as requested) -->
+            <div class="confirmed-card-action" style="display:none !important;" aria-hidden="true">
               <button type="button" class="checkout-btn-track" id="checkoutTrackCourierBtn">
                 <span class="btn-icon">🛍️</span>
                 <span>CONTINUE SHOPPING</span>
@@ -2483,22 +2430,6 @@
                 <strong class="calc-total-inr" id="checkoutTotalInr">₹4,999 INR</strong>
                 <small class="calc-total-ryo" id="checkoutTotalRyo" style="display:none;"></small>
               </div>
-            </div>
-          </div>
-
-          <!-- Trust Badges -->
-          <div class="checkout-sidebar-trust">
-            <div class="trust-badge-item">
-              <span>🛡️</span>
-              <small>100% Genuine Provenance</small>
-            </div>
-            <div class="trust-badge-item">
-              <span>🔄</span>
-              <small>7-Day Replacement Guarantee</small>
-            </div>
-            <div class="trust-badge-item">
-              <span>🔒</span>
-              <small>100% Safe &amp; Secure Checkout</small>
             </div>
           </div>
         </div>
@@ -2670,23 +2601,70 @@
   </div>
 </div>
 
-<!-- Zoho SalesIQ Live Chat Integration (Forced English Locale) -->
-<script>
-  window.$zoho = window.$zoho || {};
-  $zoho.salesiq = $zoho.salesiq || {
-    values: {
-      language: "en"
-    },
-    ready: function() {
-      try {
-        $zoho.salesiq.language('en');
-      } catch (_) {}
-    }
-  };
-</script>
 <!-- Google Maps Places API for Checkout Location Autocomplete -->
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCacMuQVy2va7lmDRLiuVaMPdC3mOq1x1U&libraries=places&loading=async" async defer></script>
 
-<script src="main.js?v=20261021_5"></script>
+<script src="main.js?v=20261022_nochat"></script>
+
+<!-- Guaranteed Header & Step Button Sync (Overrides any browser cache) -->
+<script>
+  (function initCheckoutButtonSync() {
+    const backStoreBtn = document.getElementById('checkoutBackToStoreBtn');
+    const headerEditAddrBtn = document.getElementById('checkoutHeaderEditAddressBtn');
+
+    function syncButtons() {
+      const step1 = document.getElementById('checkoutStep1');
+      const step2 = document.getElementById('checkoutStep2');
+      const step3 = document.getElementById('checkoutStep3');
+
+      const isStep1Active = step1 && step1.classList.contains('active') && step1.style.display !== 'none';
+      const isStep2Active = step2 && step2.classList.contains('active') && step2.style.display !== 'none';
+      const isStep3Active = step3 && step3.classList.contains('active') && step3.style.display !== 'none';
+
+      if (isStep1Active) {
+        if (backStoreBtn) backStoreBtn.style.display = 'inline-flex';
+        if (headerEditAddrBtn) headerEditAddrBtn.style.display = 'none';
+      } else if (isStep2Active) {
+        // Step 2: Payment Page -> Edit Address in position of Return to Shop; Return to Shop removed
+        if (backStoreBtn) backStoreBtn.style.display = 'none';
+        if (headerEditAddrBtn) headerEditAddrBtn.style.display = 'inline-flex';
+      } else if (isStep3Active) {
+        // Step 3: Confirm Page -> Remove Return to Shop button & remove Edit Payment button
+        if (backStoreBtn) backStoreBtn.style.display = 'none';
+        if (headerEditAddrBtn) headerEditAddrBtn.style.display = 'none';
+        const editPay1 = document.getElementById('checkoutBackToPaymentBtn');
+        const editPay2 = document.getElementById('reviewEditPaymentBtn');
+        if (editPay1) editPay1.style.display = 'none';
+        if (editPay2) editPay2.style.display = 'none';
+      }
+    }
+
+    if (headerEditAddrBtn) {
+      headerEditAddrBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        const step1Btn = document.getElementById('stepIndicator1');
+        if (step1Btn) step1Btn.click();
+        const step1 = document.getElementById('checkoutStep1');
+        const step2 = document.getElementById('checkoutStep2');
+        const step3 = document.getElementById('checkoutStep3');
+        if (step1) { step1.style.display = 'block'; step1.classList.add('active'); }
+        if (step2) { step2.style.display = 'none'; step2.classList.remove('active'); }
+        if (step3) { step3.style.display = 'none'; step3.classList.remove('active'); }
+        syncButtons();
+      });
+    }
+
+    // Observe step view visibility changes
+    const viewsWrap = document.querySelector('.checkout-modal__views');
+    if (viewsWrap && window.MutationObserver) {
+      const observer = new MutationObserver(syncButtons);
+      observer.observe(viewsWrap, { attributes: true, subtree: true, attributeFilter: ['class', 'style'] });
+    }
+    document.addEventListener('click', function() {
+      setTimeout(syncButtons, 50);
+      setTimeout(syncButtons, 200);
+    });
+  })();
+</script>
 </body>
 </html>

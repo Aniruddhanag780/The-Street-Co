@@ -563,37 +563,65 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
   let toastTimer = null;
   function showToast(titleOrName, optionalDetail, type = 'cart') {
     if (!shopToast) return;
-    const title = optionalDetail ? titleOrName : (type === 'wishlist' ? 'SAVED WISHLIST' : (type === 'price-drop' ? 'PRICE DROP ALERT' : 'ADDED TO CART'));
-    const detail = optionalDetail ? optionalDetail : titleOrName;
-    const isCartToast = type === 'cart';
+
+    const isCartToast = type === 'cart' || type === 'bag';
     const isWishlistToast = type === 'wishlist';
     const isPriceDropToast = type === 'price-drop';
 
+    let title = '';
+    let itemText = '';
+
+    if (optionalDetail) {
+      title = titleOrName;
+      itemText = optionalDetail;
+    } else {
+      if (isWishlistToast) title = 'Saved to Wishlist';
+      else if (isPriceDropToast) title = 'Price Drop Alert';
+      else if (isCartToast) title = 'Added to Bag';
+      else title = 'Notice';
+      itemText = titleOrName;
+    }
+
+    // Convert shouting all-caps into clean, elegant sentence case
+    if (title === 'ADDED TO BAG') title = 'Added to Bag';
+    else if (title === 'SAVED TO WISHLIST') title = 'Saved to Wishlist';
+    else if (title === 'REMOVED FROM WISHLIST') title = 'Removed from Wishlist';
+    else if (title === 'MOVED TO CART') title = 'Moved to Bag';
+    else if (title === 'ALL ITEMS MOVED TO CART') title = 'All Items Moved';
+    else if (title === 'PRICE DROP ALERT') title = 'Price Alert';
+    else if (title === 'ALERT REMOVED') title = 'Alert Removed';
+    else if (title === 'ORDER SMS DISPATCHED') title = 'SMS Sent';
+    else if (title === 'ORDER PLACED & CONFIRMED') title = 'Order Confirmed';
+    else if (title === 'FIELDS REFRESHED') title = 'Fields Cleared';
+    else if (title === 'COPIED ORDER ID' || title === 'ORDER ID') title = 'Copied';
+    else if (title === 'LINK COPIED') title = 'Link Copied';
+    else if (title === 'SHARED') title = 'Shared';
+    else if (title === 'APP INSTALLED') title = 'App Installed';
+
+    const isRemoved = title.toLowerCase().includes('removed');
+
     shopToast.innerHTML = `
-      <div class="shop-toast__progress" aria-hidden="true"></div>
       <div class="shop-toast__inner">
-        <div class="shop-toast__icon ${isPriceDropToast ? 'price-drop-icon' : ''}" aria-hidden="true">
+        <div class="shop-toast__icon ${isWishlistToast ? 'wishlist-toast-icon' : (isCartToast ? 'cart-toast-icon' : '')}" aria-hidden="true">
           ${isWishlistToast ? `
-            <svg class="anim-check-svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" stroke="none">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="${isRemoved ? 'none' : '#dc2626'}" stroke="#dc2626" stroke-width="2">
               <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
             </svg>
-          ` : (isPriceDropToast ? `
-            <svg class="anim-check-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fbbf24" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-              <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-            </svg>
           ` : `
-            <svg class="anim-check-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="20 6 9 17 4 12"/>
             </svg>
-          `)}
+          `}
         </div>
         <div class="shop-toast__body">
-          <div class="shop-toast__title" style="${isPriceDropToast ? 'color:#fbbf24;' : ''}">${title}</div>
-          <div class="shop-toast__name" title="${detail}">${detail}</div>
+          <span class="shop-toast__title">${title}</span>
+          ${itemText && itemText !== title ? `
+            <span style="color:#d4d4d8;font-size:.65rem;user-select:none;">·</span>
+            <span class="shop-toast__name" title="${itemText}">${itemText}</span>
+          ` : ''}
         </div>
-        ${isCartToast ? `<button type="button" class="shop-toast__btn" id="toastOpenBagBtn">VIEW BAG →</button>` : ''}
-        ${isWishlistToast ? `<button type="button" class="shop-toast__btn" id="toastOpenWishlistBtn">VIEW WISHLIST →</button>` : ''}
+        ${isCartToast ? `<button type="button" class="shop-toast__btn" id="toastOpenBagBtn">View Bag</button>` : ''}
+        ${(isWishlistToast && !isRemoved) ? `<button type="button" class="shop-toast__btn" id="toastOpenWishlistBtn">View</button>` : ''}
       </div>
     `;
     shopToast.classList.add('show');
@@ -617,7 +645,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     if (toastTimer) clearTimeout(toastTimer);
     toastTimer = setTimeout(() => {
       shopToast.classList.remove('show');
-    }, 4200);
+    }, 3200);
   }
 
   function updateHeartButtons(sku, isWish) {
@@ -1132,26 +1160,10 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       });
     }
 
-    // 1. Floating badge animation
-    const badge = document.createElement('span');
-    badge.className = 'cart-float-badge';
-    badge.textContent = `+${qtyToAdd} BAG`;
-    btn.appendChild(badge);
-    setTimeout(() => badge.remove(), 850);
-
-    // 2. Button state transition with animated checkmark
-    const origContent = btn.innerHTML;
-    btn.classList.add('added');
-    btn.innerHTML = `
-      <svg class="anim-check-svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <polyline points="20 6 9 17 4 12"/>
-      </svg>
-      <span>ADDED TO BAG ✓</span>
-    `;
-    setTimeout(() => {
-      btn.classList.remove('added');
-      btn.innerHTML = origContent;
-    }, 1400);
+    if (btn) {
+      btn.classList.add('btn-clicked');
+      setTimeout(() => btn.classList.remove('btn-clicked'), 200);
+    }
   }
 
   // Attach to existing main shop buttons
@@ -1789,27 +1801,46 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       renderOrderReviewStep();
     }
 
+    // Set active step classes and attributes on modal
+    if (checkoutFlowModal) {
+      checkoutFlowModal.setAttribute('data-step', String(stepNumber));
+      checkoutFlowModal.classList.toggle('step-1-active', stepNumber === 1);
+      checkoutFlowModal.classList.toggle('step-2-active', stepNumber === 2);
+      checkoutFlowModal.classList.toggle('step-3-active', stepNumber === 3);
+      checkoutFlowModal.classList.toggle('step-4-active', stepNumber === 4);
+    }
+
     // Dynamic top-left header button handling:
-    // Step 1: "RETURN TO SHOP"
-    // Step 2 (Payment page) & Step 3 (Conform page):
-    // "EDIT ADDRESS" in position of Return to Shop; Return to Shop removed!
-    // Step 4 (Order confirmed): Both removed
+    // Step 1: "RETURN TO SHOP" (Edit Address removed on address page)
+    // Step 2 (Payment page): "EDIT ADDRESS" in position of Return to Shop; Return to Shop removed!
+    // Step 3 (Conform page) & Step 4 (Order confirmed): Both removed
     const backToStoreBtn = document.getElementById('checkoutBackToStoreBtn');
     const headerEditAddressBtn = document.getElementById('checkoutHeaderEditAddressBtn');
     if (stepNumber === 1) {
-      if (backToStoreBtn) backToStoreBtn.style.display = 'inline-flex';
-      if (headerEditAddressBtn) headerEditAddressBtn.style.display = 'none';
+      if (backToStoreBtn) backToStoreBtn.style.setProperty('display', 'inline-flex', 'important');
+      if (headerEditAddressBtn) headerEditAddressBtn.style.setProperty('display', 'none', 'important');
     } else if (stepNumber === 2) {
-      if (backToStoreBtn) backToStoreBtn.style.display = 'none';
-      if (headerEditAddressBtn) headerEditAddressBtn.style.display = 'inline-flex';
+      if (backToStoreBtn) backToStoreBtn.style.setProperty('display', 'none', 'important');
+      if (headerEditAddressBtn) headerEditAddressBtn.style.setProperty('display', 'inline-flex', 'important');
     } else {
-      // Step 3 (Order Confirm Page) & Step 4 (Order Confirmed):
-      // Completely remove Return to Shop button & Header buttons as requested
-      if (backToStoreBtn) backToStoreBtn.style.display = 'none';
-      if (headerEditAddressBtn) headerEditAddressBtn.style.display = 'none';
+      if (backToStoreBtn) backToStoreBtn.style.setProperty('display', 'none', 'important');
+      if (headerEditAddressBtn) headerEditAddressBtn.style.setProperty('display', 'none', 'important');
     }
 
-    // Scroll views container to top on step transition
+    // Remove Order Summary sidebar from Address Page (Step 1) as requested
+    const checkoutSidebar = document.getElementById('checkoutSidebar');
+    if (checkoutSidebar) {
+      if (stepNumber === 1 || stepNumber === 4) {
+        checkoutSidebar.style.setProperty('display', 'none', 'important');
+      } else {
+        checkoutSidebar.style.removeProperty('display');
+      }
+    }
+
+    // Scroll modal and views container to top on step transition so the user starts at the top
+    if (checkoutFlowModal) checkoutFlowModal.scrollTop = 0;
+    const modalDialog = document.getElementById('checkoutModalDialog');
+    if (modalDialog) modalDialog.scrollTop = 0;
     const viewsWrap = checkoutFlowModal ? checkoutFlowModal.querySelector('.checkout-modal__views') : null;
     if (viewsWrap) viewsWrap.scrollTop = 0;
 

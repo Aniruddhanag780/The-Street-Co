@@ -32,7 +32,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Cinzel:wght@400;700&family=Space+Grotesk:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20261022_nochat" />
+<link rel="stylesheet" href="style.css?v=20261023_addr_clean_v2" />
 <link rel="manifest" href="/manifest.json" />
 <meta name="theme-color" content="#ffffff" />
 <meta name="mobile-web-app-capable" content="yes" />
@@ -608,7 +608,6 @@
 
 
 
-<!-- ══════════ ACT IV — QUOTE ══════════ -->
 <!-- ══════════ BRAND ETHOS STATEMENT ══════════ -->
 <section class="quote">
   <div class="quote__jp">THE STREET CO</div>
@@ -2076,7 +2075,7 @@
                   <label for="checkoutPhone">Mobile Number <span class="req">*</span></label>
                   <div class="checkout-phone-input-wrap">
                     <span class="checkout-phone-prefix">+91</span>
-                    <input type="tel" id="checkoutPhone" class="checkout-input checkout-input--phone" placeholder="98765 43210" maxlength="10" required autocomplete="tel">
+                    <input type="tel" id="checkoutPhone" class="checkout-input--phone" placeholder="98765 43210" maxlength="10" required autocomplete="tel">
                   </div>
                   <span class="checkout-input-error" id="checkoutPhoneError"></span>
                 </div>
@@ -2084,7 +2083,7 @@
 
               <div class="checkout-form-group">
                 <label for="checkoutEmail">Email Address</label>
-                <input type="email" id="checkoutEmail" class="checkout-input" placeholder="e.g. rahul.sharma@example.com" autocomplete="email">
+                <input type="email" id="checkoutEmail" class="checkout-input" placeholder="e.g. name@email.com" autocomplete="email">
               </div>
             </div>
 
@@ -2095,21 +2094,21 @@
               <!-- 1. House Address / Flat / Building (Google Maps Autocomplete Integrated) -->
               <div class="checkout-form-group">
                 <label for="checkoutAddress1">House Address / Flat No. / Building <span class="req">*</span></label>
-                <input type="text" id="checkoutAddress1" class="checkout-input" placeholder="Start typing address or house / building no..." required autocomplete="off">
+                <input type="text" id="checkoutAddress1" class="checkout-input" placeholder="House / Flat No., Building, Apartment" required autocomplete="off">
                 <span class="checkout-input-error" id="checkoutAddress1Error"></span>
               </div>
 
               <!-- 2. Street / Road / Area -->
               <div class="checkout-form-group">
                 <label for="checkoutAddress2">Street / Road / Area <span class="req">*</span></label>
-                <input type="text" id="checkoutAddress2" class="checkout-input" placeholder="e.g. MG Road, Sector 14, Koramangala" required autocomplete="address-line2">
+                <input type="text" id="checkoutAddress2" class="checkout-input" placeholder="Street name, Area, Colony" required autocomplete="address-line2">
                 <span class="checkout-input-error" id="checkoutAddress2Error"></span>
               </div>
 
               <!-- 3. Nearby Landmark (Optional) -->
               <div class="checkout-form-group">
                 <label for="checkoutLandmark">Nearby Landmark <small style="font-size:0.7rem;color:#71717a;font-weight:normal;">(Optional)</small></label>
-                <input type="text" id="checkoutLandmark" class="checkout-input" placeholder="e.g. Near Metro Station / Behind City Hospital" autocomplete="off">
+                <input type="text" id="checkoutLandmark" class="checkout-input" placeholder="Nearby landmark (optional)" autocomplete="off">
               </div>
 
               <!-- 4. Town / City, 5. State (2026 India List), 6. PIN / ZIP Code -->
@@ -2122,7 +2121,7 @@
                 <div class="checkout-form-group">
                   <label for="checkoutState">State <span class="req">*</span></label>
                   <select id="checkoutState" class="checkout-select is-placeholder" required autocomplete="address-level1">
-                    <option value="" disabled selected>e.g. Maharashtra</option>
+                    <option value="" disabled selected>Select State</option>
                     <optgroup label="States">
                       <option value="Andhra Pradesh">Andhra Pradesh</option>
                       <option value="Arunachal Pradesh">Arunachal Pradesh</option>
@@ -2604,7 +2603,7 @@
 <!-- Google Maps Places API for Checkout Location Autocomplete -->
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCacMuQVy2va7lmDRLiuVaMPdC3mOq1x1U&libraries=places&loading=async" async defer></script>
 
-<script src="main.js?v=20261022_nochat"></script>
+<script src="main.js?v=20261023_addr_clean_v2"></script>
 
 <!-- Guaranteed Header & Step Button Sync (Overrides any browser cache) -->
 <script>
@@ -2621,17 +2620,36 @@
       const isStep2Active = step2 && step2.classList.contains('active') && step2.style.display !== 'none';
       const isStep3Active = step3 && step3.classList.contains('active') && step3.style.display !== 'none';
 
+      const checkoutModal = document.getElementById('checkoutFlowModal');
+      const sidebar = document.getElementById('checkoutSidebar');
+
       if (isStep1Active) {
-        if (backStoreBtn) backStoreBtn.style.display = 'inline-flex';
-        if (headerEditAddrBtn) headerEditAddrBtn.style.display = 'none';
+        // Step 1: Address Page -> Return to Shop visible, Edit Address hidden, Order Summary removed
+        if (backStoreBtn) backStoreBtn.style.setProperty('display', 'inline-flex', 'important');
+        if (headerEditAddrBtn) headerEditAddrBtn.style.setProperty('display', 'none', 'important');
+        if (sidebar) sidebar.style.setProperty('display', 'none', 'important');
+        if (checkoutModal) {
+          checkoutModal.setAttribute('data-step', '1');
+          checkoutModal.classList.add('step-1-active');
+        }
       } else if (isStep2Active) {
-        // Step 2: Payment Page -> Edit Address in position of Return to Shop; Return to Shop removed
-        if (backStoreBtn) backStoreBtn.style.display = 'none';
-        if (headerEditAddrBtn) headerEditAddrBtn.style.display = 'inline-flex';
+        // Step 2: Payment Page -> Edit Address in position of Return to Shop; Return to Shop removed; Order Summary visible
+        if (backStoreBtn) backStoreBtn.style.setProperty('display', 'none', 'important');
+        if (headerEditAddrBtn) headerEditAddrBtn.style.setProperty('display', 'inline-flex', 'important');
+        if (sidebar) sidebar.style.removeProperty('display');
+        if (checkoutModal) {
+          checkoutModal.setAttribute('data-step', '2');
+          checkoutModal.classList.remove('step-1-active');
+        }
       } else if (isStep3Active) {
-        // Step 3: Confirm Page -> Remove Return to Shop button & remove Edit Payment button
-        if (backStoreBtn) backStoreBtn.style.display = 'none';
-        if (headerEditAddrBtn) headerEditAddrBtn.style.display = 'none';
+        // Step 3: Confirm Page -> Remove Return to Shop & Edit Payment buttons; Order Summary visible
+        if (backStoreBtn) backStoreBtn.style.setProperty('display', 'none', 'important');
+        if (headerEditAddrBtn) headerEditAddrBtn.style.setProperty('display', 'none', 'important');
+        if (sidebar) sidebar.style.removeProperty('display');
+        if (checkoutModal) {
+          checkoutModal.setAttribute('data-step', '3');
+          checkoutModal.classList.remove('step-1-active');
+        }
         const editPay1 = document.getElementById('checkoutBackToPaymentBtn');
         const editPay2 = document.getElementById('reviewEditPaymentBtn');
         if (editPay1) editPay1.style.display = 'none';

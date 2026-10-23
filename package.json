@@ -1,7 +1,7 @@
 {
   "name": "uchiha-itachi",
   "version": "1.0.0",
-  "description": "Interactive showcase of Uchiha Itachi with scroll-scrubbed frames and mouse-tracked Sharingan eyes",
+  "description": "The Street Co — Elevated Style. Modern Essentials.",
   "type": "module",
   "scripts": {
     "dev": "node server.js",

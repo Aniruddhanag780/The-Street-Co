@@ -1212,6 +1212,11 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       cartDrawer.setAttribute('aria-hidden', 'false');
       document.body.classList.add('bag-open');
       document.documentElement.classList.add('bag-open');
+      const bottomBar = document.getElementById('mobileBottomBar');
+      if (bottomBar) {
+        bottomBar.classList.add('hidden-by-drawer');
+        bottomBar.style.setProperty('display', 'none', 'important');
+      }
       const hintEl = document.getElementById('hint');
       if (hintEl) hintEl.classList.add('hide');
       switchDrawerTab(tab);
@@ -1232,6 +1237,11 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       cartDrawer.setAttribute('aria-hidden', 'true');
       document.body.classList.remove('bag-open');
       document.documentElement.classList.remove('bag-open');
+      const bottomBar = document.getElementById('mobileBottomBar');
+      if (bottomBar) {
+        bottomBar.classList.remove('hidden-by-drawer');
+        bottomBar.style.removeProperty('display');
+      }
       const hintEl = document.getElementById('hint');
       if (hintEl && window.scrollY <= window.innerHeight * 0.35) {
         hintEl.classList.remove('hide');
@@ -1483,6 +1493,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       state: '',
       type: 'Home'
     };
+
     checkoutSession.delivery = {
       speed: 'free',
       cost: 0,
@@ -1827,13 +1838,16 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       if (headerEditAddressBtn) headerEditAddressBtn.style.setProperty('display', 'none', 'important');
     }
 
-    // Remove Order Summary sidebar from Address Page (Step 1) as requested
+    // Sidebar Order Summary visibility:
+    // Step 1 (Address) & Step 2 (Payment): Show sidebar order summary
+    // Step 3 (Review & Confirm) & Step 4 (Confirmed): Hide sidebar (only 1 order summary inside review cards)
     const checkoutSidebar = document.getElementById('checkoutSidebar');
     if (checkoutSidebar) {
-      if (stepNumber === 1 || stepNumber === 4) {
+      if (stepNumber === 3 || stepNumber === 4) {
         checkoutSidebar.style.setProperty('display', 'none', 'important');
       } else {
         checkoutSidebar.style.removeProperty('display');
+        checkoutSidebar.style.display = '';
       }
     }
 
@@ -3144,7 +3158,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       checkoutSession.promoCode = result.code;
       checkoutSession.discount = result.discount;
 
-      const savedMessage = `You have saved ₹${result.discount.toLocaleString('en-IN')} on this order.`;
+      const savedMessage = `✓ Coupon "${result.code}" applied! You have saved ₹${result.discount.toLocaleString('en-IN')} on this order.`;
 
       if (checkoutPromoMsg) {
         checkoutPromoMsg.textContent = savedMessage;
@@ -8079,3 +8093,278 @@ window.addEventListener('hashchange', () => {
     if (typeof window.openCollectionsPage === 'function') window.openCollectionsPage();
   }
 });
+
+function openDelhiveryTracker(orderNum) {
+  const trackModal = document.getElementById('delhiveryTrackModal');
+  const numInput = document.getElementById('delhiveryTrackNumberInput');
+  if (numInput && orderNum) numInput.value = orderNum;
+  if (trackModal) {
+    trackModal.classList.add('open');
+    trackModal.setAttribute('aria-hidden', 'false');
+  }
+  const trackBtn = document.getElementById('delhiveryFetchTrackBtn');
+  if (trackBtn) trackBtn.click();
+}
+window.openDelhiveryTracker = openDelhiveryTracker;
+
+// ══════════════════════════════════════════════════════════════
+// FIREBASE CLOUD MESSAGING (PUSH NOTIFICATIONS) INTEGRATION
+// ══════════════════════════════════════════════════════════════
+(function initFirebaseCloudMessaging() {
+  let fcmApp = null;
+  let fcmMessaging = null;
+  let currentFcmToken = null;
+
+  // Custom Toast notification for foreground push messages
+  function showForegroundPushToast(title, body, url) {
+    let container = document.getElementById('pushToastContainer');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'pushToastContainer';
+      container.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:999999;display:flex;flex-direction:column;gap:12px;max-width:380px;width:calc(100% - 48px);pointer-events:none;';
+      document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    toast.style.cssText = 'background:#0d0c10;color:#f3efe6;border:1px solid #c0121f;border-left:4px solid #c0121f;border-radius:8px;padding:14px 16px;box-shadow:0 12px 32px rgba(0,0,0,0.5);font-family:var(--sans,sans-serif);pointer-events:auto;animation:pushToastSlideIn 0.3s cubic-bezier(0.16,1,0.3,1);cursor:pointer;';
+    toast.innerHTML = `
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
+        <div style="flex:1;">
+          <div style="font-size:10px;font-family:var(--mono,monospace);font-weight:700;letter-spacing:1.5px;color:#c0121f;margin-bottom:4px;text-transform:uppercase;">THE STREET CO · PUSH ALERT</div>
+          <div style="font-size:14px;font-weight:700;color:#ffffff;line-height:1.3;margin-bottom:4px;">${title}</div>
+          <div style="font-size:12px;color:#a09ea8;line-height:1.4;">${body}</div>
+        </div>
+        <button type="button" style="background:none;border:none;color:#706e78;font-size:16px;cursor:pointer;padding:0 4px;line-height:1;" aria-label="Close notification">✕</button>
+      </div>
+    `;
+
+    toast.querySelector('button').addEventListener('click', (e) => {
+      e.stopPropagation();
+      toast.remove();
+    });
+
+    toast.addEventListener('click', () => {
+      if (url && url !== '/') {
+        window.location.href = url;
+      }
+      toast.remove();
+    });
+
+    container.appendChild(toast);
+    setTimeout(() => {
+      if (toast.parentNode) {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.4s ease';
+        setTimeout(() => toast.remove(), 400);
+      }
+    }, 7000);
+  }
+
+  // Load Firebase SDK scripts dynamically
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      if (document.querySelector(`script[src="${src}"]`)) return resolve();
+      const s = document.createElement('script');
+      s.src = src;
+      s.onload = resolve;
+      s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+
+  async function setupFCM(cfg) {
+    if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+      console.log('[Firebase FCM] Web Push notifications not supported in this browser environment.');
+      return;
+    }
+
+    try {
+      await loadScript('https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js');
+      await loadScript('https://www.gstatic.com/firebasejs/10.13.0/firebase-messaging-compat.js');
+
+      if (!window.firebase) return;
+
+      const firebaseConfig = {
+        apiKey: cfg.apiKey,
+        projectId: cfg.projectId,
+        messagingSenderId: cfg.messagingSenderId,
+        appId: cfg.appId
+      };
+
+      if (!window.firebase.apps.length) {
+        fcmApp = window.firebase.initializeApp(firebaseConfig);
+      } else {
+        fcmApp = window.firebase.app();
+      }
+
+      if (window.firebase.messaging.isSupported()) {
+        fcmMessaging = window.firebase.messaging();
+
+        // Listen for foreground messages
+        fcmMessaging.onMessage((payload) => {
+          console.log('[Firebase FCM] Foreground message received:', payload);
+          const title = payload.notification?.title || payload.data?.title || 'The Street Co';
+          const body = payload.notification?.body || payload.data?.body || 'New update available';
+          const clickUrl = payload.notification?.click_action || payload.data?.url || '/';
+          showForegroundPushToast(title, body, clickUrl);
+        });
+
+        console.log('[Firebase FCM] Firebase Cloud Messaging initialized successfully (Sender ID: ' + cfg.messagingSenderId + ')');
+
+        // Check current notification permission
+        if (Notification.permission === 'granted') {
+          syncRegistrationToken();
+        } else if (Notification.permission === 'default') {
+          // Show subtle luxury push opt-in pill after 4 seconds
+          setTimeout(renderPushPromptBadge, 4000);
+        }
+      }
+    } catch (err) {
+      console.warn('[Firebase FCM] Setup notice:', err.message);
+    }
+  }
+
+  async function syncRegistrationToken() {
+    if (!fcmMessaging) return;
+    try {
+      const swRegistration = await navigator.serviceWorker.ready;
+      const token = await fcmMessaging.getToken({
+        serviceWorkerRegistration: swRegistration
+      });
+
+      if (token) {
+        currentFcmToken = token;
+        console.log('[Firebase FCM] Push Registration Token obtained.');
+        await fetch('/api/fcm/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token })
+        }).catch(() => {});
+
+        updatePushUiState(true);
+      }
+    } catch (err) {
+      console.warn('[Firebase FCM] Unable to get FCM token:', err.message);
+    }
+  }
+
+  // Request push notification permission
+  window.requestPushNotificationPermission = async function() {
+    if (!('Notification' in window)) {
+      alert('Push notifications are not supported in your browser.');
+      return false;
+    }
+
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        await syncRegistrationToken();
+        showForegroundPushToast('🔔 Notifications Activated', 'You will now receive instant drop alerts and order updates from The Street Co.', '/');
+        const badge = document.getElementById('pushOptInBadge');
+        if (badge) badge.remove();
+        return true;
+      } else {
+        console.log('[Firebase FCM] Notification permission status:', permission);
+        return false;
+      }
+    } catch (err) {
+      console.warn('[Firebase FCM] Error requesting permission:', err);
+      return false;
+    }
+  };
+
+  // Dispatch a test push notification
+  window.sendTestFirebasePush = async function() {
+    try {
+      const res = await fetch('/api/fcm/send-test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: '🔥 The Street Co Push Notification',
+          message: 'Firebase Cloud Messaging push delivery verified successfully!'
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showForegroundPushToast('🚀 Push Dispatched', 'Test push message sent to registered Firebase subscribers.', '/');
+      }
+      return data;
+    } catch (err) {
+      console.warn('[Firebase FCM] Test push error:', err);
+    }
+  };
+
+  function updatePushUiState(isSubscribed) {
+    const btn = document.getElementById('enablePushBtn');
+    if (btn) {
+      btn.innerHTML = isSubscribed ? '✓ Push Notifications Active' : '🔔 Enable Push Notifications';
+      btn.style.color = isSubscribed ? '#4ade80' : '';
+    }
+    const dot = document.getElementById('headerNotifDot');
+    if (dot) {
+      dot.style.display = isSubscribed ? 'block' : 'none';
+    }
+    const headerBtn = document.getElementById('headerPushNotifBtn');
+    if (headerBtn) {
+      headerBtn.setAttribute('title', isSubscribed ? 'VIP Push Notifications Active' : 'Enable Drop & Order Notifications');
+    }
+  }
+
+  // Header notification bell listener
+  const headerNotifBtn = document.getElementById('headerPushNotifBtn');
+  if (headerNotifBtn) {
+    headerNotifBtn.addEventListener('click', async () => {
+      if (Notification.permission === 'granted') {
+        showForegroundPushToast('🔔 Notifications Active', 'You are subscribed to real-time drop alerts and order updates from The Street Co.', '/');
+      } else {
+        await window.requestPushNotificationPermission();
+      }
+    });
+  }
+
+  function renderPushPromptBadge() {
+    if (document.getElementById('pushOptInBadge') || Notification.permission !== 'default') return;
+    const badge = document.createElement('div');
+    badge.id = 'pushOptInBadge';
+    badge.style.cssText = 'position:fixed;bottom:20px;left:20px;z-index:99999;background:rgba(13,12,16,0.96);backdrop-filter:blur(10px);border:1px solid #2a2933;border-radius:30px;padding:8px 16px 8px 12px;display:inline-flex;align-items:center;gap:10px;box-shadow:0 8px 24px rgba(0,0,0,0.6);font-family:var(--sans,sans-serif);animation:pushToastSlideIn 0.3s ease;';
+    badge.innerHTML = `
+      <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:#c0121f;color:#fff;font-size:12px;">🔔</span>
+      <span style="font-size:12px;font-weight:600;color:#fff;letter-spacing:0.3px;">Get VIP Drop & Order Alerts</span>
+      <button type="button" id="pushBadgeEnableBtn" style="background:#fff;color:#000;border:none;border-radius:16px;padding:4px 12px;font-size:11px;font-weight:700;letter-spacing:0.5px;cursor:pointer;">ALLOW</button>
+      <button type="button" id="pushBadgeDismissBtn" style="background:none;border:none;color:#6b6975;font-size:14px;cursor:pointer;padding:0 2px;" title="Dismiss">✕</button>
+    `;
+
+    document.body.appendChild(badge);
+
+    const enableBtn = document.getElementById('pushBadgeEnableBtn');
+    if (enableBtn) {
+      enableBtn.addEventListener('click', () => {
+        window.requestPushNotificationPermission();
+        badge.remove();
+      });
+    }
+
+    const dismissBtn = document.getElementById('pushBadgeDismissBtn');
+    if (dismissBtn) {
+      dismissBtn.addEventListener('click', () => {
+        badge.remove();
+      });
+    }
+  }
+
+  // Fetch Firebase config from backend
+  fetch('/api/firebase/config')
+    .then(r => r.json())
+    .then(cfg => {
+      if (cfg && cfg.configured) {
+        setupFCM(cfg);
+        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+          updatePushUiState(true);
+        }
+      }
+    })
+    .catch(() => {});
+})();
+
+
+

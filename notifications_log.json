@@ -1,0 +1,28 @@
+[
+  {
+    "id": "fcm_1792920649408_m0rwbi",
+    "title": "Test Drop Alert",
+    "body": "Welcome to The Street Co exclusive drop network!",
+    "icon": "/pwa-192x192.png",
+    "url": "/",
+    "data": {
+      "click_action": "/",
+      "timestamp": "1792920649408"
+    },
+    "dispatchedAt": "2026-10-25T09:30:49.408Z",
+    "recipientCount": 1
+  },
+  {
+    "id": "fcm_1792920580739_zzubkj",
+    "title": "Test Street Co",
+    "body": "Push notifications operational",
+    "icon": "/pwa-192x192.png",
+    "url": "/",
+    "data": {
+      "click_action": "/",
+      "timestamp": "1792920580739"
+    },
+    "dispatchedAt": "2026-10-25T09:29:40.739Z",
+    "recipientCount": 0
+  }
+]

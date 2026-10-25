@@ -6,12 +6,17 @@
   "scripts": {
     "dev": "node server.js",
     "build": "echo 'Build complete'",
-    "lint": "node -c server.js",
+    "lint": "node -c server.js && node -c firebaseService.js",
     "start": "node server.js"
   },
   "dependencies": {
     "express": "^4.21.2",
+    "firebase": "^13.1.0",
     "nodemailer": "^10.0.12",
     "twilio": "^6.1.1"
+  },
+  "devDependencies": {
+    "@firebase/eslint-plugin-security-rules": "^0.0.2",
+    "eslint": "^10.13.0"
   }
 }

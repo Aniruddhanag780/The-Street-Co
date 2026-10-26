@@ -6,17 +6,6 @@ import twilio from 'twilio';
 import nodemailer from 'nodemailer';
 import * as zohoInventory from './zohoInventory.js';
 import { getProductImageBuffer } from './productImage.js';
-import {
-  registerFcmToken,
-  unregisterFcmToken,
-  getFcmTokens,
-  sendPushNotification,
-  sendOrderPushNotification,
-  sendBroadcastPushNotification,
-  getFirebasePushStatus,
-  firebaseConfig
-} from './firebaseService.js';
-
 // Load local .env if present
 if (process.loadEnvFile) {
   try {
@@ -2310,11 +2299,6 @@ app.post('/api/orders', async (req, res) => {
     inMemoryOrders.set(orderId, orderDocument);
     persistOrders();
 
-    // Dispatch Firebase Cloud Messaging push notification to subscribers
-    sendOrderPushNotification(orderDocument).catch(pushErr => {
-      console.warn('[Firebase FCM] Order push notification notice:', pushErr.message);
-    });
-
     // Automated Zoho Inventory Sales Order Push
     let zohoSalesOrderResult = null;
     try {
@@ -3031,98 +3015,6 @@ app.get(['/api/orders/:code/invoice', '/invoice/:code'], async (req, res) => {
   res.send(invoiceHtml);
 });
 
-// ══════════════════════════════════════════════════════════════
-// ══════════════════════════════════════════════════════════════
-// FIREBASE CLOUD MESSAGING (PUSH NOTIFICATIONS) ENDPOINTS
-// ══════════════════════════════════════════════════════════════
-
-// GET /api/firebase/config — Delivers Firebase client configuration for Push Messaging
-app.get('/api/firebase/config', (req, res) => {
-  if (!firebaseConfig) {
-    return res.json({ configured: false });
-  }
-  res.json({
-    configured: true,
-    projectId: firebaseConfig.projectId,
-    appId: firebaseConfig.appId,
-    apiKey: firebaseConfig.apiKey,
-    authDomain: firebaseConfig.authDomain,
-    storageBucket: firebaseConfig.storageBucket,
-    messagingSenderId: firebaseConfig.messagingSenderId
-  });
-});
-
-// GET /api/firebase/status — Verifies Firebase Cloud Messaging connection status
-app.get('/api/firebase/status', (req, res) => {
-  res.json(getFirebasePushStatus());
-});
-
-// POST /api/fcm/subscribe — Registers a client device token for push notifications
-app.post('/api/fcm/subscribe', (req, res) => {
-  const { token } = req.body || {};
-  if (!token) {
-    return res.status(400).json({ success: false, error: 'Token is required' });
-  }
-  const result = registerFcmToken(token, {
-    userAgent: req.headers['user-agent'] || '',
-    ip: req.ip || req.connection?.remoteAddress
-  });
-  return res.json(result);
-});
-
-// POST /api/fcm/unsubscribe — Unregisters a client device token
-app.post('/api/fcm/unsubscribe', (req, res) => {
-  const { token } = req.body || {};
-  if (!token) {
-    return res.status(400).json({ success: false, error: 'Token is required' });
-  }
-  const result = unregisterFcmToken(token);
-  return res.json(result);
-});
-
-// GET /api/fcm/subscribers — Returns current subscriber count
-app.get('/api/fcm/subscribers', (req, res) => {
-  const tokens = getFcmTokens();
-  res.json({
-    success: true,
-    count: tokens.length,
-    subscribers: tokens.map(t => ({
-      subscribedAt: t.subscribedAt,
-      lastActiveAt: t.lastActiveAt,
-      tokenSnippet: t.token.slice(0, 10) + '...' + t.token.slice(-6)
-    }))
-  });
-});
-
-// POST /api/fcm/send-test — Dispatches a test web push notification to all subscribers
-app.post('/api/fcm/send-test', async (req, res) => {
-  const { title, message, url } = req.body || {};
-  try {
-    const result = await sendPushNotification({
-      title: title || '🔥 The Street Co Push Notification',
-      body: message || 'Firebase Cloud Messaging is operational! You will receive live order and drop alerts.',
-      icon: '/pwa-192x192.png',
-      url: url || '/'
-    });
-    return res.json({ success: true, ...result });
-  } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// POST /api/fcm/broadcast — Send exclusive drop or promotional alert
-app.post('/api/fcm/broadcast', async (req, res) => {
-  const { title, message, url } = req.body || {};
-  try {
-    const result = await sendBroadcastPushNotification(title, message, url);
-    return res.json({ success: true, ...result });
-  } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-
-
 // Zoho Inventory Admin Setup Portal
 app.get(['/zoho-inventory', '/zoho-inventory/', '/admin-zoho', '/admin-zoho/'], (req, res) => {
   res.sendFile(path.join(__dirname, 'admin-zoho.html'));
@@ -3151,14 +3043,6 @@ app.get('/sw.js', (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.sendFile(path.join(__dirname, 'sw.js'));
-});
-
-app.get('/firebase-messaging-sw.js', (req, res) => {
-  res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-  res.setHeader('Service-Worker-Allowed', '/');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-  res.sendFile(path.join(__dirname, 'firebase-messaging-sw.js'));
 });
 
 app.get(['/pwa-192x192.png', '/pwa-512x512.png', '/pwa-maskable-192x192.png', '/pwa-maskable-512x512.png', '/apple-touch-icon.png'], (req, res) => {

@@ -376,8 +376,8 @@ document.addEventListener("DOMContentLoaded", () => {
         if (cp) {
           cp.classList.add('open');
           cp.setAttribute('aria-hidden', 'false');
-          document.body.classList.add('bag-open');
-          document.documentElement.classList.add('bag-open');
+          document.body.classList.add('collections-page-open');
+          document.documentElement.classList.add('collections-page-open');
         }
       }
     });
@@ -3300,11 +3300,9 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
   }
 
   // ═══════════════════════════════════════════════════════════════════════
-  // GOOGLE MAPS PLACES AUTOCOMPLETE & GEOLOCATION AUTOFILL CONTROLLER
+  // ADDRESS & LOCATION AUTOFILL CONTROLLER
   // ═══════════════════════════════════════════════════════════════════════
-  let googleAutocompleteInstance = null;
-
-  function autofillCheckoutAddressFields(data, source = 'Google Maps') {
+  function autofillCheckoutAddressFields(data, source = 'Address Lookup') {
     if (!data) return;
 
     if (data.pincode && checkoutPincodeInput) {
@@ -3384,94 +3382,11 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     }
   }
 
-  function parseGooglePlaceComponents(place) {
-    if (!place) return null;
-    let streetNumber = '';
-    let route = '';
-    let sublocality1 = '';
-    let sublocality2 = '';
-    let locality = '';
-    let adminArea = '';
-    let postalCode = '';
-    let neighborhood = '';
-
-    if (Array.isArray(place.address_components)) {
-      place.address_components.forEach(comp => {
-        const types = comp.types || [];
-        if (types.includes('street_number')) streetNumber = comp.long_name || comp.short_name;
-        if (types.includes('route')) route = comp.long_name || comp.short_name;
-        if (types.includes('sublocality_level_1') || types.includes('sublocality')) sublocality1 = comp.long_name;
-        if (types.includes('sublocality_level_2')) sublocality2 = comp.long_name;
-        if (types.includes('neighborhood')) neighborhood = comp.long_name;
-        if (types.includes('locality')) locality = comp.long_name;
-        if (types.includes('administrative_area_level_2') && !locality) locality = comp.long_name;
-        if (types.includes('administrative_area_level_1')) adminArea = comp.long_name;
-        if (types.includes('postal_code')) postalCode = comp.long_name;
-      });
-    }
-
-    const placeName = place.name || '';
-    const housePart = [streetNumber, (placeName && placeName !== route && placeName !== locality && placeName !== sublocality1) ? placeName : ''].filter(Boolean).join(' ');
-    const street = [route, sublocality2].filter(Boolean).join(', ') || sublocality1 || '';
-
-    return {
-      address1: housePart || (place.formatted_address ? place.formatted_address.split(',')[0].trim() : '') || placeName || '',
-      address2: street || sublocality1 || '',
-      landmark: neighborhood || '',
-      city: locality || '',
-      state: adminArea || '',
-      pincode: postalCode || ''
-    };
-  }
-
-  function initGoogleMapsLocationAutocomplete() {
+  function initAddressLocationAutocomplete() {
     const address1Input = document.getElementById('checkoutAddress1');
     if (!address1Input) return;
 
-    // Attach Google Places Autocomplete directly to House Address input
-    function setupGooglePlaces() {
-      if (window.google && window.google.maps && window.google.maps.places) {
-        try {
-          if (!googleAutocompleteInstance) {
-            googleAutocompleteInstance = new google.maps.places.Autocomplete(address1Input, {
-              types: ['geocode', 'establishment'],
-              fields: ['address_components', 'formatted_address', 'name', 'geometry'],
-              componentRestrictions: { country: 'in' }
-            });
-
-            googleAutocompleteInstance.addListener('place_changed', () => {
-              const place = googleAutocompleteInstance.getPlace();
-              if (!place) return;
-              const parsed = parseGooglePlaceComponents(place);
-              if (parsed) {
-                if (parsed.address1) {
-                  address1Input.value = parsed.address1;
-                } else if (place.name) {
-                  address1Input.value = place.name;
-                }
-                autofillCheckoutAddressFields(parsed, 'Google Maps');
-              }
-            });
-          }
-          return true;
-        } catch (err) {
-          console.warn('Google Places Autocomplete initialization notice:', err);
-        }
-      }
-      return false;
-    }
-
-    if (!setupGooglePlaces()) {
-      let pollAttempts = 0;
-      const pollTimer = setInterval(() => {
-        pollAttempts++;
-        if (setupGooglePlaces() || pollAttempts > 25) {
-          clearInterval(pollTimer);
-        }
-      }, 400);
-    }
-
-    // Fallback autocomplete dropdown below checkoutAddress1
+    // Autocomplete dropdown below checkoutAddress1
     let fallbackDropdown = document.getElementById('checkoutAddress1FallbackDropdown');
     if (!fallbackDropdown) {
       fallbackDropdown = document.createElement('div');
@@ -3492,53 +3407,50 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
         return;
       }
 
-      // If Google Maps is not available or hasn't loaded yet, fallback geocoder provides instant dropdown
-      if (!window.google || !window.google.maps || !window.google.maps.places) {
-        clearTimeout(searchDebounceTimer);
-        searchDebounceTimer = setTimeout(() => {
-          fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=5`)
-            .then(res => res.json())
-            .then(data => {
-              if (!data || !data.features || data.features.length === 0) {
-                if (fallbackDropdown) fallbackDropdown.style.display = 'none';
-                return;
-              }
-              fallbackDropdown.innerHTML = data.features.map((feat, idx) => {
-                const p = feat.properties || {};
-                const title = [p.name, p.street, p.housenumber].filter(Boolean).join(' ') || p.name || 'Location';
-                const subtitle = [p.district, p.city, p.state, p.postcode, p.country].filter(Boolean).join(', ');
-                return `
-                  <div class="checkout-loc-item" data-idx="${idx}">
-                    <span class="checkout-loc-name">📍 ${title}</span>
-                    <small class="checkout-loc-detail">${subtitle}</small>
-                  </div>
-                `;
-              }).join('');
-              fallbackDropdown.style.display = 'block';
-
-              fallbackDropdown.querySelectorAll('.checkout-loc-item').forEach(item => {
-                item.addEventListener('click', () => {
-                  const idx = parseInt(item.dataset.idx, 10);
-                  const feat = data.features[idx];
-                  if (!feat) return;
-                  const p = feat.properties || {};
-                  autofillCheckoutAddressFields({
-                    address1: [p.housenumber, p.name !== p.city ? p.name : ''].filter(Boolean).join(' ') || p.name || '',
-                    address2: [p.street, p.district].filter(Boolean).join(', ') || p.district || '',
-                    landmark: p.suburb || p.district || '',
-                    city: p.city || p.county || '',
-                    state: p.state || '',
-                    pincode: p.postcode || ''
-                  }, 'Location Search');
-                  fallbackDropdown.style.display = 'none';
-                });
-              });
-            })
-            .catch(() => {
+      clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = setTimeout(() => {
+        fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=5`)
+          .then(res => res.json())
+          .then(data => {
+            if (!data || !data.features || data.features.length === 0) {
               if (fallbackDropdown) fallbackDropdown.style.display = 'none';
+              return;
+            }
+            fallbackDropdown.innerHTML = data.features.map((feat, idx) => {
+              const p = feat.properties || {};
+              const title = [p.name, p.street, p.housenumber].filter(Boolean).join(' ') || p.name || 'Location';
+              const subtitle = [p.district, p.city, p.state, p.postcode, p.country].filter(Boolean).join(', ');
+              return `
+                <div class="checkout-loc-item" data-idx="${idx}">
+                  <span class="checkout-loc-name">📍 ${title}</span>
+                  <small class="checkout-loc-detail">${subtitle}</small>
+                </div>
+              `;
+            }).join('');
+            fallbackDropdown.style.display = 'block';
+
+            fallbackDropdown.querySelectorAll('.checkout-loc-item').forEach(item => {
+              item.addEventListener('click', () => {
+                const idx = parseInt(item.dataset.idx, 10);
+                const feat = data.features[idx];
+                if (!feat) return;
+                const p = feat.properties || {};
+                autofillCheckoutAddressFields({
+                  address1: [p.housenumber, p.name !== p.city ? p.name : ''].filter(Boolean).join(' ') || p.name || '',
+                  address2: [p.street, p.district].filter(Boolean).join(', ') || p.district || '',
+                  landmark: p.suburb || p.district || '',
+                  city: p.city || p.county || '',
+                  state: p.state || '',
+                  pincode: p.postcode || ''
+                }, 'Location Search');
+                fallbackDropdown.style.display = 'none';
+              });
             });
-        }, 350);
-      }
+          })
+          .catch(() => {
+            if (fallbackDropdown) fallbackDropdown.style.display = 'none';
+          });
+      }, 350);
     });
 
     document.addEventListener('click', (e) => {
@@ -3549,7 +3461,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
   }
 
   // Initialize location autocomplete
-  initGoogleMapsLocationAutocomplete();
+  initAddressLocationAutocomplete();
 
 
   // ═══════════ REAL-TIME SHADOW COURIER TRACKING CONTROLLER ═══════════
@@ -4034,8 +3946,10 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     if (cp) {
       cp.classList.add('open');
       cp.setAttribute('aria-hidden', 'false');
-      document.body.classList.add('bag-open');
-      document.documentElement.classList.add('bag-open');
+      document.body.classList.add('collections-page-open');
+      document.documentElement.classList.add('collections-page-open');
+      document.body.classList.remove('bag-open');
+      document.documentElement.classList.remove('bag-open');
       const mobileNavCollec = document.getElementById('mobileNavCollections');
       if (typeof setActiveBottomNav === 'function') {
         setActiveBottomNav(mobileNavCollec);
@@ -4051,8 +3965,8 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     if (cp) {
       cp.classList.remove('open');
       cp.setAttribute('aria-hidden', 'true');
-      document.body.classList.remove('bag-open');
-      document.documentElement.classList.remove('bag-open');
+      document.body.classList.remove('collections-page-open');
+      document.documentElement.classList.remove('collections-page-open');
       if (typeof window.syncMobileBottomNav === 'function') {
         window.syncMobileBottomNav();
       }
@@ -4102,15 +4016,10 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     collectionsHubBackdrop.addEventListener('click', closeCollectionsPage);
   }
 
-  // Close button in Collections Hub Header
-  if (closeCollectionsBtn) {
-    closeCollectionsBtn.addEventListener('click', closeCollectionsPage);
-  }
-
-  // Header Search button inside Hub
-  const hubHeaderSearchBtn = document.getElementById('hubHeaderSearchBtn');
-  if (hubHeaderSearchBtn) {
-    hubHeaderSearchBtn.addEventListener('click', () => {
+  // Header Search button inside Collection Page
+  const collecHeaderSearchBtn = document.getElementById('collecHeaderSearchBtn') || document.getElementById('hubHeaderSearchBtn');
+  if (collecHeaderSearchBtn) {
+    collecHeaderSearchBtn.addEventListener('click', () => {
       closeCollectionsPage();
       const shopSec = document.getElementById('shop');
       if (shopSec) shopSec.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -4125,8 +4034,19 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     });
   }
 
-  // Header Bag button inside Hub
-  const hubHeaderBagBtn = document.getElementById('hubHeaderBagBtn');
+  // Header Push Notification button inside Collection Page
+  const collecHeaderNotifBtn = document.getElementById('collecHeaderNotifBtn');
+  if (collecHeaderNotifBtn) {
+    collecHeaderNotifBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (typeof window.openNotificationsModal === 'function') {
+        window.openNotificationsModal();
+      }
+    });
+  }
+
+  // Header Bag button inside Hub / Collection Page
+  const hubHeaderBagBtn = document.getElementById('collecCartBtn') || document.getElementById('hubHeaderBagBtn');
   if (hubHeaderBagBtn) {
     hubHeaderBagBtn.addEventListener('click', () => {
       closeCollectionsPage();
@@ -8108,14 +8028,10 @@ function openDelhiveryTracker(orderNum) {
 window.openDelhiveryTracker = openDelhiveryTracker;
 
 // ══════════════════════════════════════════════════════════════
-// FIREBASE CLOUD MESSAGING (PUSH NOTIFICATIONS) INTEGRATION
+// STORE NOTIFICATIONS & WEB NOTIFICATIONS
 // ══════════════════════════════════════════════════════════════
-(function initFirebaseCloudMessaging() {
-  let fcmApp = null;
-  let fcmMessaging = null;
-  let currentFcmToken = null;
-
-  // Custom Toast notification for foreground push messages
+(function initStoreNotifications() {
+  // Custom Toast notification for drop messages
   function showForegroundPushToast(title, body, url) {
     let container = document.getElementById('pushToastContainer');
     if (!container) {
@@ -8126,15 +8042,15 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     }
 
     const toast = document.createElement('div');
-    toast.style.cssText = 'background:#0d0c10;color:#f3efe6;border:1px solid #c0121f;border-left:4px solid #c0121f;border-radius:8px;padding:14px 16px;box-shadow:0 12px 32px rgba(0,0,0,0.5);font-family:var(--sans,sans-serif);pointer-events:auto;animation:pushToastSlideIn 0.3s cubic-bezier(0.16,1,0.3,1);cursor:pointer;';
+    toast.style.cssText = 'background:#ffffff;color:#111111;border:1px solid #e5e5e5;border-left:4px solid #111111;border-radius:8px;padding:14px 16px;box-shadow:0 12px 32px rgba(0,0,0,0.12);font-family:var(--sans,sans-serif);pointer-events:auto;animation:pushToastSlideIn 0.3s cubic-bezier(0.16,1,0.3,1);cursor:pointer;';
     toast.innerHTML = `
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
         <div style="flex:1;">
-          <div style="font-size:10px;font-family:var(--mono,monospace);font-weight:700;letter-spacing:1.5px;color:#c0121f;margin-bottom:4px;text-transform:uppercase;">THE STREET CO · PUSH ALERT</div>
-          <div style="font-size:14px;font-weight:700;color:#ffffff;line-height:1.3;margin-bottom:4px;">${title}</div>
-          <div style="font-size:12px;color:#a09ea8;line-height:1.4;">${body}</div>
+          <div style="font-size:10px;font-family:var(--mono,monospace);font-weight:700;letter-spacing:1.5px;color:#dc2626;margin-bottom:4px;text-transform:uppercase;">THE STREET CO · DROP ALERT</div>
+          <div style="font-size:13px;font-weight:700;color:#111111;line-height:1.3;margin-bottom:4px;">${title}</div>
+          <div style="font-size:12px;color:#71717a;line-height:1.4;">${body}</div>
         </div>
-        <button type="button" style="background:none;border:none;color:#706e78;font-size:16px;cursor:pointer;padding:0 4px;line-height:1;" aria-label="Close notification">✕</button>
+        <button type="button" style="background:none;border:none;color:#a1a1aa;font-size:16px;cursor:pointer;padding:0 4px;line-height:1;" aria-label="Close notification">✕</button>
       </div>
     `;
 
@@ -8160,138 +8076,286 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     }, 7000);
   }
 
-  // Load Firebase SDK scripts dynamically
-  function loadScript(src) {
-    return new Promise((resolve, reject) => {
-      if (document.querySelector(`script[src="${src}"]`)) return resolve();
-      const s = document.createElement('script');
-      s.src = src;
-      s.onload = resolve;
-      s.onerror = reject;
-      document.head.appendChild(s);
-    });
+  // ══════════════════════════════════════════════════════════════
+  // LOCAL NOTIFICATIONS STORAGE & FEED MANAGEMENT
+  // ══════════════════════════════════════════════════════════════
+  const NOTIF_STORAGE_KEY = 'thestreetco_notifications_v3';
+
+  const PROPER_INITIAL_NOTIFICATIONS = [
+    {
+      id: 'drop_capsule_01',
+      title: 'AKATSUKI CLOUDS CAPSULE LIVE',
+      body: '450 GSM Heavyweight Terry Drop is now live. Limited capsule of 50 numbered pieces worldwide.',
+      tag: 'NEW DROP',
+      timestamp: Date.now() - 1000 * 60 * 25,
+      iconEmoji: '🔥'
+    },
+    {
+      id: 'drop_perk_02',
+      title: 'VIP EXPRESS DISPATCH ACTIVE',
+      body: 'Complimentary priority courier shipping applied automatically to all orders today.',
+      tag: 'PRIVILEGE',
+      timestamp: Date.now() - 1000 * 60 * 60 * 3,
+      iconEmoji: '⚡'
+    },
+    {
+      id: 'drop_tracking_03',
+      title: 'DELHIVERY LIVE TRACKING READY',
+      body: 'Real-time shipment milestones and instant delivery alerts are synced to your account.',
+      tag: 'ORDERS',
+      timestamp: Date.now() - 1000 * 60 * 60 * 22,
+      iconEmoji: '📦'
+    }
+  ];
+
+  const NOTIF_LAST_SEEN_KEY = 'thestreetco_notifs_last_seen_time';
+
+  function getLastSeenTime() {
+    try {
+      const val = localStorage.getItem(NOTIF_LAST_SEEN_KEY);
+      return val ? parseInt(val, 10) : 0;
+    } catch (_) {
+      return 0;
+    }
   }
 
-  async function setupFCM(cfg) {
-    if (!('Notification' in window) || !('serviceWorker' in navigator)) {
-      console.log('[Firebase FCM] Web Push notifications not supported in this browser environment.');
-      return;
-    }
-
+  function setLastSeenTimeToNow() {
     try {
-      await loadScript('https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js');
-      await loadScript('https://www.gstatic.com/firebasejs/10.13.0/firebase-messaging-compat.js');
+      localStorage.setItem(NOTIF_LAST_SEEN_KEY, String(Date.now()));
+    } catch (_) {}
+    updateNotificationCountBadge();
+  }
 
-      if (!window.firebase) return;
+  function getUnseenNotificationCount() {
+    const list = getLocalNotifications();
+    if (!list || list.length === 0) return 0;
+    const lastSeen = getLastSeenTime();
+    if (!lastSeen) {
+      return list.length;
+    }
+    return list.filter(n => (n.timestamp || 0) > lastSeen).length;
+  }
 
-      const firebaseConfig = {
-        apiKey: cfg.apiKey,
-        projectId: cfg.projectId,
-        messagingSenderId: cfg.messagingSenderId,
-        appId: cfg.appId
-      };
+  function getLocalNotifications() {
+    try {
+      const raw = localStorage.getItem(NOTIF_STORAGE_KEY);
+      if (raw !== null) {
+        return JSON.parse(raw);
+      }
+    } catch (_) {}
+    return PROPER_INITIAL_NOTIFICATIONS;
+  }
 
-      if (!window.firebase.apps.length) {
-        fcmApp = window.firebase.initializeApp(firebaseConfig);
+  function saveLocalNotifications(list) {
+    try {
+      localStorage.setItem(NOTIF_STORAGE_KEY, JSON.stringify(list));
+      updateNotificationCountBadge();
+    } catch (_) {}
+  }
+
+  function addLocalNotification(item) {
+    const list = getLocalNotifications();
+    list.unshift(item);
+    if (list.length > 50) list.length = 50;
+    saveLocalNotifications(list);
+    updateNotificationCountBadge();
+    renderNotificationsFeed();
+  }
+
+  function removeLocalNotification(id) {
+    const list = getLocalNotifications().filter(n => n.id !== id);
+    saveLocalNotifications(list);
+    updateNotificationCountBadge();
+    renderNotificationsFeed();
+  }
+
+  function clearAllLocalNotifications() {
+    saveLocalNotifications([]);
+    setLastSeenTimeToNow();
+    renderNotificationsFeed();
+  }
+
+  function updateNotificationCountBadge() {
+    const count = getUnseenNotificationCount();
+    const badges = document.querySelectorAll('.header-notif-count');
+    badges.forEach(badge => {
+      if (!badge) return;
+      if (count > 0) {
+        badge.textContent = count > 99 ? '99+' : String(count);
+        badge.setAttribute('data-count', String(count));
+        badge.classList.remove('is-zero');
+        badge.style.setProperty('display', 'inline-flex', 'important');
       } else {
-        fcmApp = window.firebase.app();
+        badge.textContent = '0';
+        badge.setAttribute('data-count', '0');
+        badge.classList.add('is-zero');
+        badge.style.setProperty('display', 'none', 'important');
       }
+    });
 
-      if (window.firebase.messaging.isSupported()) {
-        fcmMessaging = window.firebase.messaging();
+    // Permanently remove any legacy red/green dot element
+    const dot = document.getElementById('headerNotifDot');
+    if (dot) dot.remove();
+  }
 
-        // Listen for foreground messages
-        fcmMessaging.onMessage((payload) => {
-          console.log('[Firebase FCM] Foreground message received:', payload);
-          const title = payload.notification?.title || payload.data?.title || 'The Street Co';
-          const body = payload.notification?.body || payload.data?.body || 'New update available';
-          const clickUrl = payload.notification?.click_action || payload.data?.url || '/';
-          showForegroundPushToast(title, body, clickUrl);
-        });
+  // ══════════════════════════════════════════════════════════════
+  // NOTIFICATIONS MODAL & PROPER FEED RENDERING
+  // ══════════════════════════════════════════════════════════════
+  window.openNotificationsModal = function() {
+    const modal = document.getElementById('notificationsModal');
+    if (!modal) return;
 
-        console.log('[Firebase FCM] Firebase Cloud Messaging initialized successfully (Sender ID: ' + cfg.messagingSenderId + ')');
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
 
-        // Check current notification permission
-        if (Notification.permission === 'granted') {
-          syncRegistrationToken();
-        } else if (Notification.permission === 'default') {
-          // Show subtle luxury push opt-in pill after 4 seconds
-          setTimeout(renderPushPromptBadge, 4000);
-        }
-      }
-    } catch (err) {
-      console.warn('[Firebase FCM] Setup notice:', err.message);
+    // Mark current notifications as seen when opening the drawer
+    setLastSeenTimeToNow();
+
+    updateModalPushBadge();
+    renderNotificationsFeed();
+  };
+
+  window.closeNotificationsModal = function() {
+    const modal = document.getElementById('notificationsModal');
+    if (!modal) return;
+
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.style.removeProperty('overflow');
+  };
+
+  function updateModalPushBadge() {
+    const enableBtn = document.getElementById('notifEmptyEnableBtn');
+    if (!enableBtn) return;
+
+    if (typeof Notification === 'undefined' || Notification.permission === 'granted' || Notification.permission === 'denied') {
+      enableBtn.style.display = 'none';
+    } else {
+      enableBtn.style.display = 'inline-flex';
+      enableBtn.textContent = 'Enable Drop Alerts';
     }
   }
 
-  async function syncRegistrationToken() {
-    if (!fcmMessaging) return;
-    try {
-      const swRegistration = await navigator.serviceWorker.ready;
-      const token = await fcmMessaging.getToken({
-        serviceWorkerRegistration: swRegistration
+  function renderNotificationsFeed() {
+    const emptyState = document.getElementById('notificationsEmptyState');
+    const feed = document.getElementById('notificationsFeed');
+    const clearBtn = document.getElementById('notificationsClearBtn');
+
+    if (!emptyState || !feed) return;
+
+    const notifs = getLocalNotifications();
+
+    if (notifs.length === 0) {
+      emptyState.classList.remove('is-hidden');
+      emptyState.style.setProperty('display', 'flex', 'important');
+      feed.classList.add('is-hidden');
+      feed.style.setProperty('display', 'none', 'important');
+      if (clearBtn) clearBtn.style.display = 'none';
+      updateModalPushBadge();
+    } else {
+      emptyState.classList.add('is-hidden');
+      emptyState.style.setProperty('display', 'none', 'important');
+      feed.classList.remove('is-hidden');
+      feed.style.setProperty('display', 'flex', 'important');
+      if (clearBtn) clearBtn.style.display = 'inline-block';
+
+      feed.innerHTML = notifs.map(n => {
+        const timeAgo = formatTimeAgo(n.timestamp || Date.now());
+        const tag = n.tag || 'DROP ALERT';
+        const icon = n.iconEmoji || (tag.includes('ORDER') ? '📦' : '🔥');
+
+        return `
+          <div class="notification-card" data-id="${n.id}">
+            <div class="notification-card__icon">${icon}</div>
+            <div class="notification-card__content">
+              <div class="notification-card__meta">
+                <span class="notification-card__tag">${escapeHtml(tag)}</span>
+                <span class="notification-card__time">${timeAgo}</span>
+              </div>
+              <h4 class="notification-card__title">${escapeHtml(n.title)}</h4>
+              <p class="notification-card__body">${escapeHtml(n.body)}</p>
+            </div>
+            <button type="button" class="notification-card__del" data-del-id="${n.id}" title="Remove alert">✕</button>
+          </div>
+        `;
+      }).join('');
+
+      // Attach delete handlers
+      feed.querySelectorAll('.notification-card__del').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const id = btn.getAttribute('data-del-id');
+          if (id) removeLocalNotification(id);
+        });
       });
-
-      if (token) {
-        currentFcmToken = token;
-        console.log('[Firebase FCM] Push Registration Token obtained.');
-        await fetch('/api/fcm/subscribe', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token })
-        }).catch(() => {});
-
-        updatePushUiState(true);
-      }
-    } catch (err) {
-      console.warn('[Firebase FCM] Unable to get FCM token:', err.message);
     }
+  }
+
+  function formatTimeAgo(timestamp) {
+    const seconds = Math.floor((Date.now() - Number(timestamp)) / 1000);
+    if (seconds < 60) return 'Just now';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   }
 
   // Request push notification permission
   window.requestPushNotificationPermission = async function() {
     if (!('Notification' in window)) {
-      alert('Push notifications are not supported in your browser.');
+      showForegroundPushToast('Notifications Unsupported', 'Your browser does not support web notifications.', '/');
       return false;
     }
 
     try {
       const permission = await Notification.requestPermission();
       if (permission === 'granted') {
-        await syncRegistrationToken();
         showForegroundPushToast('🔔 Notifications Activated', 'You will now receive instant drop alerts and order updates from The Street Co.', '/');
         const badge = document.getElementById('pushOptInBadge');
         if (badge) badge.remove();
+
+        updatePushUiState(true);
+        updateModalPushBadge();
         return true;
       } else {
-        console.log('[Firebase FCM] Notification permission status:', permission);
+        updateModalPushBadge();
         return false;
       }
     } catch (err) {
-      console.warn('[Firebase FCM] Error requesting permission:', err);
+      console.warn('Error requesting permission:', err);
       return false;
     }
   };
 
-  // Dispatch a test push notification
-  window.sendTestFirebasePush = async function() {
-    try {
-      const res = await fetch('/api/fcm/send-test', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: '🔥 The Street Co Push Notification',
-          message: 'Firebase Cloud Messaging push delivery verified successfully!'
-        })
-      });
-      const data = await res.json();
-      if (data.success) {
-        showForegroundPushToast('🚀 Push Dispatched', 'Test push message sent to registered Firebase subscribers.', '/');
-      }
-      return data;
-    } catch (err) {
-      console.warn('[Firebase FCM] Test push error:', err);
-    }
+  // Dispatch a test drop alert
+  window.sendTestPushAlert = async function() {
+    const testItem = {
+      id: 'notif_' + Date.now(),
+      title: '🔥 VIP Capsule Drop Live',
+      body: 'Heavyweight oversized drop is now accessible for VIP members. Exclusive pieces limited to 50 garments.',
+      tag: 'DROP ALERT',
+      iconEmoji: '⚡',
+      timestamp: Date.now(),
+      url: '#shop'
+    };
+
+    addLocalNotification(testItem);
+    showForegroundPushToast('🚀 Drop Alert Dispatched', 'Test drop alert added to your notifications feed.', '/');
+    renderNotificationsFeed();
+    return { success: true };
   };
 
   function updatePushUiState(isSubscribed) {
@@ -8300,71 +8364,100 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       btn.innerHTML = isSubscribed ? '✓ Push Notifications Active' : '🔔 Enable Push Notifications';
       btn.style.color = isSubscribed ? '#4ade80' : '';
     }
-    const dot = document.getElementById('headerNotifDot');
-    if (dot) {
-      dot.style.display = isSubscribed ? 'block' : 'none';
-    }
     const headerBtn = document.getElementById('headerPushNotifBtn');
     if (headerBtn) {
-      headerBtn.setAttribute('title', isSubscribed ? 'VIP Push Notifications Active' : 'Enable Drop & Order Notifications');
+      headerBtn.setAttribute('title', isSubscribed ? 'VIP Notifications Active (Click to View Feed)' : 'View Drop Notifications');
     }
+    const dot = document.getElementById('headerNotifDot');
+    if (dot) dot.remove();
+    updateNotificationCountBadge();
   }
 
-  // Header notification bell listener
-  const headerNotifBtn = document.getElementById('headerPushNotifBtn');
-  if (headerNotifBtn) {
-    headerNotifBtn.addEventListener('click', async () => {
-      if (Notification.permission === 'granted') {
-        showForegroundPushToast('🔔 Notifications Active', 'You are subscribed to real-time drop alerts and order updates from The Street Co.', '/');
-      } else {
+  // ══════════════════════════════════════════════════════════════
+  // EVENT LISTENERS INITIALIZATION
+  // ══════════════════════════════════════════════════════════════
+  function initNotificationEventListeners() {
+    // Header notification bell click: opens Notifications Modal
+    const headerNotifBtn = document.getElementById('headerPushNotifBtn');
+    if (headerNotifBtn) {
+      headerNotifBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        window.openNotificationsModal();
+      });
+    }
+
+    // Direct URL hash check (e.g., /#notifications)
+    function checkUrlForNotifications() {
+      if (window.location.hash === '#notifications' || window.location.pathname === '/notifications') {
+        window.openNotificationsModal();
+      }
+    }
+    window.addEventListener('hashchange', checkUrlForNotifications);
+    checkUrlForNotifications();
+
+    // Modal close triggers
+    const closeBtn = document.getElementById('notificationsModalCloseBtn');
+    const footerCloseBtn = document.getElementById('notificationsFooterCloseBtn');
+    const backdrop = document.getElementById('notificationsModalBackdrop');
+
+    if (closeBtn) closeBtn.addEventListener('click', window.closeNotificationsModal);
+    if (footerCloseBtn) footerCloseBtn.addEventListener('click', window.closeNotificationsModal);
+    if (backdrop) backdrop.addEventListener('click', window.closeNotificationsModal);
+
+    // Clear All button in modal footer
+    const clearBtn = document.getElementById('notificationsClearBtn');
+    if (clearBtn) {
+      clearBtn.addEventListener('click', () => {
+        clearAllLocalNotifications();
+      });
+    }
+
+    // Empty state CTAs
+    const exploreBtn = document.getElementById('notifEmptyExploreBtn');
+    if (exploreBtn) {
+      exploreBtn.addEventListener('click', () => {
+        window.closeNotificationsModal();
+        const shopEl = document.getElementById('shop') || document.getElementById('new-in');
+        if (shopEl) shopEl.scrollIntoView({ behavior: 'smooth' });
+      });
+    }
+
+    const testBtn = document.getElementById('notifEmptyTestBtn');
+    if (testBtn) {
+      testBtn.addEventListener('click', async () => {
+        testBtn.disabled = true;
+        testBtn.textContent = 'DISPATCHING...';
+        if (window.sendTestPushAlert) {
+          await window.sendTestPushAlert();
+        }
+        testBtn.disabled = false;
+        testBtn.innerHTML = '<span>🔔 SEND TEST DROP ALERT</span>';
+      });
+    }
+
+    const emptyEnableBtn = document.getElementById('notifEmptyEnableBtn');
+    if (emptyEnableBtn) {
+      emptyEnableBtn.addEventListener('click', async () => {
+        emptyEnableBtn.disabled = true;
+        emptyEnableBtn.textContent = 'PERMITTING...';
         await window.requestPushNotificationPermission();
+        emptyEnableBtn.disabled = false;
+        emptyEnableBtn.textContent = 'ENABLE ALERTS';
+      });
+    }
+
+    // Escape key closes modal
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        const modal = document.getElementById('notificationsModal');
+        if (modal && modal.classList.contains('open')) {
+          window.closeNotificationsModal();
+        }
       }
     });
   }
 
-  function renderPushPromptBadge() {
-    if (document.getElementById('pushOptInBadge') || Notification.permission !== 'default') return;
-    const badge = document.createElement('div');
-    badge.id = 'pushOptInBadge';
-    badge.style.cssText = 'position:fixed;bottom:20px;left:20px;z-index:99999;background:rgba(13,12,16,0.96);backdrop-filter:blur(10px);border:1px solid #2a2933;border-radius:30px;padding:8px 16px 8px 12px;display:inline-flex;align-items:center;gap:10px;box-shadow:0 8px 24px rgba(0,0,0,0.6);font-family:var(--sans,sans-serif);animation:pushToastSlideIn 0.3s ease;';
-    badge.innerHTML = `
-      <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:#c0121f;color:#fff;font-size:12px;">🔔</span>
-      <span style="font-size:12px;font-weight:600;color:#fff;letter-spacing:0.3px;">Get VIP Drop & Order Alerts</span>
-      <button type="button" id="pushBadgeEnableBtn" style="background:#fff;color:#000;border:none;border-radius:16px;padding:4px 12px;font-size:11px;font-weight:700;letter-spacing:0.5px;cursor:pointer;">ALLOW</button>
-      <button type="button" id="pushBadgeDismissBtn" style="background:none;border:none;color:#6b6975;font-size:14px;cursor:pointer;padding:0 2px;" title="Dismiss">✕</button>
-    `;
-
-    document.body.appendChild(badge);
-
-    const enableBtn = document.getElementById('pushBadgeEnableBtn');
-    if (enableBtn) {
-      enableBtn.addEventListener('click', () => {
-        window.requestPushNotificationPermission();
-        badge.remove();
-      });
-    }
-
-    const dismissBtn = document.getElementById('pushBadgeDismissBtn');
-    if (dismissBtn) {
-      dismissBtn.addEventListener('click', () => {
-        badge.remove();
-      });
-    }
-  }
-
-  // Fetch Firebase config from backend
-  fetch('/api/firebase/config')
-    .then(r => r.json())
-    .then(cfg => {
-      if (cfg && cfg.configured) {
-        setupFCM(cfg);
-        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-          updatePushUiState(true);
-        }
-      }
-    })
-    .catch(() => {});
+  // Initialize listeners & sync badge count
+  initNotificationEventListeners();
+  updateNotificationCountBadge();
 })();
-
-
-

@@ -13850,3 +13850,461 @@ body:has(#cartDrawer.open) .mobile-bottom-bar,
   outline: 2px solid #DC2626 !important;
   outline-offset: 2px !important;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   MINIMAL NOTIFICATIONS RIGHT-SIDE DRAWER (WHITE AESTHETIC)
+   ══════════════════════════════════════════════════════════════ */
+.notifications-modal {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 999999 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+
+.notifications-modal.open {
+  pointer-events: auto !important;
+  visibility: visible !important;
+}
+
+.notif-drawer__backdrop,
+.notifications-modal__backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  background: rgba(0, 0, 0, 0.35) !important;
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+  opacity: 0 !important;
+  transition: opacity 0.25s ease !important;
+}
+
+.notifications-modal.open .notifications-modal__backdrop,
+.notifications-modal.open .notif-drawer__backdrop {
+  opacity: 1 !important;
+}
+
+.notif-drawer__panel,
+.notifications-modal__panel {
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  max-width: 400px !important;
+  background: #ffffff !important;
+  color: #111111 !important;
+  box-shadow: -10px 0 35px rgba(0, 0, 0, 0.08) !important;
+  border-left: 1px solid #ededed !important;
+  transform: translateX(100%) !important;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  z-index: 2 !important;
+}
+
+.notifications-modal.open .notif-drawer__panel,
+.notifications-modal.open .notifications-modal__panel {
+  transform: translateX(0) !important;
+}
+
+/* Header */
+.notif-drawer__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.4rem;
+  border-bottom: 1px solid #f0f0f0;
+  background: #ffffff;
+}
+
+.notif-drawer__header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.notif-drawer__title {
+  font-family: var(--sans, sans-serif);
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #111111;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.notif-drawer__count-pill {
+  font-family: var(--mono, monospace);
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  background: #f4f4f5;
+  color: #52525b;
+  border-radius: 12px;
+}
+
+.notif-drawer__header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.notif-drawer__status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--mono, monospace);
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  color: #71717a;
+  padding: 0.2rem 0.55rem;
+  border-radius: 4px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.notif-drawer__status-badge .status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #94a3b8;
+}
+
+.notif-drawer__status-badge.active {
+  color: #166534;
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.notif-drawer__status-badge.active .status-dot {
+  background: #22c55e;
+}
+
+.notif-drawer__close-btn {
+  background: transparent;
+  border: none;
+  padding: 6px;
+  cursor: pointer;
+  color: #71717a;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.notif-drawer__close-btn:hover {
+  color: #111111;
+  background: #f4f4f5;
+}
+
+/* Body */
+.notif-drawer__body,
+.notifications-modal__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+  background: #ffffff;
+}
+
+/* Minimal Clean Empty State */
+.notif-empty-minimal,
+.notifications-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 3.5rem 1rem 2rem;
+  min-height: 280px;
+}
+
+.notif-empty-minimal.is-hidden,
+.notifications-empty-state.is-hidden,
+.notif-empty-minimal[style*="display: none"],
+.notifications-empty-state[style*="display: none"] {
+  display: none !important;
+}
+
+.notif-empty-minimal__icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #f4f4f5;
+  color: #18181b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.25rem;
+}
+
+.notif-empty-minimal__title {
+  font-family: var(--sans, sans-serif);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #111111;
+  margin: 0 0 0.35rem 0;
+  letter-spacing: -0.01em;
+}
+
+.notif-empty-minimal__sub {
+  font-family: var(--sans, sans-serif);
+  font-size: 0.84rem;
+  color: #71717a;
+  line-height: 1.45;
+  margin: 0 0 1.5rem 0;
+  max-width: 260px;
+}
+
+.notif-empty-minimal__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 220px;
+}
+
+.notif-minimal-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.65rem 1.2rem;
+  font-family: var(--mono, monospace);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  width: 100%;
+}
+
+.notif-minimal-btn--dark {
+  background: #111111;
+  color: #ffffff;
+  border: 1px solid #111111;
+}
+
+.notif-minimal-btn--dark:hover {
+  background: #27272a;
+}
+
+/* Minimal Clean Feed List */
+.notif-drawer__feed,
+.notifications-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.notification-card {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 0.95rem 1rem;
+  background: #fafafa;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  transition: all 0.18s ease;
+}
+
+.notification-card:hover {
+  background: #f4f4f5;
+  border-color: #e4e4e7;
+}
+
+.notification-card__icon {
+  font-size: 1.15rem;
+  line-height: 1;
+  padding-top: 1px;
+}
+
+.notification-card__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-card__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.2rem;
+}
+
+.notification-card__tag {
+  font-family: var(--mono, monospace);
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  color: #dc2626;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.notification-card__time {
+  font-family: var(--mono, monospace);
+  font-size: 0.56rem;
+  color: #a1a1aa;
+}
+
+.notification-card__title {
+  font-family: var(--sans, sans-serif);
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #111111;
+  margin: 0 0 0.2rem 0;
+}
+
+.notification-card__body {
+  font-family: var(--sans, sans-serif);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: #52525b;
+  margin: 0;
+}
+
+.notification-card__del {
+  background: none;
+  border: none;
+  color: #a1a1aa;
+  cursor: pointer;
+  padding: 2px 4px;
+  font-size: 0.82rem;
+  transition: color 0.15s ease;
+}
+
+.notification-card__del:hover {
+  color: #dc2626;
+}
+
+/* Minimal Drawer Footer */
+.notif-drawer__footer,
+.notifications-modal__footer {
+  padding: 1rem 1.4rem;
+  border-top: 1px solid #f0f0f0;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.notif-footer__shop-btn {
+  background: #ffffff;
+  border: 1px solid #111111;
+  color: #111111;
+  padding: 0.65rem 1rem;
+  border-radius: 6px;
+  font-family: var(--mono, monospace);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  width: 100%;
+  text-align: center;
+}
+
+.notif-footer__shop-btn:hover {
+  background: #111111;
+  color: #ffffff;
+}
+
+.notif-footer__clear-btn {
+  background: none;
+  border: none;
+  font-family: var(--mono, monospace);
+  font-size: 0.64rem;
+  letter-spacing: 0.08em;
+  color: #71717a;
+  cursor: pointer;
+  padding: 0.4rem;
+  transition: color 0.15s ease;
+  white-space: nowrap;
+}
+
+.notif-footer__clear-btn:hover {
+  color: #dc2626;
+}
+
+.notif-footer__close-btn {
+  display: none;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   UNSEEN NOTIFICATION COUNT BADGE ON HEADER BELL
+   ══════════════════════════════════════════════════════════════ */
+.header-notif-count {
+  position: absolute !important;
+  top: -2px !important;
+  right: -2px !important;
+  background: #111111 !important;
+  color: #FFFFFF !important;
+  font-family: var(--sans, sans-serif) !important;
+  font-size: 0.62rem !important;
+  font-weight: 700 !important;
+  min-width: 17px !important;
+  height: 17px !important;
+  border-radius: 9999px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 4px !important;
+  line-height: 1 !important;
+  box-sizing: border-box !important;
+  z-index: 2 !important;
+}
+
+.header-notif-count.is-zero,
+.header-notif-count[data-count="0"],
+.header-notif-count:empty {
+  display: none !important;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   COLLECTION PAGE: ACTUAL TOP BAR & BOTTOM BAR VISIBILITY
+   ══════════════════════════════════════════════════════════════ */
+.collections-page-header {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 30 !important;
+  background: #ffffff !important;
+  border-bottom: 1px solid #e5e5e5 !important;
+  width: 100% !important;
+}
+
+@media (max-width: 768px) {
+  .mobile-bottom-bar {
+    z-index: 99999 !important;
+  }
+
+  body.collections-page-open .mobile-bottom-bar,
+  html.collections-page-open .mobile-bottom-bar,
+  body.collections-page-open #mobileBottomBar,
+  .collections-hub-modal.open ~ .mobile-bottom-bar,
+  .collections-hub-modal.open ~ * #mobileBottomBar {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    z-index: 99999 !important;
+  }
+
+  .collections-hub-modal.open .collections-hub-dialog {
+    padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  
+  .collections-hub-modal.open .collections-hub-body {
+    padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .notif-drawer__panel,
+  .notifications-modal__panel {
+    max-width: 100% !important;
+  }
+}
+

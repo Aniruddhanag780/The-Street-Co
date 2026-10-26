@@ -91,7 +91,7 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Web Push / Firebase Cloud Messaging handling in primary service worker
+// Web Push notification handling in primary service worker
 self.addEventListener('push', (event) => {
   let data = {};
   try {

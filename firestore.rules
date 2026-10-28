@@ -1,0 +1,71 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {phone} (10-digit verified mobile number)
+    // Fields:
+    //   - phone: string (required, 10 digits matching document ID)
+    //   - phoneWithCountryCode: string (optional, <= 20 chars)
+    //   - phoneVerified: bool (required)
+    //   - firstName: string (optional, <= 80 chars)
+    //   - lastName: string (optional, <= 80 chars)
+    //   - fullName: string (optional, <= 165 chars)
+    //   - email: string (optional, <= 160 chars)
+    //   - emailVerified: bool (optional)
+    //   - firebaseUid: string (optional, <= 128 chars)
+    //   - lastLoginAt: string (optional, <= 64 chars)
+    //   - updatedAt: string (optional, <= 64 chars)
+    //
+    // ===============================================================
+
+    function isValidPhoneId(phoneId) {
+      return phoneId is string && phoneId.matches('^[0-9]{10}$');
+    }
+
+    function hasOnlyAllowedUserFields(data) {
+      return data.keys().hasOnly([
+        'phone',
+        'phoneWithCountryCode',
+        'phoneVerified',
+        'firstName',
+        'lastName',
+        'fullName',
+        'email',
+        'emailVerified',
+        'firebaseUid',
+        'lastLoginAt',
+        'updatedAt'
+      ]);
+    }
+
+    function isValidUserAuthProfile(data, phoneId) {
+      return hasOnlyAllowedUserFields(data) &&
+        data.phone is string &&
+        data.phone == phoneId &&
+        data.phoneVerified is bool &&
+        (!('phoneWithCountryCode' in data) || (data.phoneWithCountryCode is string && data.phoneWithCountryCode.size() <= 20)) &&
+        (!('firstName' in data) || (data.firstName is string && data.firstName.size() <= 80)) &&
+        (!('lastName' in data) || (data.lastName is string && data.lastName.size() <= 80)) &&
+        (!('fullName' in data) || (data.fullName is string && data.fullName.size() <= 165)) &&
+        (!('email' in data) || (data.email is string && data.email.size() <= 160)) &&
+        (!('emailVerified' in data) || (data.emailVerified is bool)) &&
+        (!('firebaseUid' in data) || (data.firebaseUid is string && data.firebaseUid.size() <= 128)) &&
+        (!('lastLoginAt' in data) || (data.lastLoginAt is string && data.lastLoginAt.size() <= 64)) &&
+        (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 64));
+    }
+
+    match /users/{phone} {
+      allow get: if isValidPhoneId(phone);
+      allow create, update: if isValidPhoneId(phone) && isValidUserAuthProfile(request.resource.data, phone);
+      allow delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

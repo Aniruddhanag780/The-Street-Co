@@ -1951,6 +1951,263 @@ NODE_ENV=production
       }
     }
 
+    // 6c. USER ACCOUNT & 6-DIGIT PHONE / EMAIL OTP VERIFICATION
+    if (rawPath.includes('account/send-phone-otp') && method === 'POST') {
+      let body = {};
+      try { body = typeof event.body === 'string' ? JSON.parse(event.body) : (event.body || {}); } catch (_) {}
+      const cleanPhone = String(body.phone || '').replace(/\D/g, '').slice(-10);
+      if (!cleanPhone || cleanPhone.length !== 10) {
+        return { statusCode: 400, headers: CORS_HEADERS, body: JSON.stringify({ success: false, error: 'Please enter a valid 10-digit mobile number.' }) };
+      }
+      const otpCode = String(Math.floor(100000 + Math.random() * 900000));
+      const expiresAt = Date.now() + 10 * 60 * 1000;
+      if (!globalThis.__streetCoPhoneOtps) globalThis.__streetCoPhoneOtps = new Map();
+      globalThis.__streetCoPhoneOtps.set(cleanPhone, { otp: otpCode, expiresAt });
+
+      let smsDispatched = false;
+      const twilioClient = typeof getTwilioClient === 'function' ? getTwilioClient() : null;
+      if (twilioClient) {
+        try {
+          const fromNumber = (process.env.TWILIO_PHONE_NUMBER || TWILIO_PHONE_NUMBER || '').trim();
+          await twilioClient.messages.create({
+            body: `${otpCode} is your 6-digit login verification OTP for The Street Co. Valid for 10 minutes.`,
+            from: fromNumber,
+            to: `+91${cleanPhone}`
+          });
+          smsDispatched = true;
+        } catch (err) {
+          console.warn('[Netlify Phone OTP Warning]:', err.message);
+        }
+      }
+
+      return {
+        statusCode: 200,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({
+          success: true,
+          phone: cleanPhone,
+          smsDispatched,
+          otpCode,
+          message: `A 6-digit verification OTP has been sent to ${cleanPhone}.`
+        })
+      };
+    }
+
+    if (rawPath.includes('account/verify-phone-otp') && method === 'POST') {
+      let body = {};
+      try { body = typeof event.body === 'string' ? JSON.parse(event.body) : (event.body || {}); } catch (_) {}
+      const cleanPhone = String(body.phone || '').replace(/\D/g, '').slice(-10);
+      const cleanOtp = String(body.otp || '').replace(/\D/g, '').trim();
+
+      if (!globalThis.__streetCoPhoneOtps) globalThis.__streetCoPhoneOtps = new Map();
+      if (!globalThis.__streetCoAccounts) globalThis.__streetCoAccounts = {};
+
+      const record = globalThis.__streetCoPhoneOtps.get(cleanPhone);
+      if (!record) {
+        return { statusCode: 400, headers: CORS_HEADERS, body: JSON.stringify({ success: false, error: 'No active OTP found for this mobile number. Please request a new OTP.' }) };
+      }
+      if (Date.now() > record.expiresAt) {
+        globalThis.__streetCoPhoneOtps.delete(cleanPhone);
+        return { statusCode: 400, headers: CORS_HEADERS, body: JSON.stringify({ success: false, error: 'This 6-digit OTP has expired. Please request a new OTP.' }) };
+      }
+      if (record.otp !== cleanOtp) {
+        return { statusCode: 400, headers: CORS_HEADERS, body: JSON.stringify({ success: false, error: 'Invalid 6-digit OTP. Please check and try again.' }) };
+      }
+
+      globalThis.__streetCoPhoneOtps.delete(cleanPhone);
+      const existing = globalThis.__streetCoAccounts[cleanPhone] || {
+        firstName: '',
+        lastName: '',
+        fullName: '',
+        phone: cleanPhone,
+        email: '',
+        emailVerified: false
+      };
+      const updatedAccount = {
+        ...existing,
+        phone: cleanPhone,
+        phoneVerified: true,
+        lastLoginAt: new Date().toISOString()
+      };
+      globalThis.__streetCoAccounts[cleanPhone] = updatedAccount;
+
+      return {
+        statusCode: 200,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({
+          success: true,
+          verified: true,
+          account: updatedAccount,
+          message: 'Mobile number verified! Welcome to your account.'
+        })
+      };
+    }
+
+    if (rawPath.includes('account/send-email-otp') && method === 'POST') {
+      let body = {};
+      try { body = typeof event.body === 'string' ? JSON.parse(event.body) : (event.body || {}); } catch (_) {}
+      const cleanEmail = String(body.email || '').trim().toLowerCase();
+      if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+        return { statusCode: 400, headers: CORS_HEADERS, body: JSON.stringify({ success: false, error: 'Please enter a valid email address.' }) };
+      }
+      const otpCode = String(Math.floor(100000 + Math.random() * 900000));
+      const expiresAt = Date.now() + 10 * 60 * 1000;
+      if (!globalThis.__streetCoEmailOtps) globalThis.__streetCoEmailOtps = new Map();
+      globalThis.__streetCoEmailOtps.set(cleanEmail, {
+        otp: otpCode,
+        expiresAt,
+        phone: String(body.phone || '').replace(/\D/g, '').slice(-10),
+        firstName: String(body.firstName || '').trim(),
+        lastName: String(body.lastName || '').trim()
+      });
+
+      const fullName = [String(body.firstName || '').trim(), String(body.lastName || '').trim()].filter(Boolean).join(' ') || 'Valued Member';
+      const gmail = getGmailTransporter();
+      let emailDispatched = false;
+      if (gmail) {
+        try {
+          const senderUser = (process.env.GMAIL_SMTP_USER || GMAIL_SMTP_USER).trim();
+          await gmail.sendMail({
+            from: `"${GMAIL_SENDER_NAME}" <${senderUser}>`,
+            to: cleanEmail,
+            subject: `${otpCode} is your 6-Digit Email Verification OTP — The Street Co`,
+            html: `
+              <div style="font-family:'Plus Jakarta Sans',sans-serif;max-width:540px;margin:0 auto;background:#faf8f5;border:1px solid #e8e2d8;border-radius:12px;overflow:hidden;color:#0e0e11;">
+                <div style="background:#0e0e11;color:#ffffff;padding:24px;text-align:center;">
+                  <div style="font-family:Georgia,serif;font-size:22px;letter-spacing:0.18em;font-weight:600;">THE STREET CO</div>
+                  <div style="font-size:11px;letter-spacing:0.14em;color:#c5a880;margin-top:6px;">EMAIL VERIFICATION · SECURITY CODE</div>
+                </div>
+                <div style="padding:32px 28px;background:#ffffff;">
+                  <p style="font-size:15px;margin:0 0 12px;color:#18181b;">Hello <strong>${fullName}</strong>,</p>
+                  <p style="font-size:14px;line-height:1.6;color:#52525b;margin:0 0 24px;">
+                    Use the 6-digit verification code below to verify and save your email address (<strong>${cleanEmail}</strong>) on your The Street Co account:
+                  </p>
+                  <div style="background:#faf8f5;border:2px dashed #0e0e11;border-radius:12px;padding:20px;text-align:center;margin:0 0 24px;">
+                    <span style="font-size:11px;letter-spacing:0.14em;color:#71717a;display:block;margin-bottom:8px;font-weight:700;">YOUR 6-DIGIT VERIFICATION OTP</span>
+                    <div style="font-size:34px;font-weight:800;letter-spacing:0.28em;color:#0e0e11;font-family:monospace;">${otpCode}</div>
+                  </div>
+                  <p style="font-size:12px;color:#71717a;line-height:1.5;margin:0;">This code is valid for 10 minutes.</p>
+                </div>
+              </div>
+            `
+          });
+          emailDispatched = true;
+        } catch (err) {
+          console.warn('[Netlify Email OTP Warning]:', err.message);
+        }
+      }
+      return {
+        statusCode: 200,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({
+          success: true,
+          email: cleanEmail,
+          emailDispatched,
+          message: `A 6-digit verification OTP has been sent to ${cleanEmail}.`
+        })
+      };
+    }
+
+    if (rawPath.includes('account/verify-email-otp') && method === 'POST') {
+      let body = {};
+      try { body = typeof event.body === 'string' ? JSON.parse(event.body) : (event.body || {}); } catch (_) {}
+      const cleanEmail = String(body.email || '').trim().toLowerCase();
+      const cleanOtp = String(body.otp || '').replace(/\D/g, '').trim();
+      const cleanPhone = String(body.phone || '').replace(/\D/g, '').slice(-10);
+
+      if (!globalThis.__streetCoEmailOtps) globalThis.__streetCoEmailOtps = new Map();
+      if (!globalThis.__streetCoAccounts) globalThis.__streetCoAccounts = {};
+
+      const record = globalThis.__streetCoEmailOtps.get(cleanEmail);
+      if (!record) {
+        return { statusCode: 400, headers: CORS_HEADERS, body: JSON.stringify({ success: false, error: 'No active OTP found for this email. Please request a new OTP.' }) };
+      }
+      if (Date.now() > record.expiresAt) {
+        globalThis.__streetCoEmailOtps.delete(cleanEmail);
+        return { statusCode: 400, headers: CORS_HEADERS, body: JSON.stringify({ success: false, error: 'This 6-digit OTP has expired. Please request a new OTP.' }) };
+      }
+      if (record.otp !== cleanOtp) {
+        return { statusCode: 400, headers: CORS_HEADERS, body: JSON.stringify({ success: false, error: 'Invalid 6-digit OTP. Please check your email and try again.' }) };
+      }
+
+      globalThis.__streetCoEmailOtps.delete(cleanEmail);
+      const accountKey = cleanPhone || record.phone || cleanEmail;
+      const fName = String(body.firstName || record.firstName || '').trim();
+      const lName = String(body.lastName || record.lastName || '').trim();
+      const updatedAccount = {
+        firstName: fName,
+        lastName: lName,
+        fullName: [fName, lName].filter(Boolean).join(' '),
+        phone: cleanPhone || record.phone || '',
+        email: cleanEmail,
+        emailVerified: true,
+        emailVerifiedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      globalThis.__streetCoAccounts[accountKey] = updatedAccount;
+
+      return {
+        statusCode: 200,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({
+          success: true,
+          verified: true,
+          account: updatedAccount,
+          message: `Email ${cleanEmail} verified and saved to your account!`
+        })
+      };
+    }
+
+    if (rawPath.includes('account/profile')) {
+      if (!globalThis.__streetCoAccounts) globalThis.__streetCoAccounts = {};
+      if (method === 'GET') {
+        const rawPhone = String(event.queryStringParameters?.phone || '').replace(/\D/g, '').slice(-10);
+        return {
+          statusCode: 200,
+          headers: CORS_HEADERS,
+          body: JSON.stringify({ success: true, account: rawPhone ? (globalThis.__streetCoAccounts[rawPhone] || null) : null })
+        };
+      }
+      if (method === 'POST') {
+        let body = {};
+        try { body = typeof event.body === 'string' ? JSON.parse(event.body) : (event.body || {}); } catch (_) {}
+        const cleanPhone = String(body.phone || '').replace(/\D/g, '').slice(-10);
+        const cleanEmail = String(body.email || '').trim().toLowerCase();
+        const fName = String(body.firstName || '').trim();
+        const lName = String(body.lastName || '').trim();
+        const existing = globalThis.__streetCoAccounts[cleanPhone] || {};
+
+        if (cleanEmail && existing.email !== cleanEmail && !body.emailVerified) {
+          return {
+            statusCode: 400,
+            headers: CORS_HEADERS,
+            body: JSON.stringify({
+              success: false,
+              requireEmailOtp: true,
+              error: 'Please verify your email address using the 6-digit OTP sent to your email before saving.'
+            })
+          };
+        }
+
+        const updatedAccount = {
+          ...existing,
+          firstName: fName,
+          lastName: lName,
+          fullName: [fName, lName].filter(Boolean).join(' '),
+          phone: cleanPhone,
+          email: cleanEmail || existing.email || '',
+          emailVerified: Boolean(cleanEmail ? true : existing.emailVerified),
+          updatedAt: new Date().toISOString()
+        };
+        if (cleanPhone) globalThis.__streetCoAccounts[cleanPhone] = updatedAccount;
+        return {
+          statusCode: 200,
+          headers: CORS_HEADERS,
+          body: JSON.stringify({ success: true, account: updatedAccount, message: 'Your account profile has been saved.' })
+        };
+      }
+    }
+
     // 7. STATUS / HEALTH
     if (rawPath.includes('db-status') || rawPath.includes('health') || rawPath.includes('status')) {
       const pList = getCachedProducts();

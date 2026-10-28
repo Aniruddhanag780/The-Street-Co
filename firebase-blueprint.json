@@ -1,0 +1,64 @@
+{
+  "entities": {
+    "UserAuthProfile": {
+      "title": "UserAuthProfile",
+      "description": "User authentication and login profile details (First Name, Last Name, Logged-in Phone Number, Verified Email)",
+      "type": "object",
+      "properties": {
+        "phone": {
+          "type": "string",
+          "description": "10-digit verified mobile number used for login"
+        },
+        "phoneWithCountryCode": {
+          "type": "string",
+          "description": "Formatted mobile number with +91 prefix"
+        },
+        "phoneVerified": {
+          "type": "boolean",
+          "description": "Whether the mobile number was verified via 6-digit OTP"
+        },
+        "firstName": {
+          "type": "string",
+          "description": "User's first name"
+        },
+        "lastName": {
+          "type": "string",
+          "description": "User's last name"
+        },
+        "fullName": {
+          "type": "string",
+          "description": "User's full name"
+        },
+        "email": {
+          "type": "string",
+          "description": "User's verified email address"
+        },
+        "emailVerified": {
+          "type": "boolean",
+          "description": "Whether the email address was verified via 6-digit OTP"
+        },
+        "firebaseUid": {
+          "type": "string",
+          "description": "Firebase Auth UID associated with the session"
+        },
+        "lastLoginAt": {
+          "type": "string",
+          "description": "ISO timestamp of last OTP login"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp of last profile update"
+        }
+      },
+      "required": ["phone", "phoneVerified"]
+    }
+  },
+  "firestore": {
+    "/users/{phone}": {
+      "schema": {
+        "$ref": "#/entities/UserAuthProfile"
+      },
+      "description": "Stores user authentication and profile details keyed by 10-digit verified phone number"
+    }
+  }
+}

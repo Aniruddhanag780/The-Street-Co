@@ -32,7 +32,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Cinzel:wght@400;700&family=Space+Grotesk:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20261025_v2" />
+<link rel="stylesheet" href="style.css?v=20261028_account_v6" />
 <link rel="manifest" href="/manifest.json" />
 <meta name="theme-color" content="#ffffff" />
 <meta name="mobile-web-app-capable" content="yes" />
@@ -41,6 +41,15 @@
 <meta name="apple-mobile-web-app-title" content="The Street Co" />
 <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 <link rel="icon" type="image/png" sizes="192x192" href="/pwa-192x192.png" />
+<script type="importmap">
+{
+  "imports": {
+    "firebase/app": "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js",
+    "firebase/auth": "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js",
+    "firebase/firestore": "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js"
+  }
+}
+</script>
 </head>
 <body>
 
@@ -76,24 +85,24 @@
     <div class="store-header__right">
       <!-- Search Trigger Icon -->
       <button class="store-header__action-btn" id="headerSearchBtn" type="button" aria-label="Search Catalog" title="Search items">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <svg class="chrome__header-icon-svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <circle cx="11" cy="11" r="8"/>
           <line x1="21" y1="21" x2="16.65" y2="16.65"/>
         </svg>
       </button>
 
       <!-- Push Notifications Bell Button with Unseen Count Badge -->
-      <button class="store-header__action-btn" id="headerPushNotifBtn" type="button" aria-label="Drop Notifications" title="Notifications" style="position:relative;" onclick="if(window.openNotificationsModal){window.openNotificationsModal();}else{window.location.hash='notifications';}">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <button class="store-header__action-btn" id="headerPushNotifBtn" type="button" aria-label="Drop Notifications" title="Notifications" onclick="if(window.openNotificationsModal){window.openNotificationsModal();}else{window.location.hash='notifications';}">
+        <svg class="chrome__header-icon-svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
           <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
         </svg>
-        <span class="header-notif-count chrome__cart-count" id="headerNotifCount" data-count="0" style="display:none;">0</span>
+        <span class="header-notif-count chrome__cart-count is-zero" id="headerNotifCount" data-count="0" style="display:none;">0</span>
       </button>
 
       <!-- Wishlist Icon with count badge -->
       <button class="store-header__action-btn" id="shopWishlistBtn" type="button" aria-label="Wishlist" title="Saved Wishlist">
-        <svg class="chrome__wishlist-icon-svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <svg class="chrome__wishlist-icon-svg chrome__header-icon-svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
         </svg>
         <span class="chrome__wishlist-count is-zero" id="wishlistCount" data-count="0" style="display: none !important;">0</span>
@@ -101,12 +110,20 @@
 
       <!-- Cart / Bag Icon with count badge -->
       <button class="store-header__cart-btn" id="shopCartBtn" type="button" aria-label="Shopping Bag">
-        <svg class="chrome__cart-icon-svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <svg class="chrome__cart-icon-svg chrome__header-icon-svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/>
           <line x1="3" y1="6" x2="21" y2="6"/>
           <path d="M16 10a4 4 0 0 1-8 0"/>
         </svg>
         <span class="chrome__cart-count is-zero" id="cartCount" data-count="0" style="display: none !important;">0</span>
+      </button>
+
+      <!-- Account Profile Icon Button -->
+      <button class="store-header__action-btn" id="headerAccountBtn" type="button" aria-label="My Account" title="My Account" onclick="if(window.openAccountPage){window.openAccountPage();}">
+        <svg class="chrome__header-icon-svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
       </button>
     </div>
   </div>
@@ -220,6 +237,7 @@
     </div>
   </div>
 </section>
+
 
 <!-- ══════════ SHOP — THE STREET CO (THE SOULED STORE EXPERIENCE) ══════════ -->
 <section class="shop" id="shop">
@@ -614,7 +632,6 @@
 
   </div>
 </section>
-
 
 
 <!-- ══════════ BRAND ETHOS STATEMENT ══════════ -->
@@ -1062,6 +1079,14 @@
       <span class="mobile-nav-badge" id="mobileCartBadge">0</span>
     </div>
   </button>
+
+  <!-- 5th Item: Account Profile Page -->
+  <button type="button" class="mobile-bottom-bar__item" id="mobileNavAccount" aria-label="Account" title="My Account" onclick="if(window.openAccountPage){window.openAccountPage();}">
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+      <circle cx="12" cy="7" r="4"/>
+    </svg>
+  </button>
 </nav>
 
 </main>
@@ -1112,12 +1137,20 @@
 
           <!-- Cart / Bag Icon with count badge -->
           <button class="store-header__cart-btn" id="collecCartBtn" type="button" aria-label="Shopping Bag">
-            <svg class="chrome__cart-icon-svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <svg class="chrome__cart-icon-svg chrome__header-icon-svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/>
               <line x1="3" y1="6" x2="21" y2="6"/>
               <path d="M16 10a4 4 0 0 1-8 0"/>
             </svg>
             <span class="chrome__cart-count is-zero" id="collecCartCount" data-count="0" style="display: none !important;">0</span>
+          </button>
+
+          <!-- Account Profile Icon Button -->
+          <button class="store-header__action-btn" id="collecHeaderAccountBtn" type="button" aria-label="My Account" title="My Account" onclick="if(window.openAccountPage){window.openAccountPage();}">
+            <svg class="chrome__header-icon-svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
           </button>
         </div>
       </div>
@@ -1725,6 +1758,11 @@
             <button class="pdp-size-chip" type="button" data-size="XL">XL</button>
             <button class="pdp-size-chip" type="button" data-size="XXL">XXL</button>
           </div>
+          <!-- Smart Fit Finder Bar inside PDP -->
+          <div class="pdp-fit-finder-bar" id="pdpFitFinderBar">
+            <span id="pdpFitFinderStatusText">Find your exact oversized or tailored fit in 20 seconds</span>
+            <button type="button" class="pdp-fit-finder-trigger" id="pdpOpenFitQuizBtn" onclick="if(window.openFitFinderModal){window.openFitFinderModal();}">Smart Fit Quiz</button>
+          </div>
           <!-- Size guide hint box (hidden by default) -->
           <div class="pdp-size-guide-box" id="pdpSizeGuideBox" style="display:none;">
             <p><strong>OVERSIZED STREETWEAR TEE FIT GUIDE (INCHES):</strong><br>
@@ -2091,8 +2129,28 @@
           <div class="checkout-step-heading">
             <button type="button" id="checkoutRefreshAddressBtn" style="display:none !important;" aria-hidden="true"></button>
             <h3>Delivery Address</h3>
-            <p>Enter your shipping address for order delivery.</p>
+            <p>Select your saved delivery address card or create a new delivery address.</p>
           </div>
+
+          <!-- SAVED ADDRESS CARDS + CREATE ADDRESS CARD VIEW -->
+          <div class="checkout-address-cards-view" id="checkoutAddressCardsView">
+            <div class="address-cards-grid" id="checkoutSavedAddressCardsGrid">
+              <!-- Populated dynamically with Address-1, Address-2... cards + Create Address card -->
+            </div>
+
+            <div class="checkout-step-actions" id="checkoutCardsStepActions">
+              <button type="button" class="checkout-btn-primary" id="checkoutCardsContinueBtn">
+                <span>CONTINUE TO PAYMENT →</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- SAME ADDRESS ENTERING PAGE / FORM (SHOWN WHEN USER CLICKS CREATE ADDRESS CARD) -->
+          <div class="checkout-address-form-wrap" id="checkoutAddressFormWrap" style="display:none;">
+            <div class="address-form-top-bar">
+              <span class="address-form-top-bar__title" id="checkoutAddressFormHeading">Create Delivery Address</span>
+              <button type="button" class="address-form-back-btn" id="checkoutCancelAddressFormBtn">← Back to Address Cards</button>
+            </div>
 
           <form class="checkout-form" id="checkoutAddressForm" onsubmit="return false;">
             
@@ -2216,6 +2274,26 @@
               <input type="checkbox" id="checkoutIsB2B" style="display:none;">
               <input type="text" id="checkoutGstin" style="display:none;">
               <input type="radio" name="checkoutDeliverySpeed" value="free" checked style="display:none;">
+
+              <!-- Tick Box right before Add button to set as Default Address -->
+              <label class="address-default-tick-box" for="checkoutSetDefaultAddress">
+                <input type="checkbox" id="checkoutSetDefaultAddress" checked />
+                <span class="address-default-tick-box__mark" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                </span>
+                <span class="address-default-tick-box__text">Set this as a default address</span>
+              </label>
+
+              <div class="address-form-feedback" id="checkoutAddressFormFeedback" style="display:none;" aria-live="polite"></div>
+
+              <!-- Add Address Button -->
+              <div class="address-form-submit-row">
+                <button type="button" class="address-add-submit-btn" id="checkoutAddAddressBtn">
+                  <span>Add Address</span>
+                </button>
+              </div>
             </div>
 
             <!-- Step 1 Actions -->
@@ -2225,6 +2303,7 @@
               </button>
             </div>
           </form>
+          </div>
         </div>
 
         <!-- ══════════ STEP 2: PAYMENT PAGE (SIMPLE & LIGHT THEME) ══════════ -->
@@ -2709,9 +2788,583 @@
 </div>
 
 
+<!-- ══════════ MODAL 1: SMART FIT FINDER & SIZE RECOMMENDATION QUIZ ══════════ -->
+<div class="suite-modal" id="suiteFitFinderModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="fitFinderModalTitle">
+  <div class="suite-modal__backdrop" onclick="window.closeFitFinderModal()"></div>
+  <div class="suite-modal__dialog">
+    <div class="suite-modal__header">
+      <div>
+        <span class="suite-kicker">PRECISION TAILORING &amp; DRAPE CALCULATOR</span>
+        <h3 class="suite-modal__title" id="fitFinderModalTitle">Smart Fit Finder &amp; Size Quiz</h3>
+      </div>
+      <button type="button" class="suite-modal__close" onclick="window.closeFitFinderModal()" aria-label="Close Fit Quiz">✕</button>
+    </div>
 
+    <form id="suiteFitFinderForm" onsubmit="return false;">
+      <div class="suite-form-grid">
+        <div class="suite-field">
+          <label for="fitHeightCm">Height (cm) · e.g. 175 cm (5'9")</label>
+          <input type="number" id="fitHeightCm" class="suite-input" min="145" max="210" value="176" required />
+        </div>
+        <div class="suite-field">
+          <label for="fitWeightKg">Weight (kg) · e.g. 72 kg</label>
+          <input type="number" id="fitWeightKg" class="suite-input" min="40" max="150" value="72" required />
+        </div>
+      </div>
 
-<script src="main.js?v=20261026_clean_maps"></script>
+      <div class="suite-field">
+        <label>Shoulder &amp; Torso Build</label>
+        <div class="suite-segmented-row" id="fitBuildGroup">
+          <button type="button" class="suite-seg-btn" data-build="lean">Lean / Slim</button>
+          <button type="button" class="suite-seg-btn active" data-build="athletic">Athletic / Balanced</button>
+          <button type="button" class="suite-seg-btn" data-build="broad">Broad / Relaxed</button>
+        </div>
+      </div>
+
+      <div class="suite-field">
+        <label>Preferred Silhouette &amp; Drape</label>
+        <div class="suite-segmented-row" id="fitDrapeGroup">
+          <button type="button" class="suite-seg-btn" data-drape="tailored">Structured Tailored</button>
+          <button type="button" class="suite-seg-btn active" data-drape="signature">Signature Street</button>
+          <button type="button" class="suite-seg-btn" data-drape="oversized">Boxy Oversized</button>
+        </div>
+      </div>
+
+      <button type="submit" class="suite-primary-btn" id="fitCalculateBtn">Calculate My Recommended Size</button>
+    </form>
+
+    <div class="suite-result-card" id="fitResultCard" style="display:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+        <div>
+          <span style="font-size:0.72rem;color:#71717a;font-weight:600;display:block;">YOUR RECOMMENDED STREET CO SIZE</span>
+          <div style="font-size:1.75rem;font-weight:700;color:#0e0e11;font-variant-numeric:tabular-nums;" id="fitRecommendedSizeDisplay">Size L · 96% Match</div>
+          <p style="font-size:0.82rem;color:#52525b;margin:0.25rem 0 0;" id="fitRecommendedNote">Engineered for a clean drop-shoulder silhouette with comfortable chest room.</p>
+        </div>
+        <button type="button" class="lookbook-piece-single-btn" id="fitApplySizeEverywhereBtn" style="background:#0e0e11;color:#ffffff;padding:0.6rem 1rem;font-size:0.78rem;">Apply Size Across Store ✓</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MODAL 2: VIP STREET CRED LOYALTY & REFERRAL REWARDS CLUB ══════════ -->
+<div class="suite-modal" id="suiteVipLoyaltyModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="vipLoyaltyModalTitle">
+  <div class="suite-modal__backdrop" onclick="window.closeVipLoyaltyModal()"></div>
+  <div class="suite-modal__dialog">
+    <div class="suite-modal__header">
+      <div>
+        <span class="suite-kicker">ARCHIVE MEMBERSHIP · EARN &amp; REDEEM INSTANTLY</span>
+        <h3 class="suite-modal__title" id="vipLoyaltyModalTitle">VIP Street Cred Rewards Club</h3>
+      </div>
+      <button type="button" class="suite-modal__close" onclick="window.closeVipLoyaltyModal()" aria-label="Close VIP Club">✕</button>
+    </div>
+
+    <div class="vip-balance-banner">
+      <div>
+        <span style="font-size:0.72rem;color:#a1a1aa;display:block;">AVAILABLE STREET CRED BALANCE</span>
+        <div class="vip-pts-big" id="vipModalPointsBalance">320 pts</div>
+        <span style="font-size:0.76rem;color:#d4d4d8;" id="vipModalTierLabel">Tier: Initiate · 1.0x Points Multiplier</span>
+      </div>
+      <div style="text-align:right;">
+        <span style="font-size:0.72rem;color:#a1a1aa;display:block;">YOUR REFERRAL CODE (+250 PTS)</span>
+        <button type="button" class="lookbook-piece-single-btn" id="vipCopyReferralBtn" style="background:#ffffff;color:#0e0e11;margin-top:0.25rem;">STREET-VIP ⎘</button>
+      </div>
+    </div>
+
+    <div style="margin-bottom:1.25rem;">
+      <span style="font-size:0.75rem;font-weight:700;color:#18181b;display:block;margin-bottom:0.55rem;">REDEEM POINTS FOR INSTANT CHECKOUT VOUCHERS</span>
+      <div class="vip-rewards-grid" id="vipRewardsGrid">
+        <!-- Populated dynamically by JS -->
+      </div>
+    </div>
+
+    <div style="margin-bottom:1.25rem;">
+      <span style="font-size:0.75rem;font-weight:700;color:#18181b;display:block;margin-bottom:0.55rem;">EARN BONUS STREET CRED POINTS</span>
+      <div class="suite-segmented-row">
+        <button type="button" class="suite-seg-btn" id="vipEarnQuizBtn">+50 pts · Complete Fit Quiz</button>
+        <button type="button" class="suite-seg-btn" id="vipEarnShareBtn">+75 pts · Share Lookbook</button>
+        <button type="button" class="suite-seg-btn" id="vipEarnDropBtn">+60 pts · Join Drop Vault</button>
+      </div>
+    </div>
+
+    <div>
+      <span style="font-size:0.75rem;font-weight:700;color:#18181b;display:block;margin-bottom:0.45rem;">RECENT POINTS LEDGER &amp; VOUCHERS</span>
+      <div id="vipHistoryList" style="max-height:140px;overflow-y:auto;border:1px solid #e4e4e7;border-radius:8px;padding:0.65rem;font-size:0.78rem;color:#3f3f46;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MODAL 3: SELF-SERVICE ORDER LOOKUP & 7-DAY SIZE EXCHANGE PORTAL ══════════ -->
+<div class="suite-modal" id="suiteOrderExchangeModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="orderExchangeModalTitle">
+  <div class="suite-modal__backdrop" onclick="window.closeOrderExchangeModal()"></div>
+  <div class="suite-modal__dialog">
+    <div class="suite-modal__header">
+      <div>
+        <span class="suite-kicker">DOORSTEP REVERSE PICKUP · INSTANT SIZE REPLACEMENT</span>
+        <h3 class="suite-modal__title" id="orderExchangeModalTitle">Order Lookup &amp; 7-Day Size Exchange Portal</h3>
+      </div>
+      <button type="button" class="suite-modal__close" onclick="window.closeOrderExchangeModal()" aria-label="Close Exchange Portal">✕</button>
+    </div>
+
+    <form id="orderLookupForm" onsubmit="return false;" style="margin-bottom:1rem;">
+      <label for="orderLookupQueryInput" style="display:block;font-size:0.76rem;font-weight:600;color:#18181b;margin-bottom:0.35rem;">Enter Order ID, 10-Digit Mobile Number, or Email Address</label>
+      <div style="display:flex;gap:0.5rem;">
+        <input type="text" id="orderLookupQueryInput" class="suite-input" placeholder="e.g. 784920 or 9876543210 or email@domain.com" required />
+        <button type="submit" class="suite-primary-btn" style="width:auto;padding:0 1.2rem;">Find Order</button>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:0.45rem;font-size:0.74rem;color:#71717a;">
+        <span>Free 7-day doorstep size replacement on all apparel items</span>
+        <button type="button" id="orderLookupLoadDemoBtn" style="background:none;border:none;color:#0e0e11;font-weight:600;text-decoration:underline;cursor:pointer;padding:0;font-size:0.74rem;">Load Sample Order (#784920)</button>
+      </div>
+    </form>
+
+    <div id="orderLookupResultsArea">
+      <!-- Populated dynamically by JS -->
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MODAL 4: DROP VAULT PRIORITY WAITLIST RESERVATION ══════════ -->
+<div class="suite-modal" id="suiteDropWaitlistModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="dropWaitlistModalTitle">
+  <div class="suite-modal__backdrop" onclick="window.closeDropWaitlistModal()"></div>
+  <div class="suite-modal__dialog" style="max-width:480px;">
+    <div class="suite-modal__header">
+      <div>
+        <span class="suite-kicker">EARLY ACCESS RESERVATION · +60 VIP POINTS</span>
+        <h3 class="suite-modal__title" id="dropWaitlistModalTitle">Reserve Drop Vault Priority Pass</h3>
+      </div>
+      <button type="button" class="suite-modal__close" onclick="window.closeDropWaitlistModal()" aria-label="Close Waitlist Modal">✕</button>
+    </div>
+
+    <form id="dropWaitlistForm" onsubmit="return false;">
+      <input type="hidden" id="waitlistDropIdInput" value="DROP-01" />
+      <p id="waitlistDropSelectedTitle" style="font-size:0.86rem;font-weight:600;color:#0e0e11;margin:0 0 1rem;"></p>
+
+      <div class="suite-field" style="margin-bottom:0.85rem;">
+        <label for="waitlistEmailInput">Email Address for Early Access Link *</label>
+        <input type="email" id="waitlistEmailInput" class="suite-input" placeholder="you@example.com" required />
+      </div>
+
+      <div class="suite-form-grid">
+        <div class="suite-field">
+          <label for="waitlistPhoneInput">WhatsApp / SMS Number</label>
+          <input type="tel" id="waitlistPhoneInput" class="suite-input" placeholder="9876543210" maxlength="10" />
+        </div>
+        <div class="suite-field">
+          <label for="waitlistSizeSelect">Preferred Garment Size</label>
+          <select id="waitlistSizeSelect" class="suite-select">
+            <option value="S">Size S</option>
+            <option value="M">Size M</option>
+            <option value="L" selected>Size L</option>
+            <option value="XL">Size XL</option>
+            <option value="XXL">Size XXL</option>
+          </select>
+        </div>
+      </div>
+
+      <button type="submit" class="suite-primary-btn" id="waitlistSubmitBtn">Lock In Priority Waitlist Pass</button>
+    </form>
+
+    <div class="suite-result-card" id="waitlistConfirmationBox" style="display:none;"></div>
+  </div>
+</div>
+
+<!-- ══════════ 0. CHECKOUT LOGIN / SIGN UP REQUIRED POPUP NOTIFICATION (WEB & PHONE) ══════════ -->
+<div class="checkout-auth-gate-modal" id="checkoutAuthGateModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="checkoutAuthGateTitle">
+  <div class="checkout-auth-gate__backdrop" onclick="if(window.closeCheckoutAuthGate){window.closeCheckoutAuthGate(true);}"></div>
+  <div class="checkout-auth-gate__card">
+    <div class="checkout-auth-gate__topbar">
+      <div class="checkout-auth-gate__badge-wrap">
+        <span class="checkout-auth-gate__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+        </span>
+        <span class="checkout-auth-gate__kicker">ACCOUNT REQUIRED</span>
+      </div>
+      <button type="button" class="checkout-auth-gate__close" onclick="if(window.closeCheckoutAuthGate){window.closeCheckoutAuthGate(true);}" aria-label="Close Notification">✕</button>
+    </div>
+
+    <div class="checkout-auth-gate__body">
+      <h3 class="checkout-auth-gate__title" id="checkoutAuthGateTitle">Login or Sign Up to Continue</h3>
+      <p class="checkout-auth-gate__msg" id="checkoutAuthGateMessage">
+        You must be logged in or signed up to continue with the checkout page. Please verify your mobile number in the popup, and we will bring you right back to your product or cart page as it was earlier.
+      </p>
+    </div>
+
+    <!-- Bottom-Right Action Button Row ("below right to continue with sign up or login") -->
+    <div class="checkout-auth-gate__footer">
+      <button type="button" class="checkout-auth-gate__continue-btn" id="checkoutAuthGateContinueBtn">
+        <span>Continue with Login / Sign Up</span>
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+          <polyline points="12 5 19 12 12 19"></polyline>
+        </svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ 1. PHONE LOGIN POPUP (WEB & MOBILE) ══════════ -->
+<div class="auth-flow-modal" id="phoneLoginPopupModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="phoneLoginTitle">
+  <div class="auth-flow__backdrop" onclick="if(window.closePhoneLoginPopup){window.closePhoneLoginPopup();}"></div>
+  <div class="auth-flow__card">
+    <div class="auth-flow__topbar">
+      <span class="auth-flow__brand">THE STREET CO</span>
+      <button type="button" class="auth-flow__close" onclick="if(window.closePhoneLoginPopup){window.closePhoneLoginPopup();}" aria-label="Close Login">✕</button>
+    </div>
+
+    <div class="auth-flow__body">
+      <span class="auth-flow__kicker">ACCOUNT ACCESS</span>
+      <h2 class="auth-flow__title" id="phoneLoginTitle">Login or Sign Up</h2>
+      <p class="auth-flow__sub">Enter your 10-digit mobile number below to receive a 6-digit verification OTP.</p>
+
+      <form id="accountPhoneLoginForm" onsubmit="return false;" class="auth-flow__form">
+        <div class="auth-curved-box-wrap">
+          <span class="auth-curved-phone-prefix" aria-hidden="true">+91</span>
+          <input
+            type="tel"
+            id="accountLoginPhoneInput"
+            class="auth-curved-phone-input"
+            placeholder="Enter 10-digit mobile number"
+            inputmode="numeric"
+            maxlength="10"
+            autocomplete="tel-national"
+            aria-label="10-digit mobile number"
+          />
+        </div>
+
+        <div class="auth-flow__feedback" id="phoneLoginFeedbackMsg" style="display:none;" aria-live="polite"></div>
+
+        <button type="submit" class="auth-curved-primary-btn" id="accountPhoneLoginSubmitBtn">Continue</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ 2. UNIFIED 6-DIGIT OTP POPUP (WEB) / PAGE (MOBILE) FOR PHONE & EMAIL ══════════ -->
+<div class="auth-flow-modal" id="unifiedOtpModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="unifiedOtpTitle">
+  <div class="auth-flow__backdrop" onclick="if(window.closeUnifiedOtpModal){window.closeUnifiedOtpModal();}"></div>
+  <div class="auth-flow__card">
+    <div class="auth-flow__topbar">
+      <button type="button" class="auth-flow__back-btn" id="unifiedOtpBackBtn" onclick="if(window.handleUnifiedOtpBack){window.handleUnifiedOtpBack();}">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+        <span>Back</span>
+      </button>
+      <span class="auth-flow__brand">THE STREET CO</span>
+      <button type="button" class="auth-flow__close" onclick="if(window.closeUnifiedOtpModal){window.closeUnifiedOtpModal();}" aria-label="Close OTP Verification">✕</button>
+    </div>
+
+    <div class="auth-flow__body">
+      <span class="auth-flow__kicker" id="unifiedOtpKicker">OTP VERIFICATION</span>
+      <h2 class="auth-flow__title" id="unifiedOtpTitle">Enter 6-Digit OTP</h2>
+      <p class="auth-flow__sub" id="unifiedOtpSub">We have sent a 6-digit verification code.</p>
+
+      <!-- Instant OTP helper banner (shown when SMS gateway is in trial mode so user can always verify) -->
+      <div class="auth-otp-instant-banner" id="unifiedOtpInstantBanner" style="display:none;"></div>
+
+      <form id="unifiedOtpForm" onsubmit="return false;" novalidate class="auth-flow__form">
+        <!-- 6 Curved Square Boxes -->
+        <div class="otp-curved-squares-row" id="unifiedOtpDigitsRow">
+          <input type="text" id="unifiedOtpDigit1" class="otp-curved-square-box" inputmode="numeric" maxlength="1" autocomplete="one-time-code" aria-label="OTP Digit 1" />
+          <input type="text" id="unifiedOtpDigit2" class="otp-curved-square-box" inputmode="numeric" maxlength="1" aria-label="OTP Digit 2" />
+          <input type="text" id="unifiedOtpDigit3" class="otp-curved-square-box" inputmode="numeric" maxlength="1" aria-label="OTP Digit 3" />
+          <input type="text" id="unifiedOtpDigit4" class="otp-curved-square-box" inputmode="numeric" maxlength="1" aria-label="OTP Digit 4" />
+          <input type="text" id="unifiedOtpDigit5" class="otp-curved-square-box" inputmode="numeric" maxlength="1" aria-label="OTP Digit 5" />
+          <input type="text" id="unifiedOtpDigit6" class="otp-curved-square-box" inputmode="numeric" maxlength="1" aria-label="OTP Digit 6" />
+        </div>
+
+        <div class="auth-flow__feedback" id="unifiedOtpStatusMsg" style="display:none;" aria-live="polite"></div>
+
+        <!-- Proceed Button directly under the 6 curved square boxes -->
+        <button type="submit" class="auth-curved-primary-btn" id="unifiedOtpProceedBtn">Proceed</button>
+
+        <div class="auth-otp-resend-row">
+          <span>Didn't receive the code?</span>
+          <button type="button" class="auth-otp-resend-link" id="unifiedOtpResendBtn">Resend OTP</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ 3. USER ACCOUNT PAGE (FIRST NAME, LAST NAME, LOGGED-IN PHONE & EMAIL VERIFICATION) ══════════ -->
+<div class="account-page-modal" id="accountPageModal" aria-hidden="true" role="dialog" aria-modal="true" aria-label="My Account">
+  <div class="account-page__backdrop" onclick="if(window.closeAccountPage){window.closeAccountPage();}"></div>
+  <div class="account-page__panel">
+    <!-- Top Header Bar -->
+    <header class="account-page__header">
+      <div class="account-page__header-inner">
+        <button type="button" class="account-page__back-btn" id="accountPageBackBtn" onclick="if(window.closeAccountPage){window.closeAccountPage();}">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+          <span>BACK TO STORE</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Account Page Body -->
+    <div class="account-page__body">
+      <div class="account-page__container account-page__container--wide">
+
+        <!-- Logged-In Account Multi-Page Layout (Left Sidebar + Right Content) -->
+        <div id="accountProfileContentWrap" class="account-layout">
+
+          <!-- LEFT SIDEBAR: GROUP OF ACCOUNT PAGES -->
+          <aside class="account-sidebar" aria-label="Account Sections">
+            <div class="account-sidebar__header">
+              <span class="account-sidebar__kicker">MY ACCOUNT</span>
+              <h2 class="account-sidebar__title">Account Menu</h2>
+            </div>
+            <nav class="account-sidebar__nav">
+              <button type="button" class="account-nav-item active" id="accountNavPersonalBtn" data-account-page="personal">
+                <span class="account-nav-item__num">01</span>
+                <div class="account-nav-item__info">
+                  <span class="account-nav-item__title">Personal Information</span>
+                  <small class="account-nav-item__sub">Name, Mobile No. <span class="account-clean-amp">&amp;</span> Email</small>
+                </div>
+              </button>
+              <button type="button" class="account-nav-item" id="accountNavAddressBtn" data-account-page="address">
+                <span class="account-nav-item__num">02</span>
+                <div class="account-nav-item__info">
+                  <span class="account-nav-item__title">Delivery Address</span>
+                  <small class="account-nav-item__sub">Saved Addresses (Optional)</small>
+                </div>
+              </button>
+            </nav>
+          </aside>
+
+          <!-- RIGHT CONTENT AREA: SWITCHABLE ACCOUNT PAGES -->
+          <div class="account-main-content">
+
+            <!-- PAGE 1: PERSONAL INFORMATION (DEFAULT) -->
+            <div class="account-tab-pane active" id="accountPersonalPage" data-account-pane="personal">
+              <form id="accountProfileMainForm" onsubmit="return false;" novalidate class="account-sections-stack">
+
+                <!-- 1. USER NAME (FIRST NAME BOX & LAST NAME BOX) -->
+                <section class="account-card">
+                  <div class="account-card__head">
+                    <div>
+                      <span class="account-section-kicker">01 · USER NAME</span>
+                      <h3 class="account-card__title">First Name <span class="account-clean-amp">&amp;</span> Last Name</h3>
+                    </div>
+                  </div>
+                  <div class="account-name-grid">
+                    <div class="account-field">
+                      <label for="accountFirstName">First Name <span class="req">*</span></label>
+                      <input type="text" id="accountFirstName" class="account-input" placeholder="Enter First Name" autocomplete="given-name" />
+                    </div>
+                    <div class="account-field">
+                      <label for="accountLastName">Last Name <span class="req">*</span></label>
+                      <input type="text" id="accountLastName" class="account-input" placeholder="Enter Last Name" autocomplete="family-name" />
+                    </div>
+                  </div>
+                </section>
+
+                <!-- 2. PHONE NUMBER (SAME PHONE NUMBER THE USER LOGGED IN WITH) -->
+                <section class="account-card">
+                  <div class="account-card__head">
+                    <div>
+                      <span class="account-section-kicker">02 · LOGGED-IN MOBILE NUMBER</span>
+                      <h3 class="account-card__title">Phone Number</h3>
+                    </div>
+                    <span class="account-status-badge account-status-badge--verified">✓ OTP VERIFIED</span>
+                  </div>
+                  <div class="account-field">
+                    <label for="accountLoggedPhoneInput">Mobile Number (Same number used to log in)</label>
+                    <input type="tel" id="accountLoggedPhoneInput" class="account-input account-input--readonly-curved" readonly tabindex="-1" />
+                    <small class="account-field-hint">This is the mobile number you verified via OTP to log in.</small>
+                  </div>
+                </section>
+
+                <!-- 3. EMAIL ADDRESS WITH 6-DIGIT EMAIL OTP POPUP/PAGE VERIFICATION -->
+                <section class="account-card">
+                  <div class="account-card__head">
+                    <div>
+                      <span class="account-section-kicker">03 · EMAIL VERIFICATION</span>
+                      <h3 class="account-card__title">Email Address</h3>
+                    </div>
+                    <span class="account-status-badge account-status-badge--unverified" id="accountEmailStatusBadge">OTP VERIFICATION REQUIRED</span>
+                  </div>
+
+                  <div class="account-field">
+                    <label for="accountEmailInput">Email Address <span class="req">*</span></label>
+                    <div class="account-email-action-row">
+                      <input type="email" id="accountEmailInput" class="account-input" placeholder="Enter your email address (e.g. name@gmail.com)" autocomplete="email" />
+                      <button type="button" class="account-send-otp-btn" id="accountSendOtpBtn">Verify Email via OTP</button>
+                    </div>
+                    <small class="account-field-hint" id="accountEmailHintText">Click "Verify Email via OTP" to receive a verification code in your email and verify it in the OTP popup.</small>
+                  </div>
+                </section>
+
+                <!-- Save Account Profile Footer -->
+                <div class="account-save-footer">
+                  <div class="account-save-feedback" id="accountSaveFeedbackBox" style="display:none;" aria-live="polite"></div>
+                  <button type="submit" class="account-primary-btn" id="accountSaveProfileBtn">Save Account Profile</button>
+                </div>
+
+              </form>
+            </div>
+
+            <!-- PAGE 2: DELIVERY ADDRESS (OPTIONAL) -->
+            <div class="account-tab-pane" id="accountDeliveryAddressPage" data-account-pane="address" style="display:none;">
+              <section class="account-card">
+                <div class="account-card__head">
+                  <div>
+                    <span class="account-section-kicker">02 · DELIVERY ADDRESS</span>
+                    <h3 class="account-card__title">Saved Delivery Addresses</h3>
+                  </div>
+                  <span class="account-status-badge account-status-badge--optional">OPTIONAL</span>
+                </div>
+                <p class="account-address-intro">Manage your saved delivery addresses for faster checkout. Each address is labeled <strong>Address-1</strong>, <strong>Address-2</strong>, and so on.</p>
+
+                <!-- Saved Address Cards + Add Address Card -->
+                <div id="accountAddressCardsView">
+                  <div class="address-cards-grid" id="accountSavedAddressCardsGrid">
+                    <!-- Populated dynamically with Address-1, Address-2... cards + Add Address card -->
+                  </div>
+                </div>
+
+                <!-- Same Address Entering Page / Form (Shown when user clicks Add Address card) -->
+                <div class="account-address-form-wrap" id="accountAddressFormWrap" style="display:none;">
+                  <div class="address-form-top-bar">
+                    <span class="address-form-top-bar__title" id="accountAddressFormHeading">Create Delivery Address</span>
+                    <button type="button" class="address-form-back-btn" id="accountCancelAddressFormBtn">← Back to Address Cards</button>
+                  </div>
+
+                  <form class="checkout-form" id="accountNewAddressForm" onsubmit="return false;" novalidate>
+                    <!-- Recipient Contact -->
+                    <div class="checkout-form-section">
+                      <span class="checkout-section-badge">RECIPIENT CONTACT</span>
+                      <div class="checkout-form-row checkout-form-row--2col">
+                        <div class="checkout-form-group">
+                          <label for="accountAddrName">Full Name <span class="req">*</span></label>
+                          <input type="text" id="accountAddrName" class="checkout-input" placeholder="e.g. Rahul Sharma" required autocomplete="name" />
+                        </div>
+                        <div class="checkout-form-group">
+                          <label for="accountAddrPhone">Mobile Number <span class="req">*</span></label>
+                          <div class="checkout-phone-input-wrap">
+                            <span class="checkout-phone-prefix">+91</span>
+                            <input type="tel" id="accountAddrPhone" class="checkout-input--phone" placeholder="98765 43210" maxlength="10" required autocomplete="tel" />
+                          </div>
+                        </div>
+                      </div>
+                      <div class="checkout-form-group">
+                        <label for="accountAddrEmail">Email Address</label>
+                        <input type="email" id="accountAddrEmail" class="checkout-input" placeholder="e.g. name@email.com" autocomplete="email" />
+                      </div>
+                    </div>
+
+                    <!-- Delivery Address Details -->
+                    <div class="checkout-form-section">
+                      <span class="checkout-section-badge">DELIVERY ADDRESS</span>
+                      <div class="checkout-form-group">
+                        <label for="accountAddrLine1">House Address / Flat No. / Building <span class="req">*</span></label>
+                        <input type="text" id="accountAddrLine1" class="checkout-input" placeholder="House / Flat No., Building, Apartment" required autocomplete="off" />
+                      </div>
+                      <div class="checkout-form-group">
+                        <label for="accountAddrLine2">Street / Road / Area <span class="req">*</span></label>
+                        <input type="text" id="accountAddrLine2" class="checkout-input" placeholder="Street name, Area, Colony" required autocomplete="address-line2" />
+                      </div>
+                      <div class="checkout-form-group">
+                        <label for="accountAddrLandmark">Nearby Landmark <small style="font-size:0.7rem;color:#71717a;font-weight:normal;">(Optional)</small></label>
+                        <input type="text" id="accountAddrLandmark" class="checkout-input" placeholder="Nearby landmark (optional)" autocomplete="off" />
+                      </div>
+                      <div class="checkout-form-row checkout-form-row--3col">
+                        <div class="checkout-form-group">
+                          <label for="accountAddrCity">Town / City <span class="req">*</span></label>
+                          <input type="text" id="accountAddrCity" class="checkout-input" placeholder="e.g. Mumbai" required autocomplete="address-level2" />
+                        </div>
+                        <div class="checkout-form-group">
+                          <label for="accountAddrState">State <span class="req">*</span></label>
+                          <select id="accountAddrState" class="checkout-select is-placeholder" required autocomplete="address-level1">
+                            <option value="" disabled selected>Select State</option>
+                            <optgroup label="States">
+                              <option value="Andhra Pradesh">Andhra Pradesh</option>
+                              <option value="Arunachal Pradesh">Arunachal Pradesh</option>
+                              <option value="Assam">Assam</option>
+                              <option value="Bihar">Bihar</option>
+                              <option value="Chhattisgarh">Chhattisgarh</option>
+                              <option value="Goa">Goa</option>
+                              <option value="Gujarat">Gujarat</option>
+                              <option value="Haryana">Haryana</option>
+                              <option value="Himachal Pradesh">Himachal Pradesh</option>
+                              <option value="Jharkhand">Jharkhand</option>
+                              <option value="Karnataka">Karnataka</option>
+                              <option value="Kerala">Kerala</option>
+                              <option value="Madhya Pradesh">Madhya Pradesh</option>
+                              <option value="Maharashtra">Maharashtra</option>
+                              <option value="Manipur">Manipur</option>
+                              <option value="Meghalaya">Meghalaya</option>
+                              <option value="Mizoram">Mizoram</option>
+                              <option value="Nagaland">Nagaland</option>
+                              <option value="Odisha">Odisha</option>
+                              <option value="Punjab">Punjab</option>
+                              <option value="Rajasthan">Rajasthan</option>
+                              <option value="Sikkim">Sikkim</option>
+                              <option value="Tamil Nadu">Tamil Nadu</option>
+                              <option value="Telangana">Telangana</option>
+                              <option value="Tripura">Tripura</option>
+                              <option value="Uttar Pradesh">Uttar Pradesh</option>
+                              <option value="Uttarakhand">Uttarakhand</option>
+                              <option value="West Bengal">West Bengal</option>
+                            </optgroup>
+                            <optgroup label="Union Territories">
+                              <option value="Andaman and Nicobar Islands">Andaman and Nicobar Islands</option>
+                              <option value="Chandigarh">Chandigarh</option>
+                              <option value="Dadra and Nagar Haveli and Daman and Diu">Dadra and Nagar Haveli and Daman and Diu</option>
+                              <option value="Delhi">Delhi (NCT)</option>
+                              <option value="Jammu and Kashmir">Jammu and Kashmir</option>
+                              <option value="Ladakh">Ladakh</option>
+                              <option value="Lakshadweep">Lakshadweep</option>
+                              <option value="Puducherry">Puducherry</option>
+                            </optgroup>
+                          </select>
+                        </div>
+                        <div class="checkout-form-group">
+                          <label for="accountAddrPincode">PIN / ZIP Code <span class="req">*</span></label>
+                          <input type="text" id="accountAddrPincode" class="checkout-input" placeholder="e.g. 400001" maxlength="6" required autocomplete="postal-code" />
+                        </div>
+                      </div>
+
+                      <!-- Tick Box right before Add button to set as Default Address -->
+                      <label class="address-default-tick-box" for="accountSetDefaultAddress">
+                        <input type="checkbox" id="accountSetDefaultAddress" checked />
+                        <span class="address-default-tick-box__mark" aria-hidden="true">
+                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                          </svg>
+                        </span>
+                        <span class="address-default-tick-box__text">Set this as a default address</span>
+                      </label>
+
+                      <div class="address-form-feedback" id="accountAddressFormFeedback" style="display:none;" aria-live="polite"></div>
+
+                      <!-- Add Address Button -->
+                      <div class="address-form-submit-row">
+                        <button type="submit" class="address-add-submit-btn" id="accountSaveNewAddressBtn">
+                          <span>Add Address</span>
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                </div>
+              </section>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="firebase-auth.js?v=20261028_fb1"></script>
+<script src="main.js?v=20261028_account_v7"></script>
 
 <!-- Guaranteed Header & Step Button Sync (Overrides any browser cache) -->
 <script>

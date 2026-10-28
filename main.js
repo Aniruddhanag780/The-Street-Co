@@ -1526,6 +1526,25 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
   function openCheckoutModal(items, source = 'cart') {
     if (!items || items.length === 0) return;
 
+    // Require user Login / Sign Up before allowing access to Checkout Page
+    if (typeof window.streetCoIsUserLoggedIn === 'function' && !window.streetCoIsUserLoggedIn()) {
+      if (typeof window.openCheckoutAuthGate === 'function') {
+        window.openCheckoutAuthGate({
+          type: source === 'cart' ? 'cart' : 'product',
+          wasPdpOpen: Boolean(relicGalleryModal && relicGalleryModal.classList.contains('open')),
+          pdpItem: activeGalleryItem,
+          pdpSource: typeof pdpPreviousSource !== 'undefined' ? pdpPreviousSource : 'shop',
+          pdpQty: typeof currentPdpQty !== 'undefined' ? currentPdpQty : 1,
+          pdpSize: typeof currentSelectedSize !== 'undefined' ? currentSelectedSize : 'M',
+          pdpFinish: typeof currentSelectedFinish !== 'undefined' ? currentSelectedFinish : 'Obsidian Shadow',
+          wasCollectionsOpen: Boolean(collectionsPage && collectionsPage.classList.contains('open')),
+          scrollY: window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0,
+          collecScrollTop: collectionsPage ? collectionsPage.scrollTop : 0
+        });
+      }
+      return;
+    }
+
     // Save previous context before opening checkout
     let prevView = 'shop';
     if (relicGalleryModal && relicGalleryModal.classList.contains('open')) {
@@ -1579,6 +1598,9 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     const stepperEl = document.getElementById('checkoutStepper');
     if (stepperEl) stepperEl.style.display = 'flex';
     goToCheckoutStep(1);
+    if (typeof window.streetCoRefreshCheckoutAddresses === 'function') {
+      window.streetCoRefreshCheckoutAddresses();
+    }
 
     if (checkoutFlowModal) {
       checkoutFlowModal.classList.add('open');
@@ -1927,14 +1949,20 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       title: selectedSpeed === 'express' ? '⚡ Express Delivery' : 'Standard Delivery'
     };
 
-    // Persist address for future convenience
+    // Persist address for future convenience & save to user account (with Default tick box)
     try {
       localStorage.setItem('the_street_co_last_addr', JSON.stringify(checkoutSession.address));
+      const setDefaultCheckbox = document.getElementById('checkoutSetDefaultAddress');
+      const shouldSetDefault = setDefaultCheckbox ? Boolean(setDefaultCheckbox.checked) : true;
+      if (typeof window.streetCoSaveCheckoutAddressToAccount === 'function') {
+        window.streetCoSaveCheckoutAddressToAccount(checkoutSession.address, shouldSetDefault);
+      }
     } catch (e) { /* ignore */ }
 
     // Advance to Step 2: Payment Page
     goToCheckoutStep(2);
   }
+  window.streetCoProceedToPaymentStep = handleAddressStepSubmit;
 
   // Step 2 Validation & Proceed (Only COD Available)
   function handlePaymentStepSubmit(chosenMethod) {
@@ -2170,10 +2198,14 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       totalItems: productDetails.reduce((sum, it) => sum + it.qty, 0)
     };
 
-    // Complete Order Record
+    // Complete Order Record (linked to user's account phone for MongoDB Atlas)
+    const loggedAccountPhone = (typeof window.streetCoGetAccountPhone === 'function' ? window.streetCoGetAccountPhone() : '') ||
+      String(userDetails.phone || '').replace(/\D/g, '').slice(-10);
+
     const fullOrderRecord = {
       orderCode: generatedId,
       orderId: generatedId,
+      accountPhone: loggedAccountPhone,
       status: 'CONFIRMED',
       source: checkoutSession.source || 'cart',
 
@@ -2759,8 +2791,86 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       isPublic: false,
       badge: 'INACTIVE',
       status: 'inactive'
+    },
+    {
+      code: 'FITBUNDLE10',
+      title: '10% Off Complete Lookbook Outfit Bundle',
+      desc: 'Instant 10% bundle savings when shopping a complete curated lookbook fit.',
+      group: 'percentage',
+      type: 'percentage',
+      value: 10,
+      minOrderValue: 1500,
+      maxOrderValue: null,
+      maxDiscount: 3500,
+      isPublic: true,
+      badge: '10% BUNDLE',
+      status: 'active'
+    },
+    {
+      code: 'VIP100',
+      title: 'VIP Street Cred ₹100 Reward Voucher',
+      desc: 'Redeemed via Street Cred Loyalty Club (200 Points).',
+      group: 'flat',
+      type: 'flat',
+      value: 100,
+      minOrderValue: 999,
+      maxOrderValue: null,
+      maxDiscount: 100,
+      isPublic: true,
+      badge: 'VIP ₹100',
+      status: 'active'
+    },
+    {
+      code: 'VIP250',
+      title: 'VIP Street Cred ₹250 Reward Voucher',
+      desc: 'Redeemed via Street Cred Loyalty Club (450 Points).',
+      group: 'flat',
+      type: 'flat',
+      value: 250,
+      minOrderValue: 1499,
+      maxOrderValue: null,
+      maxDiscount: 250,
+      isPublic: true,
+      badge: 'VIP ₹250',
+      status: 'active'
+    },
+    {
+      code: 'VIP500',
+      title: 'VIP Street Cred ₹500 Reward Voucher',
+      desc: 'Redeemed via Street Cred Loyalty Club (850 Points).',
+      group: 'flat',
+      type: 'flat',
+      value: 500,
+      minOrderValue: 2499,
+      maxOrderValue: null,
+      maxDiscount: 500,
+      isPublic: true,
+      badge: 'VIP ₹500',
+      status: 'active'
+    },
+    {
+      code: 'VIP1000',
+      title: 'VIP Street Cred ₹1,000 Obsidian Voucher',
+      desc: 'Redeemed via Street Cred Loyalty Club (1,500 Points).',
+      group: 'flat',
+      type: 'flat',
+      value: 1000,
+      minOrderValue: 4999,
+      maxOrderValue: null,
+      maxDiscount: 1000,
+      isPublic: true,
+      badge: 'VIP ₹1,000',
+      status: 'active'
     }
   ];
+
+  // Expose cart & coupon helpers for Lookbook Bundle & VIP Loyalty Suite
+  window.streetCoAddToCart = handleAddToCart;
+  window.streetCoOpenCart = openCart;
+  window.streetCoApplyCoupon = function(code) {
+    setTimeout(() => applyCouponCode(code), 80);
+  };
+  window.streetCoShowToast = showToast;
 
   let cachedCouponsList = [...CLIENT_FALLBACK_COUPONS];
   let activeCouponGroupFilter = 'all'; // 'all', 'percentage', 'flat'
@@ -3292,6 +3402,17 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
   if (checkoutBtn) {
     checkoutBtn.addEventListener('click', () => {
       if (!cart || cart.length === 0) return;
+      if (typeof window.streetCoIsUserLoggedIn === 'function' && !window.streetCoIsUserLoggedIn()) {
+        if (typeof window.openCheckoutAuthGate === 'function') {
+          window.openCheckoutAuthGate({
+            type: 'cart',
+            wasCollectionsOpen: Boolean(collectionsPage && collectionsPage.classList.contains('open')),
+            scrollY: window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0,
+            collecScrollTop: collectionsPage ? collectionsPage.scrollTop : 0
+          });
+        }
+        return;
+      }
       closeCart();
       checkoutSession.promoCode = appliedCartCoupon.code || '';
       checkoutSession.discount = appliedCartCoupon.discount || 0;
@@ -6794,6 +6915,25 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       e.stopPropagation();
       if (!activeGalleryItem) return;
 
+      // If user is not logged in / signed up, show popup notification and keep/restore product page after login
+      if (typeof window.streetCoIsUserLoggedIn === 'function' && !window.streetCoIsUserLoggedIn()) {
+        if (typeof window.openCheckoutAuthGate === 'function') {
+          window.openCheckoutAuthGate({
+            type: 'product',
+            wasPdpOpen: true,
+            pdpItem: activeGalleryItem,
+            pdpSource: pdpPreviousSource || 'shop',
+            pdpQty: currentPdpQty || 1,
+            pdpSize: currentSelectedSize || 'M',
+            pdpFinish: currentSelectedFinish || 'Obsidian Shadow',
+            wasCollectionsOpen: Boolean(collectionsPage && collectionsPage.classList.contains('open')),
+            scrollY: window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0,
+            collecScrollTop: collectionsPage ? collectionsPage.scrollTop : 0
+          });
+        }
+        return;
+      }
+
       const safeImage = (activeGalleryImages && activeGalleryImages[activeGalleryImageIndex])
         || activeGalleryItem.image
         || (activeGalleryItem.images && activeGalleryItem.images[0])
@@ -8461,3 +8601,2786 @@ window.openDelhiveryTracker = openDelhiveryTracker;
   initNotificationEventListeners();
   updateNotificationCountBadge();
 })();
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   NEXT-GEN STOREFRONT EXPERIENCE SUITE CONTROLLER
+   1. Interactive Shop-the-Fit Lookbook & Outfit Builder
+   2. Smart Fit Finder & Size Calculator Quiz
+   3. Live Flash Drop Countdown & Waitlist Vault
+   4. VIP Street Cred Loyalty & Referral Rewards Club
+   5. Self-Service Order Lookup & 7-Day Size Exchange Portal
+   ═══════════════════════════════════════════════════════════════════════════ */
+(function initNextGenStorefrontSuite() {
+  const FIT_STORAGE_KEY = 'the_street_co_fit_profile_v1';
+  const VIP_STORAGE_KEY = 'the_street_co_vip_profile_v1';
+  const WAITLIST_STORAGE_KEY = 'the_street_co_drop_waitlist_v1';
+
+  // ── 1. CURATED LOOKBOOK ENSEMBLES ──
+  const LOOKBOOK_DATA = {
+    'look-01': {
+      id: 'look-01',
+      title: 'Tokyo Shadow Ensemble',
+      meta: 'Look 01 · Heavyweight Streetwear · 3 Curated Pieces',
+      note: '480 GSM loopwheel cotton hoodie paired with articulated cargo trousers and a tactical utility bag.',
+      heroImage: '/product-minato.jpg',
+      pieces: [
+        {
+          pin: '01',
+          x: 46,
+          y: 34,
+          sku: 'TS-MIN-001',
+          name: 'Minato Yellow Flash Oversized Heavy Tee',
+          category: 'Oversized T-Shirts',
+          fabric: '320 GSM Combed Cotton · Drop Shoulder',
+          priceInr: 1999,
+          image: '/product-minato.jpg',
+          defaultSize: 'L'
+        },
+        {
+          pin: '02',
+          x: 52,
+          y: 66,
+          sku: 'TS-STR-004',
+          name: 'Tokyo Shadow Tactical Cargo Trousers',
+          category: 'Cargo Pants & Joggers',
+          fabric: 'Ripstop Cotton Twill · 6-Pocket Articulated Fit',
+          priceInr: 2699,
+          image: '/product-ts-min-001.jpg',
+          defaultSize: 'L'
+        },
+        {
+          pin: '03',
+          x: 32,
+          y: 50,
+          sku: 'TS-ACC-002',
+          name: 'Obsidian Crossbody Utility Sling Bag',
+          category: 'Accessories & Bags',
+          fabric: 'Ballistic Nylon · Matte Fidlock Buckle',
+          priceInr: 1599,
+          image: '/og-preview.jpg',
+          defaultSize: 'M'
+        }
+      ]
+    },
+    'look-02': {
+      id: 'look-02',
+      title: 'Tailored Archive Silhouette',
+      meta: 'Look 02 · Structured Luxury Street · 3 Curated Pieces',
+      note: 'Architectural double-breasted streetwear blazer layered over an ivory heavyweight tee and pleated wide trousers.',
+      heroImage: '/product-ts-min-001.jpg',
+      pieces: [
+        {
+          pin: '01',
+          x: 48,
+          y: 30,
+          sku: 'TS-UCH-002',
+          name: 'Uchiha Crest Tailored Streetwear Blazer',
+          category: 'Jackets & Outerwear',
+          fabric: 'Japanese Gabardine Twill · Satin Lined',
+          priceInr: 3999,
+          image: '/product-ts-min-001.jpg',
+          defaultSize: 'L'
+        },
+        {
+          pin: '02',
+          x: 50,
+          y: 48,
+          sku: 'TS-CLS-003',
+          name: 'Archive Ivory Heavyweight Crewneck Tee',
+          category: 'Classic T-Shirts',
+          fabric: '280 GSM Organic Supima Cotton',
+          priceInr: 1499,
+          image: '/product-minato.jpg',
+          defaultSize: 'M'
+        },
+        {
+          pin: '03',
+          x: 54,
+          y: 74,
+          sku: 'TS-BTM-007',
+          name: 'Wide-Leg Pleated Archive Trousers',
+          category: 'Cargo Pants & Joggers',
+          fabric: 'Structured Wool-Blend Drape',
+          priceInr: 2899,
+          image: '/og-image.jpg',
+          defaultSize: 'L'
+        }
+      ]
+    },
+    'look-03': {
+      id: 'look-03',
+      title: 'Utilitarian Street Armor',
+      meta: 'Look 03 · All-Weather Capsule · 3 Curated Pieces',
+      note: 'Heavyweight French terry hoodie paired with relaxed parachute joggers and brushed steel street hardware.',
+      heroImage: '/og-image.jpg',
+      pieces: [
+        {
+          pin: '01',
+          x: 45,
+          y: 36,
+          sku: 'TS-AKA-005',
+          name: 'Crimson Cloud 480 GSM Oversized Hoodie',
+          category: 'Hoodies & Sweatshirts',
+          fabric: '480 GSM Heavyweight French Terry',
+          priceInr: 3299,
+          image: '/og-image.jpg',
+          defaultSize: 'XL'
+        },
+        {
+          pin: '02',
+          x: 53,
+          y: 68,
+          sku: 'TS-ARM-006',
+          name: 'Shinobi Armory Parachute Utility Joggers',
+          category: 'Cargo Pants & Joggers',
+          fabric: 'Water-Repellent Matte Nylon',
+          priceInr: 2499,
+          image: '/product-minato.jpg',
+          defaultSize: 'L'
+        },
+        {
+          pin: '03',
+          x: 36,
+          y: 54,
+          sku: 'TS-ACC-009',
+          name: 'Brushed Titanium Cuban Chain & Tag',
+          category: 'Accessories & Jewelry',
+          fabric: '316L Surgical Grade Stainless Steel',
+          priceInr: 1299,
+          image: '/product-ts-min-001.jpg',
+          defaultSize: 'M'
+        }
+      ]
+    }
+  };
+
+  let activeLookId = 'look-01';
+  let activePinIndex = 0;
+  let selectedLookSizes = {};
+
+  function getSavedFitSize() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(FIT_STORAGE_KEY) || 'null');
+      return saved && saved.recommendedSize ? saved.recommendedSize : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function renderLookbook(lookId) {
+    const look = LOOKBOOK_DATA[lookId] || LOOKBOOK_DATA['look-01'];
+    activeLookId = look.id;
+
+    const stageImg = document.getElementById('lookbookStageImg');
+    const stageMeta = document.getElementById('lookbookStageMeta');
+    const stageTitle = document.getElementById('lookbookStageTitle');
+    const stageNote = document.getElementById('lookbookStageNote');
+    const hotspotsContainer = document.getElementById('lookbookHotspotsContainer');
+    const piecesList = document.getElementById('lookbookPiecesList');
+    const origPriceEl = document.getElementById('lookbookBundleOriginalPrice');
+    const finalPriceEl = document.getElementById('lookbookBundleFinalPrice');
+
+    if (stageImg) {
+      stageImg.src = look.heroImage;
+      stageImg.onerror = function() {
+        this.onerror = null;
+        this.src = '/product-minato.jpg';
+      };
+    }
+    if (stageMeta) stageMeta.textContent = look.meta;
+    if (stageTitle) stageTitle.textContent = look.title;
+    if (stageNote) stageNote.textContent = look.note;
+
+    const savedFitSize = getSavedFitSize();
+
+    if (hotspotsContainer) {
+      hotspotsContainer.innerHTML = look.pieces.map((p, idx) => `
+        <button type="button"
+          class="lookbook-hotspot-pin ${idx === activePinIndex ? 'active' : ''}"
+          style="left:${p.x}%; top:${p.y}%;"
+          data-hotspot-idx="${idx}"
+          aria-label="Inspect ${p.name}">
+          ${p.pin}
+        </button>
+      `).join('');
+
+      hotspotsContainer.querySelectorAll('[data-hotspot-idx]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          activePinIndex = parseInt(btn.getAttribute('data-hotspot-idx'), 10) || 0;
+          renderLookbook(activeLookId);
+        });
+      });
+    }
+
+    if (piecesList) {
+      piecesList.innerHTML = look.pieces.map((p, idx) => {
+        const key = `${look.id}_${p.sku}`;
+        const chosenSize = selectedLookSizes[key] || savedFitSize || p.defaultSize || 'L';
+        selectedLookSizes[key] = chosenSize;
+
+        return `
+          <div class="lookbook-piece-row ${idx === activePinIndex ? 'is-highlighted' : ''}" data-piece-row="${idx}">
+            <div class="lookbook-piece-thumb">
+              <img src="${p.image}" alt="${p.name}" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/product-minato.jpg';" />
+            </div>
+            <div class="lookbook-piece-info">
+              <h4>${p.pin} · ${p.name}</h4>
+              <div class="lookbook-piece-meta">${p.category} · ${p.fabric}</div>
+              <div class="lookbook-piece-controls">
+                <label style="font-size:0.72rem;color:#52525b;font-weight:600;">Size:</label>
+                <select class="lookbook-size-select" data-look-size-key="${key}">
+                  ${['S', 'M', 'L', 'XL', 'XXL'].map(sz => `<option value="${sz}" ${sz === chosenSize ? 'selected' : ''}>${sz}</option>`).join('')}
+                </select>
+              </div>
+            </div>
+            <div class="lookbook-piece-price-col">
+              <span class="lookbook-piece-price">₹${p.priceInr.toLocaleString('en-IN')}</span>
+              <button type="button" class="lookbook-piece-single-btn" data-add-single-idx="${idx}">+ Add Piece</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      piecesList.querySelectorAll('.lookbook-size-select').forEach(sel => {
+        sel.addEventListener('change', () => {
+          selectedLookSizes[sel.getAttribute('data-look-size-key')] = sel.value;
+        });
+      });
+
+      piecesList.querySelectorAll('[data-add-single-idx]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const idx = parseInt(btn.getAttribute('data-add-single-idx'), 10) || 0;
+          const piece = look.pieces[idx];
+          if (!piece) return;
+          const sz = selectedLookSizes[`${look.id}_${piece.sku}`] || piece.defaultSize || 'L';
+          if (typeof window.streetCoAddToCart === 'function') {
+            window.streetCoAddToCart(btn, {
+              id: piece.sku,
+              sku: piece.sku,
+              name: `${piece.name} (Size ${sz})`,
+              category: piece.category,
+              priceInr: piece.priceInr,
+              image: piece.image,
+              size: sz
+            }, 1);
+          }
+        });
+      });
+    }
+
+    const totalOriginal = look.pieces.reduce((sum, p) => sum + p.priceInr, 0);
+    const discountedTotal = Math.round(totalOriginal * 0.9);
+    if (origPriceEl) origPriceEl.textContent = `₹${totalOriginal.toLocaleString('en-IN')}`;
+    if (finalPriceEl) finalPriceEl.textContent = `₹${discountedTotal.toLocaleString('en-IN')} INR`;
+  }
+
+  document.querySelectorAll('[data-look-tab]').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('[data-look-tab]').forEach(t => {
+        t.classList.remove('active');
+        t.setAttribute('aria-selected', 'false');
+      });
+      tab.classList.add('active');
+      tab.setAttribute('aria-selected', 'true');
+      activePinIndex = 0;
+      renderLookbook(tab.getAttribute('data-look-tab'));
+    });
+  });
+
+  const addBundleBtn = document.getElementById('lookbookAddBundleBtn');
+  if (addBundleBtn) {
+    addBundleBtn.addEventListener('click', () => {
+      const look = LOOKBOOK_DATA[activeLookId] || LOOKBOOK_DATA['look-01'];
+      look.pieces.forEach(piece => {
+        const sz = selectedLookSizes[`${look.id}_${piece.sku}`] || piece.defaultSize || 'L';
+        if (typeof window.streetCoAddToCart === 'function') {
+          window.streetCoAddToCart(addBundleBtn, {
+            id: piece.sku,
+            sku: piece.sku,
+            name: `${piece.name} (Size ${sz})`,
+            category: piece.category,
+            priceInr: piece.priceInr,
+            image: piece.image,
+            size: sz
+          }, 1);
+        }
+      });
+
+      awardVipPoints('bundle_' + activeLookId, `Added ${look.title} Complete Outfit`, 50);
+
+      if (typeof window.streetCoOpenCart === 'function') {
+        window.streetCoOpenCart('bag');
+      }
+      if (typeof window.streetCoApplyCoupon === 'function') {
+        window.streetCoApplyCoupon('FITBUNDLE10');
+      }
+    });
+  }
+
+  // ── 2. SMART FIT FINDER & SIZE RECOMMENDATION QUIZ ──
+  let selectedBuild = 'athletic';
+  let selectedDrape = 'signature';
+  let latestRecommendedSize = getSavedFitSize() || 'L';
+
+  function updateFitBadgesEverywhere(size, confidence = 96) {
+    if (!size) return;
+    latestRecommendedSize = size;
+    const headerBadge = document.getElementById('headerFitBadgeText');
+    const dockBadge = document.getElementById('dockFitBadgeLabel');
+    const pdpText = document.getElementById('pdpFitFinderStatusText');
+
+    if (headerBadge) headerBadge.textContent = `Fit: Size ${size}`;
+    if (dockBadge) dockBadge.textContent = `My Fit: ${size}`;
+    if (pdpText) {
+      pdpText.innerHTML = `Your Smart Fit Profile recommends <strong>Size ${size}</strong> (${confidence}% Match)`;
+    }
+  }
+
+  window.openFitFinderModal = function() {
+    const modal = document.getElementById('suiteFitFinderModal');
+    if (modal) {
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+    }
+  };
+
+  window.closeFitFinderModal = function() {
+    const modal = document.getElementById('suiteFitFinderModal');
+    if (modal) {
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+  };
+
+  document.querySelectorAll('#fitBuildGroup .suite-seg-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#fitBuildGroup .suite-seg-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedBuild = btn.getAttribute('data-build') || 'athletic';
+    });
+  });
+
+  document.querySelectorAll('#fitDrapeGroup .suite-seg-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#fitDrapeGroup .suite-seg-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedDrape = btn.getAttribute('data-drape') || 'signature';
+    });
+  });
+
+  const fitForm = document.getElementById('suiteFitFinderForm');
+  if (fitForm) {
+    fitForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const heightCm = Number(document.getElementById('fitHeightCm')?.value) || 176;
+      const weightKg = Number(document.getElementById('fitWeightKg')?.value) || 72;
+
+      // Deterministic size score index (0=S, 1=M, 2=L, 3=XL, 4=XXL)
+      let score = 1;
+      if (heightCm < 168 && weightKg < 62) score = 0;
+      else if (heightCm < 175 && weightKg < 72) score = 1;
+      else if (heightCm < 183 && weightKg < 84) score = 2;
+      else if (heightCm < 190 && weightKg < 96) score = 3;
+      else score = 4;
+
+      if (selectedBuild === 'broad') score = Math.min(4, score + 1);
+      if (selectedBuild === 'lean' && score > 0 && weightKg < 65) score = Math.max(0, score - 1);
+
+      if (selectedDrape === 'oversized') score = Math.min(4, score + 1);
+      if (selectedDrape === 'tailored' && score > 0) score = Math.max(0, score - 1);
+
+      const sizes = ['S', 'M', 'L', 'XL', 'XXL'];
+      const recommendedSize = sizes[score] || 'L';
+      const confidence = 94 + (score % 5);
+
+      const notesByDrape = {
+        tailored: `Size ${recommendedSize} delivers a clean, structured shoulder line with minimal excess fabric for ${heightCm}cm / ${weightKg}kg.`,
+        signature: `Size ${recommendedSize} gives our signature relaxed streetwear drape with balanced chest comfort for ${heightCm}cm / ${weightKg}kg.`,
+        oversized: `Size ${recommendedSize} provides an authentic boxy, drop-shoulder streetwear silhouette for ${heightCm}cm / ${weightKg}kg.`
+      };
+
+      const profile = {
+        heightCm,
+        weightKg,
+        build: selectedBuild,
+        drape: selectedDrape,
+        recommendedSize,
+        confidence,
+        updatedAt: new Date().toISOString()
+      };
+
+      try {
+        localStorage.setItem(FIT_STORAGE_KEY, JSON.stringify(profile));
+      } catch (_) {}
+
+      fetch('/api/fit-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profile)
+      }).catch(() => {});
+
+      const resCard = document.getElementById('fitResultCard');
+      const resTitle = document.getElementById('fitRecommendedSizeDisplay');
+      const resNote = document.getElementById('fitRecommendedNote');
+      if (resCard) resCard.style.display = 'block';
+      if (resTitle) resTitle.textContent = `Size ${recommendedSize} · ${confidence}% Match`;
+      if (resNote) resNote.textContent = notesByDrape[selectedDrape] || notesByDrape.signature;
+
+      updateFitBadgesEverywhere(recommendedSize, confidence);
+      awardVipPoints('fit_quiz_completed', 'Completed Smart Fit Size Quiz', 50);
+    });
+  }
+
+  const applySizeBtn = document.getElementById('fitApplySizeEverywhereBtn');
+  if (applySizeBtn) {
+    applySizeBtn.addEventListener('click', () => {
+      const targetBtn = document.querySelector(`#pdpSizeOptions .pdp-size-chip[data-size="${latestRecommendedSize}"]`);
+      if (targetBtn) targetBtn.click();
+
+      Object.keys(LOOKBOOK_DATA).forEach(lookKey => {
+        LOOKBOOK_DATA[lookKey].pieces.forEach(p => {
+          selectedLookSizes[`${lookKey}_${p.sku}`] = latestRecommendedSize;
+        });
+      });
+      renderLookbook(activeLookId);
+      window.closeFitFinderModal();
+      if (typeof window.streetCoShowToast === 'function') {
+        window.streetCoShowToast('FIT PROFILE APPLIED', `Size ${latestRecommendedSize} selected across storefront & lookbook`);
+      }
+    });
+  }
+
+  // ── 3. LIVE FLASH DROP COUNTDOWN & WAITLIST VAULT ──
+  const UPCOMING_DROPS = [
+    {
+      dropId: 'DROP-01',
+      edition: 'Archive Release #01 · Limited to 150 Units',
+      title: 'Obsidian Susanoo 500 GSM Armored Trench Hoodie',
+      desc: 'Milled from custom 500 GSM heavyweight loopwheel cotton with embroidered metallic crest and storm-flap collar.',
+      priceInr: 4299,
+      image: '/product-minato.jpg',
+      demandPct: 88
+    },
+    {
+      dropId: 'DROP-02',
+      edition: 'Archive Release #02 · Limited to 100 Units',
+      title: 'Akatsuki Midnight Waxed Canvas Tactical Jacket',
+      desc: 'Weatherproof Japanese waxed canvas shell with concealed magnetic utility pockets and vermilion satin lining.',
+      priceInr: 5499,
+      image: '/product-ts-min-001.jpg',
+      demandPct: 79
+    },
+    {
+      dropId: 'DROP-03',
+      edition: 'Archive Release #03 · Limited to 200 Units',
+      title: 'Shibuya Heavyweight Selvedge Cargo Denim',
+      desc: '14oz raw selvedge black denim engineered with articulated knee pleats and custom brushed-steel hardware.',
+      priceInr: 3699,
+      image: '/og-image.jpg',
+      demandPct: 93
+    }
+  ];
+
+  let waitlistCounts = { 'DROP-01': 142, 'DROP-02': 98, 'DROP-03': 214 };
+
+  function getReservedDrops() {
+    try {
+      return JSON.parse(localStorage.getItem(WAITLIST_STORAGE_KEY) || '{}');
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function renderDropVaultGrid() {
+    const grid = document.getElementById('dropVaultGrid');
+    if (!grid) return;
+    const reserved = getReservedDrops();
+
+    grid.innerHTML = UPCOMING_DROPS.map(d => {
+      const isReserved = Boolean(reserved[d.dropId]);
+      const count = waitlistCounts[d.dropId] || 120;
+      return `
+        <article class="drop-vault-card">
+          <div>
+            <div class="drop-vault-card__media">
+              <img src="${d.image}" alt="${d.title}" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/product-minato.jpg';" />
+            </div>
+            <div class="drop-vault-card__body">
+              <div class="drop-vault-card__meta">${d.edition} · ₹${d.priceInr.toLocaleString('en-IN')} INR</div>
+              <h3 class="drop-vault-card__title">${d.title}</h3>
+              <p class="drop-vault-card__desc">${d.desc}</p>
+              <div style="margin-top:0.35rem;">
+                <div style="display:flex;justify-content:space-between;font-size:0.72rem;color:#d4d4d8;font-variant-numeric:tabular-nums;">
+                  <span>${count} collectors on waitlist</span>
+                  <span>${d.demandPct}% Allocated</span>
+                </div>
+                <div class="drop-vault-demand-bar">
+                  <div class="drop-vault-demand-fill" style="width:${d.demandPct}%;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="drop-vault-card__footer">
+            <button type="button"
+              class="drop-vault-waitlist-btn ${isReserved ? 'is-reserved' : ''}"
+              data-open-waitlist="${d.dropId}">
+              ${isReserved ? `✓ Priority Pass Reserved (${reserved[d.dropId]})` : 'Join Priority Drop Waitlist →'}
+            </button>
+          </div>
+        </article>
+      `;
+    }).join('');
+
+    grid.querySelectorAll('[data-open-waitlist]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const dropId = btn.getAttribute('data-open-waitlist');
+        const drop = UPCOMING_DROPS.find(item => item.dropId === dropId) || UPCOMING_DROPS[0];
+        window.openDropWaitlistModal(drop);
+      });
+    });
+  }
+
+  fetch('/api/drop-waitlist')
+    .then(r => r.json())
+    .then(data => {
+      if (data && data.counts) {
+        waitlistCounts = { ...waitlistCounts, ...data.counts };
+        renderDropVaultGrid();
+      }
+    })
+    .catch(() => {});
+
+  window.openDropWaitlistModal = function(drop) {
+    const modal = document.getElementById('suiteDropWaitlistModal');
+    const idInput = document.getElementById('waitlistDropIdInput');
+    const titleEl = document.getElementById('waitlistDropSelectedTitle');
+    const confirmBox = document.getElementById('waitlistConfirmationBox');
+    if (idInput && drop) idInput.value = drop.dropId;
+    if (titleEl && drop) titleEl.textContent = `${drop.title} · ₹${drop.priceInr.toLocaleString('en-IN')} INR`;
+    if (confirmBox) confirmBox.style.display = 'none';
+    if (modal) {
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+    }
+  };
+
+  window.closeDropWaitlistModal = function() {
+    const modal = document.getElementById('suiteDropWaitlistModal');
+    if (modal) {
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+  };
+
+  const waitlistForm = document.getElementById('dropWaitlistForm');
+  if (waitlistForm) {
+    waitlistForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const dropId = document.getElementById('waitlistDropIdInput')?.value || 'DROP-01';
+      const drop = UPCOMING_DROPS.find(d => d.dropId === dropId) || UPCOMING_DROPS[0];
+      const email = document.getElementById('waitlistEmailInput')?.value || '';
+      const phone = document.getElementById('waitlistPhoneInput')?.value || '';
+      const preferredSize = document.getElementById('waitlistSizeSelect')?.value || 'L';
+      const submitBtn = document.getElementById('waitlistSubmitBtn');
+
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Reserving Priority Pass...';
+      }
+
+      let passCode = 'VAULT-' + Math.floor(100000 + Math.random() * 900000);
+      try {
+        const res = await fetch('/api/drop-waitlist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            dropId,
+            dropTitle: drop.title,
+            email,
+            phone,
+            preferredSize
+          })
+        });
+        const data = await res.json();
+        if (data && data.reservationCode) passCode = data.reservationCode;
+      } catch (_) {}
+
+      const reserved = getReservedDrops();
+      reserved[dropId] = passCode;
+      try {
+        localStorage.setItem(WAITLIST_STORAGE_KEY, JSON.stringify(reserved));
+      } catch (_) {}
+
+      waitlistCounts[dropId] = (waitlistCounts[dropId] || 120) + 1;
+      renderDropVaultGrid();
+      awardVipPoints('waitlist_' + dropId, `Joined Drop Vault Waitlist (${drop.title})`, 60);
+
+      const confirmBox = document.getElementById('waitlistConfirmationBox');
+      if (confirmBox) {
+        confirmBox.style.display = 'block';
+        confirmBox.innerHTML = `
+          <strong style="display:block;color:#0e0e11;font-size:0.88rem;">✓ Priority Pass Reserved: ${passCode}</strong>
+          <p style="margin:0.3rem 0 0;font-size:0.78rem;color:#52525b;">We have registered <strong>${email}</strong> for Size <strong>${preferredSize}</strong>. Early-access link dispatches 30 minutes prior to drop.</p>
+        `;
+      }
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Lock In Priority Waitlist Pass';
+      }
+    });
+  }
+
+  // Live Countdown Timer (Target: 2 days 14 hours 38 mins from initial load)
+  const dropTargetTimestamp = Date.now() + ((2 * 86400) + (14 * 3600) + (38 * 60) + 45) * 1000;
+  function updateDropCountdown() {
+    const diff = Math.max(0, Math.floor((dropTargetTimestamp - Date.now()) / 1000));
+    const days = String(Math.floor(diff / 86400)).padStart(2, '0');
+    const hours = String(Math.floor((diff % 86400) / 3600)).padStart(2, '0');
+    const mins = String(Math.floor((diff % 3600) / 60)).padStart(2, '0');
+    const secs = String(diff % 60).padStart(2, '0');
+
+    const dEl = document.getElementById('dropTimerDays');
+    const hEl = document.getElementById('dropTimerHours');
+    const mEl = document.getElementById('dropTimerMins');
+    const sEl = document.getElementById('dropTimerSecs');
+    if (dEl) dEl.textContent = days;
+    if (hEl) hEl.textContent = hours;
+    if (mEl) mEl.textContent = mins;
+    if (sEl) sEl.textContent = secs;
+  }
+  setInterval(updateDropCountdown, 1000);
+  updateDropCountdown();
+
+  // ── 4. VIP STREET CRED LOYALTY & REFERRAL REWARDS CLUB ──
+  const VIP_REWARD_TIERS = [
+    { code: 'VIP100', title: '₹100 Instant Voucher', pointsCost: 200, discountInr: 100, minOrder: 999 },
+    { code: 'VIP250', title: '₹250 Instant Voucher', pointsCost: 450, discountInr: 250, minOrder: 1499 },
+    { code: 'VIP500', title: '₹500 Archive Voucher', pointsCost: 850, discountInr: 500, minOrder: 2499 },
+    { code: 'VIP1000', title: '₹1,000 Obsidian Voucher', pointsCost: 1500, discountInr: 1000, minOrder: 4999 }
+  ];
+
+  let vipState = {
+    pointsBalance: 320,
+    lifetimePoints: 320,
+    referralCode: 'STREET-VIP88',
+    tier: { name: 'Initiate', multiplier: '1.0x' },
+    history: [
+      { id: 'welcome', label: 'Welcome Archive Member Bonus', points: +200 },
+      { id: 'insider', label: 'Verified Streetwear Insider', points: +120 }
+    ],
+    redeemedVouchers: []
+  };
+
+  try {
+    const cachedVip = JSON.parse(localStorage.getItem(VIP_STORAGE_KEY) || 'null');
+    if (cachedVip && typeof cachedVip.pointsBalance === 'number') {
+      vipState = cachedVip;
+    }
+  } catch (_) {}
+
+  function saveVipState() {
+    try {
+      localStorage.setItem(VIP_STORAGE_KEY, JSON.stringify(vipState));
+    } catch (_) {}
+    renderVipUI();
+  }
+
+  function renderVipUI() {
+    const headerPts = document.getElementById('headerVipPointsCount');
+    const dockPts = document.getElementById('dockVipPointsCount');
+    const modalPts = document.getElementById('vipModalPointsBalance');
+    const tierLabel = document.getElementById('vipModalTierLabel');
+    const refBtn = document.getElementById('vipCopyReferralBtn');
+    const rewardsGrid = document.getElementById('vipRewardsGrid');
+    const historyList = document.getElementById('vipHistoryList');
+
+    const ptsStr = `${vipState.pointsBalance.toLocaleString('en-IN')} pts`;
+    if (headerPts) headerPts.textContent = ptsStr;
+    if (dockPts) dockPts.textContent = ptsStr;
+    if (modalPts) modalPts.textContent = ptsStr;
+
+    const tierName = vipState.lifetimePoints >= 1500 ? 'Obsidian VIP (2.0x)'
+      : vipState.lifetimePoints >= 800 ? 'Syndicate (1.5x)'
+      : vipState.lifetimePoints >= 350 ? 'Vanguard (1.25x)'
+      : 'Initiate (1.0x)';
+    if (tierLabel) tierLabel.textContent = `Tier: ${tierName} · Lifetime: ${vipState.lifetimePoints} pts`;
+    if (refBtn) refBtn.textContent = `${vipState.referralCode || 'STREET-VIP88'} ⎘`;
+
+    if (rewardsGrid) {
+      rewardsGrid.innerHTML = VIP_REWARD_TIERS.map(r => {
+        const canAfford = vipState.pointsBalance >= r.pointsCost;
+        const alreadyRedeemed = vipState.redeemedVouchers && vipState.redeemedVouchers.some(v => v.code === r.code);
+        return `
+          <div class="vip-reward-card">
+            <div>
+              <h5>${r.title}</h5>
+              <small>${r.pointsCost} pts · Min order ₹${r.minOrder.toLocaleString('en-IN')}</small>
+            </div>
+            <div style="display:flex;gap:0.4rem;">
+              ${alreadyRedeemed
+                ? `<button type="button" class="vip-redeem-btn" data-apply-vip-code="${r.code}">Apply ${r.code} to Bag →</button>`
+                : `<button type="button" class="vip-redeem-btn" data-redeem-code="${r.code}" ${canAfford ? '' : 'disabled'}>${canAfford ? `Redeem (${r.pointsCost} pts)` : `Need ${r.pointsCost - vipState.pointsBalance} more pts`}</button>`
+              }
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      rewardsGrid.querySelectorAll('[data-redeem-code]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const code = btn.getAttribute('data-redeem-code');
+          const tier = VIP_REWARD_TIERS.find(t => t.code === code);
+          if (!tier || vipState.pointsBalance < tier.pointsCost) return;
+
+          vipState.pointsBalance -= tier.pointsCost;
+          vipState.redeemedVouchers.unshift({ code: tier.code, discountInr: tier.discountInr });
+          vipState.history.unshift({
+            id: 'redeem_' + Date.now(),
+            label: `Unlocked ${tier.code} (₹${tier.discountInr} Off Voucher)`,
+            points: -tier.pointsCost
+          });
+          saveVipState();
+
+          fetch('/api/loyalty/redeem', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              memberId: 'default_guest',
+              rewardCode: tier.code,
+              pointsCost: tier.pointsCost,
+              discountInr: tier.discountInr,
+              minOrderValue: tier.minOrder
+            })
+          }).catch(() => {});
+
+          if (typeof window.streetCoShowToast === 'function') {
+            window.streetCoShowToast('VIP VOUCHER UNLOCKED', `Code ${tier.code} (₹${tier.discountInr} OFF) is ready to apply!`);
+          }
+        });
+      });
+
+      rewardsGrid.querySelectorAll('[data-apply-vip-code]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const code = btn.getAttribute('data-apply-vip-code');
+          window.closeVipLoyaltyModal();
+          if (typeof window.streetCoOpenCart === 'function') window.streetCoOpenCart('bag');
+          if (typeof window.streetCoApplyCoupon === 'function') window.streetCoApplyCoupon(code);
+        });
+      });
+    }
+
+    if (historyList) {
+      historyList.innerHTML = (vipState.history || []).slice(0, 8).map(item => `
+        <div style="display:flex;justify-content:space-between;padding:0.35rem 0;border-bottom:1px solid #f4f4f5;font-variant-numeric:tabular-nums;">
+          <span>${item.label}</span>
+          <strong style="color:${item.points >= 0 ? '#15803d' : '#b91c1c'};">${item.points >= 0 ? '+' : ''}${item.points} pts</strong>
+        </div>
+      `).join('');
+    }
+  }
+
+  function awardVipPoints(actionId, label, points) {
+    if (vipState.history.some(h => h.id === actionId)) return;
+    vipState.pointsBalance += points;
+    vipState.lifetimePoints += points;
+    vipState.history.unshift({ id: actionId, label, points });
+    saveVipState();
+
+    fetch('/api/loyalty/earn', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ memberId: 'default_guest', actionId, label, points })
+    }).catch(() => {});
+
+    if (typeof window.streetCoShowToast === 'function') {
+      window.streetCoShowToast(`+${points} STREET CRED EARNED`, label);
+    }
+  }
+
+  window.openVipLoyaltyModal = function() {
+    renderVipUI();
+    const modal = document.getElementById('suiteVipLoyaltyModal');
+    if (modal) {
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+    }
+  };
+
+  window.closeVipLoyaltyModal = function() {
+    const modal = document.getElementById('suiteVipLoyaltyModal');
+    if (modal) {
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+  };
+
+  document.getElementById('vipCopyReferralBtn')?.addEventListener('click', async () => {
+    const code = vipState.referralCode || 'STREET-VIP88';
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/?ref=${code}`);
+    } catch (_) {}
+    awardVipPoints('referral_copied', 'Copied VIP Referral Invite Link', 50);
+  });
+
+  document.getElementById('vipEarnQuizBtn')?.addEventListener('click', () => {
+    window.closeVipLoyaltyModal();
+    window.openFitFinderModal();
+  });
+
+  document.getElementById('vipEarnShareBtn')?.addEventListener('click', () => {
+    awardVipPoints('lookbook_shared', 'Shared Seasonal Streetwear Lookbook', 75);
+  });
+
+  document.getElementById('vipEarnDropBtn')?.addEventListener('click', () => {
+    window.closeVipLoyaltyModal();
+    const vault = document.getElementById('dropVaultSection');
+    if (vault) vault.scrollIntoView({ behavior: 'smooth' });
+  });
+
+  // ── 5. SELF-SERVICE ORDER LOOKUP & 7-DAY SIZE EXCHANGE PORTAL ──
+  window.openOrderExchangeModal = function() {
+    const modal = document.getElementById('suiteOrderExchangeModal');
+    if (modal) {
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+    }
+  };
+
+  window.closeOrderExchangeModal = function() {
+    const modal = document.getElementById('suiteOrderExchangeModal');
+    if (modal) {
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+  };
+
+  async function performOrderLookup(queryStr) {
+    const resultsArea = document.getElementById('orderLookupResultsArea');
+    if (!resultsArea) return;
+    const q = (queryStr || '').trim();
+    if (!q) return;
+
+    resultsArea.innerHTML = `<div class="suite-result-card">Searching verified orders for <strong>${q}</strong>...</div>`;
+
+    let orders = [];
+    try {
+      const res = await fetch('/api/orders/lookup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: q })
+      });
+      const data = await res.json();
+      if (data && Array.isArray(data.orders)) {
+        orders = data.orders;
+      }
+    } catch (_) {}
+
+    // Also check localStorage orders
+    try {
+      const localOrders = JSON.parse(localStorage.getItem('the_street_co_orders') || '[]');
+      const upperQ = q.toUpperCase().replace(/^#/, '');
+      localOrders.forEach(lo => {
+        const code = String(lo.orderCode || lo.orderId || '').toUpperCase();
+        if (code === upperQ && !orders.some(o => String(o.orderCode || o.orderId).toUpperCase() === code)) {
+          orders.push(lo);
+        }
+      });
+    } catch (_) {}
+
+    if (orders.length === 0) {
+      resultsArea.innerHTML = `
+        <div class="suite-result-card">
+          <strong>No matching orders found for "${q}"</strong>
+          <p style="font-size:0.8rem;color:#52525b;margin:0.35rem 0 0;">Tip: Click <strong>"Load Sample Order (#784920)"</strong> above to test the live GST Invoice &amp; 7-Day Size Exchange workflow.</p>
+        </div>
+      `;
+      return;
+    }
+
+    resultsArea.innerHTML = orders.map(ord => {
+      const code = ord.orderCode || ord.orderId || '784920';
+      const items = ord.products || ord.items || [];
+      const total = ord.grandTotalInr || ord.totalInr || 4048;
+      const exchanges = ord.exchanges || [];
+
+      return `
+        <div class="suite-result-card" style="margin-bottom:1rem;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:0.75rem;border-bottom:1px solid #e5dfd5;padding-bottom:0.65rem;margin-bottom:0.75rem;">
+            <div>
+              <strong style="font-size:0.95rem;color:#0e0e11;">Order #${code} · ${ord.status || 'CONFIRMED'}</strong>
+              <span style="display:block;font-size:0.75rem;color:#71717a;">Total: ₹${Number(total).toLocaleString('en-IN')} INR · Eligible for 7-Day Size Exchange</span>
+            </div>
+            <a href="/invoice/${code}" target="_blank" rel="noopener noreferrer" class="lookbook-piece-single-btn" style="text-decoration:none;">GST Tax Invoice ↗</a>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:0.65rem;">
+            ${items.map((it, idx) => `
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:0.75rem;background:#ffffff;padding:0.65rem;border-radius:6px;border:1px solid #e4e4e7;">
+                <div>
+                  <strong style="font-size:0.84rem;color:#0e0e11;display:block;">${it.name || it.title}</strong>
+                  <span style="font-size:0.74rem;color:#71717a;">Current Size: ${it.size || 'M'} · ₹${Number(it.priceInr || 1999).toLocaleString('en-IN')}</span>
+                </div>
+                <button type="button" class="lookbook-piece-single-btn" data-open-exchange-form="${code}_${idx}">
+                  Request 7-Day Size Exchange
+                </button>
+              </div>
+              <form class="suite-exchange-inline-form" id="exchangeForm_${code}_${idx}" style="display:none;background:#ffffff;padding:0.9rem;border-radius:8px;border:1px solid #0e0e11;" data-order-code="${code}" data-item-name="${it.name || it.title}" data-current-size="${it.size || 'M'}">
+                <div style="font-size:0.78rem;font-weight:700;margin-bottom:0.55rem;">7-Day Doorstep Size Exchange — ${it.name || it.title}</div>
+                <div class="suite-form-grid">
+                  <div class="suite-field">
+                    <label>Replacement Size Needed</label>
+                    <select class="suite-select" name="requestedSize">
+                      ${['S', 'M', 'L', 'XL', 'XXL'].map(sz => `<option value="${sz}" ${sz === 'L' ? 'selected' : ''}>Exchange for Size ${sz}</option>`).join('')}
+                    </select>
+                  </div>
+                  <div class="suite-field">
+                    <label>Reason for Exchange</label>
+                    <select class="suite-select" name="reason">
+                      <option value="Slightly tight in shoulders/chest">Slightly tight in shoulders/chest</option>
+                      <option value="Prefer looser oversized drape">Prefer looser oversized drape</option>
+                      <option value="Prefer closer tailored fit">Prefer closer tailored fit</option>
+                    </select>
+                  </div>
+                </div>
+                <button type="submit" class="suite-primary-btn">Confirm Free Doorstep Reverse Pickup</button>
+              </form>
+            `).join('')}
+          </div>
+
+          ${exchanges.length > 0 ? `
+            <div style="margin-top:0.75rem;padding-top:0.65rem;border-top:1px solid #e5dfd5;font-size:0.76rem;color:#15803d;">
+              ${exchanges.map(ex => `<div>✓ Active Exchange <strong>#${ex.exchangeId}</strong>: Size ${ex.currentSize} → Size ${ex.requestedSize} (${ex.scheduledPickupDate})</div>`).join('')}
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }).join('');
+
+    resultsArea.querySelectorAll('[data-open-exchange-form]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const key = btn.getAttribute('data-open-exchange-form');
+        const form = document.getElementById(`exchangeForm_${key}`);
+        if (form) {
+          form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        }
+      });
+    });
+
+    resultsArea.querySelectorAll('.suite-exchange-inline-form').forEach(form => {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const orderCode = form.getAttribute('data-order-code');
+        const itemName = form.getAttribute('data-item-name');
+        const currentSize = form.getAttribute('data-current-size');
+        const requestedSize = form.querySelector('[name="requestedSize"]')?.value || 'L';
+        const reason = form.querySelector('[name="reason"]')?.value || 'Size adjustment';
+
+        try {
+          const res = await fetch('/api/exchanges/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              orderCode,
+              itemName,
+              currentSize,
+              requestedSize,
+              reason
+            })
+          });
+          const data = await res.json();
+          if (data && data.success) {
+            form.innerHTML = `
+              <div style="color:#15803d;font-size:0.82rem;font-weight:600;">
+                ✓ Exchange #${data.exchange.exchangeId} Approved! Free Delhivery reverse pickup scheduled for ${data.exchange.scheduledPickupDate} (Size ${currentSize} → Size ${requestedSize}).
+              </div>
+            `;
+            if (typeof window.streetCoShowToast === 'function') {
+              window.streetCoShowToast('7-DAY EXCHANGE SCHEDULED', `Exchange #${data.exchange.exchangeId} confirmed`);
+            }
+          }
+        } catch (_) {}
+      });
+    });
+  }
+
+  document.getElementById('orderLookupForm')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const val = document.getElementById('orderLookupQueryInput')?.value || '';
+    performOrderLookup(val);
+  });
+
+  document.getElementById('orderLookupLoadDemoBtn')?.addEventListener('click', () => {
+    const input = document.getElementById('orderLookupQueryInput');
+    if (input) input.value = '784920';
+    performOrderLookup('784920');
+  });
+
+  // Initial renders
+  renderLookbook('look-01');
+  renderDropVaultGrid();
+  renderVipUI();
+  const initialFit = getSavedFitSize();
+  if (initialFit) updateFitBadgesEverywhere(initialFit, 96);
+})();
+
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PHONE LOGIN POPUP/PAGE, UNIFIED 6-DIGIT OTP POPUP/PAGE, LEFT-SIDEBAR ACCOUNT
+   & UNIFIED SAVED ADDRESS CARDS (Address-1, Address-2...) + MONGODB ATLAS SYNC
+   ═══════════════════════════════════════════════════════════════════════════ */
+(function initUserAccountPage() {
+  const ACCOUNT_STORAGE_KEY = 'the_street_co_account_v2';
+
+  function normalizeClientAddresses(rawAddresses = [], preferredDefaultId = '') {
+    if (!Array.isArray(rawAddresses)) return { addresses: [], defaultAddressId: '' };
+
+    const cleaned = rawAddresses
+      .filter(a => a && typeof a === 'object' && (a.address1 || a.houseFlat || a.city || a.pincode))
+      .map((a, idx) => {
+        const id = String(a.id || `addr_${idx + 1}_${Date.now()}`).trim();
+        const name = String(a.name || a.fullName || '').trim();
+        const phone = String(a.phone || '').replace(/\D/g, '').slice(-10);
+        const email = String(a.email || '').trim();
+        const address1 = String(a.address1 || a.houseFlat || '').trim();
+        const address2 = String(a.address2 || a.streetRoad || '').trim();
+        const landmark = String(a.landmark || '').trim();
+        const city = String(a.city || '').trim();
+        const state = String(a.state || '').trim();
+        const pincode = String(a.pincode || '').replace(/\D/g, '').slice(0, 6);
+        const type = String(a.type || a.addressType || 'Home').trim();
+        const fullAddress = [
+          address1,
+          address2,
+          landmark ? `(Near ${landmark})` : '',
+          city,
+          state ? `${state} - ${pincode}` : pincode
+        ].filter(Boolean).join(', ');
+
+        return {
+          id,
+          label: `Address-${idx + 1}`,
+          name,
+          fullName: name,
+          phone,
+          email,
+          address1,
+          houseFlat: address1,
+          address2,
+          streetRoad: address2,
+          landmark,
+          city,
+          state,
+          pincode,
+          type,
+          addressType: type,
+          fullAddress,
+          isDefault: Boolean(a.isDefault),
+          createdAt: a.createdAt || new Date().toISOString()
+        };
+      });
+
+    let resolvedDefaultId = String(preferredDefaultId || '').trim();
+    if (resolvedDefaultId && !cleaned.some(a => a.id === resolvedDefaultId)) {
+      resolvedDefaultId = '';
+    }
+    if (!resolvedDefaultId) {
+      for (let i = cleaned.length - 1; i >= 0; i--) {
+        if (cleaned[i].isDefault) {
+          resolvedDefaultId = cleaned[i].id;
+          break;
+        }
+      }
+    }
+
+    const finalAddresses = cleaned.map((a, idx) => ({
+      ...a,
+      label: `Address-${idx + 1}`,
+      isDefault: Boolean(resolvedDefaultId && a.id === resolvedDefaultId)
+    }));
+
+    return {
+      addresses: finalAddresses,
+      defaultAddressId: resolvedDefaultId
+    };
+  }
+
+  function loadLocalAccount() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(ACCOUNT_STORAGE_KEY) || 'null');
+      if (saved && typeof saved === 'object') {
+        const norm = normalizeClientAddresses(saved.addresses || [], saved.defaultAddressId || '');
+        return {
+          firstName: saved.firstName || '',
+          lastName: saved.lastName || '',
+          phone: saved.phone || '',
+          phoneVerified: Boolean(saved.phoneVerified),
+          email: saved.email || '',
+          emailVerified: Boolean(saved.emailVerified),
+          addresses: norm.addresses,
+          defaultAddressId: norm.defaultAddressId,
+          orders: Array.isArray(saved.orders) ? saved.orders : []
+        };
+      }
+    } catch (_) {}
+
+    return {
+      firstName: '',
+      lastName: '',
+      phone: '',
+      phoneVerified: false,
+      email: '',
+      emailVerified: false,
+      addresses: [],
+      defaultAddressId: '',
+      orders: []
+    };
+  }
+
+  let accountState = loadLocalAccount();
+  let selectedCheckoutAddressId = accountState.defaultAddressId || (accountState.addresses[0] && accountState.addresses[0].id) || '';
+
+  // Active OTP state: mode is 'phone' or 'email'
+  let activeOtpContext = {
+    mode: 'phone', // 'phone' | 'email'
+    targetPhone: '',
+    targetEmail: '',
+    firstName: '',
+    lastName: ''
+  };
+
+  window.streetCoGetAccountPhone = function() {
+    const clean = String(accountState.phone || '').replace(/\D/g, '').slice(-10);
+    return clean.length === 10 ? clean : '';
+  };
+
+  window.streetCoIsUserLoggedIn = function() {
+    accountState = loadLocalAccount();
+    const clean = String(accountState.phone || '').replace(/\D/g, '').slice(-10);
+    return clean.length === 10 && Boolean(accountState.phoneVerified);
+  };
+
+  // Tracks where the user came from ("cart" or "product") when blocked by the Checkout Auth Gate
+  let pendingAuthReturnContext = null;
+
+  function saveLocalAccount(nextState) {
+    const merged = { ...accountState, ...nextState };
+    const norm = normalizeClientAddresses(merged.addresses || [], merged.defaultAddressId || '');
+    accountState = {
+      ...merged,
+      addresses: norm.addresses,
+      defaultAddressId: norm.defaultAddressId
+    };
+
+    if (accountState.defaultAddressId && (!selectedCheckoutAddressId || !accountState.addresses.some(a => a.id === selectedCheckoutAddressId))) {
+      selectedCheckoutAddressId = accountState.defaultAddressId;
+    } else if (!selectedCheckoutAddressId && accountState.addresses.length > 0) {
+      selectedCheckoutAddressId = accountState.addresses[0].id;
+    }
+
+    try {
+      localStorage.setItem(ACCOUNT_STORAGE_KEY, JSON.stringify(accountState));
+      if (accountState.email && accountState.emailVerified) {
+        localStorage.setItem('the_street_co_user_email', accountState.email);
+      }
+      // Also sync default address or account profile to checkout address cache
+      const defaultAddr = accountState.addresses.find(a => a.isDefault) || accountState.addresses[0];
+      if (defaultAddr) {
+        localStorage.setItem('the_street_co_last_addr', JSON.stringify(defaultAddr));
+      } else {
+        const lastAddr = JSON.parse(localStorage.getItem('the_street_co_last_addr') || '{}');
+        const fullName = [accountState.firstName, accountState.lastName].filter(Boolean).join(' ').trim();
+        if (fullName) lastAddr.fullName = fullName;
+        if (accountState.phone) lastAddr.phone = accountState.phone;
+        if (accountState.email && accountState.emailVerified) lastAddr.email = accountState.email;
+        localStorage.setItem('the_street_co_last_addr', JSON.stringify(lastAddr));
+      }
+    } catch (_) {}
+  }
+
+  async function syncAddressesToMongo(addresses, defaultAddressId) {
+    const cleanPhone = String(accountState.phone || '').replace(/\D/g, '').slice(-10);
+    try {
+      const res = await fetch('/api/account/addresses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: cleanPhone,
+          addresses,
+          defaultAddressId
+        })
+      });
+      const data = await res.json();
+      if (data && data.success && Array.isArray(data.addresses)) {
+        saveLocalAccount({
+          addresses: data.addresses,
+          defaultAddressId: data.defaultAddressId || ''
+        });
+      }
+    } catch (_) {}
+  }
+
+  // Add or update an address in the user's account, label as Address-1, Address-2, etc., and set default if checked
+  async function addAddressToUserAccount(addrInput, setAsDefault = false) {
+    if (!addrInput) return null;
+    const cleanPhone = String(addrInput.phone || accountState.phone || '').replace(/\D/g, '').slice(-10);
+    const cleanPincode = String(addrInput.pincode || '').replace(/\D/g, '').slice(0, 6);
+    const address1 = String(addrInput.address1 || addrInput.houseFlat || '').trim();
+    const address2 = String(addrInput.address2 || addrInput.streetRoad || '').trim();
+    const city = String(addrInput.city || '').trim();
+    const state = String(addrInput.state || '').trim();
+
+    if (!address1 || !city || !state || cleanPincode.length !== 6) return null;
+
+    const currentList = Array.isArray(accountState.addresses) ? [...accountState.addresses] : [];
+
+    // Check if an identical address already exists to avoid duplicate cards when clicking Continue
+    const existingIdx = currentList.findIndex(a =>
+      a.address1.toLowerCase() === address1.toLowerCase() &&
+      a.address2.toLowerCase() === address2.toLowerCase() &&
+      a.pincode === cleanPincode &&
+      a.city.toLowerCase() === city.toLowerCase()
+    );
+
+    let targetId = '';
+    if (existingIdx >= 0) {
+      targetId = currentList[existingIdx].id;
+      currentList[existingIdx] = {
+        ...currentList[existingIdx],
+        name: String(addrInput.name || addrInput.fullName || currentList[existingIdx].name || '').trim(),
+        phone: cleanPhone || currentList[existingIdx].phone,
+        email: String(addrInput.email || currentList[existingIdx].email || '').trim(),
+        address1,
+        address2,
+        landmark: String(addrInput.landmark || '').trim(),
+        city,
+        state,
+        pincode: cleanPincode,
+        type: addrInput.type || 'Home',
+        isDefault: setAsDefault ? true : currentList[existingIdx].isDefault
+      };
+    } else {
+      targetId = `addr_${currentList.length + 1}_${Date.now()}`;
+      currentList.push({
+        id: targetId,
+        name: String(addrInput.name || addrInput.fullName || '').trim(),
+        phone: cleanPhone,
+        email: String(addrInput.email || '').trim(),
+        address1,
+        address2,
+        landmark: String(addrInput.landmark || '').trim(),
+        city,
+        state,
+        pincode: cleanPincode,
+        type: addrInput.type || 'Home',
+        isDefault: Boolean(setAsDefault),
+        createdAt: new Date().toISOString()
+      });
+    }
+
+    const nextDefaultId = setAsDefault
+      ? targetId
+      : (accountState.defaultAddressId || '');
+
+    // If setAsDefault is true, clear isDefault on other addresses before normalizing
+    const prepared = currentList.map(a => ({
+      ...a,
+      isDefault: setAsDefault ? (a.id === targetId) : Boolean(a.id === nextDefaultId)
+    }));
+
+    const norm = normalizeClientAddresses(prepared, nextDefaultId);
+    selectedCheckoutAddressId = targetId;
+
+    saveLocalAccount({
+      addresses: norm.addresses,
+      defaultAddressId: norm.defaultAddressId
+    });
+
+    renderAccountAddressesUI();
+    renderCheckoutAddressesUI();
+
+    await syncAddressesToMongo(norm.addresses, norm.defaultAddressId);
+    return norm.addresses.find(a => a.id === targetId) || norm.addresses[norm.addresses.length - 1] || null;
+  }
+
+  window.streetCoSaveCheckoutAddressToAccount = function(addr, setAsDefault = true) {
+    return addAddressToUserAccount(addr, setAsDefault);
+  };
+
+  async function setDefaultUserAddress(addressId) {
+    if (!addressId) return;
+    const updated = (accountState.addresses || []).map(a => ({
+      ...a,
+      isDefault: a.id === addressId
+    }));
+    const norm = normalizeClientAddresses(updated, addressId);
+    selectedCheckoutAddressId = addressId;
+    saveLocalAccount({
+      addresses: norm.addresses,
+      defaultAddressId: norm.defaultAddressId
+    });
+    renderAccountAddressesUI();
+    renderCheckoutAddressesUI();
+    await syncAddressesToMongo(norm.addresses, norm.defaultAddressId);
+    if (window.streetCoShowToast) {
+      const matched = norm.addresses.find(a => a.id === addressId);
+      window.streetCoShowToast(`${matched ? matched.label : 'Address'} set as default address`);
+    }
+  }
+
+  async function removeUserAddress(addressId) {
+    if (!addressId) return;
+    const remaining = (accountState.addresses || []).filter(a => a.id !== addressId);
+    const nextDefault = accountState.defaultAddressId === addressId
+      ? (remaining[0] ? remaining[0].id : '')
+      : accountState.defaultAddressId;
+    const norm = normalizeClientAddresses(remaining, nextDefault);
+    if (selectedCheckoutAddressId === addressId) {
+      selectedCheckoutAddressId = norm.defaultAddressId || (norm.addresses[0] && norm.addresses[0].id) || '';
+    }
+    saveLocalAccount({
+      addresses: norm.addresses,
+      defaultAddressId: norm.defaultAddressId
+    });
+    renderAccountAddressesUI();
+    renderCheckoutAddressesUI();
+    await syncAddressesToMongo(norm.addresses, norm.defaultAddressId);
+  }
+
+  // Populate Checkout Step 1 underlying form inputs from a saved address object
+  function applyAddressToCheckoutInputs(addr) {
+    if (!addr) return;
+    const nameInp = document.getElementById('checkoutName');
+    const phoneInp = document.getElementById('checkoutPhone');
+    const emailInp = document.getElementById('checkoutEmail');
+    const addr1Inp = document.getElementById('checkoutAddress1');
+    const addr2Inp = document.getElementById('checkoutAddress2');
+    const landmarkInp = document.getElementById('checkoutLandmark');
+    const cityInp = document.getElementById('checkoutCity');
+    const stateInp = document.getElementById('checkoutState');
+    const pinInp = document.getElementById('checkoutPincode');
+
+    if (nameInp) { nameInp.value = addr.name || addr.fullName || ''; nameInp.classList.remove('error'); }
+    if (phoneInp) { phoneInp.value = String(addr.phone || '').replace(/\D/g, '').slice(-10); phoneInp.classList.remove('error'); }
+    if (emailInp) { emailInp.value = addr.email || ''; }
+    if (addr1Inp) { addr1Inp.value = addr.address1 || addr.houseFlat || ''; addr1Inp.classList.remove('error'); }
+    if (addr2Inp) { addr2Inp.value = addr.address2 || addr.streetRoad || ''; addr2Inp.classList.remove('error'); }
+    if (landmarkInp) { landmarkInp.value = addr.landmark || ''; }
+    if (cityInp) { cityInp.value = addr.city || ''; cityInp.classList.remove('error'); }
+    if (pinInp) { pinInp.value = addr.pincode || ''; pinInp.classList.remove('error'); }
+    if (stateInp && addr.state) {
+      stateInp.value = addr.state;
+      stateInp.classList.remove('is-placeholder', 'error');
+    }
+    [
+      'checkoutNameError',
+      'checkoutPhoneError',
+      'checkoutAddress1Error',
+      'checkoutAddress2Error',
+      'checkoutCityError',
+      'checkoutStateError',
+      'checkoutPincodeError'
+    ].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.textContent = ''; el.classList.remove('show'); }
+    });
+  }
+
+  function prefillAddressFormWithAccountDefaults(prefix) {
+    const fullName = [accountState.firstName, accountState.lastName].filter(Boolean).join(' ').trim();
+    const cleanPhone = String(accountState.phone || '').replace(/\D/g, '').slice(-10);
+    const verifiedEmail = accountState.email || '';
+
+    if (prefix === 'checkout') {
+      const nameInp = document.getElementById('checkoutName');
+      const phoneInp = document.getElementById('checkoutPhone');
+      const emailInp = document.getElementById('checkoutEmail');
+      const addr1Inp = document.getElementById('checkoutAddress1');
+      const addr2Inp = document.getElementById('checkoutAddress2');
+      const landmarkInp = document.getElementById('checkoutLandmark');
+      const cityInp = document.getElementById('checkoutCity');
+      const stateInp = document.getElementById('checkoutState');
+      const pinInp = document.getElementById('checkoutPincode');
+      const defaultTick = document.getElementById('checkoutSetDefaultAddress');
+
+      if (nameInp) nameInp.value = fullName;
+      if (phoneInp) phoneInp.value = cleanPhone;
+      if (emailInp) emailInp.value = verifiedEmail;
+      if (addr1Inp) addr1Inp.value = '';
+      if (addr2Inp) addr2Inp.value = '';
+      if (landmarkInp) landmarkInp.value = '';
+      if (cityInp) cityInp.value = '';
+      if (stateInp) { stateInp.value = ''; stateInp.classList.add('is-placeholder'); }
+      if (pinInp) pinInp.value = '';
+      if (defaultTick) defaultTick.checked = true;
+    } else if (prefix === 'account') {
+      const nameInp = document.getElementById('accountAddrName');
+      const phoneInp = document.getElementById('accountAddrPhone');
+      const emailInp = document.getElementById('accountAddrEmail');
+      const addr1Inp = document.getElementById('accountAddrLine1');
+      const addr2Inp = document.getElementById('accountAddrLine2');
+      const landmarkInp = document.getElementById('accountAddrLandmark');
+      const cityInp = document.getElementById('accountAddrCity');
+      const stateInp = document.getElementById('accountAddrState');
+      const pinInp = document.getElementById('accountAddrPincode');
+      const defaultTick = document.getElementById('accountSetDefaultAddress');
+
+      if (nameInp) nameInp.value = fullName;
+      if (phoneInp) phoneInp.value = cleanPhone;
+      if (emailInp) emailInp.value = verifiedEmail;
+      if (addr1Inp) addr1Inp.value = '';
+      if (addr2Inp) addr2Inp.value = '';
+      if (landmarkInp) landmarkInp.value = '';
+      if (cityInp) cityInp.value = '';
+      if (stateInp) { stateInp.value = ''; stateInp.classList.add('is-placeholder'); }
+      if (pinInp) pinInp.value = '';
+      if (defaultTick) defaultTick.checked = true;
+    }
+  }
+
+  // Render Saved Address Cards (Address-1, Address-2...) + Add Address Card in Account Page
+  function renderAccountAddressesUI() {
+    const grid = document.getElementById('accountSavedAddressCardsGrid');
+    if (!grid) return;
+
+    const addresses = Array.isArray(accountState.addresses) ? accountState.addresses : [];
+
+    const cardsHtml = addresses.map((addr, index) => {
+      const label = addr.label || `Address-${index + 1}`;
+      const isDefault = Boolean(addr.isDefault);
+      const phoneDisplay = addr.phone ? `+91 ${addr.phone}` : '';
+
+      return `
+        <div class="saved-address-card ${isDefault ? 'saved-address-card--selected' : ''}" data-addr-id="${addr.id}">
+          <div class="saved-address-card__top">
+            <div class="saved-address-card__badges">
+              <span class="saved-address-card__label">${label}</span>
+              ${isDefault ? '<span class="saved-address-card__default-badge">✓ DEFAULT</span>' : ''}
+            </div>
+          </div>
+          <div class="saved-address-card__body">
+            <h4 class="saved-address-card__recipient">${addr.name || 'Recipient'}</h4>
+            ${phoneDisplay ? `<span class="saved-address-card__phone">${phoneDisplay}</span>` : ''}
+            <p class="saved-address-card__text">${addr.fullAddress}</p>
+          </div>
+          <div class="saved-address-card__actions">
+            ${!isDefault
+              ? `<button type="button" class="saved-address-card__btn" data-action="set-default" data-addr-id="${addr.id}">Set as Default</button>`
+              : `<span style="font-size:0.72rem;font-weight:700;color:#166534;">Default Delivery Address</span>`
+            }
+            <button type="button" class="saved-address-card__btn saved-address-card__btn--danger" data-action="delete-addr" data-addr-id="${addr.id}">Remove</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    const nextAddressNum = addresses.length + 1;
+    const createCardHtml = `
+      <button type="button" class="create-address-card" id="accountCreateAddressCardBtn">
+        <span class="create-address-card__icon">+</span>
+        <span class="create-address-card__title">Add New Address (Address-${nextAddressNum})</span>
+        <span class="create-address-card__sub">Click to enter a delivery address and optionally set it as your default address</span>
+      </button>
+    `;
+
+    grid.innerHTML = cardsHtml + createCardHtml;
+
+    const createBtn = document.getElementById('accountCreateAddressCardBtn');
+    if (createBtn) {
+      createBtn.addEventListener('click', () => {
+        openAccountAddressEntryForm();
+      });
+    }
+
+    grid.querySelectorAll('[data-action="set-default"]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = btn.getAttribute('data-addr-id');
+        setDefaultUserAddress(id);
+      });
+    });
+
+    grid.querySelectorAll('[data-action="delete-addr"]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = btn.getAttribute('data-addr-id');
+        removeUserAddress(id);
+      });
+    });
+  }
+
+  function openAccountAddressEntryForm() {
+    const cardsView = document.getElementById('accountAddressCardsView');
+    const formWrap = document.getElementById('accountAddressFormWrap');
+    const heading = document.getElementById('accountAddressFormHeading');
+    const nextNum = (accountState.addresses || []).length + 1;
+    if (heading) heading.textContent = `Create Address-${nextNum}`;
+    prefillAddressFormWithAccountDefaults('account');
+    showFlowFeedback('accountAddressFormFeedback', '');
+    if (cardsView) cardsView.style.display = 'none';
+    if (formWrap) formWrap.style.display = 'block';
+    document.getElementById('accountAddrName')?.focus();
+  }
+
+  function closeAccountAddressEntryForm() {
+    const cardsView = document.getElementById('accountAddressCardsView');
+    const formWrap = document.getElementById('accountAddressFormWrap');
+    if (formWrap) formWrap.style.display = 'none';
+    if (cardsView) cardsView.style.display = 'block';
+    renderAccountAddressesUI();
+  }
+
+  // Render Saved Address Cards (Address-1, Address-2...) + Create Address Card in Checkout Step 1
+  function renderCheckoutAddressesUI() {
+    const grid = document.getElementById('checkoutSavedAddressCardsGrid');
+    const cardsView = document.getElementById('checkoutAddressCardsView');
+    const formWrap = document.getElementById('checkoutAddressFormWrap');
+    if (!grid) return;
+
+    const addresses = Array.isArray(accountState.addresses) ? accountState.addresses : [];
+
+    // Ensure a valid selectedCheckoutAddressId (prefer default address)
+    if (addresses.length > 0) {
+      const exists = addresses.some(a => a.id === selectedCheckoutAddressId);
+      if (!exists) {
+        const def = addresses.find(a => a.isDefault) || addresses[0];
+        selectedCheckoutAddressId = def.id;
+      }
+      const activeAddr = addresses.find(a => a.id === selectedCheckoutAddressId) || addresses[0];
+      if (activeAddr) {
+        applyAddressToCheckoutInputs(activeAddr);
+      }
+    }
+
+    const cardsHtml = addresses.map((addr, index) => {
+      const label = addr.label || `Address-${index + 1}`;
+      const isDefault = Boolean(addr.isDefault);
+      const isSelected = addr.id === selectedCheckoutAddressId;
+      const phoneDisplay = addr.phone ? `+91 ${addr.phone}` : '';
+
+      return `
+        <div class="saved-address-card ${isSelected ? 'saved-address-card--selected' : ''}" data-checkout-addr-id="${addr.id}">
+          <div class="saved-address-card__top">
+            <div class="saved-address-card__badges">
+              <span class="saved-address-card__label">${label}</span>
+              ${isDefault ? '<span class="saved-address-card__default-badge">✓ DEFAULT</span>' : ''}
+            </div>
+            ${isSelected ? '<span class="saved-address-card__selected-pill">✓ Selected</span>' : ''}
+          </div>
+          <div class="saved-address-card__body">
+            <h4 class="saved-address-card__recipient">${addr.name || 'Recipient'}</h4>
+            ${phoneDisplay ? `<span class="saved-address-card__phone">${phoneDisplay}</span>` : ''}
+            <p class="saved-address-card__text">${addr.fullAddress}</p>
+          </div>
+          <div class="saved-address-card__actions">
+            <button type="button" class="saved-address-card__btn" data-checkout-action="select-addr" data-addr-id="${addr.id}">
+              ${isSelected ? 'Delivering Here ✓' : 'Select Address'}
+            </button>
+            ${!isDefault
+              ? `<button type="button" class="saved-address-card__btn" data-checkout-action="set-default" data-addr-id="${addr.id}">Set as Default</button>`
+              : ''
+            }
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    const nextAddressNum = addresses.length + 1;
+    const createCardHtml = `
+      <button type="button" class="create-address-card" id="checkoutCreateAddressCardBtn">
+        <span class="create-address-card__icon">+</span>
+        <span class="create-address-card__title">${addresses.length === 0 ? 'Create Delivery Address (Address-1)' : `Create New Address (Address-${nextAddressNum})`}</span>
+        <span class="create-address-card__sub">${addresses.length === 0 ? 'No saved address yet — click here to enter your delivery address' : 'Click to create another delivery address for your account'}</span>
+      </button>
+    `;
+
+    grid.innerHTML = cardsHtml + createCardHtml;
+
+    // Show the Cards View by default on Checkout Step 1
+    if (cardsView && formWrap) {
+      cardsView.style.display = 'block';
+      formWrap.style.display = 'none';
+    }
+
+    const createBtn = document.getElementById('checkoutCreateAddressCardBtn');
+    if (createBtn) {
+      createBtn.addEventListener('click', () => {
+        openCheckoutAddressEntryForm();
+      });
+    }
+
+    grid.querySelectorAll('[data-checkout-addr-id]').forEach(card => {
+      card.addEventListener('click', (e) => {
+        if (e.target.closest('[data-checkout-action="set-default"]')) return;
+        const id = card.getAttribute('data-checkout-addr-id');
+        selectedCheckoutAddressId = id;
+        const chosen = addresses.find(a => a.id === id);
+        if (chosen) {
+          applyAddressToCheckoutInputs(chosen);
+        }
+        renderCheckoutAddressesUI();
+      });
+    });
+
+    grid.querySelectorAll('[data-checkout-action="set-default"]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = btn.getAttribute('data-addr-id');
+        setDefaultUserAddress(id);
+      });
+    });
+  }
+
+  window.streetCoRefreshCheckoutAddresses = function() {
+    accountState = loadLocalAccount();
+    const def = accountState.addresses.find(a => a.isDefault) || accountState.addresses[0];
+    if (def) {
+      selectedCheckoutAddressId = def.id;
+      applyAddressToCheckoutInputs(def);
+    }
+    renderCheckoutAddressesUI();
+  };
+
+  function openCheckoutAddressEntryForm() {
+    const cardsView = document.getElementById('checkoutAddressCardsView');
+    const formWrap = document.getElementById('checkoutAddressFormWrap');
+    const heading = document.getElementById('checkoutAddressFormHeading');
+    const nextNum = (accountState.addresses || []).length + 1;
+    if (heading) heading.textContent = `Create Address-${nextNum}`;
+    prefillAddressFormWithAccountDefaults('checkout');
+    showFlowFeedback('checkoutAddressFormFeedback', '');
+    if (cardsView) cardsView.style.display = 'none';
+    if (formWrap) formWrap.style.display = 'block';
+    document.getElementById('checkoutName')?.focus();
+  }
+
+  function closeCheckoutAddressEntryForm() {
+    const cardsView = document.getElementById('checkoutAddressCardsView');
+    const formWrap = document.getElementById('checkoutAddressFormWrap');
+    if (formWrap) formWrap.style.display = 'none';
+    if (cardsView) cardsView.style.display = 'block';
+    renderCheckoutAddressesUI();
+  }
+
+  // Wire Checkout Step 1 Cards View & Address Form Buttons
+  const checkoutCancelAddressFormBtn = document.getElementById('checkoutCancelAddressFormBtn');
+  if (checkoutCancelAddressFormBtn) {
+    checkoutCancelAddressFormBtn.addEventListener('click', () => {
+      closeCheckoutAddressEntryForm();
+    });
+  }
+
+  const checkoutCardsContinueBtn = document.getElementById('checkoutCardsContinueBtn');
+  if (checkoutCardsContinueBtn) {
+    checkoutCardsContinueBtn.addEventListener('click', () => {
+      const addresses = Array.isArray(accountState.addresses) ? accountState.addresses : [];
+      if (addresses.length === 0) {
+        // No address created yet -> open the address entering form
+        openCheckoutAddressEntryForm();
+        showFlowFeedback('checkoutAddressFormFeedback', 'Please enter your delivery address below and click "Add Address" to continue.', false);
+        return;
+      }
+      const chosen = addresses.find(a => a.id === selectedCheckoutAddressId) || addresses.find(a => a.isDefault) || addresses[0];
+      if (chosen) {
+        applyAddressToCheckoutInputs(chosen);
+      }
+      if (typeof window.streetCoProceedToPaymentStep === 'function') {
+        window.streetCoProceedToPaymentStep();
+      }
+    });
+  }
+
+  const checkoutAddAddressBtn = document.getElementById('checkoutAddAddressBtn');
+  if (checkoutAddAddressBtn) {
+    checkoutAddAddressBtn.addEventListener('click', async () => {
+      const nameVal = document.getElementById('checkoutName')?.value.trim() || '';
+      const phoneVal = document.getElementById('checkoutPhone')?.value.replace(/\D/g, '').slice(-10) || '';
+      const emailVal = document.getElementById('checkoutEmail')?.value.trim() || '';
+      const addr1Val = document.getElementById('checkoutAddress1')?.value.trim() || '';
+      const addr2Val = document.getElementById('checkoutAddress2')?.value.trim() || '';
+      const landmarkVal = document.getElementById('checkoutLandmark')?.value.trim() || '';
+      const cityVal = document.getElementById('checkoutCity')?.value.trim() || '';
+      const stateVal = document.getElementById('checkoutState')?.value.trim() || '';
+      const pinVal = document.getElementById('checkoutPincode')?.value.replace(/\D/g, '').slice(0, 6) || '';
+      const setDefaultChecked = Boolean(document.getElementById('checkoutSetDefaultAddress')?.checked);
+
+      if (!nameVal) {
+        showFlowFeedback('checkoutAddressFormFeedback', 'Please enter recipient Full Name.', true);
+        document.getElementById('checkoutName')?.focus();
+        return;
+      }
+      if (phoneVal.length !== 10) {
+        showFlowFeedback('checkoutAddressFormFeedback', 'Please enter a valid 10-digit Mobile Number.', true);
+        document.getElementById('checkoutPhone')?.focus();
+        return;
+      }
+      if (!addr1Val) {
+        showFlowFeedback('checkoutAddressFormFeedback', 'Please enter House Address / Flat No. / Building.', true);
+        document.getElementById('checkoutAddress1')?.focus();
+        return;
+      }
+      if (!addr2Val) {
+        showFlowFeedback('checkoutAddressFormFeedback', 'Please enter Street / Road / Area.', true);
+        document.getElementById('checkoutAddress2')?.focus();
+        return;
+      }
+      if (!cityVal) {
+        showFlowFeedback('checkoutAddressFormFeedback', 'Please enter Town / City.', true);
+        document.getElementById('checkoutCity')?.focus();
+        return;
+      }
+      if (!stateVal) {
+        showFlowFeedback('checkoutAddressFormFeedback', 'Please select your State.', true);
+        document.getElementById('checkoutState')?.focus();
+        return;
+      }
+      if (pinVal.length !== 6) {
+        showFlowFeedback('checkoutAddressFormFeedback', 'Please enter a valid 6-digit PIN / ZIP Code.', true);
+        document.getElementById('checkoutPincode')?.focus();
+        return;
+      }
+
+      checkoutAddAddressBtn.disabled = true;
+      const savedAddr = await addAddressToUserAccount({
+        name: nameVal,
+        phone: phoneVal,
+        email: emailVal,
+        address1: addr1Val,
+        address2: addr2Val,
+        landmark: landmarkVal,
+        city: cityVal,
+        state: stateVal,
+        pincode: pinVal,
+        type: 'Home'
+      }, setDefaultChecked);
+      checkoutAddAddressBtn.disabled = false;
+
+      if (savedAddr) {
+        applyAddressToCheckoutInputs(savedAddr);
+        closeCheckoutAddressEntryForm();
+        if (window.streetCoShowToast) {
+          window.streetCoShowToast(`${savedAddr.label} added${savedAddr.isDefault ? ' & set as Default' : ''}!`);
+        }
+      }
+    });
+  }
+
+  // Wire Account Page Left-Sidebar Navigation (01 Personal Information, 02 Delivery Address)
+  function switchAccountTab(pageKey) {
+    const personalBtn = document.getElementById('accountNavPersonalBtn');
+    const addressBtn = document.getElementById('accountNavAddressBtn');
+    const personalPane = document.getElementById('accountPersonalPage');
+    const addressPane = document.getElementById('accountDeliveryAddressPage');
+
+    const isAddress = pageKey === 'address';
+    if (personalBtn) personalBtn.classList.toggle('active', !isAddress);
+    if (addressBtn) addressBtn.classList.toggle('active', isAddress);
+
+    if (personalPane) {
+      personalPane.style.display = isAddress ? 'none' : 'block';
+      personalPane.classList.toggle('active', !isAddress);
+    }
+    if (addressPane) {
+      addressPane.style.display = isAddress ? 'block' : 'none';
+      addressPane.classList.toggle('active', isAddress);
+    }
+
+    if (isAddress) {
+      closeAccountAddressEntryForm();
+      renderAccountAddressesUI();
+    }
+  }
+
+  document.getElementById('accountNavPersonalBtn')?.addEventListener('click', () => switchAccountTab('personal'));
+  document.getElementById('accountNavAddressBtn')?.addEventListener('click', () => switchAccountTab('address'));
+
+  const accountCancelAddressFormBtn = document.getElementById('accountCancelAddressFormBtn');
+  if (accountCancelAddressFormBtn) {
+    accountCancelAddressFormBtn.addEventListener('click', () => {
+      closeAccountAddressEntryForm();
+    });
+  }
+
+  const accountAddrPhoneEl = document.getElementById('accountAddrPhone');
+  if (accountAddrPhoneEl) {
+    accountAddrPhoneEl.addEventListener('input', (e) => {
+      e.target.value = String(e.target.value || '').replace(/\D/g, '').slice(0, 10);
+    });
+  }
+  const accountAddrPinEl = document.getElementById('accountAddrPincode');
+  if (accountAddrPinEl) {
+    accountAddrPinEl.addEventListener('input', (e) => {
+      e.target.value = String(e.target.value || '').replace(/\D/g, '').slice(0, 6);
+    });
+  }
+  const accountAddrStateEl = document.getElementById('accountAddrState');
+  if (accountAddrStateEl) {
+    accountAddrStateEl.addEventListener('change', () => {
+      accountAddrStateEl.classList.toggle('is-placeholder', !accountAddrStateEl.value);
+    });
+  }
+
+  const accountNewAddressForm = document.getElementById('accountNewAddressForm');
+  if (accountNewAddressForm) {
+    accountNewAddressForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const nameVal = document.getElementById('accountAddrName')?.value.trim() || '';
+      const phoneVal = document.getElementById('accountAddrPhone')?.value.replace(/\D/g, '').slice(-10) || '';
+      const emailVal = document.getElementById('accountAddrEmail')?.value.trim() || '';
+      const addr1Val = document.getElementById('accountAddrLine1')?.value.trim() || '';
+      const addr2Val = document.getElementById('accountAddrLine2')?.value.trim() || '';
+      const landmarkVal = document.getElementById('accountAddrLandmark')?.value.trim() || '';
+      const cityVal = document.getElementById('accountAddrCity')?.value.trim() || '';
+      const stateVal = document.getElementById('accountAddrState')?.value.trim() || '';
+      const pinVal = document.getElementById('accountAddrPincode')?.value.replace(/\D/g, '').slice(0, 6) || '';
+      const setDefaultChecked = Boolean(document.getElementById('accountSetDefaultAddress')?.checked);
+
+      if (!nameVal) {
+        showFlowFeedback('accountAddressFormFeedback', 'Please enter recipient Full Name.', true);
+        document.getElementById('accountAddrName')?.focus();
+        return;
+      }
+      if (phoneVal.length !== 10) {
+        showFlowFeedback('accountAddressFormFeedback', 'Please enter a valid 10-digit Mobile Number.', true);
+        document.getElementById('accountAddrPhone')?.focus();
+        return;
+      }
+      if (!addr1Val) {
+        showFlowFeedback('accountAddressFormFeedback', 'Please enter House Address / Flat No. / Building.', true);
+        document.getElementById('accountAddrLine1')?.focus();
+        return;
+      }
+      if (!addr2Val) {
+        showFlowFeedback('accountAddressFormFeedback', 'Please enter Street / Road / Area.', true);
+        document.getElementById('accountAddrLine2')?.focus();
+        return;
+      }
+      if (!cityVal) {
+        showFlowFeedback('accountAddressFormFeedback', 'Please enter Town / City.', true);
+        document.getElementById('accountAddrCity')?.focus();
+        return;
+      }
+      if (!stateVal) {
+        showFlowFeedback('accountAddressFormFeedback', 'Please select your State.', true);
+        document.getElementById('accountAddrState')?.focus();
+        return;
+      }
+      if (pinVal.length !== 6) {
+        showFlowFeedback('accountAddressFormFeedback', 'Please enter a valid 6-digit PIN / ZIP Code.', true);
+        document.getElementById('accountAddrPincode')?.focus();
+        return;
+      }
+
+      const saveBtn = document.getElementById('accountSaveNewAddressBtn');
+      if (saveBtn) saveBtn.disabled = true;
+
+      const savedAddr = await addAddressToUserAccount({
+        name: nameVal,
+        phone: phoneVal,
+        email: emailVal,
+        address1: addr1Val,
+        address2: addr2Val,
+        landmark: landmarkVal,
+        city: cityVal,
+        state: stateVal,
+        pincode: pinVal,
+        type: 'Home'
+      }, setDefaultChecked);
+
+      if (saveBtn) saveBtn.disabled = false;
+
+      if (savedAddr) {
+        closeAccountAddressEntryForm();
+        if (window.streetCoShowToast) {
+          window.streetCoShowToast(`${savedAddr.label} saved to your account${savedAddr.isDefault ? ' as Default' : ''}!`);
+        }
+      }
+    });
+  }
+
+  function getInitials(firstName, lastName) {
+    const f = String(firstName || '').trim().charAt(0).toUpperCase();
+    const l = String(lastName || '').trim().charAt(0).toUpperCase();
+    return (f + l) || 'SC';
+  }
+
+  function showFlowFeedback(elId, message, isError = false) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    if (!message) {
+      el.style.display = 'none';
+      el.textContent = '';
+      return;
+    }
+    el.style.display = 'block';
+    el.style.background = isError ? '#fef2f2' : '#dcfce7';
+    el.style.color = isError ? '#991b1b' : '#166534';
+    el.style.border = isError ? '1px solid #fecaca' : '1px solid #bbf7d0';
+    el.textContent = message;
+  }
+
+  function showAccountFeedback(message, isError = false) {
+    showFlowFeedback('accountSaveFeedbackBox', message, isError);
+  }
+
+  function updateEmailBadgeUI() {
+    const emailInput = document.getElementById('accountEmailInput');
+    const badge = document.getElementById('accountEmailStatusBadge');
+    const sendBtn = document.getElementById('accountSendOtpBtn');
+    const hint = document.getElementById('accountEmailHintText');
+    if (!emailInput || !badge) return;
+
+    const currentTypedEmail = String(emailInput.value || '').trim().toLowerCase();
+    const isCurrentVerified = Boolean(
+      currentTypedEmail &&
+      accountState.emailVerified &&
+      accountState.email &&
+      currentTypedEmail === String(accountState.email).trim().toLowerCase()
+    );
+
+    if (isCurrentVerified) {
+      badge.textContent = '✓ EMAIL VERIFIED & SAVED';
+      badge.className = 'account-status-badge account-status-badge--verified';
+      if (sendBtn) sendBtn.textContent = 'Verified ✓';
+      if (hint) {
+        hint.textContent = `Your email (${currentTypedEmail}) has been verified via 6-digit OTP and saved to your account.`;
+        hint.style.color = '#166534';
+      }
+    } else {
+      badge.textContent = 'OTP VERIFICATION REQUIRED';
+      badge.className = 'account-status-badge account-status-badge--unverified';
+      if (sendBtn) sendBtn.textContent = 'Verify Email via OTP';
+      if (hint) {
+        hint.textContent = 'Click "Verify Email via OTP" to receive a 6-digit OTP in your email and verify it in the OTP popup.';
+        hint.style.color = '#71717a';
+      }
+    }
+  }
+
+  function renderAccountPageUI() {
+    const cleanPhone = String(accountState.phone || '').replace(/\D/g, '').slice(-10);
+    const firstNameInput = document.getElementById('accountFirstName');
+    const lastNameInput = document.getElementById('accountLastName');
+    const loggedPhoneInput = document.getElementById('accountLoggedPhoneInput');
+    const emailInput = document.getElementById('accountEmailInput');
+    const headerName = document.getElementById('accountHeaderFullNameDisplay');
+    const headerPhone = document.getElementById('accountHeaderPhoneDisplay');
+    const avatar = document.getElementById('accountAvatarInitials');
+
+    if (firstNameInput) firstNameInput.value = accountState.firstName || '';
+    if (lastNameInput) lastNameInput.value = accountState.lastName || '';
+    if (loggedPhoneInput) loggedPhoneInput.value = cleanPhone;
+    if (emailInput && !emailInput.dataset.userEditing) {
+      emailInput.value = accountState.email || '';
+    }
+
+    const fullName = [accountState.firstName, accountState.lastName].filter(Boolean).join(' ').trim();
+    if (headerName) headerName.textContent = fullName || 'Complete Your Profile';
+    if (headerPhone) headerPhone.textContent = `Mobile: ${cleanPhone}`;
+    if (avatar) avatar.textContent = getInitials(accountState.firstName, accountState.lastName);
+
+    updateEmailBadgeUI();
+    renderAccountAddressesUI();
+    renderCheckoutAddressesUI();
+  }
+
+  async function fetchFirebaseAccountByPhone(phone) {
+    const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
+    if (cleanPhone.length !== 10) return;
+
+    // 1. Load from MongoDB Atlas backend (/api/account/profile)
+    try {
+      const res = await fetch(`/api/account/profile?phone=${encodeURIComponent(cleanPhone)}`);
+      const data = await res.json();
+      if (data && data.success && data.account) {
+        const mongoAddresses = Array.isArray(data.account.addresses) && data.account.addresses.length > 0
+          ? data.account.addresses
+          : accountState.addresses;
+        const mongoDefaultId = data.account.defaultAddressId || accountState.defaultAddressId || '';
+
+        saveLocalAccount({
+          firstName: data.account.firstName || accountState.firstName || '',
+          lastName: data.account.lastName || accountState.lastName || '',
+          phone: cleanPhone,
+          phoneVerified: true,
+          email: data.account.email || accountState.email || '',
+          emailVerified: Boolean(data.account.emailVerified),
+          addresses: mongoAddresses,
+          defaultAddressId: mongoDefaultId,
+          orders: Array.isArray(data.account.orders) ? data.account.orders : (accountState.orders || [])
+        });
+
+        // If user had local addresses that weren't in MongoDB yet, sync them up
+        if ((!Array.isArray(data.account.addresses) || data.account.addresses.length === 0) && accountState.addresses.length > 0) {
+          syncAddressesToMongo(accountState.addresses, accountState.defaultAddressId);
+        }
+
+        renderAccountPageUI();
+      }
+    } catch (_) {}
+
+    // 2. Also check Firebase Auth user record if available
+    if (window.streetCoFirebaseAuth && typeof window.streetCoFirebaseAuth.loadUserAuthDetails === 'function') {
+      try {
+        const fbAccount = await window.streetCoFirebaseAuth.loadUserAuthDetails(cleanPhone);
+        if (fbAccount) {
+          saveLocalAccount({
+            firstName: fbAccount.firstName || accountState.firstName || '',
+            lastName: fbAccount.lastName || accountState.lastName || '',
+            phone: cleanPhone,
+            phoneVerified: true,
+            email: fbAccount.email || accountState.email || '',
+            emailVerified: Boolean(fbAccount.emailVerified)
+          });
+          renderAccountPageUI();
+        }
+      } catch (_) {}
+    }
+  }
+
+  window.addEventListener('streetco:firebase-auth-ready', () => {
+    const cleanPhone = String(accountState.phone || '').replace(/\D/g, '').slice(-10);
+    if (cleanPhone.length === 10 && accountState.phoneVerified) {
+      fetchFirebaseAccountByPhone(cleanPhone);
+    }
+  });
+
+  // Initial render of checkout addresses on startup
+  renderCheckoutAddressesUI();
+  if (accountState.phone && accountState.phoneVerified) {
+    fetchFirebaseAccountByPhone(accountState.phone);
+  }
+
+  // ── Checkout Auth Gate Popup Notification & Return-to-Previous-Page Restoration ──
+  function restorePreviousContextAfterAuth(ctx) {
+    if (!ctx) return;
+
+    if (ctx.type === 'cart') {
+      // Restore underlying page (Collections or Shop) and reopen the Cart / Bag drawer as it was earlier
+      const collecPage = document.getElementById('collectionsPage');
+      if (ctx.wasCollectionsOpen && collecPage) {
+        collecPage.classList.add('open');
+        collecPage.setAttribute('aria-hidden', 'false');
+        collecPage.scrollTop = ctx.collecScrollTop || 0;
+      }
+      if (typeof window.streetCoOpenCart === 'function') {
+        window.streetCoOpenCart('bag');
+      } else {
+        const cartDrw = document.getElementById('cartDrawer');
+        if (cartDrw) {
+          cartDrw.classList.add('open');
+          cartDrw.setAttribute('aria-hidden', 'false');
+        }
+      }
+      return;
+    }
+
+    if (ctx.type === 'product') {
+      const pdpModal = document.getElementById('relicGalleryModal');
+      const collecPage = document.getElementById('collectionsPage');
+      if (ctx.wasPdpOpen && pdpModal) {
+        pdpModal.classList.add('open');
+        pdpModal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('bag-open');
+        document.documentElement.classList.add('bag-open');
+      } else if (ctx.wasCollectionsOpen && collecPage) {
+        collecPage.classList.add('open');
+        collecPage.setAttribute('aria-hidden', 'false');
+        collecPage.scrollTop = ctx.collecScrollTop || 0;
+      } else if (typeof ctx.scrollY === 'number' && ctx.scrollY > 0) {
+        window.scrollTo({ top: ctx.scrollY, behavior: 'instant' });
+      }
+    }
+  }
+
+  window.openCheckoutAuthGate = function(context = {}) {
+    pendingAuthReturnContext = {
+      type: context.type === 'cart' ? 'cart' : 'product',
+      wasPdpOpen: Boolean(context.wasPdpOpen),
+      pdpItem: context.pdpItem || null,
+      pdpSource: context.pdpSource || 'shop',
+      pdpQty: context.pdpQty || 1,
+      pdpSize: context.pdpSize || 'M',
+      pdpFinish: context.pdpFinish || 'Obsidian Shadow',
+      wasCollectionsOpen: Boolean(context.wasCollectionsOpen),
+      scrollY: Number(context.scrollY) || 0,
+      collecScrollTop: Number(context.collecScrollTop) || 0
+    };
+
+    const gateModal = document.getElementById('checkoutAuthGateModal');
+    const msgEl = document.getElementById('checkoutAuthGateMessage');
+    if (msgEl) {
+      if (pendingAuthReturnContext.type === 'cart') {
+        msgEl.textContent = 'You must be logged in or signed up before continuing to the checkout page. Click the button below to log in or sign up in a popup, and you will be returned directly to your cart page as it was earlier.';
+      } else {
+        msgEl.textContent = 'You must be logged in or signed up before continuing to the checkout page. Click the button below to log in or sign up in a popup, and you will be returned directly to your product page as it was earlier.';
+      }
+    }
+    if (gateModal) {
+      gateModal.classList.add('open');
+      gateModal.setAttribute('aria-hidden', 'false');
+    }
+  };
+
+  window.closeCheckoutAuthGate = function(clearReturnContext = false) {
+    const gateModal = document.getElementById('checkoutAuthGateModal');
+    if (gateModal) {
+      gateModal.classList.remove('open');
+      gateModal.setAttribute('aria-hidden', 'true');
+    }
+    if (clearReturnContext && pendingAuthReturnContext) {
+      const ctx = pendingAuthReturnContext;
+      pendingAuthReturnContext = null;
+      restorePreviousContextAfterAuth(ctx);
+    }
+  };
+
+  const checkoutAuthGateContinueBtn = document.getElementById('checkoutAuthGateContinueBtn');
+  if (checkoutAuthGateContinueBtn) {
+    checkoutAuthGateContinueBtn.addEventListener('click', () => {
+      window.closeCheckoutAuthGate(false);
+      window.openPhoneLoginPopup({ preserveReturnContext: true });
+    });
+  }
+
+  // ── Modal Open / Close Controllers ──
+  window.openPhoneLoginPopup = function(options = {}) {
+    if (!options || !options.preserveReturnContext) {
+      pendingAuthReturnContext = null;
+    }
+
+    const loginModal = document.getElementById('phoneLoginPopupModal');
+    const otpModal = document.getElementById('unifiedOtpModal');
+    const accountModal = document.getElementById('accountPageModal');
+
+    if (otpModal) {
+      otpModal.classList.remove('open');
+      otpModal.setAttribute('aria-hidden', 'true');
+    }
+    if (accountModal) {
+      accountModal.classList.remove('open');
+      accountModal.setAttribute('aria-hidden', 'true');
+    }
+    if (!loginModal) return;
+
+    showFlowFeedback('phoneLoginFeedbackMsg', '');
+    loginModal.classList.add('open');
+    loginModal.setAttribute('aria-hidden', 'false');
+
+    const phoneInput = document.getElementById('accountLoginPhoneInput');
+    if (phoneInput) {
+      phoneInput.value = accountState.phone || '';
+      setTimeout(() => phoneInput.focus(), 60);
+    }
+  };
+
+  window.closePhoneLoginPopup = function() {
+    const loginModal = document.getElementById('phoneLoginPopupModal');
+    if (!loginModal) return;
+    loginModal.classList.remove('open');
+    loginModal.setAttribute('aria-hidden', 'true');
+    if (window.location.hash === '#account') {
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+    if (pendingAuthReturnContext) {
+      const ctx = pendingAuthReturnContext;
+      pendingAuthReturnContext = null;
+      restorePreviousContextAfterAuth(ctx);
+    }
+  };
+
+  const otpBoxes = [
+    document.getElementById('unifiedOtpDigit1'),
+    document.getElementById('unifiedOtpDigit2'),
+    document.getElementById('unifiedOtpDigit3'),
+    document.getElementById('unifiedOtpDigit4'),
+    document.getElementById('unifiedOtpDigit5'),
+    document.getElementById('unifiedOtpDigit6')
+  ].filter(Boolean);
+
+  function clearOtpBoxes() {
+    otpBoxes.forEach(box => { box.value = ''; });
+    if (otpBoxes[0]) {
+      setTimeout(() => otpBoxes[0].focus(), 60);
+    }
+  }
+
+  window.openUnifiedOtpModal = function(options = {}) {
+    const otpModal = document.getElementById('unifiedOtpModal');
+    if (!otpModal) return;
+
+    activeOtpContext = {
+      mode: options.mode || 'phone',
+      targetPhone: options.phone || '',
+      targetEmail: options.email || '',
+      firstName: options.firstName || '',
+      lastName: options.lastName || ''
+    };
+
+    const kickerEl = document.getElementById('unifiedOtpKicker');
+    const titleEl = document.getElementById('unifiedOtpTitle');
+    const subEl = document.getElementById('unifiedOtpSub');
+    const bannerEl = document.getElementById('unifiedOtpInstantBanner');
+
+    if (activeOtpContext.mode === 'phone') {
+      if (kickerEl) kickerEl.textContent = 'MOBILE OTP VERIFICATION';
+      if (titleEl) titleEl.textContent = 'Verify Mobile OTP';
+      if (subEl) subEl.textContent = `Enter the 6-digit OTP sent to mobile number ${activeOtpContext.targetPhone}`;
+    } else {
+      if (kickerEl) kickerEl.textContent = 'EMAIL OTP VERIFICATION';
+      if (titleEl) titleEl.textContent = 'Verify Email OTP';
+      if (subEl) subEl.textContent = `Enter the 6-digit OTP sent to ${activeOtpContext.targetEmail}`;
+    }
+
+    if (bannerEl) {
+      if (options.instantOtpCode) {
+        bannerEl.style.display = 'block';
+        bannerEl.innerHTML = `Your 6-Digit Verification OTP: <strong>${options.instantOtpCode}</strong>`;
+      } else {
+        bannerEl.style.display = 'none';
+        bannerEl.innerHTML = '';
+      }
+    }
+
+    showFlowFeedback('unifiedOtpStatusMsg', '');
+    clearOtpBoxes();
+
+    otpModal.classList.add('open');
+    otpModal.setAttribute('aria-hidden', 'false');
+  };
+
+  window.closeUnifiedOtpModal = function() {
+    const otpModal = document.getElementById('unifiedOtpModal');
+    if (!otpModal) return;
+    otpModal.classList.remove('open');
+    otpModal.setAttribute('aria-hidden', 'true');
+  };
+
+  window.handleUnifiedOtpBack = function() {
+    window.closeUnifiedOtpModal();
+    if (activeOtpContext.mode === 'phone') {
+      window.openPhoneLoginPopup({ preserveReturnContext: Boolean(pendingAuthReturnContext) });
+    }
+  };
+
+  window.openAccountPage = function() {
+    accountState = loadLocalAccount();
+    const cleanPhone = String(accountState.phone || '').replace(/\D/g, '').slice(-10);
+    const isLoggedIn = cleanPhone.length === 10 && Boolean(accountState.phoneVerified);
+
+    // If user is not logged in with a verified phone number yet, open Phone Login Popup (Web & Mobile)
+    if (!isLoggedIn) {
+      window.openPhoneLoginPopup({ preserveReturnContext: false });
+      return;
+    }
+
+    const modal = document.getElementById('accountPageModal');
+    if (!modal) return;
+    showAccountFeedback('');
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+    renderAccountPageUI();
+    fetchFirebaseAccountByPhone(cleanPhone);
+  };
+
+  window.closeAccountPage = function() {
+    const modal = document.getElementById('accountPageModal');
+    if (!modal) return;
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+    if (window.location.hash === '#account') {
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+  };
+
+  // Strip non-digits in the curved mobile number input (without +91)
+  const loginPhoneInputEl = document.getElementById('accountLoginPhoneInput');
+  if (loginPhoneInputEl) {
+    loginPhoneInputEl.addEventListener('input', (e) => {
+      e.target.value = String(e.target.value || '').replace(/\D/g, '').slice(0, 10);
+    });
+  }
+
+  // ── 1. Phone Login Form Submit ("Continue" button) -> Sends 6-Digit Phone OTP & Opens 6-Digit OTP Popup/Page ──
+  async function sendPhoneOtpRequest(phoneDigits) {
+    const submitBtn = document.getElementById('accountPhoneLoginSubmitBtn');
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Sending OTP...';
+    }
+    showFlowFeedback('phoneLoginFeedbackMsg', '');
+
+    try {
+      const res = await fetch('/api/account/send-phone-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: phoneDigits })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to send OTP.');
+      }
+
+      // Close Phone Login Popup/Page and open the 6-Digit Curved Square OTP Popup/Page
+      const loginModal = document.getElementById('phoneLoginPopupModal');
+      if (loginModal) {
+        loginModal.classList.remove('open');
+        loginModal.setAttribute('aria-hidden', 'true');
+      }
+
+      window.openUnifiedOtpModal({
+        mode: 'phone',
+        phone: phoneDigits,
+        instantOtpCode: !data.smsDispatched ? data.otpCode : null
+      });
+    } catch (err) {
+      showFlowFeedback('phoneLoginFeedbackMsg', err.message || 'Could not send OTP. Please try again.', true);
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Continue';
+      }
+    }
+  }
+
+  const phoneLoginForm = document.getElementById('accountPhoneLoginForm');
+  if (phoneLoginForm) {
+    phoneLoginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const input = document.getElementById('accountLoginPhoneInput');
+      const digits = String(input ? input.value : '').replace(/\D/g, '').slice(0, 10);
+      if (digits.length !== 10) {
+        showFlowFeedback('phoneLoginFeedbackMsg', 'Please enter a valid 10-digit mobile number.', true);
+        if (input) input.focus();
+        return;
+      }
+      await sendPhoneOtpRequest(digits);
+    });
+  }
+
+  // ── 2. 6-Digit Curved Square OTP Boxes Auto-Advance, Backspace & Paste ──
+  otpBoxes.forEach((box, idx) => {
+    box.addEventListener('input', (e) => {
+      const digit = String(e.target.value || '').replace(/\D/g, '').slice(-1);
+      e.target.value = digit;
+      if (digit && idx < otpBoxes.length - 1) {
+        otpBoxes[idx + 1].focus();
+      }
+    });
+
+    box.addEventListener('keydown', (e) => {
+      if (e.key === 'Backspace' && !box.value && idx > 0) {
+        otpBoxes[idx - 1].focus();
+      }
+    });
+
+    box.addEventListener('paste', (e) => {
+      const pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 6);
+      if (pasted.length > 0) {
+        e.preventDefault();
+        pasted.split('').forEach((ch, i) => {
+          if (otpBoxes[i]) otpBoxes[i].value = ch;
+        });
+        const nextIdx = Math.min(pasted.length, otpBoxes.length - 1);
+        if (otpBoxes[nextIdx]) otpBoxes[nextIdx].focus();
+      }
+    });
+  });
+
+  // ── 3. Unified 6-Digit OTP Form Submit ("Proceed" button) for BOTH Phone OTP & Email OTP ──
+  const unifiedOtpForm = document.getElementById('unifiedOtpForm');
+  if (unifiedOtpForm) {
+    unifiedOtpForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const otpCode = otpBoxes.map(b => String(b.value || '').trim()).join('');
+      if (otpCode.length !== 6) {
+        showFlowFeedback('unifiedOtpStatusMsg', 'Please enter all 6 digits of the OTP in the boxes above.', true);
+        return;
+      }
+
+      const proceedBtn = document.getElementById('unifiedOtpProceedBtn');
+      if (proceedBtn) {
+        proceedBtn.disabled = true;
+        proceedBtn.textContent = 'Verifying...';
+      }
+      showFlowFeedback('unifiedOtpStatusMsg', '');
+
+      try {
+        if (activeOtpContext.mode === 'phone') {
+          const res = await fetch('/api/account/verify-phone-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              phone: activeOtpContext.targetPhone,
+              otp: otpCode
+            })
+          });
+          const data = await res.json();
+          if (!res.ok || !data.success) {
+            throw new Error(data.error || 'Invalid 6-digit OTP.');
+          }
+
+          let fbSaved = null;
+          if (window.streetCoFirebaseAuth && typeof window.streetCoFirebaseAuth.saveUserAuthDetails === 'function') {
+            try {
+              fbSaved = await window.streetCoFirebaseAuth.saveUserAuthDetails({
+                phone: activeOtpContext.targetPhone,
+                phoneVerified: true,
+                firstName: accountState.firstName || '',
+                lastName: accountState.lastName || '',
+                email: accountState.email || '',
+                emailVerified: Boolean(accountState.emailVerified),
+                lastLoginAt: new Date().toISOString()
+              });
+            } catch (_) {}
+          }
+
+          const serverAccount = data.account || {};
+          saveLocalAccount({
+            phone: activeOtpContext.targetPhone,
+            phoneVerified: true,
+            firstName: serverAccount.firstName || (fbSaved && fbSaved.firstName) || accountState.firstName || '',
+            lastName: serverAccount.lastName || (fbSaved && fbSaved.lastName) || accountState.lastName || '',
+            email: serverAccount.email || (fbSaved && fbSaved.email) || accountState.email || '',
+            emailVerified: Boolean(serverAccount.emailVerified || (fbSaved && fbSaved.emailVerified) || accountState.emailVerified),
+            addresses: Array.isArray(serverAccount.addresses) && serverAccount.addresses.length > 0
+              ? serverAccount.addresses
+              : accountState.addresses,
+            defaultAddressId: serverAccount.defaultAddressId || accountState.defaultAddressId || ''
+          });
+
+          window.closeUnifiedOtpModal();
+          fetchFirebaseAccountByPhone(activeOtpContext.targetPhone);
+
+          if (pendingAuthReturnContext) {
+            const ctxToRestore = pendingAuthReturnContext;
+            pendingAuthReturnContext = null;
+            restorePreviousContextAfterAuth(ctxToRestore);
+            if (window.streetCoShowToast) {
+              const targetLabel = ctxToRestore.type === 'cart' ? 'Cart' : 'Product page';
+              window.streetCoShowToast(`Logged in with +91 ${activeOtpContext.targetPhone} · Returned to your ${targetLabel}`);
+            }
+          } else {
+            window.openAccountPage();
+            if (window.streetCoShowToast) {
+              window.streetCoShowToast(`Logged in with +91 ${activeOtpContext.targetPhone}`);
+            }
+          }
+        } else {
+          // Email OTP verification using the exact same 6-digit OTP Popup/Page
+          const res = await fetch('/api/account/verify-email-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: activeOtpContext.targetEmail,
+              otp: otpCode,
+              firstName: activeOtpContext.firstName,
+              lastName: activeOtpContext.lastName,
+              phone: accountState.phone
+            })
+          });
+          const data = await res.json();
+          if (!res.ok || !data.success) {
+            throw new Error(data.error || 'Invalid 6-digit Email OTP.');
+          }
+
+          const emailInput = document.getElementById('accountEmailInput');
+          if (emailInput) delete emailInput.dataset.userEditing;
+
+          const nextFirstName = activeOtpContext.firstName || accountState.firstName;
+          const nextLastName = activeOtpContext.lastName || accountState.lastName;
+
+          if (window.streetCoFirebaseAuth && typeof window.streetCoFirebaseAuth.saveUserAuthDetails === 'function') {
+            try {
+              await window.streetCoFirebaseAuth.saveUserAuthDetails({
+                phone: accountState.phone,
+                phoneVerified: true,
+                firstName: nextFirstName,
+                lastName: nextLastName,
+                email: activeOtpContext.targetEmail,
+                emailVerified: true
+              });
+            } catch (_) {}
+          }
+
+          saveLocalAccount({
+            firstName: nextFirstName,
+            lastName: nextLastName,
+            email: activeOtpContext.targetEmail,
+            emailVerified: true
+          });
+
+          window.closeUnifiedOtpModal();
+          renderAccountPageUI();
+          showAccountFeedback(`✓ Email (${activeOtpContext.targetEmail}) verified with 6-digit OTP and saved to your account!`, false);
+          if (window.streetCoShowToast) {
+            window.streetCoShowToast(`Email verified & saved: ${activeOtpContext.targetEmail}`);
+          }
+        }
+      } catch (err) {
+        showFlowFeedback('unifiedOtpStatusMsg', err.message || 'OTP verification failed. Please try again.', true);
+      } finally {
+        if (proceedBtn) {
+          proceedBtn.disabled = false;
+          proceedBtn.textContent = 'Proceed';
+        }
+      }
+    });
+  }
+
+  // ── 4. Resend OTP Button inside Unified 6-Digit OTP Popup/Page ──
+  const unifiedResendBtn = document.getElementById('unifiedOtpResendBtn');
+  if (unifiedResendBtn) {
+    unifiedResendBtn.addEventListener('click', async () => {
+      unifiedResendBtn.disabled = true;
+      showFlowFeedback('unifiedOtpStatusMsg', 'Sending a new 6-digit OTP...', false);
+      try {
+        if (activeOtpContext.mode === 'phone') {
+          const res = await fetch('/api/account/send-phone-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone: activeOtpContext.targetPhone })
+          });
+          const data = await res.json();
+          if (!res.ok || !data.success) throw new Error(data.error || 'Failed to resend OTP.');
+          const bannerEl = document.getElementById('unifiedOtpInstantBanner');
+          if (bannerEl && !data.smsDispatched && data.otpCode) {
+            bannerEl.style.display = 'block';
+            bannerEl.innerHTML = `Your 6-Digit Verification OTP: <strong>${data.otpCode}</strong>`;
+          }
+          clearOtpBoxes();
+          showFlowFeedback('unifiedOtpStatusMsg', `New 6-digit OTP sent to ${activeOtpContext.targetPhone}.`, false);
+        } else {
+          const res = await fetch('/api/account/send-email-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: activeOtpContext.targetEmail,
+              firstName: activeOtpContext.firstName,
+              lastName: activeOtpContext.lastName,
+              phone: accountState.phone
+            })
+          });
+          const data = await res.json();
+          if (!res.ok || !data.success) throw new Error(data.error || 'Failed to resend Email OTP.');
+          clearOtpBoxes();
+          showFlowFeedback('unifiedOtpStatusMsg', `New 6-digit OTP sent to ${activeOtpContext.targetEmail}.`, false);
+        }
+      } catch (err) {
+        showFlowFeedback('unifiedOtpStatusMsg', err.message || 'Could not resend OTP.', true);
+      } finally {
+        unifiedResendBtn.disabled = false;
+      }
+    });
+  }
+
+  // ── 5. Change / Logout Mobile Number Button on Account Page ──
+  const switchPhoneBtn = document.getElementById('accountSwitchPhoneBtn');
+  if (switchPhoneBtn) {
+    switchPhoneBtn.addEventListener('click', async () => {
+      const emailInput = document.getElementById('accountEmailInput');
+      if (emailInput) delete emailInput.dataset.userEditing;
+      if (window.streetCoFirebaseAuth && typeof window.streetCoFirebaseAuth.signOutUserAuth === 'function') {
+        await window.streetCoFirebaseAuth.signOutUserAuth();
+      }
+      saveLocalAccount({
+        phone: '',
+        phoneVerified: false
+      });
+      window.openPhoneLoginPopup();
+    });
+  }
+
+  // ── 6. Live Name Header Update on Account Page ──
+  const firstNameEl = document.getElementById('accountFirstName');
+  const lastNameEl = document.getElementById('accountLastName');
+  function handleNameTyping() {
+    const f = firstNameEl ? firstNameEl.value.trim() : '';
+    const l = lastNameEl ? lastNameEl.value.trim() : '';
+    const headerName = document.getElementById('accountHeaderFullNameDisplay');
+    const avatar = document.getElementById('accountAvatarInitials');
+    const combined = [f, l].filter(Boolean).join(' ');
+    if (headerName) headerName.textContent = combined || 'Complete Your Profile';
+    if (avatar) avatar.textContent = getInitials(f, l);
+  }
+  if (firstNameEl) firstNameEl.addEventListener('input', handleNameTyping);
+  if (lastNameEl) lastNameEl.addEventListener('input', handleNameTyping);
+
+  // Email Input Change Tracking
+  const emailInputEl = document.getElementById('accountEmailInput');
+  if (emailInputEl) {
+    emailInputEl.addEventListener('input', () => {
+      emailInputEl.dataset.userEditing = 'true';
+      updateEmailBadgeUI();
+    });
+  }
+
+  // ── 7. Send 6-Digit Email OTP & Open the Same 6-Digit OTP Popup (Web) / Page (Mobile) ──
+  async function requestEmailOtpPopup() {
+    const emailInput = document.getElementById('accountEmailInput');
+    const sendBtn = document.getElementById('accountSendOtpBtn');
+    const cleanEmail = String(emailInput ? emailInput.value : '').trim().toLowerCase();
+
+    if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      showAccountFeedback('Please enter a valid email address first.', true);
+      if (emailInput) emailInput.focus();
+      return;
+    }
+
+    const fName = firstNameEl ? firstNameEl.value.trim() : accountState.firstName;
+    const lName = lastNameEl ? lastNameEl.value.trim() : accountState.lastName;
+
+    if (sendBtn) {
+      sendBtn.disabled = true;
+      sendBtn.textContent = 'Sending OTP...';
+    }
+    showAccountFeedback('');
+
+    try {
+      const res = await fetch('/api/account/send-email-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: cleanEmail,
+          firstName: fName,
+          lastName: lName,
+          phone: accountState.phone
+        })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Could not send verification email.');
+      }
+
+      // Open the exact same 6-Digit Curved Square OTP Popup (Web) / Page (Mobile)
+      window.openUnifiedOtpModal({
+        mode: 'email',
+        email: cleanEmail,
+        firstName: fName,
+        lastName: lName
+      });
+    } catch (err) {
+      showAccountFeedback(err.message || 'Failed to send verification email.', true);
+    } finally {
+      if (sendBtn) {
+        sendBtn.disabled = false;
+        updateEmailBadgeUI();
+      }
+    }
+  }
+
+  const sendOtpBtn = document.getElementById('accountSendOtpBtn');
+  if (sendOtpBtn) {
+    sendOtpBtn.addEventListener('click', requestEmailOtpPopup);
+  }
+
+  // ── 8. Save Account Profile Form Submit (Saves User Details to Firebase Auth & MongoDB Atlas) ──
+  const mainForm = document.getElementById('accountProfileMainForm');
+  if (mainForm) {
+    mainForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fName = firstNameEl ? firstNameEl.value.trim() : '';
+      const lName = lastNameEl ? lastNameEl.value.trim() : '';
+      const emailInput = document.getElementById('accountEmailInput');
+      const typedEmail = String(emailInput ? emailInput.value : '').trim().toLowerCase();
+
+      if (!fName) {
+        showAccountFeedback('Please enter your First Name.', true);
+        if (firstNameEl) firstNameEl.focus();
+        return;
+      }
+      if (!lName) {
+        showAccountFeedback('Please enter your Last Name.', true);
+        if (lastNameEl) lastNameEl.focus();
+        return;
+      }
+
+      const isEmailVerifiedMatch = Boolean(
+        typedEmail &&
+        accountState.emailVerified &&
+        accountState.email &&
+        typedEmail === String(accountState.email).trim().toLowerCase()
+      );
+
+      // If user typed an unverified email, automatically launch the 6-Digit Email OTP Popup/Page
+      if (typedEmail && !isEmailVerifiedMatch) {
+        await requestEmailOtpPopup();
+        return;
+      }
+
+      const saveBtn = document.getElementById('accountSaveProfileBtn');
+      if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving Profile...';
+      }
+
+      try {
+        const verifiedEmailToSave = isEmailVerifiedMatch
+          ? typedEmail
+          : (accountState.emailVerified ? accountState.email : '');
+        const isVerifiedBool = isEmailVerifiedMatch || Boolean(accountState.emailVerified);
+
+        let firebaseUid = '';
+        if (window.streetCoFirebaseAuth && typeof window.streetCoFirebaseAuth.saveUserAuthDetails === 'function') {
+          try {
+            const fbSaved = await window.streetCoFirebaseAuth.saveUserAuthDetails({
+              phone: accountState.phone,
+              phoneVerified: true,
+              firstName: fName,
+              lastName: lName,
+              email: verifiedEmailToSave,
+              emailVerified: isVerifiedBool
+            });
+            if (fbSaved && fbSaved.firebaseUid) firebaseUid = fbSaved.firebaseUid;
+          } catch (_) {}
+        }
+
+        // Save user account profile + addresses to MongoDB Atlas
+        await fetch('/api/account/profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phone: accountState.phone,
+            firstName: fName,
+            lastName: lName,
+            email: verifiedEmailToSave,
+            emailVerified: isVerifiedBool,
+            firebaseUid,
+            addresses: accountState.addresses || [],
+            defaultAddressId: accountState.defaultAddressId || ''
+          })
+        }).catch(() => {});
+
+        saveLocalAccount({
+          firstName: fName,
+          lastName: lName,
+          email: verifiedEmailToSave,
+          emailVerified: isVerifiedBool
+        });
+        renderAccountPageUI();
+        showAccountFeedback('✓ Your Account Profile has been saved to your account.', false);
+        if (window.streetCoShowToast) {
+          window.streetCoShowToast('Account profile saved!');
+        }
+      } catch (err) {
+        showAccountFeedback(err.message || 'Failed to save account profile.', true);
+      } finally {
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Save Account Profile';
+        }
+      }
+    });
+  }
+
+  // Open Account / Login flow if URL hash is #account
+  if (window.location.hash === '#account') {
+    window.openAccountPage();
+  }
+  window.addEventListener('hashchange', () => {
+    if (window.location.hash === '#account') {
+      window.openAccountPage();
+    }
+  });
+})();
+

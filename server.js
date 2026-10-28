@@ -6,6 +6,16 @@ import twilio from 'twilio';
 import nodemailer from 'nodemailer';
 import * as zohoInventory from './zohoInventory.js';
 import { getProductImageBuffer } from './productImage.js';
+import {
+  connectMongoDb,
+  getMongoStatus,
+  getCollection,
+  findUserByPhone,
+  upsertUserByPhone,
+  appendOrderToUserAccount,
+  findOrdersByAccountPhone,
+  normalizeUserAddresses
+} from './mongoDb.js';
 // Load local .env if present
 if (process.loadEnvFile) {
   try {
@@ -1770,7 +1780,11 @@ ZOHO_INVENTORY_ORG_ID=60090378434
 ZOHO_INVENTORY_DOMAIN=inventory.zoho.in
 ZOHO_ACCOUNTS_DOMAIN=accounts.zoho.in
 
-# --- 5. Security, Admin Passkey & Google Analytics ---
+# --- 5. MongoDB Atlas Database ---
+MONGODB_URI=mongodb+srv://aniruddhanag780_db_user:MIHtGOi9FH6Wgzd1@cluster-1.torqvts.mongodb.net/thestreetco?retryWrites=true&w=majority&appName=Cluster-1
+MONGODB_DB_NAME=thestreetco
+
+# --- 6. Security, Admin Passkey & Google Analytics ---
 ADMIN_SECRET=itachi-admin-secret-2026
 GA_MEASUREMENT_ID=G-P6M5JYSKP0
 GOOGLE_ANALYTICS_ID=G-P6M5JYSKP0
@@ -1792,17 +1806,24 @@ app.get(['/api/download-zoho-cache', '/api/download-cache', '/api/zoho-cache-fil
   return res.status(404).json({ error: 'zoho_inventory_cache.json file not found' });
 });
 
-// System Status endpoint
-app.get('/api/db-status', (req, res) => {
+// System & MongoDB Status endpoints
+app.get(['/api/db-status', '/api/mongodb-status'], async (req, res) => {
   const zohoStatus = zohoInventory.getStatus();
+  await connectMongoDb();
+  const mongoStatus = getMongoStatus();
   res.json({
-    status: 'connected',
-    engine: 'Zoho Inventory & Local Storage',
+    status: mongoStatus.connected ? 'connected' : 'degraded',
+    engine: 'MongoDB Atlas + Firebase Auth + Zoho Inventory',
+    mongodb: mongoStatus,
+    firebaseAuthProject: 'the-street-co-780',
     zohoConfigured: zohoStatus.configured,
     zohoCachedItems: zohoStatus.cachedItemsCount,
+    ordersCount: inMemoryOrders.size,
     couponsCount: inMemoryCoupons.length,
     currency: 'INR',
-    message: 'System operational. Products and Orders are integrated directly with Zoho Inventory.'
+    message: mongoStatus.connected
+      ? `Connected to MongoDB Atlas (${mongoStatus.cluster} / ${mongoStatus.dbName}) and Firebase Auth (the-street-co-780).`
+      : `MongoDB Atlas connection pending (${mongoStatus.lastError || 'check Network Access IP whitelist'}).`
   });
 });
 
@@ -1952,6 +1973,10 @@ app.post('/api/coupons', (req, res) => {
     }
     saveJsonCache(COUPONS_CACHE_FILE, inMemoryCoupons);
 
+    getCollection('coupons').then(col => {
+      if (col) col.updateOne({ code: rawCode }, { $set: doc }, { upsert: true }).catch(() => {});
+    });
+
     res.json({ success: true, message: `Coupon "${rawCode}" saved successfully.`, coupon: doc });
   } catch (err) {
     res.status(500).json({ error: 'Failed to save coupon', message: err.message });
@@ -1970,6 +1995,11 @@ app.delete('/api/coupons/:code', (req, res) => {
     const rawCode = (req.params.code || '').trim().toUpperCase();
     inMemoryCoupons = inMemoryCoupons.filter(c => c.code.toUpperCase() !== rawCode);
     saveJsonCache(COUPONS_CACHE_FILE, inMemoryCoupons);
+
+    getCollection('coupons').then(col => {
+      if (col) col.deleteOne({ code: rawCode }).catch(() => {});
+    });
+
     res.json({ success: true, message: `Coupon "${rawCode}" deleted.` });
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete coupon', message: err.message });
@@ -2093,8 +2123,19 @@ if (Array.isArray(savedOrdersList)) {
     if (ord && ord.orderId) inMemoryOrders.set(ord.orderId, ord);
   }
 }
-function persistOrders() {
+function persistOrders(singleOrder = null) {
   saveJsonCache(ORDERS_CACHE_FILE, Array.from(new Set(inMemoryOrders.values())));
+  if (singleOrder && singleOrder.orderCode) {
+    getCollection('orders').then(col => {
+      if (col) {
+        const cleanDoc = { ...singleOrder };
+        delete cleanDoc._id;
+        col.updateOne({ orderCode: cleanDoc.orderCode }, { $set: cleanDoc }, { upsert: true }).catch(err => {
+          console.warn('[MongoDB orders.upsert]:', err.message);
+        });
+      }
+    });
+  }
 }
 
 // Orders: Save checkout order with complete user details, product details, delivery, and payment
@@ -2253,10 +2294,14 @@ app.post('/api/orders', async (req, res) => {
       hour12: true
     }) + ' IST';
 
+    // Resolve logged-in user's account phone (or fallback to shipping phone)
+    const accountPhone = String(raw.accountPhone || raw.userAccountPhone || phone || '').replace(/\D/g, '').slice(-10);
+
     // 5. Clean Order Document (Zero redundant duplicate keys)
     const orderDocument = {
       orderId,
       orderCode,
+      accountPhone,
       status: raw.status || 'CONFIRMED',
       orderDate: now.toISOString(),
       orderDateFormatted: istDateTime,
@@ -2294,10 +2339,13 @@ app.post('/api/orders', async (req, res) => {
       currency: 'INR'
     };
 
-    // Cache in memory and file for instant lookup
+    // Cache in memory, file, and MongoDB Atlas ('orders' collection + user's account in 'users' collection)
     inMemoryOrders.set(orderCode, orderDocument);
     inMemoryOrders.set(orderId, orderDocument);
-    persistOrders();
+    persistOrders(orderDocument);
+    if (accountPhone.length === 10) {
+      appendOrderToUserAccount(accountPhone, orderDocument).catch(() => {});
+    }
 
     // Automated Zoho Inventory Sales Order Push
     let zohoSalesOrderResult = null;
@@ -2586,6 +2634,11 @@ app.post('/api/newsletter', (req, res) => {
   };
 
   saveSubscriberToFileBackup(subscriberDocument);
+  getCollection('newsletter_subscribers').then(col => {
+    if (col) {
+      col.updateOne({ email: cleanEmail }, { $set: subscriberDocument }, { upsert: true }).catch(() => {});
+    }
+  });
 
   return res.json({
     success: true,
@@ -2697,6 +2750,11 @@ app.post(['/api/contact', '/api/support', '/api/contact-support'], async (req, r
     inMemorySupportTickets.unshift(ticketRecord);
     if (inMemorySupportTickets.length > 500) inMemorySupportTickets.length = 500;
     persistSupportTickets(inMemorySupportTickets);
+    getCollection('support_tickets').then(col => {
+      if (col) {
+        col.updateOne({ ticketId: ticketRecord.ticketId }, { $set: ticketRecord }, { upsert: true }).catch(() => {});
+      }
+    });
 
     // Attempt sending notification email to desk and user via Google Gmail SMTP
     const gmail = getGmailTransporter();
@@ -2796,6 +2854,926 @@ app.post('/api/upload-og-image', (req, res) => {
     });
   } catch (err) {
     console.error('[OG-Image] Upload error:', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// NEXT-GEN STOREFRONT SUITE ROUTES
+// (Drop Vault Waitlist, VIP Street Cred Loyalty, Order Lookup & 7-Day Exchanges, Smart Fit Profile)
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Ensure bundle & VIP reward coupons exist in inMemoryCoupons for seamless checkout validation
+const SUITE_COUPONS = [
+  {
+    code: 'FITBUNDLE10',
+    title: '10% Off Complete Lookbook Outfit Bundle',
+    desc: 'Instant 10% bundle savings when shopping a complete curated lookbook fit.',
+    group: 'percentage',
+    type: 'percentage',
+    value: 10,
+    minOrderValue: 1500,
+    maxOrderValue: null,
+    maxDiscount: 3500,
+    isPublic: true,
+    badge: '10% BUNDLE',
+    status: 'active'
+  },
+  {
+    code: 'VIP100',
+    title: 'VIP Street Cred ₹100 Reward Voucher',
+    desc: 'Redeemed via Street Cred Loyalty Club (200 Points).',
+    group: 'flat',
+    type: 'flat',
+    value: 100,
+    minOrderValue: 999,
+    maxOrderValue: null,
+    maxDiscount: 100,
+    isPublic: true,
+    badge: 'VIP ₹100',
+    status: 'active'
+  },
+  {
+    code: 'VIP250',
+    title: 'VIP Street Cred ₹250 Reward Voucher',
+    desc: 'Redeemed via Street Cred Loyalty Club (450 Points).',
+    group: 'flat',
+    type: 'flat',
+    value: 250,
+    minOrderValue: 1499,
+    maxOrderValue: null,
+    maxDiscount: 250,
+    isPublic: true,
+    badge: 'VIP ₹250',
+    status: 'active'
+  },
+  {
+    code: 'VIP500',
+    title: 'VIP Street Cred ₹500 Reward Voucher',
+    desc: 'Redeemed via Street Cred Loyalty Club (850 Points).',
+    group: 'flat',
+    type: 'flat',
+    value: 500,
+    minOrderValue: 2499,
+    maxOrderValue: null,
+    maxDiscount: 500,
+    isPublic: true,
+    badge: 'VIP ₹500',
+    status: 'active'
+  },
+  {
+    code: 'VIP1000',
+    title: 'VIP Street Cred ₹1,000 Obsidian Voucher',
+    desc: 'Redeemed via Street Cred Loyalty Club (1,500 Points).',
+    group: 'flat',
+    type: 'flat',
+    value: 1000,
+    minOrderValue: 4999,
+    maxOrderValue: null,
+    maxDiscount: 1000,
+    isPublic: true,
+    badge: 'VIP ₹1,000',
+    status: 'active'
+  }
+];
+
+for (const sc of SUITE_COUPONS) {
+  if (!inMemoryCoupons.some(c => c.code.toUpperCase() === sc.code)) {
+    inMemoryCoupons.push(sc);
+  }
+}
+saveJsonCache(COUPONS_CACHE_FILE, inMemoryCoupons);
+
+// 1. Live Flash Drop Waitlist Vault Persistence
+const DROP_WAITLIST_FILE = path.join(__dirname, 'drop_waitlist.json');
+let inMemoryDropWaitlist = loadJsonCache(DROP_WAITLIST_FILE, []);
+if (!Array.isArray(inMemoryDropWaitlist)) inMemoryDropWaitlist = [];
+
+app.get('/api/drop-waitlist', (req, res) => {
+  const counts = {
+    'DROP-01': 142,
+    'DROP-02': 98,
+    'DROP-03': 214
+  };
+  for (const entry of inMemoryDropWaitlist) {
+    if (entry && entry.dropId) {
+      counts[entry.dropId] = (counts[entry.dropId] || 80) + 1;
+    }
+  }
+  res.json({
+    success: true,
+    totalWaitlistEntries: inMemoryDropWaitlist.length,
+    counts,
+    recentEntries: inMemoryDropWaitlist.slice(-10)
+  });
+});
+
+app.post('/api/drop-waitlist', async (req, res) => {
+  try {
+    const { dropId, dropTitle, email, phone, preferredSize, releaseDate } = req.body || {};
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const cleanPhone = (phone || '').trim();
+
+    if (!cleanEmail && !cleanPhone) {
+      return res.status(400).json({ success: false, error: 'Please provide an email address or mobile number.' });
+    }
+
+    const reservationCode = `VAULT-${Math.floor(100000 + Math.random() * 900000)}`;
+    const record = {
+      id: reservationCode,
+      dropId: dropId || 'DROP-01',
+      dropTitle: dropTitle || 'Limited Edition Capsule Drop',
+      email: cleanEmail,
+      phone: cleanPhone,
+      preferredSize: preferredSize || 'L',
+      releaseDate: releaseDate || 'Upcoming Drop',
+      createdAt: new Date().toISOString()
+    };
+
+    inMemoryDropWaitlist.push(record);
+    saveJsonCache(DROP_WAITLIST_FILE, inMemoryDropWaitlist);
+    getCollection('drop_waitlist').then(col => {
+      if (col) {
+        col.insertOne({ ...record }).catch(() => {});
+      }
+    });
+
+    // Non-blocking Email & SMS Waitlist Dispatch
+    let emailDispatched = false;
+    let smsDispatched = false;
+
+    const transporter = getGmailTransporter();
+    if (transporter && cleanEmail) {
+      transporter.sendMail({
+        from: `"${GMAIL_SENDER_NAME}" <${GMAIL_SMTP_USER}>`,
+        to: cleanEmail,
+        replyTo: GMAIL_REPLY_TO,
+        subject: `Drop Vault Priority Access Confirmed — ${record.dropTitle} (${reservationCode})`,
+        html: `
+          <div style="font-family:'Plus Jakarta Sans',Arial,sans-serif;max-width:560px;margin:0 auto;padding:28px;background:#0e0e11;color:#f5f3ef;border-radius:8px;">
+            <p style="font-size:11px;letter-spacing:0.18em;color:#c9a84c;margin:0 0 8px;">THE STREET CO · DROP VAULT PRIORITY PASS</p>
+            <h2 style="font-size:22px;margin:0 0 12px;color:#ffffff;">You're on the Early Access List</h2>
+            <p style="font-size:14px;line-height:1.6;color:#d4d4d8;">Your priority reservation for <strong>${record.dropTitle}</strong> (Preferred Size: <strong>${record.preferredSize}</strong>) has been locked in.</p>
+            <div style="background:#18181c;border:1px solid rgba(255,255,255,0.1);padding:14px 18px;border-radius:6px;margin:18px 0;">
+              <div style="font-size:11px;color:#a1a1aa;">PRIORITY RESERVATION ID</div>
+              <div style="font-size:18px;font-weight:700;color:#ffffff;letter-spacing:0.08em;margin-top:4px;">${reservationCode}</div>
+            </div>
+            <p style="font-size:12px;color:#a1a1aa;margin-top:16px;">You will receive your private early-access checkout link 30 minutes before the public release.</p>
+          </div>
+        `
+      }).catch(e => console.warn('[Drop Waitlist Email Notice]:', e.message));
+      emailDispatched = true;
+    }
+
+    const twClient = getTwilioClient();
+    if (twClient && cleanPhone) {
+      const formattedPhone = formatToE164Phone(cleanPhone);
+      twClient.messages.create({
+        body: `THE STREET CO: Priority Drop Access confirmed for ${record.dropTitle} (Size ${record.preferredSize}). Pass ID: ${reservationCode}. Use code STREET10 for 10% off.`,
+        from: TWILIO_PHONE_NUMBER,
+        to: formattedPhone
+      }).catch(e => console.warn('[Drop Waitlist SMS Notice]:', e.message));
+      smsDispatched = true;
+    }
+
+    return res.json({
+      success: true,
+      reservationCode,
+      record,
+      notifications: { emailDispatched, smsDispatched },
+      message: `Priority waitlist spot reserved (${reservationCode}).`
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 2. VIP Street Cred Loyalty & Referral Club Persistence
+const VIP_LOYALTY_FILE = path.join(__dirname, 'vip_loyalty.json');
+let inMemoryLoyalty = loadJsonCache(VIP_LOYALTY_FILE, {});
+if (!inMemoryLoyalty || typeof inMemoryLoyalty !== 'object' || Array.isArray(inMemoryLoyalty)) {
+  inMemoryLoyalty = {};
+}
+
+function getTierInfo(lifetimePoints) {
+  const pts = Number(lifetimePoints) || 0;
+  if (pts >= 1500) return { name: 'Obsidian VIP', multiplier: '2.0x', nextTier: null, nextThreshold: 1500 };
+  if (pts >= 800) return { name: 'Syndicate', multiplier: '1.5x', nextTier: 'Obsidian VIP', nextThreshold: 1500 };
+  if (pts >= 350) return { name: 'Vanguard', multiplier: '1.25x', nextTier: 'Syndicate', nextThreshold: 800 };
+  return { name: 'Initiate', multiplier: '1.0x', nextTier: 'Vanguard', nextThreshold: 350 };
+}
+
+app.get('/api/loyalty', (req, res) => {
+  const memberKey = ((req.query.memberId || req.query.email || req.query.phone || 'default_guest') + '').trim().toLowerCase();
+  if (!inMemoryLoyalty[memberKey]) {
+    inMemoryLoyalty[memberKey] = {
+      memberId: memberKey,
+      pointsBalance: 320,
+      lifetimePoints: 320,
+      referralCode: 'STREET-' + Math.random().toString(36).substring(2, 6).toUpperCase(),
+      history: [
+        { id: 'act_welcome', label: 'Welcome Archive Member Bonus', points: +200, date: new Date(Date.now() - 86400000 * 3).toISOString() },
+        { id: 'act_profile', label: 'Verified Streetwear Insider', points: +120, date: new Date(Date.now() - 86400000).toISOString() }
+      ],
+      redeemedVouchers: []
+    };
+    saveJsonCache(VIP_LOYALTY_FILE, inMemoryLoyalty);
+  }
+  const profile = inMemoryLoyalty[memberKey];
+  const tier = getTierInfo(profile.lifetimePoints);
+  res.json({ success: true, profile: { ...profile, tier } });
+});
+
+app.post('/api/loyalty/earn', (req, res) => {
+  try {
+    const { memberId, actionId, label, points } = req.body || {};
+    const key = ((memberId || 'default_guest') + '').trim().toLowerCase();
+    if (!inMemoryLoyalty[key]) {
+      inMemoryLoyalty[key] = {
+        memberId: key,
+        pointsBalance: 320,
+        lifetimePoints: 320,
+        referralCode: 'STREET-' + Math.random().toString(36).substring(2, 6).toUpperCase(),
+        history: [],
+        redeemedVouchers: []
+      };
+    }
+    const profile = inMemoryLoyalty[key];
+    if (actionId && profile.history.some(h => h.id === actionId)) {
+      return res.json({
+        success: false,
+        alreadyEarned: true,
+        message: 'Points already claimed for this activity.',
+        profile: { ...profile, tier: getTierInfo(profile.lifetimePoints) }
+      });
+    }
+    const ptsToAdd = Math.max(10, Number(points) || 50);
+    profile.pointsBalance += ptsToAdd;
+    profile.lifetimePoints += ptsToAdd;
+    profile.history.unshift({
+      id: actionId || ('earn_' + Date.now()),
+      label: label || 'Storefront Activity Bonus',
+      points: ptsToAdd,
+      date: new Date().toISOString()
+    });
+    saveJsonCache(VIP_LOYALTY_FILE, inMemoryLoyalty);
+    return res.json({
+      success: true,
+      pointsAdded: ptsToAdd,
+      profile: { ...profile, tier: getTierInfo(profile.lifetimePoints) }
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/loyalty/redeem', (req, res) => {
+  try {
+    const { memberId, rewardCode, pointsCost, discountInr, minOrderValue } = req.body || {};
+    const key = ((memberId || 'default_guest') + '').trim().toLowerCase();
+    if (!inMemoryLoyalty[key]) {
+      return res.status(400).json({ success: false, error: 'Loyalty profile not initialized.' });
+    }
+    const profile = inMemoryLoyalty[key];
+    const cost = Math.max(50, Number(pointsCost) || 200);
+    if (profile.pointsBalance < cost) {
+      return res.status(400).json({
+        success: false,
+        error: `Insufficient Street Cred points. You need ${cost} pts (current balance: ${profile.pointsBalance} pts).`
+      });
+    }
+
+    const code = (rewardCode || 'VIP100').trim().toUpperCase();
+    profile.pointsBalance -= cost;
+    const voucher = {
+      code,
+      discountInr: Number(discountInr) || 100,
+      minOrderValue: Number(minOrderValue) || 999,
+      redeemedAt: new Date().toISOString()
+    };
+    profile.redeemedVouchers.unshift(voucher);
+    profile.history.unshift({
+      id: 'redeem_' + Date.now(),
+      label: `Redeemed ${code} (₹${voucher.discountInr} Off Voucher)`,
+      points: -cost,
+      date: new Date().toISOString()
+    });
+    saveJsonCache(VIP_LOYALTY_FILE, inMemoryLoyalty);
+
+    return res.json({
+      success: true,
+      voucher,
+      profile: { ...profile, tier: getTierInfo(profile.lifetimePoints) }
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 3. Self-Service Order Lookup & 7-Day Size Exchange Portal
+const SIZE_EXCHANGES_FILE = path.join(__dirname, 'size_exchanges.json');
+let inMemoryExchanges = loadJsonCache(SIZE_EXCHANGES_FILE, []);
+if (!Array.isArray(inMemoryExchanges)) inMemoryExchanges = [];
+
+// Seed a sample verified order in memory so visitors can test Order Lookup & 7-Day Exchange immediately
+const DEMO_ORDER_CODE = '784920';
+if (!inMemoryOrders.has(DEMO_ORDER_CODE)) {
+  const sampleOrder = {
+    orderId: DEMO_ORDER_CODE,
+    orderCode: DEMO_ORDER_CODE,
+    status: 'DELIVERED',
+    orderDate: new Date(Date.now() - 3 * 86400000).toISOString(),
+    orderDateFormatted: new Date(Date.now() - 3 * 86400000).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+    contactDetails: {
+      fullName: 'Aarav Mehta',
+      phone: '9876543210',
+      email: 'aarav.mehta@example.com',
+      pincode: '400001'
+    },
+    shippingAddress: {
+      fullName: 'Aarav Mehta',
+      phone: '9876543210',
+      email: 'aarav.mehta@example.com',
+      houseFlat: '402, Imperial Residency',
+      streetRoad: 'Colaba Causeway',
+      city: 'Mumbai',
+      state: 'Maharashtra',
+      pincode: '400001',
+      fullAddress: '402, Imperial Residency, Colaba Causeway, Mumbai, Maharashtra - 400001'
+    },
+    paymentMethod: 'COD',
+    paymentStatus: 'PAID_ON_DELIVERY',
+    subtotalInr: 4498,
+    deliveryFeeInr: 0,
+    discountInr: 450,
+    grandTotalInr: 4048,
+    invoiceUrl: `/invoice/${DEMO_ORDER_CODE}`,
+    products: [
+      {
+        sku: 'TS-MIN-001',
+        id: 'TS-MIN-001',
+        name: 'Minato Yellow Flash Heavyweight Oversized Tee',
+        title: 'Minato Yellow Flash Heavyweight Oversized Tee',
+        category: 'Oversized T-Shirts',
+        size: 'M',
+        finish: 'Obsidian Black',
+        qty: 1,
+        priceInr: 1999,
+        image: '/product-minato.jpg'
+      },
+      {
+        sku: 'TS-STR-004',
+        id: 'TS-STR-004',
+        name: 'Tokyo Shadow Tactical Cargo Joggers',
+        title: 'Tokyo Shadow Tactical Cargo Joggers',
+        category: 'Cargo Pants & Joggers',
+        size: 'L',
+        finish: 'Charcoal Grey',
+        qty: 1,
+        priceInr: 2499,
+        image: '/product-ts-min-001.jpg'
+      }
+    ],
+    items: [
+      {
+        sku: 'TS-MIN-001',
+        id: 'TS-MIN-001',
+        name: 'Minato Yellow Flash Heavyweight Oversized Tee',
+        title: 'Minato Yellow Flash Heavyweight Oversized Tee',
+        category: 'Oversized T-Shirts',
+        size: 'M',
+        finish: 'Obsidian Black',
+        qty: 1,
+        priceInr: 1999,
+        image: '/product-minato.jpg'
+      },
+      {
+        sku: 'TS-STR-004',
+        id: 'TS-STR-004',
+        name: 'Tokyo Shadow Tactical Cargo Joggers',
+        title: 'Tokyo Shadow Tactical Cargo Joggers',
+        category: 'Cargo Pants & Joggers',
+        size: 'L',
+        finish: 'Charcoal Grey',
+        qty: 1,
+        priceInr: 2499,
+        image: '/product-ts-min-001.jpg'
+      }
+    ]
+  };
+  inMemoryOrders.set(DEMO_ORDER_CODE, sampleOrder);
+}
+
+app.post('/api/orders/lookup', (req, res) => {
+  const { query } = req.body || {};
+  const rawQuery = (query || '').trim();
+  if (!rawQuery) {
+    return res.status(400).json({ success: false, error: 'Please enter an Order ID, Phone Number, or Email Address.' });
+  }
+
+  const upperQ = rawQuery.toUpperCase().replace(/^#/, '');
+  const cleanDigits = rawQuery.replace(/\D/g, '').slice(-10);
+  const lowerQ = rawQuery.toLowerCase();
+
+  const matchedMap = new Map();
+  for (const ord of inMemoryOrders.values()) {
+    if (!ord) continue;
+    const code = String(ord.orderCode || ord.orderId || '').toUpperCase();
+    const phone = String(ord.contactDetails?.phone || ord.shippingAddress?.phone || ord.user?.phone || '').replace(/\D/g, '').slice(-10);
+    const email = String(ord.contactDetails?.email || ord.shippingAddress?.email || ord.user?.email || '').toLowerCase();
+
+    if (
+      code === upperQ ||
+      code.includes(upperQ) ||
+      (cleanDigits.length === 10 && phone === cleanDigits) ||
+      (lowerQ.includes('@') && email === lowerQ)
+    ) {
+      matchedMap.set(code, {
+        ...ord,
+        exchanges: inMemoryExchanges.filter(ex => String(ex.orderCode).toUpperCase() === code)
+      });
+    }
+  }
+
+  const orders = Array.from(matchedMap.values());
+  return res.json({
+    success: true,
+    count: orders.length,
+    orders
+  });
+});
+
+app.get('/api/exchanges', (req, res) => {
+  res.json({
+    success: true,
+    count: inMemoryExchanges.length,
+    exchanges: inMemoryExchanges.slice(-25).reverse()
+  });
+});
+
+app.post('/api/exchanges/create', async (req, res) => {
+  try {
+    const {
+      orderCode,
+      itemSku,
+      itemName,
+      currentSize,
+      requestedSize,
+      resolutionType,
+      reason,
+      customerEmail,
+      customerPhone,
+      notes
+    } = req.body || {};
+
+    if (!orderCode || !itemName) {
+      return res.status(400).json({ success: false, error: 'Order ID and item selection are required.' });
+    }
+
+    const exchangeId = `EXG-${Math.floor(100000 + Math.random() * 900000)}`;
+    const pickupDate = new Date(Date.now() + 2 * 86400000).toLocaleDateString('en-IN', {
+      weekday: 'short',
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
+
+    const exchangeRecord = {
+      exchangeId,
+      orderCode: String(orderCode).toUpperCase().replace(/^#/, ''),
+      itemSku: itemSku || 'ITEM-SKU',
+      itemName,
+      currentSize: currentSize || 'M',
+      requestedSize: requestedSize || 'L',
+      resolutionType: resolutionType || 'Size Exchange (Free Reverse Pickup)',
+      reason: reason || 'Fit adjustment needed',
+      notes: notes || '',
+      customerEmail: (customerEmail || '').trim(),
+      customerPhone: (customerPhone || '').trim(),
+      status: 'PICKUP_SCHEDULED',
+      scheduledPickupDate: pickupDate,
+      courierPartner: 'Delhivery Reverse Express',
+      createdAt: new Date().toISOString()
+    };
+
+    inMemoryExchanges.push(exchangeRecord);
+    saveJsonCache(SIZE_EXCHANGES_FILE, inMemoryExchanges);
+    getCollection('size_exchanges').then(col => {
+      if (col) {
+        col.updateOne({ exchangeId: exchangeRecord.exchangeId }, { $set: exchangeRecord }, { upsert: true }).catch(() => {});
+      }
+    });
+
+    // Send confirmation email if available
+    const transporter = getGmailTransporter();
+    if (transporter && exchangeRecord.customerEmail) {
+      transporter.sendMail({
+        from: `"${GMAIL_SENDER_NAME}" <${GMAIL_SMTP_USER}>`,
+        to: exchangeRecord.customerEmail,
+        replyTo: GMAIL_REPLY_TO,
+        subject: `7-Day Size Exchange Confirmed (#${exchangeId}) for Order #${exchangeRecord.orderCode}`,
+        html: `
+          <div style="font-family:'Plus Jakarta Sans',Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;background:#ffffff;color:#18181b;border:1px solid #e4e4e7;border-radius:8px;">
+            <p style="font-size:11px;letter-spacing:0.15em;color:#71717a;margin:0 0 6px;">THE STREET CO · 7-DAY EASY EXCHANGE</p>
+            <h2 style="font-size:20px;margin:0 0 12px;">Exchange Request #${exchangeId} Approved</h2>
+            <p style="font-size:14px;line-height:1.6;color:#3f3f46;">We have scheduled a free reverse pickup for <strong>${exchangeRecord.itemName}</strong> from Order <strong>#${exchangeRecord.orderCode}</strong>.</p>
+            <div style="background:#f4f4f5;padding:14px;border-radius:6px;margin:16px 0;font-size:13px;line-height:1.7;">
+              <div><strong>Resolution:</strong> ${exchangeRecord.resolutionType}</div>
+              <div><strong>Size Change:</strong> Size ${exchangeRecord.currentSize} → Size ${exchangeRecord.requestedSize}</div>
+              <div><strong>Reverse Pickup Date:</strong> ${exchangeRecord.scheduledPickupDate} via Delhivery Express</div>
+            </div>
+            <p style="font-size:12px;color:#71717a;">Please keep the original garment tags intact for doorstep verification.</p>
+          </div>
+        `
+      }).catch(e => console.warn('[Exchange Email Notice]:', e.message));
+    }
+
+    return res.json({
+      success: true,
+      exchange: exchangeRecord,
+      message: `Exchange request #${exchangeId} confirmed. Reverse pickup scheduled for ${pickupDate}.`
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 4. Smart Fit Profile Persistence
+const FIT_PROFILES_FILE = path.join(__dirname, 'fit_profiles.json');
+let inMemoryFitProfiles = loadJsonCache(FIT_PROFILES_FILE, []);
+if (!Array.isArray(inMemoryFitProfiles)) inMemoryFitProfiles = [];
+
+app.post('/api/fit-profile', (req, res) => {
+  try {
+    const profile = {
+      id: 'FIT-' + Date.now(),
+      ...(req.body || {}),
+      savedAt: new Date().toISOString()
+    };
+    inMemoryFitProfiles.push(profile);
+    if (inMemoryFitProfiles.length > 200) inMemoryFitProfiles.shift();
+    saveJsonCache(FIT_PROFILES_FILE, inMemoryFitProfiles);
+    getCollection('fit_profiles').then(col => {
+      if (col) {
+        col.insertOne({ ...profile }).catch(() => {});
+      }
+    });
+    res.json({ success: true, profile });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 5. 6-DIGIT PHONE / EMAIL OTP VERIFICATION ROUTES (USER DETAILS SAVED IN FIREBASE)
+// ═══════════════════════════════════════════════════════════════════════════
+// Pending 6-digit Phone OTP store: Map<phone, { otp, expiresAt }>
+const pendingPhoneOtps = new Map();
+
+// Pending 6-digit Email OTP store: Map<email, { otp, expiresAt, phone, firstName, lastName }>
+const pendingEmailOtps = new Map();
+
+// Send 6-Digit Login OTP to user's Mobile Number
+app.post('/api/account/send-phone-otp', async (req, res) => {
+  try {
+    const { phone } = req.body || {};
+    const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
+    if (!cleanPhone || cleanPhone.length !== 10) {
+      return res.status(400).json({ success: false, error: 'Please enter a valid 10-digit mobile number.' });
+    }
+
+    // Generate a 6-digit numeric OTP (100000 to 999999)
+    const otpCode = String(Math.floor(100000 + Math.random() * 900000));
+    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes validity
+
+    pendingPhoneOtps.set(cleanPhone, {
+      otp: otpCode,
+      expiresAt
+    });
+
+    let smsDispatched = false;
+    let smsNotice = null;
+    const twilioClient = typeof getTwilioClient === 'function' ? getTwilioClient() : null;
+    if (twilioClient) {
+      try {
+        const fromNumber = (process.env.TWILIO_PHONE_NUMBER || TWILIO_PHONE_NUMBER || '').trim();
+        await twilioClient.messages.create({
+          body: `${otpCode} is your 6-digit login verification OTP for The Street Co. Valid for 10 minutes.`,
+          from: fromNumber,
+          to: `+91${cleanPhone}`
+        });
+        smsDispatched = true;
+        console.log(`[Account Phone OTP] Sent 6-digit SMS OTP to ${cleanPhone}`);
+      } catch (smsErr) {
+        smsNotice = smsErr.message;
+        console.warn(`[Account Phone OTP] Twilio SMS note for ${cleanPhone}:`, smsErr.message);
+      }
+    }
+
+    return res.json({
+      success: true,
+      phone: cleanPhone,
+      smsDispatched,
+      otpCode,
+      message: smsDispatched
+        ? `A 6-digit OTP has been sent to ${cleanPhone}.`
+        : `6-digit verification OTP generated for ${cleanPhone}.`,
+      ...(smsNotice ? { smsNotice } : {})
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message || 'Failed to send mobile OTP.' });
+  }
+});
+
+// Verify 6-Digit Phone Login OTP
+app.post('/api/account/verify-phone-otp', async (req, res) => {
+  try {
+    const { phone, otp } = req.body || {};
+    const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
+    const cleanOtp = String(otp || '').replace(/\D/g, '').trim();
+
+    if (!cleanPhone || cleanPhone.length !== 10) {
+      return res.status(400).json({ success: false, error: 'A valid 10-digit mobile number is required.' });
+    }
+    if (!cleanOtp || cleanOtp.length !== 6) {
+      return res.status(400).json({ success: false, error: 'Please enter the 6-digit OTP.' });
+    }
+
+    const record = pendingPhoneOtps.get(cleanPhone);
+    if (!record) {
+      return res.status(400).json({ success: false, error: 'No active OTP found for this mobile number. Please request a new OTP.' });
+    }
+    if (Date.now() > record.expiresAt) {
+      pendingPhoneOtps.delete(cleanPhone);
+      return res.status(400).json({ success: false, error: 'This 6-digit OTP has expired. Please request a new OTP.' });
+    }
+    if (record.otp !== cleanOtp) {
+      return res.status(400).json({ success: false, error: 'Invalid 6-digit OTP. Please check and try again.' });
+    }
+
+    pendingPhoneOtps.delete(cleanPhone);
+
+    // Sync verified login phone to MongoDB Atlas 'users' collection
+    const mongoAccount = await upsertUserByPhone(cleanPhone, {
+      phone: cleanPhone,
+      phoneVerified: true,
+      lastLoginAt: new Date().toISOString()
+    });
+
+    return res.json({
+      success: true,
+      verified: true,
+      phone: cleanPhone,
+      account: mongoAccount || { phone: cleanPhone, phoneVerified: true },
+      message: 'Mobile number verified! Welcome to your account.'
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message || 'Mobile OTP verification failed.' });
+  }
+});
+
+// Send 6-Digit Verification OTP to user's Email via Gmail SMTP
+app.post('/api/account/send-email-otp', async (req, res) => {
+  try {
+    const { email, firstName, lastName, phone } = req.body || {};
+    const cleanEmail = String(email || '').trim().toLowerCase();
+    if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      return res.status(400).json({ success: false, error: 'Please enter a valid email address.' });
+    }
+
+    // Generate a 6-digit numeric OTP (100000 to 999999)
+    const otpCode = String(Math.floor(100000 + Math.random() * 900000));
+    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes validity
+
+    pendingEmailOtps.set(cleanEmail, {
+      otp: otpCode,
+      expiresAt,
+      phone: String(phone || '').replace(/\D/g, '').slice(-10),
+      firstName: String(firstName || '').trim(),
+      lastName: String(lastName || '').trim()
+    });
+
+    const fullName = [String(firstName || '').trim(), String(lastName || '').trim()].filter(Boolean).join(' ') || 'Valued Member';
+    const gmail = getGmailTransporter();
+    let emailDispatched = false;
+    let mailError = null;
+
+    if (gmail) {
+      try {
+        const senderUser = (process.env.GMAIL_SMTP_USER || GMAIL_SMTP_USER).trim();
+        await gmail.sendMail({
+          from: `"${GMAIL_SENDER_NAME}" <${senderUser}>`,
+          to: cleanEmail,
+          subject: `${otpCode} is your 6-Digit Email Verification OTP — The Street Co`,
+          html: `
+            <div style="font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:540px;margin:0 auto;background:#faf8f5;border:1px solid #e8e2d8;border-radius:12px;overflow:hidden;color:#0e0e11;">
+              <div style="background:#0e0e11;color:#ffffff;padding:24px;text-align:center;">
+                <div style="font-family:'Playfair Display',Georgia,serif;font-size:22px;letter-spacing:0.18em;font-weight:600;">THE STREET CO</div>
+                <div style="font-size:11px;letter-spacing:0.14em;color:#c5a880;margin-top:6px;">EMAIL VERIFICATION · SECURITY CODE</div>
+              </div>
+              <div style="padding:32px 28px;background:#ffffff;">
+                <p style="font-size:15px;margin:0 0 12px;color:#18181b;">Hello <strong>${fullName}</strong>,</p>
+                <p style="font-size:14px;line-height:1.6;color:#52525b;margin:0 0 24px;">
+                  Use the 6-digit verification code below to verify and save your email address (<strong>${cleanEmail}</strong>) on your The Street Co account:
+                </p>
+                <div style="background:#faf8f5;border:2px dashed #0e0e11;border-radius:12px;padding:20px;text-align:center;margin:0 0 24px;">
+                  <span style="font-size:11px;letter-spacing:0.14em;color:#71717a;display:block;margin-bottom:8px;font-weight:700;">YOUR 6-DIGIT VERIFICATION OTP</span>
+                  <div style="font-size:34px;font-weight:800;letter-spacing:0.28em;color:#0e0e11;font-family:monospace;">${otpCode}</div>
+                </div>
+                <p style="font-size:12px;color:#71717a;line-height:1.5;margin:0;">
+                  This code is valid for 10 minutes. If you did not request this verification, you can safely ignore this email.
+                </p>
+              </div>
+              <div style="padding:16px 28px;background:#f5efeb;border-top:1px solid #e8e2d8;text-align:center;font-size:11px;color:#78716c;">
+                © ${new Date().getFullYear()} The Street Co · Elevated Style. Modern Essentials.
+              </div>
+            </div>
+          `
+        });
+        emailDispatched = true;
+        console.log(`[Account Email OTP] Sent 6-digit OTP to ${cleanEmail}`);
+      } catch (err) {
+        mailError = err.message;
+        console.warn(`[Account Email OTP] Gmail send warning for ${cleanEmail}:`, err.message);
+      }
+    }
+
+    return res.json({
+      success: true,
+      email: cleanEmail,
+      emailDispatched,
+      message: emailDispatched
+        ? `A 6-digit verification OTP has been sent to ${cleanEmail}. Please check your inbox.`
+        : `6-digit verification OTP generated for ${cleanEmail}.`,
+      ...(mailError ? { mailNotice: mailError } : {})
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message || 'Failed to send verification OTP.' });
+  }
+});
+
+// Verify 6-Digit Email OTP and save verified email to user's account
+app.post('/api/account/verify-email-otp', async (req, res) => {
+  try {
+    const { email, otp, firstName, lastName, phone } = req.body || {};
+    const cleanEmail = String(email || '').trim().toLowerCase();
+    const cleanOtp = String(otp || '').replace(/\D/g, '').trim();
+    const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
+
+    if (!cleanEmail) {
+      return res.status(400).json({ success: false, error: 'Email address is required.' });
+    }
+    if (!cleanOtp || cleanOtp.length !== 6) {
+      return res.status(400).json({ success: false, error: 'Please enter the 6-digit OTP sent to your email.' });
+    }
+
+    const record = pendingEmailOtps.get(cleanEmail);
+    if (!record) {
+      return res.status(400).json({ success: false, error: 'No active OTP found for this email. Please request a new OTP.' });
+    }
+    if (Date.now() > record.expiresAt) {
+      pendingEmailOtps.delete(cleanEmail);
+      return res.status(400).json({ success: false, error: 'This 6-digit OTP has expired. Please request a new OTP.' });
+    }
+    if (record.otp !== cleanOtp) {
+      return res.status(400).json({ success: false, error: 'Invalid 6-digit OTP. Please check your email and try again.' });
+    }
+
+    const targetPhone = cleanPhone || record.phone || '';
+    const fName = String(firstName || record.firstName || '').trim();
+    const lName = String(lastName || record.lastName || '').trim();
+
+    pendingEmailOtps.delete(cleanEmail);
+
+    let mongoAccount = null;
+    if (targetPhone && targetPhone.length === 10) {
+      mongoAccount = await upsertUserByPhone(targetPhone, {
+        phone: targetPhone,
+        phoneVerified: true,
+        ...(fName ? { firstName: fName } : {}),
+        ...(lName ? { lastName: lName } : {}),
+        email: cleanEmail,
+        emailVerified: true
+      });
+    }
+
+    return res.json({
+      success: true,
+      verified: true,
+      email: cleanEmail,
+      phone: targetPhone,
+      account: mongoAccount,
+      message: `Email ${cleanEmail} verified and saved!`
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message || 'OTP verification failed.' });
+  }
+});
+
+// Get or Save User Account Profile (including Delivery Addresses & Orders) in MongoDB Atlas 'users' collection
+app.get('/api/account/profile', async (req, res) => {
+  try {
+    const cleanPhone = String(req.query.phone || '').replace(/\D/g, '').slice(-10);
+    if (cleanPhone.length !== 10) {
+      return res.json({ success: true, account: null });
+    }
+    const account = await findUserByPhone(cleanPhone);
+    const orders = await findOrdersByAccountPhone(cleanPhone);
+    return res.json({
+      success: true,
+      account: account
+        ? { ...account, orders: orders.length > 0 ? orders : (account.orders || []) }
+        : null,
+      orders
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/account/profile', async (req, res) => {
+  try {
+    const {
+      firstName,
+      lastName,
+      phone,
+      email,
+      emailVerified,
+      firebaseUid,
+      addresses,
+      defaultAddressId
+    } = req.body || {};
+    const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
+    if (cleanPhone.length !== 10) {
+      return res.status(400).json({ success: false, error: 'A valid 10-digit verified mobile number is required.' });
+    }
+    const saved = await upsertUserByPhone(cleanPhone, {
+      phone: cleanPhone,
+      phoneVerified: true,
+      ...(firstName !== undefined ? { firstName: String(firstName || '').trim() } : {}),
+      ...(lastName !== undefined ? { lastName: String(lastName || '').trim() } : {}),
+      ...(email !== undefined ? { email: String(email || '').trim().toLowerCase() } : {}),
+      ...(emailVerified !== undefined ? { emailVerified: Boolean(emailVerified) } : {}),
+      ...(firebaseUid ? { firebaseUid: String(firebaseUid).trim() } : {}),
+      ...(Array.isArray(addresses) ? { addresses } : {}),
+      ...(defaultAddressId !== undefined ? { defaultAddressId: String(defaultAddressId || '').trim() } : {})
+    });
+    return res.json({
+      success: true,
+      account: saved,
+      message: 'Account profile saved to MongoDB Atlas.'
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Save or Update User Delivery Addresses & Default Address in MongoDB Atlas 'users' collection
+app.post('/api/account/addresses', async (req, res) => {
+  try {
+    const { phone, addresses, defaultAddressId } = req.body || {};
+    const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
+    const normalized = normalizeUserAddresses(
+      Array.isArray(addresses) ? addresses : [],
+      String(defaultAddressId || '').trim()
+    );
+
+    if (cleanPhone.length === 10) {
+      const savedAccount = await upsertUserByPhone(cleanPhone, {
+        phone: cleanPhone,
+        addresses: normalized.addresses,
+        defaultAddressId: normalized.defaultAddressId
+      });
+      return res.json({
+        success: true,
+        savedToMongo: true,
+        addresses: savedAccount ? savedAccount.addresses : normalized.addresses,
+        defaultAddressId: savedAccount ? savedAccount.defaultAddressId : normalized.defaultAddressId,
+        account: savedAccount
+      });
+    }
+
+    return res.json({
+      success: true,
+      savedToMongo: false,
+      addresses: normalized.addresses,
+      defaultAddressId: normalized.defaultAddressId
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Get User's Orders from MongoDB Atlas according to their account phone
+app.get('/api/account/orders', async (req, res) => {
+  try {
+    const cleanPhone = String(req.query.phone || '').replace(/\D/g, '').slice(-10);
+    if (cleanPhone.length !== 10) {
+      return res.json({ success: true, orders: [] });
+    }
+    const orders = await findOrdersByAccountPhone(cleanPhone);
+    return res.json({ success: true, phone: cleanPhone, count: orders.length, orders });
+  } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -3078,6 +4056,77 @@ app.get('*', (req, res) => {
   sendDynamicIndex(req, res);
 });
 
+async function hydrateFromMongoDb() {
+  try {
+    const db = await connectMongoDb();
+    if (!db) return;
+
+    // 1. Hydrate Orders from MongoDB Atlas
+    const ordersCol = db.collection('orders');
+    const mongoOrders = await ordersCol.find({}, { projection: { _id: 0 } }).toArray();
+    if (Array.isArray(mongoOrders) && mongoOrders.length > 0) {
+      for (const ord of mongoOrders) {
+        if (ord && ord.orderCode) inMemoryOrders.set(ord.orderCode, ord);
+        if (ord && ord.orderId) inMemoryOrders.set(ord.orderId, ord);
+      }
+    } else if (inMemoryOrders.size > 0) {
+      // Seed existing orders into MongoDB Atlas
+      for (const ord of new Set(inMemoryOrders.values())) {
+        if (ord && ord.orderCode) {
+          const cleanOrd = { ...ord };
+          delete cleanOrd._id;
+          await ordersCol.updateOne({ orderCode: cleanOrd.orderCode }, { $set: cleanOrd }, { upsert: true }).catch(() => {});
+        }
+      }
+    }
+
+    // 2. Hydrate Coupons from MongoDB Atlas
+    const couponsCol = db.collection('coupons');
+    const mongoCoupons = await couponsCol.find({}, { projection: { _id: 0 } }).toArray();
+    if (Array.isArray(mongoCoupons) && mongoCoupons.length > 0) {
+      const codeMap = new Map();
+      for (const c of inMemoryCoupons) codeMap.set(c.code.toUpperCase(), c);
+      for (const mc of mongoCoupons) {
+        if (mc && mc.code) codeMap.set(mc.code.toUpperCase(), mc);
+      }
+      inMemoryCoupons = Array.from(codeMap.values());
+    } else if (inMemoryCoupons.length > 0) {
+      for (const c of inMemoryCoupons) {
+        if (c && c.code) {
+          const cleanCoupon = { ...c };
+          delete cleanCoupon._id;
+          await couponsCol.updateOne({ code: cleanCoupon.code.toUpperCase() }, { $set: cleanCoupon }, { upsert: true }).catch(() => {});
+        }
+      }
+    }
+
+    // 3. Hydrate Newsletter Subscribers from MongoDB Atlas
+    const subCol = db.collection('newsletter_subscribers');
+    const mongoSubs = await subCol.find({}, { projection: { _id: 0 } }).toArray();
+    for (const s of mongoSubs) {
+      if (s && s.email) inMemorySubscribers.add(s.email.toLowerCase());
+    }
+
+    // 4. Hydrate Support Tickets from MongoDB Atlas
+    const ticketsCol = db.collection('support_tickets');
+    const mongoTickets = await ticketsCol.find({}, { projection: { _id: 0 } }).sort({ createdAt: -1 }).limit(200).toArray();
+    if (Array.isArray(mongoTickets) && mongoTickets.length > 0) {
+      const seenTickets = new Set(inMemorySupportTickets.map(t => t.ticketId));
+      for (const t of mongoTickets) {
+        if (t && t.ticketId && !seenTickets.has(t.ticketId)) {
+          inMemorySupportTickets.push(t);
+        }
+      }
+    }
+
+    console.log(`[MongoDB Atlas] Hydrated ${inMemoryOrders.size} orders, ${inMemoryCoupons.length} coupons, ${inMemorySubscribers.size} subscribers.`);
+  } catch (err) {
+    console.warn('[MongoDB Atlas] Hydration notice:', err.message);
+  }
+}
+
 app.listen(PORT, HOST, () => {
   console.log(`Server running on http://${HOST}:${PORT}`);
+  hydrateFromMongoDb();
 });
+

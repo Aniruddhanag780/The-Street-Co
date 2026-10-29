@@ -561,26 +561,29 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
   let currentDrawerTab = 'bag';
 
   let toastTimer = null;
-  function showToast(titleOrName, optionalDetail, type = 'cart') {
+  function showToast(titleOrName, optionalDetail, type = 'general') {
     if (!shopToast) return;
-
-    const isCartToast = type === 'cart' || type === 'bag';
-    const isWishlistToast = type === 'wishlist';
-    const isPriceDropToast = type === 'price-drop';
 
     let title = '';
     let itemText = '';
 
     if (optionalDetail) {
-      title = titleOrName;
-      itemText = optionalDetail;
+      title = String(titleOrName || '').trim();
+      itemText = String(optionalDetail || '').trim();
     } else {
-      if (isWishlistToast) title = 'Saved to Wishlist';
-      else if (isPriceDropToast) title = 'Price Drop Alert';
-      else if (isCartToast) title = 'Added to Bag';
+      const isWishlist = type === 'wishlist';
+      const isPriceDrop = type === 'price-drop';
+      if (isWishlist) title = 'Saved to Wishlist';
+      else if (isPriceDrop) title = 'Price Drop Alert';
+      else if (type === 'cart' || type === 'bag') title = 'Added to Bag';
       else title = 'Notice';
-      itemText = titleOrName;
+      itemText = String(titleOrName || '').trim();
     }
+
+    const titleLower = title.toLowerCase();
+    const isCartToast = (type === 'cart' || type === 'bag') || (titleLower.includes('bag') || titleLower.includes('cart') || (titleLower.includes('added') && !titleLower.includes('address')));
+    const isWishlistToast = type === 'wishlist' || titleLower.includes('wishlist');
+    const isPriceDropToast = type === 'price-drop' || titleLower.includes('price drop');
 
     // Convert shouting all-caps into clean, elegant sentence case
     if (title === 'ADDED TO BAG') title = 'Added to Bag';
@@ -647,6 +650,9 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       shopToast.classList.remove('show');
     }, 3200);
   }
+
+  // Globally accessible toast notification matching product-add-to-cart style
+  window.streetCoShowToast = showToast;
 
   function updateHeartButtons(sku, isWish) {
     document.querySelectorAll(`[data-wishlist-toggle="${sku}"]`).forEach(btn => {
@@ -1953,7 +1959,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     try {
       localStorage.setItem('the_street_co_last_addr', JSON.stringify(checkoutSession.address));
       const setDefaultCheckbox = document.getElementById('checkoutSetDefaultAddress');
-      const shouldSetDefault = setDefaultCheckbox ? Boolean(setDefaultCheckbox.checked) : true;
+      const shouldSetDefault = Boolean(setDefaultCheckbox && setDefaultCheckbox.checked);
       if (typeof window.streetCoSaveCheckoutAddressToAccount === 'function') {
         window.streetCoSaveCheckoutAddressToAccount(checkoutSession.address, shouldSetDefault);
       }
@@ -9659,7 +9665,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
 
         return {
           id,
-          label: `Address-${idx + 1}`,
+          label: a.type || a.addressType || 'Delivery Address',
           name,
           fullName: name,
           phone,
@@ -9693,9 +9699,9 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       }
     }
 
-    const finalAddresses = cleaned.map((a, idx) => ({
+    const finalAddresses = cleaned.map((a) => ({
       ...a,
-      label: `Address-${idx + 1}`,
+      label: a.type || a.addressType || 'Delivery Address',
       isDefault: Boolean(resolvedDefaultId && a.id === resolvedDefaultId)
     }));
 
@@ -9924,7 +9930,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     await syncAddressesToMongo(norm.addresses, norm.defaultAddressId);
     if (window.streetCoShowToast) {
       const matched = norm.addresses.find(a => a.id === addressId);
-      window.streetCoShowToast(`${matched ? matched.label : 'Address'} set as default address`);
+      window.streetCoShowToast('Default Address Set', matched ? `Delivering by default to ${matched.name || 'this address'}` : 'Delivery address updated.', 'general');
     }
   }
 
@@ -9945,6 +9951,56 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     renderAccountAddressesUI();
     renderCheckoutAddressesUI();
     await syncAddressesToMongo(norm.addresses, norm.defaultAddressId);
+  }
+
+  let pendingRemoveAddressId = null;
+
+  window.openRemoveAddressModal = function(addressId) {
+    if (!addressId) return;
+    pendingRemoveAddressId = addressId;
+    const modal = document.getElementById('accountRemoveAddressConfirmModal');
+    if (!modal) return;
+
+    const chosen = (accountState.addresses || []).find(a => a.id === addressId);
+    const nameEl = document.getElementById('removeAddressRecipientName');
+    const previewEl = document.getElementById('removeAddressPreviewText');
+
+    if (nameEl) nameEl.textContent = (chosen && (chosen.name || chosen.fullName)) || 'Recipient';
+    if (previewEl) previewEl.textContent = (chosen && chosen.fullAddress) || 'Delivery address details';
+
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('logout-modal-open');
+  };
+
+  window.closeRemoveAddressModal = function() {
+    pendingRemoveAddressId = null;
+    const modal = document.getElementById('accountRemoveAddressConfirmModal');
+    if (!modal) return;
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('logout-modal-open');
+  };
+
+  const accountConfirmRemoveAddressBtn = document.getElementById('accountConfirmRemoveAddressBtn');
+  if (accountConfirmRemoveAddressBtn) {
+    accountConfirmRemoveAddressBtn.addEventListener('click', async () => {
+      const idToRemove = pendingRemoveAddressId;
+      if (!idToRemove) {
+        window.closeRemoveAddressModal();
+        return;
+      }
+      accountConfirmRemoveAddressBtn.disabled = true;
+      try {
+        await removeUserAddress(idToRemove);
+        window.closeRemoveAddressModal();
+        if (window.streetCoShowToast) {
+          window.streetCoShowToast('Address Removed', 'Delivery address removed from your account.', 'general');
+        }
+      } finally {
+        accountConfirmRemoveAddressBtn.disabled = false;
+      }
+    });
   }
 
   // Populate Checkout Step 1 underlying form inputs from a saved address object
@@ -10038,26 +10094,19 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     }
   }
 
-  // Render Saved Address Cards (Address-1, Address-2...) + Add Address Card in Account Page
+  // Render Saved Address Cards + Add Address Card in Account Page
   function renderAccountAddressesUI() {
     const grid = document.getElementById('accountSavedAddressCardsGrid');
     if (!grid) return;
 
     const addresses = Array.isArray(accountState.addresses) ? accountState.addresses : [];
 
-    const cardsHtml = addresses.map((addr, index) => {
-      const label = addr.label || `Address-${index + 1}`;
+    const cardsHtml = addresses.map((addr) => {
       const isDefault = Boolean(addr.isDefault);
       const phoneDisplay = addr.phone ? `+91 ${addr.phone}` : '';
 
       return `
         <div class="saved-address-card ${isDefault ? 'saved-address-card--selected' : ''}" data-addr-id="${addr.id}">
-          <div class="saved-address-card__top">
-            <div class="saved-address-card__badges">
-              <span class="saved-address-card__label">${label}</span>
-              ${isDefault ? '<span class="saved-address-card__default-badge">✓ DEFAULT</span>' : ''}
-            </div>
-          </div>
           <div class="saved-address-card__body">
             <h4 class="saved-address-card__recipient">${addr.name || 'Recipient'}</h4>
             ${phoneDisplay ? `<span class="saved-address-card__phone">${phoneDisplay}</span>` : ''}
@@ -10066,7 +10115,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           <div class="saved-address-card__actions">
             ${!isDefault
               ? `<button type="button" class="saved-address-card__btn" data-action="set-default" data-addr-id="${addr.id}">Set as Default</button>`
-              : `<span style="font-size:0.72rem;font-weight:700;color:#166534;">Default Delivery Address</span>`
+              : ''
             }
             <button type="button" class="saved-address-card__btn saved-address-card__btn--danger" data-action="delete-addr" data-addr-id="${addr.id}">Remove</button>
           </div>
@@ -10074,12 +10123,11 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       `;
     }).join('');
 
-    const nextAddressNum = addresses.length + 1;
     const createCardHtml = `
       <button type="button" class="create-address-card" id="accountCreateAddressCardBtn">
         <span class="create-address-card__icon">+</span>
-        <span class="create-address-card__title">Add New Address (Address-${nextAddressNum})</span>
-        <span class="create-address-card__sub">Click to enter a delivery address and optionally set it as your default address</span>
+        <span class="create-address-card__title">Add New Delivery Address</span>
+        <span class="create-address-card__sub">Click to enter a delivery address and set it as your default address</span>
       </button>
     `;
 
@@ -10104,7 +10152,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         const id = btn.getAttribute('data-addr-id');
-        removeUserAddress(id);
+        window.openRemoveAddressModal(id);
       });
     });
   }
@@ -10113,8 +10161,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     const cardsView = document.getElementById('accountAddressCardsView');
     const formWrap = document.getElementById('accountAddressFormWrap');
     const heading = document.getElementById('accountAddressFormHeading');
-    const nextNum = (accountState.addresses || []).length + 1;
-    if (heading) heading.textContent = `Create Address-${nextNum}`;
+    if (heading) heading.textContent = 'Create Delivery Address';
     prefillAddressFormWithAccountDefaults('account');
     showFlowFeedback('accountAddressFormFeedback', '');
     if (cardsView) cardsView.style.display = 'none';
@@ -10130,7 +10177,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     renderAccountAddressesUI();
   }
 
-  // Render Saved Address Cards (Address-1, Address-2...) + Create Address Card in Checkout Step 1
+  // Render Saved Address Cards + Create Address Card in Checkout Step 1
   function renderCheckoutAddressesUI() {
     const grid = document.getElementById('checkoutSavedAddressCardsGrid');
     const cardsView = document.getElementById('checkoutAddressCardsView');
@@ -10152,21 +10199,13 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       }
     }
 
-    const cardsHtml = addresses.map((addr, index) => {
-      const label = addr.label || `Address-${index + 1}`;
+    const cardsHtml = addresses.map((addr) => {
       const isDefault = Boolean(addr.isDefault);
       const isSelected = addr.id === selectedCheckoutAddressId;
       const phoneDisplay = addr.phone ? `+91 ${addr.phone}` : '';
 
       return `
         <div class="saved-address-card ${isSelected ? 'saved-address-card--selected' : ''}" data-checkout-addr-id="${addr.id}">
-          <div class="saved-address-card__top">
-            <div class="saved-address-card__badges">
-              <span class="saved-address-card__label">${label}</span>
-              ${isDefault ? '<span class="saved-address-card__default-badge">✓ DEFAULT</span>' : ''}
-            </div>
-            ${isSelected ? '<span class="saved-address-card__selected-pill">✓ Selected</span>' : ''}
-          </div>
           <div class="saved-address-card__body">
             <h4 class="saved-address-card__recipient">${addr.name || 'Recipient'}</h4>
             ${phoneDisplay ? `<span class="saved-address-card__phone">${phoneDisplay}</span>` : ''}
@@ -10185,12 +10224,11 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       `;
     }).join('');
 
-    const nextAddressNum = addresses.length + 1;
     const createCardHtml = `
       <button type="button" class="create-address-card" id="checkoutCreateAddressCardBtn">
         <span class="create-address-card__icon">+</span>
-        <span class="create-address-card__title">${addresses.length === 0 ? 'Create Delivery Address (Address-1)' : `Create New Address (Address-${nextAddressNum})`}</span>
-        <span class="create-address-card__sub">${addresses.length === 0 ? 'No saved address yet — click here to enter your delivery address' : 'Click to create another delivery address for your account'}</span>
+        <span class="create-address-card__title">Add Delivery Address</span>
+        <span class="create-address-card__sub">Click to enter your delivery address</span>
       </button>
     `;
 
@@ -10219,6 +10257,9 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           applyAddressToCheckoutInputs(chosen);
         }
         renderCheckoutAddressesUI();
+        if (window.streetCoShowToast && chosen) {
+          window.streetCoShowToast('Address Selected', `Delivering to ${chosen.name || 'selected address'}.`, 'general');
+        }
       });
     });
 
@@ -10244,9 +10285,6 @@ window.openDelhiveryTracker = openDelhiveryTracker;
   function openCheckoutAddressEntryForm() {
     const cardsView = document.getElementById('checkoutAddressCardsView');
     const formWrap = document.getElementById('checkoutAddressFormWrap');
-    const heading = document.getElementById('checkoutAddressFormHeading');
-    const nextNum = (accountState.addresses || []).length + 1;
-    if (heading) heading.textContent = `Create Address-${nextNum}`;
     prefillAddressFormWithAccountDefaults('checkout');
     showFlowFeedback('checkoutAddressFormFeedback', '');
     if (cardsView) cardsView.style.display = 'none';
@@ -10359,40 +10397,608 @@ window.openDelhiveryTracker = openDelhiveryTracker;
         applyAddressToCheckoutInputs(savedAddr);
         closeCheckoutAddressEntryForm();
         if (window.streetCoShowToast) {
-          window.streetCoShowToast(`${savedAddr.label} added${savedAddr.isDefault ? ' & set as Default' : ''}!`);
+          window.streetCoShowToast('Address Saved', `${savedAddr.name || 'Delivery address'} added to your account${savedAddr.isDefault ? ' as Default' : ''}.`, 'general');
         }
       }
     });
   }
 
-  // Wire Account Page Left-Sidebar Navigation (01 Personal Information, 02 Delivery Address)
+  // Wire Account Page Left-Sidebar Navigation (01 Personal Information, 02 Delivery Address, 03 Log Out)
+  function updateLogoutPageSummary() {
+    accountState = loadLocalAccount();
+    const cleanPhone = String(accountState.phone || '').replace(/\D/g, '').slice(-10);
+    const fullName = [accountState.firstName, accountState.lastName].filter(Boolean).join(' ').trim();
+
+    const nameEl = document.getElementById('accountLogoutUserNameDisplay');
+    const phoneEl = document.getElementById('accountLogoutUserPhoneDisplay');
+    const emailEl = document.getElementById('accountLogoutUserEmailDisplay');
+    const popupPhoneEl = document.getElementById('logoutConfirmModalUserPhone');
+    const popupNameEl = document.getElementById('logoutConfirmModalUserName');
+
+    const formattedPhone = cleanPhone.length === 10
+      ? `+91 ${cleanPhone.slice(0, 5)} ${cleanPhone.slice(5)}`
+      : 'Active Member';
+
+    if (nameEl) nameEl.textContent = fullName || 'The Street Co Member';
+    if (phoneEl) phoneEl.textContent = formattedPhone;
+    if (emailEl) {
+      if (accountState.email && accountState.emailVerified) {
+        emailEl.textContent = `${accountState.email} · Verified & Synced with MongoDB`;
+      } else if (accountState.email) {
+        emailEl.textContent = `${accountState.email} · Synced with MongoDB`;
+      } else {
+        emailEl.textContent = 'Account profile synced with MongoDB Atlas Cloud';
+      }
+    }
+
+    if (popupPhoneEl) popupPhoneEl.textContent = formattedPhone;
+    if (popupNameEl) popupNameEl.textContent = fullName || 'Active Member';
+  }
+
+  window.openLogoutConfirmPopup = function() {
+    updateLogoutPageSummary();
+    const modal = document.getElementById('accountLogoutConfirmModal');
+    if (!modal) return;
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('logout-modal-open');
+  };
+
+  window.closeLogoutConfirmPopup = function() {
+    const modal = document.getElementById('accountLogoutConfirmModal');
+    if (!modal) return;
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('logout-modal-open');
+  };
+
+  window.streetCoPerformLogout = async function() {
+    window.closeLogoutConfirmPopup();
+    window.closeAccountPage();
+
+    if (window.streetCoFirebaseAuth && typeof window.streetCoFirebaseAuth.signOutUserAuth === 'function') {
+      try {
+        await window.streetCoFirebaseAuth.signOutUserAuth();
+      } catch (_) {}
+    }
+
+    // Reset account state in memory and localStorage
+    saveLocalAccount({
+      phone: '',
+      phoneVerified: false,
+      firstName: '',
+      lastName: '',
+      email: '',
+      emailVerified: false,
+      addresses: [],
+      defaultAddressId: '',
+      orders: []
+    });
+
+    try {
+      localStorage.removeItem('the_street_co_user_phone');
+      localStorage.removeItem('the_street_co_user_email');
+      localStorage.removeItem('the_street_co_last_addr');
+    } catch (_) {}
+
+    // Reset all form inputs
+    const firstNameInput = document.getElementById('accountFirstName');
+    const lastNameInput = document.getElementById('accountLastName');
+    const loggedPhoneInput = document.getElementById('accountLoggedPhoneInput');
+    const emailInput = document.getElementById('accountEmailInput');
+    if (firstNameInput) firstNameInput.value = '';
+    if (lastNameInput) lastNameInput.value = '';
+    if (loggedPhoneInput) loggedPhoneInput.value = '';
+    if (emailInput) {
+      emailInput.value = '';
+      delete emailInput.dataset.userEditing;
+    }
+
+    // Reset tab to personal for subsequent logins
+    switchAccountTab('personal');
+
+    if (window.streetCoShowToast) {
+      window.streetCoShowToast('Logged out successfully.');
+    }
+  };
+
+  // ── ORDER HISTORY (MONGODB ATLAS SYNCED) ──
+  async function refreshAccountOrdersFromMongo(showToastFeedback = false) {
+    accountState = loadLocalAccount();
+    const cleanPhone = String(accountState.phone || '').replace(/\D/g, '').slice(-10);
+    if (cleanPhone.length !== 10) return;
+
+    const refreshBtn = document.getElementById('accountOrdersRefreshBtn');
+    if (refreshBtn) refreshBtn.classList.add('is-refreshing');
+
+    try {
+      const res = await fetch(`/api/account/orders?phone=${encodeURIComponent(cleanPhone)}`);
+      const data = await res.json();
+      if (data && data.success && Array.isArray(data.orders)) {
+        saveLocalAccount({
+          orders: data.orders
+        });
+        renderAccountOrdersUI();
+        if (showToastFeedback && window.streetCoShowToast) {
+          window.streetCoShowToast(`Synced ${data.orders.length} order${data.orders.length === 1 ? '' : 's'} from MongoDB Atlas.`);
+        }
+      }
+    } catch (err) {
+      console.warn('[MongoDB orders fetch error]:', err);
+    } finally {
+      if (refreshBtn) refreshBtn.classList.remove('is-refreshing');
+    }
+  }
+
+  function renderAccountOrdersUI() {
+    const container = document.getElementById('accountOrdersContainer');
+    if (!container) return;
+
+    accountState = loadLocalAccount();
+    const cleanPhone = String(accountState.phone || '').replace(/\D/g, '').slice(-10);
+
+    // Combine orders from accountState.orders with local browser orders matching this account
+    const memoryOrders = Array.isArray(accountState.orders) ? accountState.orders : [];
+    const localOrders = typeof getSavedLocalOrders === 'function' ? getSavedLocalOrders() : [];
+    const matchedLocal = localOrders.filter(o => {
+      if (!o) return false;
+      const orderPhone = String(o.accountPhone || o.shippingAddress?.phone || o.user?.phone || o.contactDetails?.phone || '').replace(/\D/g, '').slice(-10);
+      return orderPhone === cleanPhone;
+    });
+
+    const orderMap = new Map();
+    for (const ord of [...memoryOrders, ...matchedLocal]) {
+      if (!ord) continue;
+      const code = ord.orderCode || ord.orderId;
+      if (code && !orderMap.has(code)) {
+        orderMap.set(code, ord);
+      }
+    }
+
+    const allOrders = Array.from(orderMap.values()).sort((a, b) => {
+      const dateA = new Date(a.orderDate || a.createdAt || 0).getTime();
+      const dateB = new Date(b.orderDate || b.createdAt || 0).getTime();
+      return dateB - dateA;
+    });
+
+    // Update tab sub-label
+    const subLabel = document.getElementById('accountNavOrdersSub');
+    if (subLabel) {
+      subLabel.textContent = allOrders.length > 0
+        ? `${allOrders.length} Order${allOrders.length === 1 ? '' : 's'}`
+        : 'View Past Orders & Items';
+    }
+
+    if (allOrders.length === 0) {
+      const formattedPhone = cleanPhone.length === 10
+        ? `+91 ${cleanPhone.slice(0, 5)} ${cleanPhone.slice(5)}`
+        : 'your account';
+
+      container.innerHTML = `
+        <div class="account-orders-empty-state">
+          <div class="account-orders-empty-icon-wrap">
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <path d="M16 10a4 4 0 0 1-8 0"></path>
+            </svg>
+          </div>
+          <span class="account-orders-empty-kicker">ORDER HISTORY · 0 ORDERS FOUND</span>
+          <h4 class="account-orders-empty-title">You Haven't Placed Any Orders Yet</h4>
+          <p class="account-orders-empty-desc">
+            We couldn't find any completed purchases under your logged-in mobile number (<strong>${formattedPhone}</strong>). Once you place an order, all your items, product pictures, delivery status, and tracking details will automatically appear right here.
+          </p>
+
+          <div class="account-orders-empty-perks">
+            <div class="account-orders-empty-perk">
+              <span class="account-orders-empty-perk__icon">📦</span>
+              <div class="account-orders-empty-perk__text">
+                <strong>Live Courier Tracking</strong>
+                <small>Track dispatch &amp; arrival times</small>
+              </div>
+            </div>
+            <div class="account-orders-empty-perk">
+              <span class="account-orders-empty-perk__icon">🖼️</span>
+              <div class="account-orders-empty-perk__text">
+                <strong>Item Previews &amp; Specs</strong>
+                <small>High-res pics, size &amp; quantity</small>
+              </div>
+            </div>
+            <div class="account-orders-empty-perk">
+              <span class="account-orders-empty-perk__icon">🧾</span>
+              <div class="account-orders-empty-perk__text">
+                <strong>Cloud Receipts</strong>
+                <small>Permanent backup in MongoDB</small>
+              </div>
+            </div>
+          </div>
+
+          <div class="account-orders-empty-actions">
+            <button type="button" class="account-orders-shop-now-btn" onclick="if(window.closeAccountPage){window.closeAccountPage();}">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="9" cy="21" r="1"></circle>
+                <circle cx="20" cy="21" r="1"></circle>
+                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+              </svg>
+              <span>Explore Collections &amp; Shop</span>
+            </button>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    const html = allOrders.map((ord) => {
+      const orderCode = ord.orderCode || ord.orderId || 'ORD';
+      const orderDateStr = ord.orderDateFormatted || (ord.orderDate ? new Date(ord.orderDate).toLocaleString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      }) : 'Recently Placed');
+
+      const paymentMethod = String(ord.paymentMethod || ord.payment?.method || 'COD').toUpperCase();
+      const payLabel = paymentMethod === 'COD' ? 'Cash on Delivery' : (paymentMethod === 'UPI' ? 'UPI' : (paymentMethod === 'CARD' ? 'Credit / Debit Card' : paymentMethod));
+
+      const shipAddr = ord.shippingAddress || ord.address || ord.user || ord.contactDetails || {};
+      const shipName = shipAddr.fullName || shipAddr.name || accountState.firstName || 'Customer';
+      const shipPhone = String(shipAddr.phone || ord.contactDetails?.phone || accountState.phone || '').replace(/\D/g, '').slice(-10);
+      const line1 = shipAddr.houseFlat || shipAddr.address1 || '';
+      const line2 = shipAddr.streetRoad || shipAddr.address2 || '';
+      const landmark = shipAddr.landmark || '';
+      const city = shipAddr.city || '';
+      const state = shipAddr.state || '';
+      const pincode = shipAddr.pincode || '';
+      const fullAddrParts = [line1, line2, landmark ? `(Landmark: ${landmark})` : '', city, state ? `${state} - ${pincode}` : pincode].filter(Boolean);
+      const fullDeliveryAddress = shipAddr.fullAddress || fullAddrParts.join(', ') || 'Address on file';
+
+      const items = Array.isArray(ord.items) && ord.items.length > 0
+        ? ord.items
+        : (Array.isArray(ord.products) ? ord.products : (Array.isArray(ord.productDetails) ? ord.productDetails : []));
+
+      const subtotal = Number(ord.subtotalInr || items.reduce((sum, it) => sum + (Number(it.totalItemPriceInr) || ((Number(it.priceInr || it.price) || 0) * (it.qty || it.quantity || 1))), 0));
+      const discount = Number(ord.discountInr || ord.discount || 0);
+      const shippingFee = Number(ord.deliveryFeeInr || ord.delivery?.cost || (ord.delivery?.speed === 'express' ? 149 : 0));
+      const grandTotal = Number(ord.grandTotalInr || ord.totalInr || (subtotal + shippingFee - discount));
+
+      const itemsHtml = items.map(it => {
+        const sku = it.sku || it.id || '';
+        const relic = (typeof collectionsData !== 'undefined' && Array.isArray(collectionsData))
+          ? collectionsData.find(c => (c.sku || c.id) === sku)
+          : null;
+
+        let itemImg = it.image || it.imageUrl || it.img || (Array.isArray(it.images) ? it.images[0] : '') ||
+          (relic && (relic.image || relic.imageUrl || (Array.isArray(relic.images) ? relic.images[0] : ''))) ||
+          'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=200&auto=format&fit=crop&q=80';
+
+        const itemName = it.name || it.title || (relic && relic.name) || 'The Street Co Apparel';
+        const itemQty = Math.max(1, parseInt(it.qty || it.quantity, 10) || 1);
+        const itemPrice = Number(it.priceInr || it.price || (relic && relic.priceInr) || 0);
+        const itemTotal = Number(it.totalItemPriceInr || (itemPrice * itemQty));
+        const itemSize = it.size || 'M';
+        const itemFinish = it.finish || (relic && relic.finish) || '';
+
+        return `
+          <div class="account-order-item-row">
+            <div class="account-order-item__pic-wrap">
+              <img src="${itemImg}" alt="${itemName}" class="account-order-item__pic" loading="lazy" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=200&auto=format&fit=crop&q=80';" />
+            </div>
+            <div class="account-order-item__info">
+              <h5 class="account-order-item__name">${itemName}</h5>
+              <div class="account-order-item__tags">
+                <span class="account-order-item__tag">Size: ${itemSize}</span>
+                ${itemFinish ? `<span class="account-order-item__tag">${itemFinish}</span>` : ''}
+                <span class="account-order-item__tag account-order-item__tag--qty">Qty: ${itemQty}</span>
+              </div>
+              <div class="account-order-item__price-row">
+                <span class="account-order-item__price">₹${itemPrice.toLocaleString('en-IN')}</span>
+                ${itemQty > 1 ? `<span class="account-order-item__total">Total: ₹${itemTotal.toLocaleString('en-IN')}</span>` : ''}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      return `
+        <article class="account-order-card is-clickable" data-order-code="${orderCode}" onclick="if(window.openFullOrderModal){window.openFullOrderModal('${orderCode}');}" role="button" tabindex="0" title="Click to view full order history">
+          <div class="account-order-card__header">
+            <div class="account-order-card__meta">
+              <h4 class="account-order-card__code">Order #${orderCode}</h4>
+              <span class="account-order-card__date">${orderDateStr}</span>
+            </div>
+            <div class="account-order-card__click-prompt">
+              <span>View Full Order History →</span>
+            </div>
+          </div>
+
+          <!-- Items with Pictures -->
+          <div class="account-order-items-list">
+            ${itemsHtml || '<p class="account-order-no-items">Order items verified.</p>'}
+          </div>
+
+          <!-- Full Delivery Address -->
+          <div class="account-order-card__address-block">
+            <span class="account-order-card__block-label">FULL DELIVERY ADDRESS</span>
+            <div class="account-order-card__address-content">
+              <div class="account-order-card__recipient-name">
+                <strong>${shipName}</strong>
+                ${shipPhone ? `<span>· +91 ${shipPhone}</span>` : ''}
+              </div>
+              <div class="account-order-card__recipient-addr">${fullDeliveryAddress}</div>
+            </div>
+          </div>
+
+          <!-- Price Breakdown, Shipping Price & Payment Method -->
+          <div class="account-order-card__footer">
+            <div class="account-order-card__pay-block">
+              <span class="account-order-card__pay-title">Payment Method:</span>
+              <strong class="account-order-card__pay-name">${payLabel}</strong>
+            </div>
+
+            <div class="account-order-card__price-table">
+              <div class="account-order-price-row">
+                <span class="account-order-price-lbl">Full Price:</span>
+                <span class="account-order-price-val">₹${subtotal.toLocaleString('en-IN')}</span>
+              </div>
+              <div class="account-order-price-row">
+                <span class="account-order-price-lbl">Discount:</span>
+                <span class="account-order-price-val ${discount > 0 ? 'text-discount' : ''}">${discount > 0 ? `-₹${discount.toLocaleString('en-IN')}` : '₹0'}</span>
+              </div>
+              <div class="account-order-price-row">
+                <span class="account-order-price-lbl">Shipping Price:</span>
+                <span class="account-order-price-val">${shippingFee > 0 ? `₹${shippingFee.toLocaleString('en-IN')}` : 'FREE (₹0)'}</span>
+              </div>
+              <div class="account-order-price-row account-order-price-row--total">
+                <span class="account-order-price-lbl">Grand Total:</span>
+                <strong class="account-order-price-val account-order-price-val--total">₹${grandTotal.toLocaleString('en-IN')}</strong>
+              </div>
+            </div>
+          </div>
+        </article>
+      `;
+    }).join('');
+
+    container.innerHTML = html;
+  }
+
+  // ── FULL ORDER HISTORY MODAL HANDLERS ──
+  window.openFullOrderModal = function(orderCode) {
+    accountState = loadLocalAccount();
+    const cleanPhone = String(accountState.phone || '').replace(/\D/g, '').slice(-10);
+    const memoryOrders = Array.isArray(accountState.orders) ? accountState.orders : [];
+    const localOrders = typeof getSavedLocalOrders === 'function' ? getSavedLocalOrders() : [];
+    const all = [...memoryOrders, ...localOrders];
+    const ord = all.find(o => o && (String(o.orderCode) === String(orderCode) || String(o.orderId) === String(orderCode)));
+    if (!ord) return;
+
+    const modal = document.getElementById('accountFullOrderModal');
+    const titleEl = document.getElementById('fullOrderModalCode');
+    const dateEl = document.getElementById('fullOrderModalDate');
+    const bodyEl = document.getElementById('fullOrderModalBody');
+    if (!modal || !bodyEl) return;
+
+    const code = ord.orderCode || ord.orderId || orderCode;
+    const orderDateStr = ord.orderDateFormatted || (ord.orderDate ? new Date(ord.orderDate).toLocaleString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    }) : 'Recently Placed');
+
+    if (titleEl) titleEl.textContent = `Order #${code}`;
+    if (dateEl) dateEl.textContent = orderDateStr;
+
+    const paymentMethod = String(ord.paymentMethod || ord.payment?.method || 'COD').toUpperCase();
+    const payLabel = paymentMethod === 'COD' ? 'Cash on Delivery' : (paymentMethod === 'UPI' ? 'UPI' : (paymentMethod === 'CARD' ? 'Credit / Debit Card' : paymentMethod));
+
+    const shipAddr = ord.shippingAddress || ord.address || ord.user || ord.contactDetails || {};
+    const shipName = shipAddr.fullName || shipAddr.name || accountState.firstName || 'Customer';
+    const shipPhone = String(shipAddr.phone || ord.contactDetails?.phone || accountState.phone || '').replace(/\D/g, '').slice(-10);
+    const line1 = shipAddr.houseFlat || shipAddr.address1 || '';
+    const line2 = shipAddr.streetRoad || shipAddr.address2 || '';
+    const landmark = shipAddr.landmark || '';
+    const city = shipAddr.city || '';
+    const state = shipAddr.state || '';
+    const pincode = shipAddr.pincode || '';
+    const fullAddrParts = [line1, line2, landmark ? `(Landmark: ${landmark})` : '', city, state ? `${state} - ${pincode}` : pincode].filter(Boolean);
+    const fullDeliveryAddress = shipAddr.fullAddress || fullAddrParts.join(', ') || 'Address on file';
+
+    const items = Array.isArray(ord.items) && ord.items.length > 0
+      ? ord.items
+      : (Array.isArray(ord.products) ? ord.products : (Array.isArray(ord.productDetails) ? ord.productDetails : []));
+
+    const subtotal = Number(ord.subtotalInr || items.reduce((sum, it) => sum + (Number(it.totalItemPriceInr) || ((Number(it.priceInr || it.price) || 0) * (it.qty || it.quantity || 1))), 0));
+    const discount = Number(ord.discountInr || ord.discount || 0);
+    const shippingFee = Number(ord.deliveryFeeInr || ord.delivery?.cost || (ord.delivery?.speed === 'express' ? 149 : 0));
+    const grandTotal = Number(ord.grandTotalInr || ord.totalInr || (subtotal + shippingFee - discount));
+
+    const itemsHtml = items.map(it => {
+      const sku = it.sku || it.id || '';
+      const relic = (typeof collectionsData !== 'undefined' && Array.isArray(collectionsData))
+        ? collectionsData.find(c => (c.sku || c.id) === sku)
+        : null;
+
+      let itemImg = it.image || it.imageUrl || it.img || (Array.isArray(it.images) ? it.images[0] : '') ||
+        (relic && (relic.image || relic.imageUrl || (Array.isArray(relic.images) ? relic.images[0] : ''))) ||
+        'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=200&auto=format&fit=crop&q=80';
+
+      const itemName = it.name || it.title || (relic && relic.name) || 'The Street Co Apparel';
+      const itemQty = Math.max(1, parseInt(it.qty || it.quantity, 10) || 1);
+      const itemPrice = Number(it.priceInr || it.price || (relic && relic.priceInr) || 0);
+      const itemTotal = Number(it.totalItemPriceInr || (itemPrice * itemQty));
+      const itemSize = it.size || 'M';
+      const itemFinish = it.finish || (relic && relic.finish) || '';
+
+      return `
+        <div class="full-order-item-card">
+          <div class="full-order-item__pic-wrap">
+            <img src="${itemImg}" alt="${itemName}" class="full-order-item__pic" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=200&auto=format&fit=crop&q=80';" />
+          </div>
+          <div class="full-order-item__details">
+            <h5 class="full-order-item__title">${itemName}</h5>
+            <div class="full-order-item__meta-tags">
+              <span class="full-order-item__tag">Size: ${itemSize}</span>
+              ${itemFinish ? `<span class="full-order-item__tag">${itemFinish}</span>` : ''}
+              <span class="full-order-item__tag full-order-item__tag--qty">Quantity: ${itemQty}</span>
+            </div>
+            <div class="full-order-item__price-calc">
+              <span>₹${itemPrice.toLocaleString('en-IN')} × ${itemQty}</span>
+              <strong>= ₹${itemTotal.toLocaleString('en-IN')}</strong>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    bodyEl.innerHTML = `
+      <div class="full-order-modal-sections">
+        <!-- 1. Purchased Items with Pictures -->
+        <div class="full-order-section">
+          <h4 class="full-order-section-title">Purchased Items (${items.length})</h4>
+          <div class="full-order-items-grid">
+            ${itemsHtml || '<p>No item details.</p>'}
+          </div>
+        </div>
+
+        <!-- 2. Full Delivery Address -->
+        <div class="full-order-section">
+          <h4 class="full-order-section-title">Full Delivery Address</h4>
+          <div class="full-order-address-box">
+            <div class="full-order-address-name">
+              <strong>${shipName}</strong>
+              ${shipPhone ? `<span class="full-order-address-phone">· Mobile: +91 ${shipPhone}</span>` : ''}
+            </div>
+            <div class="full-order-address-full">${fullDeliveryAddress}</div>
+          </div>
+        </div>
+
+        <!-- 3. Payment Method & Price Breakdown -->
+        <div class="full-order-section">
+          <h4 class="full-order-section-title">Payment &amp; Price Breakdown</h4>
+          <div class="full-order-pricing-box">
+            <div class="full-order-payment-banner">
+              <span>Payment Method:</span>
+              <strong>${payLabel}</strong>
+            </div>
+            <div class="full-order-price-lines">
+              <div class="full-order-price-line">
+                <span>Full Price (Subtotal):</span>
+                <span>₹${subtotal.toLocaleString('en-IN')}</span>
+              </div>
+              <div class="full-order-price-line">
+                <span>Discount:</span>
+                <span class="${discount > 0 ? 'text-discount' : ''}">${discount > 0 ? `-₹${discount.toLocaleString('en-IN')}` : '₹0'}</span>
+              </div>
+              <div class="full-order-price-line">
+                <span>Shipping Price:</span>
+                <span>${shippingFee > 0 ? `₹${shippingFee.toLocaleString('en-IN')}` : 'FREE (₹0)'}</span>
+              </div>
+              <div class="full-order-price-line full-order-price-line--total">
+                <strong>Grand Total:</strong>
+                <strong>₹${grandTotal.toLocaleString('en-IN')}</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('order-modal-open');
+  };
+
+  window.closeFullOrderModal = function() {
+    const modal = document.getElementById('accountFullOrderModal');
+    if (!modal) return;
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('order-modal-open');
+  };
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const modal = document.getElementById('accountFullOrderModal');
+      if (modal && modal.classList.contains('open')) {
+        window.closeFullOrderModal();
+      }
+    }
+  });
+
   function switchAccountTab(pageKey) {
     const personalBtn = document.getElementById('accountNavPersonalBtn');
     const addressBtn = document.getElementById('accountNavAddressBtn');
+    const ordersBtn = document.getElementById('accountNavOrdersBtn');
+    const logoutBtn = document.getElementById('accountNavLogoutBtn');
+
     const personalPane = document.getElementById('accountPersonalPage');
     const addressPane = document.getElementById('accountDeliveryAddressPage');
+    const ordersPane = document.getElementById('accountOrderHistoryPage');
+    const logoutPane = document.getElementById('accountLogoutPage');
 
-    const isAddress = pageKey === 'address';
-    if (personalBtn) personalBtn.classList.toggle('active', !isAddress);
-    if (addressBtn) addressBtn.classList.toggle('active', isAddress);
+    if (personalBtn) personalBtn.classList.toggle('active', pageKey === 'personal');
+    if (addressBtn) addressBtn.classList.toggle('active', pageKey === 'address');
+    if (ordersBtn) ordersBtn.classList.toggle('active', pageKey === 'orders');
+    if (logoutBtn) logoutBtn.classList.toggle('active', pageKey === 'logout');
 
     if (personalPane) {
-      personalPane.style.display = isAddress ? 'none' : 'block';
-      personalPane.classList.toggle('active', !isAddress);
+      personalPane.style.display = pageKey === 'personal' ? 'block' : 'none';
+      personalPane.classList.toggle('active', pageKey === 'personal');
     }
     if (addressPane) {
-      addressPane.style.display = isAddress ? 'block' : 'none';
-      addressPane.classList.toggle('active', isAddress);
+      addressPane.style.display = pageKey === 'address' ? 'block' : 'none';
+      addressPane.classList.toggle('active', pageKey === 'address');
+    }
+    if (ordersPane) {
+      ordersPane.style.display = pageKey === 'orders' ? 'block' : 'none';
+      ordersPane.classList.toggle('active', pageKey === 'orders');
+    }
+    if (logoutPane) {
+      logoutPane.style.display = pageKey === 'logout' ? 'block' : 'none';
+      logoutPane.classList.toggle('active', pageKey === 'logout');
     }
 
-    if (isAddress) {
+    if (pageKey === 'address') {
       closeAccountAddressEntryForm();
       renderAccountAddressesUI();
+    } else if (pageKey === 'orders') {
+      renderAccountOrdersUI();
+      refreshAccountOrdersFromMongo();
+    } else if (pageKey === 'logout') {
+      updateLogoutPageSummary();
     }
   }
 
   document.getElementById('accountNavPersonalBtn')?.addEventListener('click', () => switchAccountTab('personal'));
   document.getElementById('accountNavAddressBtn')?.addEventListener('click', () => switchAccountTab('address'));
+  document.getElementById('accountNavOrdersBtn')?.addEventListener('click', () => switchAccountTab('orders'));
+  document.getElementById('accountNavLogoutBtn')?.addEventListener('click', () => switchAccountTab('logout'));
+
+
+  // Trigger popup when clicking "Log Out" button on the Logout Page
+  const accountLogoutPageActionBtn = document.getElementById('accountLogoutPageActionBtn');
+  if (accountLogoutPageActionBtn) {
+    accountLogoutPageActionBtn.addEventListener('click', () => {
+      window.openLogoutConfirmPopup();
+    });
+  }
+
+  // Continue Logout button inside the confirmation popup box
+  const accountContinueLogoutBtn = document.getElementById('accountContinueLogoutBtn');
+  if (accountContinueLogoutBtn) {
+    accountContinueLogoutBtn.addEventListener('click', async () => {
+      accountContinueLogoutBtn.disabled = true;
+      try {
+        await window.streetCoPerformLogout();
+      } finally {
+        accountContinueLogoutBtn.disabled = false;
+      }
+    });
+  }
 
   const accountCancelAddressFormBtn = document.getElementById('accountCancelAddressFormBtn');
   if (accountCancelAddressFormBtn) {
@@ -10492,7 +11098,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       if (savedAddr) {
         closeAccountAddressEntryForm();
         if (window.streetCoShowToast) {
-          window.streetCoShowToast(`${savedAddr.label} saved to your account${savedAddr.isDefault ? ' as Default' : ''}!`);
+          window.streetCoShowToast('Address Saved', `${savedAddr.name || 'Delivery address'} saved to your account${savedAddr.isDefault ? ' as Default' : ''}.`, 'general');
         }
       }
     });
@@ -10582,6 +11188,8 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     updateEmailBadgeUI();
     renderAccountAddressesUI();
     renderCheckoutAddressesUI();
+    renderAccountOrdersUI();
+    updateLogoutPageSummary();
   }
 
   async function fetchFirebaseAccountByPhone(phone) {
@@ -10597,6 +11205,9 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           ? data.account.addresses
           : accountState.addresses;
         const mongoDefaultId = data.account.defaultAddressId || accountState.defaultAddressId || '';
+        const mongoOrders = Array.isArray(data.orders) && data.orders.length > 0
+          ? data.orders
+          : (Array.isArray(data.account.orders) ? data.account.orders : (accountState.orders || []));
 
         saveLocalAccount({
           firstName: data.account.firstName || accountState.firstName || '',
@@ -10607,7 +11218,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           emailVerified: Boolean(data.account.emailVerified),
           addresses: mongoAddresses,
           defaultAddressId: mongoDefaultId,
-          orders: Array.isArray(data.account.orders) ? data.account.orders : (accountState.orders || [])
+          orders: mongoOrders
         });
 
         // If user had local addresses that weren't in MongoDB yet, sync them up

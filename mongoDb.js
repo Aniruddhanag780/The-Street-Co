@@ -117,7 +117,7 @@ export function normalizeUserAddresses(rawAddresses = [], preferredDefaultId = '
 
       return {
         id,
-        label: `Address-${idx + 1}`,
+        label: a.type || a.addressType || 'Delivery Address',
         name,
         fullName: name,
         phone,
@@ -153,9 +153,9 @@ export function normalizeUserAddresses(rawAddresses = [], preferredDefaultId = '
     }
   }
 
-  const finalAddresses = cleaned.map((a, idx) => ({
+  const finalAddresses = cleaned.map((a) => ({
     ...a,
-    label: `Address-${idx + 1}`,
+    label: a.type || a.addressType || 'Delivery Address',
     isDefault: Boolean(resolvedDefaultId && a.id === resolvedDefaultId)
   }));
 
@@ -269,6 +269,7 @@ export async function appendOrderToUserAccount(accountPhone, orderDocument) {
     orderDocument?.accountPhone ||
     orderDocument?.contactDetails?.phone ||
     orderDocument?.shippingAddress?.phone ||
+    orderDocument?.user?.phone ||
     ''
   ).replace(/\D/g, '').slice(-10);
 
@@ -281,21 +282,49 @@ export async function appendOrderToUserAccount(accountPhone, orderDocument) {
     const existing = (await col.findOne({ phone: cleanPhone }, { projection: { _id: 0 } })) || {};
     const currentOrders = Array.isArray(existing.orders) ? existing.orders : [];
 
+    const rawItems = orderDocument.items || orderDocument.products || orderDocument.productDetails || [];
+    const normalizedItems = Array.isArray(rawItems) ? rawItems.map(it => {
+      const img = it.image || it.imageUrl || it.img || (Array.isArray(it.images) ? it.images[0] : '') || '';
+      return {
+        id: it.id || it.sku || '',
+        sku: it.sku || it.id || '',
+        name: it.name || it.title || 'Streetwear Apparel',
+        title: it.title || it.name || 'Streetwear Apparel',
+        priceInr: Number(it.priceInr ?? it.price ?? 0),
+        price: Number(it.priceInr ?? it.price ?? 0),
+        qty: Math.max(1, parseInt(it.qty || it.quantity, 10) || 1),
+        quantity: Math.max(1, parseInt(it.qty || it.quantity, 10) || 1),
+        totalItemPriceInr: Number(it.totalItemPriceInr ?? ((it.priceInr ?? it.price ?? 0) * (it.qty || it.quantity || 1))),
+        size: it.size || 'M',
+        finish: it.finish || 'Classic Black',
+        image: img,
+        imageUrl: img
+      };
+    }) : [];
+
     const orderSummary = {
       orderCode: orderDocument.orderCode,
       orderId: orderDocument.orderId,
+      accountPhone: cleanPhone,
       status: orderDocument.status || 'CONFIRMED',
       orderDate: orderDocument.orderDate || new Date().toISOString(),
       orderDateFormatted: orderDocument.orderDateFormatted || '',
-      grandTotalInr: orderDocument.grandTotalInr || orderDocument.totalInr || 0,
-      subtotalInr: orderDocument.subtotalInr || 0,
-      discountInr: orderDocument.discountInr || 0,
-      paymentMethod: orderDocument.paymentMethod || 'COD',
-      shippingAddress: orderDocument.shippingAddress || {},
-      items: orderDocument.items || orderDocument.products || []
+      grandTotalInr: Number(orderDocument.grandTotalInr || orderDocument.totalInr || 0),
+      totalInr: Number(orderDocument.grandTotalInr || orderDocument.totalInr || 0),
+      subtotalInr: Number(orderDocument.subtotalInr || 0),
+      discountInr: Number(orderDocument.discountInr || 0),
+      deliveryFeeInr: Number(orderDocument.deliveryFeeInr || orderDocument.delivery?.cost || 0),
+      paymentMethod: orderDocument.paymentMethod || orderDocument.payment?.method || 'COD',
+      paymentStatus: orderDocument.paymentStatus || 'CONFIRMED',
+      shippingAddress: orderDocument.shippingAddress || orderDocument.address || orderDocument.customer || {},
+      deliveryDetails: orderDocument.deliveryDetails || orderDocument.delivery || {},
+      items: normalizedItems,
+      products: normalizedItems,
+      zoho_salesorder_number: orderDocument.zoho_salesorder_number || '',
+      zoho_invoice_url: orderDocument.zoho_invoice_url || orderDocument.invoiceUrl || ''
     };
 
-    const filtered = currentOrders.filter(o => o && o.orderCode !== orderSummary.orderCode);
+    const filtered = currentOrders.filter(o => o && o.orderCode !== orderSummary.orderCode && o.orderId !== orderSummary.orderId);
     const updatedOrders = [orderSummary, ...filtered].slice(0, 50);
 
     return await upsertUserByPhone(cleanPhone, {
@@ -313,22 +342,60 @@ export async function findOrdersByAccountPhone(phone) {
   if (cleanPhone.length !== 10) return [];
   try {
     const col = await getCollection('orders');
-    if (!col) return [];
-    const docs = await col
-      .find(
-        {
-          $or: [
-            { accountPhone: cleanPhone },
-            { 'contactDetails.phone': { $regex: `${cleanPhone}$` } },
-            { 'shippingAddress.phone': { $regex: `${cleanPhone}$` } }
-          ]
-        },
-        { projection: { _id: 0 } }
-      )
-      .sort({ createdAt: -1 })
-      .limit(50)
-      .toArray();
-    return docs || [];
+    let docs = [];
+    if (col) {
+      docs = await col
+        .find(
+          {
+            $or: [
+              { accountPhone: cleanPhone },
+              { 'contactDetails.phone': { $regex: `${cleanPhone}$` } },
+              { 'shippingAddress.phone': { $regex: `${cleanPhone}$` } },
+              { 'user.phone': { $regex: `${cleanPhone}$` } },
+              { 'customer.phone': { $regex: `${cleanPhone}$` } }
+            ]
+          },
+          { projection: { _id: 0 } }
+        )
+        .sort({ createdAt: -1 })
+        .limit(50)
+        .toArray();
+    }
+
+    // Also merge with orders inside the 'users' collection document for this phone
+    const userCol = await getCollection('users');
+    let userOrders = [];
+    if (userCol) {
+      const u = await userCol.findOne({ phone: cleanPhone }, { projection: { _id: 0, orders: 1 } });
+      if (u && Array.isArray(u.orders)) {
+        userOrders = u.orders;
+      }
+    }
+
+    const seen = new Set();
+    const combined = [];
+    for (const ord of [...(docs || []), ...userOrders]) {
+      if (!ord) continue;
+      const key = ord.orderCode || ord.orderId;
+      if (key && !seen.has(key)) {
+        seen.add(key);
+        // Ensure items have proper pictures
+        const items = ord.items || ord.products || [];
+        const normalizedItems = Array.isArray(items) ? items.map(it => ({
+          ...it,
+          image: it.image || it.imageUrl || it.img || (Array.isArray(it.images) ? it.images[0] : '') || '',
+          imageUrl: it.imageUrl || it.image || it.img || (Array.isArray(it.images) ? it.images[0] : '') || ''
+        })) : [];
+
+        combined.push({
+          ...ord,
+          items: normalizedItems,
+          products: normalizedItems
+        });
+      }
+    }
+
+    return combined;
   } catch (err) {
     console.warn('[MongoDB findOrdersByAccountPhone]:', err.message);
     return [];

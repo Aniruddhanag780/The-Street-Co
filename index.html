@@ -100,13 +100,6 @@
         <span class="header-notif-count chrome__cart-count is-zero" id="headerNotifCount" data-count="0" style="display:none;">0</span>
       </button>
 
-      <!-- Wishlist Icon with count badge -->
-      <button class="store-header__action-btn" id="shopWishlistBtn" type="button" aria-label="Wishlist" title="Saved Wishlist">
-        <svg class="chrome__wishlist-icon-svg chrome__header-icon-svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
-        </svg>
-        <span class="chrome__wishlist-count is-zero" id="wishlistCount" data-count="0" style="display: none !important;">0</span>
-      </button>
 
       <!-- Cart / Bag Icon with count badge -->
       <button class="store-header__cart-btn" id="shopCartBtn" type="button" aria-label="Shopping Bag">
@@ -1080,13 +1073,6 @@
     </div>
   </button>
 
-  <!-- 5th Item: Account Profile Page -->
-  <button type="button" class="mobile-bottom-bar__item" id="mobileNavAccount" aria-label="Account" title="My Account" onclick="if(window.openAccountPage){window.openAccountPage();}">
-    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-      <circle cx="12" cy="7" r="4"/>
-    </svg>
-  </button>
 </nav>
 
 </main>
@@ -2147,10 +2133,6 @@
 
           <!-- SAME ADDRESS ENTERING PAGE / FORM (SHOWN WHEN USER CLICKS CREATE ADDRESS CARD) -->
           <div class="checkout-address-form-wrap" id="checkoutAddressFormWrap" style="display:none;">
-            <div class="address-form-top-bar">
-              <span class="address-form-top-bar__title" id="checkoutAddressFormHeading">Create Delivery Address</span>
-              <button type="button" class="address-form-back-btn" id="checkoutCancelAddressFormBtn">← Back to Address Cards</button>
-            </div>
 
           <form class="checkout-form" id="checkoutAddressForm" onsubmit="return false;">
             
@@ -2197,10 +2179,10 @@
                 <span class="checkout-input-error" id="checkoutAddress2Error"></span>
               </div>
 
-              <!-- 3. Nearby Landmark (Optional) -->
+              <!-- 3. Nearby Landmark -->
               <div class="checkout-form-group">
-                <label for="checkoutLandmark">Nearby Landmark <small style="font-size:0.7rem;color:#71717a;font-weight:normal;">(Optional)</small></label>
-                <input type="text" id="checkoutLandmark" class="checkout-input" placeholder="Nearby landmark (optional)" autocomplete="off">
+                <label for="checkoutLandmark">Nearby Landmark</label>
+                <input type="text" id="checkoutLandmark" class="checkout-input" placeholder="Nearby landmark" autocomplete="off">
               </div>
 
               <!-- 4. Town / City, 5. State (2026 India List), 6. PIN / ZIP Code -->
@@ -2287,13 +2269,6 @@
               </label>
 
               <div class="address-form-feedback" id="checkoutAddressFormFeedback" style="display:none;" aria-live="polite"></div>
-
-              <!-- Add Address Button -->
-              <div class="address-form-submit-row">
-                <button type="button" class="address-add-submit-btn" id="checkoutAddAddressBtn">
-                  <span>Add Address</span>
-                </button>
-              </div>
             </div>
 
             <!-- Step 1 Actions -->
@@ -3121,17 +3096,27 @@
             </div>
             <nav class="account-sidebar__nav">
               <button type="button" class="account-nav-item active" id="accountNavPersonalBtn" data-account-page="personal">
-                <span class="account-nav-item__num">01</span>
                 <div class="account-nav-item__info">
                   <span class="account-nav-item__title">Personal Information</span>
                   <small class="account-nav-item__sub">Name, Mobile No. <span class="account-clean-amp">&amp;</span> Email</small>
                 </div>
               </button>
               <button type="button" class="account-nav-item" id="accountNavAddressBtn" data-account-page="address">
-                <span class="account-nav-item__num">02</span>
                 <div class="account-nav-item__info">
                   <span class="account-nav-item__title">Delivery Address</span>
-                  <small class="account-nav-item__sub">Saved Addresses (Optional)</small>
+                  <small class="account-nav-item__sub">Saved Delivery Addresses</small>
+                </div>
+              </button>
+              <button type="button" class="account-nav-item" id="accountNavOrdersBtn" data-account-page="orders">
+                <div class="account-nav-item__info">
+                  <span class="account-nav-item__title">Order History</span>
+                  <small class="account-nav-item__sub">Purchases &amp; Item Pictures</small>
+                </div>
+              </button>
+              <button type="button" class="account-nav-item" id="accountNavLogoutBtn" data-account-page="logout">
+                <div class="account-nav-item__info">
+                  <span class="account-nav-item__title">Log Out</span>
+                  <small class="account-nav-item__sub">Session &amp; Sign Out</small>
                 </div>
               </button>
             </nav>
@@ -3148,7 +3133,6 @@
                 <section class="account-card">
                   <div class="account-card__head">
                     <div>
-                      <span class="account-section-kicker">01 · USER NAME</span>
                       <h3 class="account-card__title">First Name <span class="account-clean-amp">&amp;</span> Last Name</h3>
                     </div>
                   </div>
@@ -3168,7 +3152,6 @@
                 <section class="account-card">
                   <div class="account-card__head">
                     <div>
-                      <span class="account-section-kicker">02 · LOGGED-IN MOBILE NUMBER</span>
                       <h3 class="account-card__title">Phone Number</h3>
                     </div>
                     <span class="account-status-badge account-status-badge--verified">✓ OTP VERIFIED</span>
@@ -3184,7 +3167,6 @@
                 <section class="account-card">
                   <div class="account-card__head">
                     <div>
-                      <span class="account-section-kicker">03 · EMAIL VERIFICATION</span>
                       <h3 class="account-card__title">Email Address</h3>
                     </div>
                     <span class="account-status-badge account-status-badge--unverified" id="accountEmailStatusBadge">OTP VERIFICATION REQUIRED</span>
@@ -3209,17 +3191,15 @@
               </form>
             </div>
 
-            <!-- PAGE 2: DELIVERY ADDRESS (OPTIONAL) -->
+            <!-- PAGE 2: DELIVERY ADDRESS -->
             <div class="account-tab-pane" id="accountDeliveryAddressPage" data-account-pane="address" style="display:none;">
               <section class="account-card">
                 <div class="account-card__head">
                   <div>
-                    <span class="account-section-kicker">02 · DELIVERY ADDRESS</span>
                     <h3 class="account-card__title">Saved Delivery Addresses</h3>
                   </div>
-                  <span class="account-status-badge account-status-badge--optional">OPTIONAL</span>
                 </div>
-                <p class="account-address-intro">Manage your saved delivery addresses for faster checkout. Each address is labeled <strong>Address-1</strong>, <strong>Address-2</strong>, and so on.</p>
+                <p class="account-address-intro">Manage your saved delivery addresses for faster checkout.</p>
 
                 <!-- Saved Address Cards + Add Address Card -->
                 <div id="accountAddressCardsView">
@@ -3270,8 +3250,8 @@
                         <input type="text" id="accountAddrLine2" class="checkout-input" placeholder="Street name, Area, Colony" required autocomplete="address-line2" />
                       </div>
                       <div class="checkout-form-group">
-                        <label for="accountAddrLandmark">Nearby Landmark <small style="font-size:0.7rem;color:#71717a;font-weight:normal;">(Optional)</small></label>
-                        <input type="text" id="accountAddrLandmark" class="checkout-input" placeholder="Nearby landmark (optional)" autocomplete="off" />
+                        <label for="accountAddrLandmark">Nearby Landmark</label>
+                        <input type="text" id="accountAddrLandmark" class="checkout-input" placeholder="Nearby landmark" autocomplete="off" />
                       </div>
                       <div class="checkout-form-row checkout-form-row--3col">
                         <div class="checkout-form-group">
@@ -3355,10 +3335,181 @@
               </section>
             </div>
 
+            <!-- PAGE 3: ORDER HISTORY (MONGODB SYNCED) -->
+            <div class="account-tab-pane" id="accountOrderHistoryPage" data-account-pane="orders" style="display:none;">
+              <section class="account-card account-card--orders">
+                <div class="account-card__head">
+                  <div>
+                    <h3 class="account-card__title">Your Orders <span class="account-clean-amp">&amp;</span> Purchases</h3>
+                  </div>
+                </div>
+
+                <p class="account-address-intro" style="margin-bottom:1.15rem;">
+                  Click on any order card below to view full order history details, item pictures, full delivery address, and price breakdown.
+                </p>
+
+                <!-- Order History Content Container -->
+                <div id="accountOrdersContainer" class="account-orders-list-wrap">
+                  <div class="account-orders-loading-state">
+                    <div class="account-orders-spinner"></div>
+                    <p>Loading order history from MongoDB Atlas...</p>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            <!-- PAGE 4: LOGOUT PAGE -->
+            <div class="account-tab-pane" id="accountLogoutPage" data-account-pane="logout" style="display:none;">
+              <section class="account-card account-card--logout-page">
+                <div class="account-card__head">
+                  <div>
+                    <h3 class="account-card__title">Log Out</h3>
+                  </div>
+                  <span class="account-status-badge account-status-badge--verified" id="accountLogoutSessionBadge">ACTIVE SESSION</span>
+                </div>
+
+                <div class="account-logout-panel">
+                  <div class="account-logout-profile-box">
+                    <div class="account-logout-avatar" id="accountLogoutAvatarIcon">
+                      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                      </svg>
+                    </div>
+                    <div class="account-logout-profile-info">
+                      <div class="account-logout-profile-name" id="accountLogoutUserNameDisplay">Account User</div>
+                      <div class="account-logout-profile-phone" id="accountLogoutUserPhoneDisplay">+91 ••••••••••</div>
+                      <div class="account-logout-profile-meta" id="accountLogoutUserEmailDisplay">Synced with MongoDB Cloud</div>
+                    </div>
+                  </div>
+
+                  <p class="account-logout-guidance">
+                    Ready to leave? Logging out will securely close your active session on this device. All your saved addresses, verified email, and order history will remain securely backed up in MongoDB Atlas for your next visit.
+                  </p>
+
+                  <div class="account-logout-cta-wrap">
+                    <button type="button" class="account-logout-page-btn" id="accountLogoutPageActionBtn">
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16 17 21 12 16 7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                      </svg>
+                      <span>Log Out</span>
+                    </button>
+                  </div>
+                </div>
+              </section>
+            </div>
+
           </div>
         </div>
 
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ 4. CONFIRM LOGOUT POPUP MODAL ══════════ -->
+<div class="logout-confirm-modal" id="accountLogoutConfirmModal" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Confirm Logout">
+  <div class="logout-confirm-modal__backdrop" id="accountLogoutModalBackdrop" onclick="if(window.closeLogoutConfirmPopup){window.closeLogoutConfirmPopup();}"></div>
+  <div class="logout-confirm-modal__dialog">
+    <button type="button" class="logout-confirm-modal__close-btn" onclick="if(window.closeLogoutConfirmPopup){window.closeLogoutConfirmPopup();}" aria-label="Close dialog">✕</button>
+    
+    <div class="logout-confirm-modal__icon-wrap">
+      <div class="logout-confirm-modal__icon-bubble">
+        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+          <polyline points="16 17 21 12 16 7"></polyline>
+          <line x1="21" y1="12" x2="9" y2="12"></line>
+        </svg>
+      </div>
+    </div>
+
+    <span class="logout-confirm-modal__kicker">CONFIRM LOGOUT</span>
+    <h3 class="logout-confirm-modal__title">Log Out of Your Account?</h3>
+    
+    <p class="logout-confirm-modal__message" id="accountLogoutConfirmMessage">
+      Are you sure you want to log out? You will be signed out of your account on this device. Your cart, saved addresses, and order history are securely backed up in MongoDB and will be ready when you return.
+    </p>
+
+    <div class="logout-confirm-modal__user-card" id="accountLogoutConfirmUserCard">
+      <span class="logout-confirm-modal__user-icon">👤</span>
+      <div class="logout-confirm-modal__user-meta">
+        <strong id="logoutConfirmModalUserPhone">+91 ••••••••••</strong>
+        <small id="logoutConfirmModalUserName">Logged in user</small>
+      </div>
+    </div>
+
+    <div class="logout-confirm-modal__actions">
+      <button type="button" class="logout-confirm-modal__btn-continue" id="accountContinueLogoutBtn">
+        <span>Continue Logout</span>
+      </button>
+      <button type="button" class="logout-confirm-modal__btn-cancel" onclick="if(window.closeLogoutConfirmPopup){window.closeLogoutConfirmPopup();}">
+        <span>Stay Logged In</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ 4B. CONFIRM REMOVE ADDRESS POPUP NOTIFICATION MODAL ══════════ -->
+<div class="logout-confirm-modal" id="accountRemoveAddressConfirmModal" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Confirm Remove Address">
+  <div class="logout-confirm-modal__backdrop" id="accountRemoveAddressModalBackdrop" onclick="if(window.closeRemoveAddressModal){window.closeRemoveAddressModal();}"></div>
+  <div class="logout-confirm-modal__dialog">
+    <button type="button" class="logout-confirm-modal__close-btn" onclick="if(window.closeRemoveAddressModal){window.closeRemoveAddressModal();}" aria-label="Close dialog">✕</button>
+    
+    <div class="logout-confirm-modal__icon-wrap">
+      <div class="logout-confirm-modal__icon-bubble">
+        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          <line x1="10" y1="11" x2="10" y2="17"></line>
+          <line x1="14" y1="11" x2="14" y2="17"></line>
+        </svg>
+      </div>
+    </div>
+
+    <span class="logout-confirm-modal__kicker">CONFIRM REMOVE</span>
+    <h3 class="logout-confirm-modal__title">Remove Delivery Address?</h3>
+    
+    <p class="logout-confirm-modal__message" id="accountRemoveAddressMessage">
+      Are you sure you want to remove this delivery address from your account? You can always add a new address later.
+    </p>
+
+    <div class="logout-confirm-modal__user-card" id="accountRemoveAddressPreviewCard">
+      <span class="logout-confirm-modal__user-icon">📍</span>
+      <div class="logout-confirm-modal__user-meta">
+        <strong id="removeAddressRecipientName">Recipient Name</strong>
+        <small id="removeAddressPreviewText">Address Details</small>
+      </div>
+    </div>
+
+    <div class="logout-confirm-modal__actions">
+      <!-- Matte obsidian black #0E0E11 — NOT RED -->
+      <button type="button" class="logout-confirm-modal__btn-continue" id="accountConfirmRemoveAddressBtn">
+        <span>Continue Remove</span>
+      </button>
+      <button type="button" class="logout-confirm-modal__btn-cancel" onclick="if(window.closeRemoveAddressModal){window.closeRemoveAddressModal();}">
+        <span>Keep Address</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ 5. FULL ORDER HISTORY POPUP MODAL ══════════ -->
+<div class="order-details-modal" id="accountFullOrderModal" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Full Order Details">
+  <div class="order-details-modal__backdrop" onclick="if(window.closeFullOrderModal){window.closeFullOrderModal();}"></div>
+  <div class="order-details-modal__dialog">
+    <header class="order-details-modal__header">
+      <div class="order-details-modal__meta">
+        <span class="order-details-modal__kicker">FULL ORDER HISTORY</span>
+        <h3 class="order-details-modal__title" id="fullOrderModalCode">Order #...</h3>
+        <span class="order-details-modal__date" id="fullOrderModalDate">...</span>
+      </div>
+      <button type="button" class="order-details-modal__close-btn" onclick="if(window.closeFullOrderModal){window.closeFullOrderModal();}" aria-label="Close Order Details">✕</button>
+    </header>
+
+    <div class="order-details-modal__body" id="fullOrderModalBody">
+      <!-- Injected dynamically with items with pics, full delivery address, and price breakdown -->
     </div>
   </div>
 </div>

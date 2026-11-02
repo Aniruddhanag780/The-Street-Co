@@ -18,6 +18,14 @@ window.trackGAEvent = function(eventName, eventParams = {}) {
   } catch (_) {}
 };
 
+// VIP & Street Cash UI Global Fallback (prevents any ReferenceError across scopes)
+window.renderVipUI = function() {
+  if (typeof window.renderStreetCashUI === "function") {
+    window.renderStreetCashUI();
+  }
+};
+var renderVipUI = window.renderVipUI;
+
 // Global Mobile Navigation Active State Helper
 function setActiveBottomNav(activeItem) {
   if (typeof activeItem === "string") {
@@ -967,6 +975,34 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
         ? `PROCEED TO CHECKOUT · ₹${subtotalInr.toLocaleString('en-IN')}`
         : 'PROCEED TO CHECKOUT';
     }
+
+    // Compute estimated Street Cash points: Per 1,000 Rs spent will give you 199 The Street Cash (0.199 pts/Rs)
+    const earnedStreetCash = Math.floor(totalInr * 0.199);
+    const cartStreetCashEarnPoints = document.getElementById('cartStreetCashEarnPoints');
+    const cartStreetCashEarnRow = document.getElementById('cartStreetCashEarnRow');
+    if (cartStreetCashEarnPoints) {
+      cartStreetCashEarnPoints.textContent = String(earnedStreetCash.toLocaleString('en-IN'));
+    }
+    if (cartStreetCashEarnRow) {
+      cartStreetCashEarnRow.style.display = totalInr > 0 ? 'flex' : 'none';
+    }
+
+    // Sync auto-applied Street Cash voucher card in cart drawer footer
+    const cartStreetCashCard = document.getElementById('cartStreetCashAppliedCard');
+    const cartStreetCashCodeBadge = document.getElementById('cartStreetCashCodeBadge');
+    const appliedCode = (appliedCartCoupon && appliedCartCoupon.code) || '';
+    const isStreetCashCode = appliedCode && (
+      appliedCode.startsWith('STREETCASH-') ||
+      (typeof streetCashState !== 'undefined' && Array.isArray(streetCashState.streetCashCoupons) && streetCashState.streetCashCoupons.some(c => c.code === appliedCode))
+    );
+    if (cartStreetCashCard) {
+      if (isStreetCashCode && discount > 0) {
+        cartStreetCashCard.style.display = 'block';
+        if (cartStreetCashCodeBadge) cartStreetCashCodeBadge.textContent = appliedCode;
+      } else {
+        cartStreetCashCard.style.display = 'none';
+      }
+    }
   }
 
   function updateCartUI() {
@@ -1155,6 +1191,9 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
 
     updateCartUI();
     showToast(qtyToAdd > 1 ? `${qtyToAdd}× ${item.name}` : item.name);
+    if (typeof autoApplyStreetCashCouponIfAvailable === 'function') {
+      autoApplyStreetCashCouponIfAvailable();
+    }
 
     if (typeof window.trackGAEvent === 'function') {
       window.trackGAEvent('add_to_cart', {
@@ -1211,6 +1250,24 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     if (wishlistDrawerFoot) wishlistDrawerFoot.style.display = !isBag ? 'block' : 'none';
   }
 
+  // Automatically apply active Street Cash coupon to bag
+  async function autoApplyStreetCashCouponIfAvailable() {
+    let activeCode = window.activeStreetCashCouponCode;
+    if (!activeCode && typeof streetCashState !== 'undefined' && Array.isArray(streetCashState.streetCashCoupons)) {
+      const activeC = streetCashState.streetCashCoupons.find(c => !c.isRedeemed && c.status === 'active');
+      if (activeC) activeCode = activeC.code;
+    }
+    if (!activeCode) {
+      try { activeCode = localStorage.getItem('the_street_cash_active_coupon'); } catch(_) {}
+    }
+    if (activeCode && (!appliedCartCoupon || !appliedCartCoupon.code)) {
+      try {
+        await applyCouponCode(activeCode);
+      } catch (_) {}
+    }
+  }
+  window.autoApplyStreetCashCouponIfAvailable = autoApplyStreetCashCouponIfAvailable;
+
   // Open/close drawer with strict background scroll lock
   function openCart(tab = 'bag') {
     if (cartDrawer) {
@@ -1229,6 +1286,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       if (typeof renderSuggestedCoupons === 'function') {
         renderSuggestedCoupons();
       }
+      autoApplyStreetCashCouponIfAvailable();
 
       try {
         if (!history.state || !history.state.cartOpen) {
@@ -2264,6 +2322,18 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
         if (invoiceBtn && zohoUrl) {
           invoiceBtn.href = zohoUrl;
           invoiceBtn.style.display = 'inline-flex';
+        }
+
+        if (result?.order?.streetCashEarned) {
+          const earnedPts = result.order.streetCashEarned;
+          const scInfo = result.order.streetCashAwarded;
+          const extraTxt = scInfo?.isFirstOrder ? ' (+49 pts First Order Milestone included!)' : '';
+          if (window.notifyStreetCashReceived) {
+            window.notifyStreetCashReceived(earnedPts, `Order #${orderCode}${extraTxt}`, scInfo?.newBalance);
+          }
+          if (window.syncStreetCashFromBackend) {
+            window.syncStreetCashFromBackend();
+          }
         }
 
         if (result && result.sms) {
@@ -3610,6 +3680,29 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(updated));
     } catch (e) {
       console.warn('Failed to save order to localStorage', e);
+    }
+  }
+
+  const RETURNS_STORAGE_KEY = 'the_street_co_returns_v1';
+
+  function getSavedReturnExchangeRequests() {
+    try {
+      const raw = localStorage.getItem(RETURNS_STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveReturnExchangeRequest(req) {
+    try {
+      const current = getSavedReturnExchangeRequests();
+      const updated = [req, ...current.filter(r => r && r.id !== req.id && r.orderCode !== req.orderCode)];
+      localStorage.setItem(RETURNS_STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    } catch (e) {
+      console.warn('Failed to save return request', e);
+      return [];
     }
   }
 
@@ -9257,159 +9350,305 @@ window.openDelhiveryTracker = openDelhiveryTracker;
   setInterval(updateDropCountdown, 1000);
   updateDropCountdown();
 
-  // ── 4. VIP STREET CRED LOYALTY & REFERRAL REWARDS CLUB ──
-  const VIP_REWARD_TIERS = [
-    { code: 'VIP100', title: '₹100 Instant Voucher', pointsCost: 200, discountInr: 100, minOrder: 999 },
-    { code: 'VIP250', title: '₹250 Instant Voucher', pointsCost: 450, discountInr: 250, minOrder: 1499 },
-    { code: 'VIP500', title: '₹500 Archive Voucher', pointsCost: 850, discountInr: 500, minOrder: 2499 },
-    { code: 'VIP1000', title: '₹1,000 Obsidian Voucher', pointsCost: 1500, discountInr: 1000, minOrder: 4999 }
-  ];
+  // ── 4. THE STREET CASH — VIP LOYALTY & REWARDS SYSTEM ──
+  // Rules:
+  // - Math: 0.199 points per 1 Rs spent (Math.floor(total * 0.199))
+  // - Strict Display Rule: NEVER say 0.199 pts. MUST display: "Per 1,000 Rs spent will give you 199 The Street Cash"
+  // - Minimum points to redeem: 499 The Street Cash = ₹499 OFF Coupon (strictly one-time use)
+  // - Saved in MongoDB in 'coupons' collection
+  // - AI Stylist integration to pair outfits with the redeemed voucher
 
-  let vipState = {
-    pointsBalance: 320,
-    lifetimePoints: 320,
-    referralCode: 'STREET-VIP88',
-    tier: { name: 'Initiate', multiplier: '1.0x' },
-    history: [
-      { id: 'welcome', label: 'Welcome Archive Member Bonus', points: +200 },
-      { id: 'insider', label: 'Verified Streetwear Insider', points: +120 }
-    ],
-    redeemedVouchers: []
+  const STREET_CASH_STORAGE_KEY = 'the_street_co_street_cash_cache';
+
+  let streetCashState = {
+    phone: '',
+    streetCashBalance: 0,
+    streetCashEarnedTotal: 0,
+    streetCashSpentTotal: 0,
+    streetCashHistory: [],
+    streetCashCoupons: [],
+    tier: { name: 'VIP Street Insider', level: 1, badge: 'INITIATE', perk: 'Earn 199 The Street Cash per ₹1,000 spent' },
+    canRedeem: false,
+    minRedemptionPoints: 499,
+    minRedemptionInr: 499,
+    displayRateNotice: 'Per 1,000 Rs spent will give you 199 The Street Cash',
+    isLoading: false
   };
 
   try {
-    const cachedVip = JSON.parse(localStorage.getItem(VIP_STORAGE_KEY) || 'null');
-    if (cachedVip && typeof cachedVip.pointsBalance === 'number') {
-      vipState = cachedVip;
+    const cachedSc = JSON.parse(localStorage.getItem(STREET_CASH_STORAGE_KEY) || 'null');
+    if (cachedSc && typeof cachedSc.streetCashBalance === 'number') {
+      streetCashState = { ...streetCashState, ...cachedSc };
     }
   } catch (_) {}
 
-  function saveVipState() {
+  function saveStreetCashCache() {
     try {
-      localStorage.setItem(VIP_STORAGE_KEY, JSON.stringify(vipState));
+      localStorage.setItem(STREET_CASH_STORAGE_KEY, JSON.stringify(streetCashState));
     } catch (_) {}
-    renderVipUI();
   }
 
-  function renderVipUI() {
-    const headerPts = document.getElementById('headerVipPointsCount');
-    const dockPts = document.getElementById('dockVipPointsCount');
-    const modalPts = document.getElementById('vipModalPointsBalance');
-    const tierLabel = document.getElementById('vipModalTierLabel');
-    const refBtn = document.getElementById('vipCopyReferralBtn');
-    const rewardsGrid = document.getElementById('vipRewardsGrid');
-    const historyList = document.getElementById('vipHistoryList');
+  function getActiveUserPhone() {
+    let p = '';
+    if (typeof accountState !== 'undefined' && accountState && accountState.phone) {
+      p = accountState.phone;
+    }
+    if (!p) {
+      try {
+        p = localStorage.getItem('the_street_co_user_phone') || '';
+      } catch (_) {}
+    }
+    return String(p || '').replace(/\D/g, '').slice(-10);
+  }
 
-    const ptsStr = `${vipState.pointsBalance.toLocaleString('en-IN')} pts`;
-    if (headerPts) headerPts.textContent = ptsStr;
-    if (dockPts) dockPts.textContent = ptsStr;
-    if (modalPts) modalPts.textContent = ptsStr;
+  window.notifyStreetCashReceived = function(points, reason, newBalance) {
+    const ptsNum = Number(points) || 0;
+    if (ptsNum <= 0) return;
+    const balanceTxt = newBalance !== undefined ? ` · Vault Balance: ${newBalance} The Street Cash` : '';
+    if (window.streetCoShowToast) {
+      window.streetCoShowToast(
+        '🎁 The Street Cash Credited!',
+        `+${ptsNum} The Street Cash credited to your vault for ${reason || 'VIP Rewards'}!${balanceTxt} SMS confirmation dispatched.`
+      );
+    }
+  };
 
-    const tierName = vipState.lifetimePoints >= 1500 ? 'Obsidian VIP (2.0x)'
-      : vipState.lifetimePoints >= 800 ? 'Syndicate (1.5x)'
-      : vipState.lifetimePoints >= 350 ? 'Vanguard (1.25x)'
-      : 'Initiate (1.0x)';
-    if (tierLabel) tierLabel.textContent = `Tier: ${tierName} · Lifetime: ${vipState.lifetimePoints} pts`;
-    if (refBtn) refBtn.textContent = `${vipState.referralCode || 'STREET-VIP88'} ⎘`;
+  async function syncStreetCashFromBackend(phoneToFetch = '') {
+    const phone = phoneToFetch || getActiveUserPhone();
+    try {
+      const url = phone ? `/api/loyalty/status?phone=${phone}` : `/api/loyalty/status`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data && data.success) {
+        streetCashState = {
+          ...streetCashState,
+          phone: data.phone || phone,
+          streetCashBalance: Number(data.streetCashBalance) || 0,
+          streetCashEarnedTotal: Number(data.streetCashEarnedTotal) || 0,
+          streetCashSpentTotal: Number(data.streetCashSpentTotal) || 0,
+          streetCashHistory: Array.isArray(data.streetCashHistory) ? data.streetCashHistory : [],
+          streetCashCoupons: Array.isArray(data.streetCashCoupons) ? data.streetCashCoupons : [],
+          streetCashBonuses: data.streetCashBonuses || {},
+          tier: data.tier || streetCashState.tier,
+          canRedeem: Boolean(data.canRedeem),
+          minRedemptionPoints: data.minRedemptionPoints || 499,
+          displayRateNotice: data.displayRateNotice || 'Per 1,000 Rs spent will give you 199 The Street Cash'
+        };
+        saveStreetCashCache();
+        renderStreetCashUI();
 
-    if (rewardsGrid) {
-      rewardsGrid.innerHTML = VIP_REWARD_TIERS.map(r => {
-        const canAfford = vipState.pointsBalance >= r.pointsCost;
-        const alreadyRedeemed = vipState.redeemedVouchers && vipState.redeemedVouchers.some(v => v.code === r.code);
-        return `
-          <div class="vip-reward-card">
-            <div>
-              <h5>${r.title}</h5>
-              <small>${r.pointsCost} pts · Min order ₹${r.minOrder.toLocaleString('en-IN')}</small>
-            </div>
-            <div style="display:flex;gap:0.4rem;">
-              ${alreadyRedeemed
-                ? `<button type="button" class="vip-redeem-btn" data-apply-vip-code="${r.code}">Apply ${r.code} to Bag →</button>`
-                : `<button type="button" class="vip-redeem-btn" data-redeem-code="${r.code}" ${canAfford ? '' : 'disabled'}>${canAfford ? `Redeem (${r.pointsCost} pts)` : `Need ${r.pointsCost - vipState.pointsBalance} more pts`}</button>`
-              }
-            </div>
-          </div>
-        `;
-      }).join('');
-
-      rewardsGrid.querySelectorAll('[data-redeem-code]').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          const code = btn.getAttribute('data-redeem-code');
-          const tier = VIP_REWARD_TIERS.find(t => t.code === code);
-          if (!tier || vipState.pointsBalance < tier.pointsCost) return;
-
-          vipState.pointsBalance -= tier.pointsCost;
-          vipState.redeemedVouchers.unshift({ code: tier.code, discountInr: tier.discountInr });
-          vipState.history.unshift({
-            id: 'redeem_' + Date.now(),
-            label: `Unlocked ${tier.code} (₹${tier.discountInr} Off Voucher)`,
-            points: -tier.pointsCost
+        // If any bonuses were newly awarded during backend sync, alert user with toast notification
+        if (Array.isArray(data.newlyAwardedBonuses) && data.newlyAwardedBonuses.length > 0) {
+          data.newlyAwardedBonuses.forEach(b => {
+            window.notifyStreetCashReceived(b.points, b.reason || b.label, data.streetCashBalance);
           });
-          saveVipState();
+        }
+      }
+    } catch (err) {
+      console.warn('[The Street Cash sync notice]:', err.message);
+    }
+  }
 
-          fetch('/api/loyalty/redeem', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              memberId: 'default_guest',
-              rewardCode: tier.code,
-              pointsCost: tier.pointsCost,
-              discountInr: tier.discountInr,
-              minOrderValue: tier.minOrder
-            })
-          }).catch(() => {});
+  function updateMissionUI(key, isDone) {
+    const item = document.getElementById(`missionItem_${key}`);
+    const check = document.getElementById(`scCheck_${key}`);
+    const goBtn = document.getElementById(`scGo_${key}`);
+    if (!item) return;
 
-          if (typeof window.streetCoShowToast === 'function') {
-            window.streetCoShowToast('VIP VOUCHER UNLOCKED', `Code ${tier.code} (₹${tier.discountInr} OFF) is ready to apply!`);
+    if (isDone) {
+      if (check) {
+        check.style.background = '#15803D';
+        check.style.borderColor = '#15803D';
+        check.style.color = '#FFFFFF';
+        check.textContent = '✓';
+      }
+      if (goBtn) {
+        goBtn.style.background = 'rgba(21,128,61,0.08)';
+        goBtn.style.borderColor = 'rgba(21,128,61,0.25)';
+        goBtn.style.color = '#15803D';
+        goBtn.style.cursor = 'default';
+        goBtn.innerHTML = `<span>Claimed ✓</span>`;
+        goBtn.onclick = null;
+      }
+      item.style.borderColor = 'rgba(21,128,61,0.25)';
+      item.style.background = '#F9FBF8';
+    } else {
+      if (check) {
+        check.style.background = '#FFFFFF';
+        check.style.borderColor = '#D4D4D8';
+        check.style.color = 'transparent';
+        check.textContent = '✓';
+      }
+      if (goBtn) {
+        goBtn.style.background = key === 'first_order' ? 'linear-gradient(135deg, #C5A880, #A88658)' : '#FFFFFF';
+        goBtn.style.borderColor = key === 'first_order' ? '#997D55' : '#D6C2A5';
+        goBtn.style.color = key === 'first_order' ? '#FFFFFF' : '#18181B';
+        goBtn.style.cursor = 'pointer';
+        goBtn.innerHTML = `Go →`;
+        goBtn.onclick = function() {
+          if (window.handleMissionGo) window.handleMissionGo(key);
+        };
+      }
+      item.style.borderColor = '#E8E2D8';
+      item.style.background = '#FAF8F5';
+    }
+  }
+
+  window.handleMissionGo = function(key) {
+    const activePhone = getActiveUserPhone();
+    if (key === 'account_creation') {
+      if (activePhone && activePhone.length === 10) {
+        if (window.streetCoShowToast) window.streetCoShowToast('Account Verified', 'You are already logged in! 75 The Street Cash has been credited.');
+      } else {
+        window.closeVipLoyaltyModal();
+        if (typeof window.openCheckoutAuthGate === 'function') {
+          window.openCheckoutAuthGate();
+        } else if (typeof window.openAccountPage === 'function') {
+          window.openAccountPage();
+        }
+      }
+    } else if (key === 'profile_name') {
+      window.closeVipLoyaltyModal();
+      if (typeof window.openAccountPage === 'function') {
+        window.openAccountPage();
+        setTimeout(() => {
+          const nameInput = document.getElementById('accFirstName') || document.getElementById('accountFirstName');
+          if (nameInput) {
+            nameInput.focus();
+            nameInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }
-        });
-      });
+        }, 300);
+      }
+    } else if (key === 'profile_email') {
+      window.closeVipLoyaltyModal();
+      if (typeof window.openAccountPage === 'function') {
+        window.openAccountPage();
+        setTimeout(() => {
+          const emailInput = document.getElementById('accEmail') || document.getElementById('accountEmail');
+          if (emailInput) {
+            emailInput.focus();
+            emailInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 300);
+      }
+    } else if (key === 'first_order') {
+      window.closeVipLoyaltyModal();
+      const shopTarget = document.getElementById('catalog') || document.querySelector('.elanora-hero') || document.body;
+      if (shopTarget) shopTarget.scrollIntoView({ behavior: 'smooth' });
+      if (window.streetCoShowToast) {
+        window.streetCoShowToast('Explore Collection', 'Place your 1st order to earn +49 bonus points plus standard Street Cash!');
+      }
+    }
+  };
 
-      rewardsGrid.querySelectorAll('[data-apply-vip-code]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const code = btn.getAttribute('data-apply-vip-code');
-          window.closeVipLoyaltyModal();
-          if (typeof window.streetCoOpenCart === 'function') window.streetCoOpenCart('bag');
-          if (typeof window.streetCoApplyCoupon === 'function') window.streetCoApplyCoupon(code);
-        });
-      });
+  function renderStreetCashUI() {
+    const balance = Math.max(0, Number(streetCashState.streetCashBalance) || 0);
+    const balanceStr = balance.toLocaleString('en-IN');
+    const inrValueStr = balance.toLocaleString('en-IN');
+
+    // 1. Digital card balance & Inr value
+    const balanceEl = document.getElementById('vipModalPointsBalance');
+    if (balanceEl) balanceEl.textContent = balanceStr;
+
+    const inrEl = document.getElementById('streetCashInrValueDisplay');
+    if (inrEl) inrEl.textContent = inrValueStr;
+
+    // 2. User phone on wallet card
+    const phoneEl = document.getElementById('streetCashUserPhoneDisplay');
+    const activePhone = streetCashState.phone || getActiveUserPhone();
+    if (phoneEl) {
+      if (activePhone && activePhone.length === 10) {
+        phoneEl.textContent = `+91 ${activePhone.slice(0, 5)} ${activePhone.slice(5)}`;
+      } else {
+        phoneEl.textContent = 'Guest VIP Pass';
+      }
     }
 
-    if (historyList) {
-      historyList.innerHTML = (vipState.history || []).slice(0, 8).map(item => `
-        <div style="display:flex;justify-content:space-between;padding:0.35rem 0;border-bottom:1px solid #f4f4f5;font-variant-numeric:tabular-nums;">
-          <span>${item.label}</span>
-          <strong style="color:${item.points >= 0 ? '#15803d' : '#b91c1c'};">${item.points >= 0 ? '+' : ''}${item.points} pts</strong>
-        </div>
-      `).join('');
+    // 3. Tier badge
+    const tierBadge = document.getElementById('streetCashTierBadge');
+    if (tierBadge) {
+      tierBadge.textContent = streetCashState.tier?.name || (balance >= 499 ? 'VIP Street Insider' : 'Initiate Club');
     }
+
+    // 4. Milestone Progress toward 499 The Street Cash (or next multiple)
+    const milestoneLabel = document.getElementById('streetCashMilestoneLabel');
+    const percentEl = document.getElementById('streetCashProgressPercent');
+    const progressBar = document.getElementById('streetCashProgressBar');
+    const neededNote = document.getElementById('streetCashNeededNote');
+
+    const nextMultiple = Math.max(499, Math.ceil((balance + 1) / 499) * 499);
+    const progressPercent = balance >= 499 ? 100 : Math.min(100, Math.round((balance / 499) * 100));
+
+    if (milestoneLabel) {
+      milestoneLabel.textContent = `Next Milestone: ${nextMultiple} The Street Cash (₹${nextMultiple} Flat Discount)`;
+    }
+    if (percentEl) percentEl.textContent = `${progressPercent}%`;
+    if (progressBar) progressBar.style.width = `${progressPercent}%`;
+
+    if (neededNote) {
+      if (balance >= 499) {
+        neededNote.innerHTML = `<span style="color:#15803d;font-weight:600;">✓ Ready to redeem!</span> You have enough The Street Cash to claim your ₹499 OFF coupon right now.`;
+      } else {
+        const diff = 499 - balance;
+        neededNote.innerHTML = `Need <strong style="color:#18181B;">${diff} more The Street Cash</strong> to unlock your ₹499 OFF coupon. <br><em style="color:#997D55;">Per 1,000 Rs spent will give you 199 The Street Cash.</em>`;
+      }
+    }
+
+    // 5. Digital VIP Wallet Card "Redeem" Button
+    const walletRedeemBtn = document.getElementById('streetCashWalletRedeemBtn');
+    if (walletRedeemBtn) {
+      walletRedeemBtn.disabled = false;
+      walletRedeemBtn.innerHTML = `<span>✨ Redeem (₹499 OFF)</span>`;
+    }
+
+    // 6. Active Minted Street Cash Coupon Card (under luxury wallet card)
+    const mintedCard = document.getElementById('streetCashMintedCouponCard');
+    const mintedCodeDisplay = document.getElementById('streetCashMintedCodeDisplay');
+    const coupons = streetCashState.streetCashCoupons || [];
+    const activeCoupon = coupons.find(c => !c.isRedeemed && c.status === 'active') ||
+      (window.activeStreetCashCouponCode ? { code: window.activeStreetCashCouponCode } : null);
+
+    if (activeCoupon && activeCoupon.code) {
+      window.activeStreetCashCouponCode = activeCoupon.code;
+      try { localStorage.setItem('the_street_cash_active_coupon', activeCoupon.code); } catch(_) {}
+      if (mintedCard && mintedCodeDisplay) {
+        mintedCard.style.display = 'block';
+        mintedCodeDisplay.textContent = activeCoupon.code;
+      }
+    } else if (mintedCard && !window.activeStreetCashCouponCode) {
+      mintedCard.style.display = 'none';
+    }
+
+    // 7. Automatically Update VIP Member Missions & Boosts (Checkboxes & Status)
+    const bonuses = streetCashState.streetCashBonuses || {};
+    const hasLoggedIn = activePhone && activePhone.length === 10;
+    const localUser = (typeof accountState !== 'undefined' && accountState) ? accountState : {};
+
+    // Mission 1: Account Creation (+75 pts)
+    const isAccDone = Boolean(bonuses.account_creation || hasLoggedIn);
+    updateMissionUI('account_creation', isAccDone);
+
+    // Mission 2: Name Upload (+25 pts)
+    const hasName = Boolean(bonuses.profile_name || (localUser.firstName && localUser.firstName.trim()) || (localUser.lastName && localUser.lastName.trim()));
+    updateMissionUI('profile_name', hasName);
+
+    // Mission 3: Email Added (+35 pts)
+    const hasEmail = Boolean(bonuses.profile_email || (localUser.email && localUser.email.includes('@')));
+    updateMissionUI('profile_email', hasEmail);
+
+    // Mission 4: 1st Order (+49 pts)
+    const isOrderDone = Boolean(bonuses.first_order);
+    updateMissionUI('first_order', isOrderDone);
   }
 
-  function awardVipPoints(actionId, label, points) {
-    if (vipState.history.some(h => h.id === actionId)) return;
-    vipState.pointsBalance += points;
-    vipState.lifetimePoints += points;
-    vipState.history.unshift({ id: actionId, label, points });
-    saveVipState();
-
-    fetch('/api/loyalty/earn', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ memberId: 'default_guest', actionId, label, points })
-    }).catch(() => {});
-
-    if (typeof window.streetCoShowToast === 'function') {
-      window.streetCoShowToast(`+${points} STREET CRED EARNED`, label);
-    }
-  }
-
+  // Window actions
   window.openVipLoyaltyModal = function() {
-    renderVipUI();
     const modal = document.getElementById('suiteVipLoyaltyModal');
     if (modal) {
       modal.classList.add('open');
       modal.setAttribute('aria-hidden', 'false');
     }
+    syncStreetCashFromBackend();
   };
 
   window.closeVipLoyaltyModal = function() {
@@ -9420,28 +9659,171 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     }
   };
 
-  document.getElementById('vipCopyReferralBtn')?.addEventListener('click', async () => {
-    const code = vipState.referralCode || 'STREET-VIP88';
+  window.openStreetCashHub = function() {
+    window.openVipLoyaltyModal();
+  };
+
+  window.handleWalletRedeemStreetCash = async function() {
+    const activePhone = getActiveUserPhone();
+    if (!activePhone || activePhone.length !== 10) {
+      if (typeof window.openCheckoutAuthGate === 'function') {
+        window.openCheckoutAuthGate(function() {
+          window.handleWalletRedeemStreetCash();
+        });
+      } else if (typeof window.openAccountPage === 'function') {
+        window.closeVipLoyaltyModal();
+        window.openAccountPage();
+        if (window.streetCoShowToast) {
+          window.streetCoShowToast('Account Login Required', 'Please sign in with your mobile number to redeem The Street Cash.');
+        }
+      }
+      return;
+    }
+
+    const currentBalance = Math.max(0, Number(streetCashState.streetCashBalance) || 0);
+    if (currentBalance < 499) {
+      const diff = 499 - currentBalance;
+      if (window.streetCoShowToast) {
+        window.streetCoShowToast('Insufficient Street Cash', `Need at least 499 The Street Cash to redeem. You need ${diff} more points!`);
+      }
+      return;
+    }
+
+    const btn = document.getElementById('streetCashWalletRedeemBtn');
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = `<span>✨ Redeeming...</span>`;
+    }
+
     try {
-      await navigator.clipboard.writeText(`${window.location.origin}/?ref=${code}`);
-    } catch (_) {}
-    awardVipPoints('referral_copied', 'Copied VIP Referral Invite Link', 50);
-  });
+      const res = await fetch('/api/loyalty/redeem', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: activePhone, points: 499 })
+      });
+      const data = await res.json();
+      if (!data || !data.success) {
+        throw new Error(data?.error || 'Unable to redeem points at this time.');
+      }
 
-  document.getElementById('vipEarnQuizBtn')?.addEventListener('click', () => {
+      const mintedCoupon = data.coupon;
+      const couponCode = mintedCoupon?.code;
+
+      streetCashState.streetCashBalance = data.remainingBalance;
+      if (mintedCoupon) {
+        streetCashState.streetCashCoupons = [mintedCoupon, ...(streetCashState.streetCashCoupons || [])];
+      }
+      if (couponCode) {
+        window.activeStreetCashCouponCode = couponCode;
+        try { localStorage.setItem('the_street_cash_active_coupon', couponCode); } catch(_) {}
+      }
+      saveStreetCashCache();
+      renderStreetCashUI();
+
+      // Show notification to the user that Street Cash is redeemed successfully
+      if (window.streetCoShowToast) {
+        window.streetCoShowToast('Street Cash Redeemed!', 'Your Street Cash is redeemed successfully! ₹499 OFF voucher created.');
+      }
+
+      // Display coupon in card directly under wallet card
+      const couponCard = document.getElementById('streetCashMintedCouponCard');
+      const codeDisplay = document.getElementById('streetCashMintedCodeDisplay');
+      if (couponCard && codeDisplay && couponCode) {
+        couponCard.style.display = 'block';
+        codeDisplay.textContent = couponCode;
+        couponCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+
+      // Auto-apply this coupon to cart immediately
+      if (couponCode && typeof applyCouponCode === 'function') {
+        applyCouponCode(couponCode).catch(() => {});
+      }
+    } catch (err) {
+      if (window.streetCoShowToast) {
+        window.streetCoShowToast('Redemption Failed', err.message);
+      }
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = `<span>✨ Redeem (₹499 OFF)</span>`;
+      }
+    }
+  };
+
+  window.copyActiveStreetCashCoupon = function() {
+    const code = window.activeStreetCashCouponCode ||
+      (streetCashState.streetCashCoupons?.find(c => !c.isRedeemed && c.status === 'active')?.code) ||
+      document.getElementById('streetCashMintedCodeDisplay')?.textContent?.trim() ||
+      localStorage.getItem('the_street_cash_active_coupon');
+
+    if (code && !code.includes('XXXX')) {
+      navigator.clipboard.writeText(code).then(() => {
+        if (window.streetCoShowToast) {
+          window.streetCoShowToast('Coupon Copied!', `${code} copied to clipboard! Auto-applied in bag.`);
+        }
+      }).catch(() => {
+        if (window.streetCoShowToast) {
+          window.streetCoShowToast('Coupon Code', `${code} saved to your account and applied in bag.`);
+        }
+      });
+    }
+  };
+
+  // Backwards compatible aliases
+  window.handleRedeemStreetCash = window.handleWalletRedeemStreetCash;
+  window.refreshStreetCashWallet = function() {
+    syncStreetCashFromBackend().then(() => {
+      if (window.streetCoShowToast) window.streetCoShowToast('Street Cash Synced', 'Live balance refreshed from MongoDB.');
+    });
+  };
+
+  window.handleClaimBonusStreetCash = async function(actionId, label, points) {
+    const activePhone = getActiveUserPhone();
+    if (!activePhone || activePhone.length !== 10) {
+      if (window.streetCoShowToast) {
+        window.streetCoShowToast('Sign In Required', 'Please log in to claim community Street Cash bonuses.');
+      }
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/loyalty/earn', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: activePhone, actionId, label, points })
+      });
+      const data = await res.json();
+      if (data && data.success) {
+        streetCashState.streetCashBalance = data.newBalance;
+        saveStreetCashCache();
+        renderStreetCashUI();
+        if (window.streetCoShowToast) {
+          window.streetCoShowToast(`+${points} The Street Cash!`, label);
+        }
+      } else if (data && data.alreadyClaimed) {
+        if (window.streetCoShowToast) {
+          window.streetCoShowToast('Already Claimed', data.message);
+        }
+      }
+    } catch (err) {
+      console.warn('[Claim bonus error]:', err.message);
+    }
+  };
+
+  window.applyStreetCashToCart = function(couponCode) {
     window.closeVipLoyaltyModal();
-    window.openFitFinderModal();
-  });
+    if (typeof window.streetCoOpenCart === 'function') {
+      window.streetCoOpenCart('bag');
+    }
+    if (typeof window.streetCoApplyCoupon === 'function') {
+      window.streetCoApplyCoupon(couponCode);
+    }
+  };
 
-  document.getElementById('vipEarnShareBtn')?.addEventListener('click', () => {
-    awardVipPoints('lookbook_shared', 'Shared Seasonal Streetwear Lookbook', 75);
-  });
-
-  document.getElementById('vipEarnDropBtn')?.addEventListener('click', () => {
-    window.closeVipLoyaltyModal();
-    const vault = document.getElementById('dropVaultSection');
-    if (vault) vault.scrollIntoView({ behavior: 'smooth' });
-  });
+  // Initial sync on startup
+  setTimeout(() => {
+    syncStreetCashFromBackend();
+  }, 1000);
 
   // ── 5. SELF-SERVICE ORDER LOOKUP & 7-DAY SIZE EXCHANGE PORTAL ──
   window.openOrderExchangeModal = function() {
@@ -9624,7 +10006,11 @@ window.openDelhiveryTracker = openDelhiveryTracker;
   // Initial renders
   renderLookbook('look-01');
   renderDropVaultGrid();
-  renderVipUI();
+  renderStreetCashUI();
+  function renderVipUI() {
+    renderStreetCashUI();
+  }
+  window.renderVipUI = renderVipUI;
   const initialFit = getSavedFitSize();
   if (initialFit) updateFitBadgesEverywhere(initialFit, 96);
 })();
@@ -10614,7 +11000,15 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           </div>
 
           <div class="account-orders-empty-actions">
-            <button type="button" class="account-orders-shop-now-btn" onclick="if(window.closeAccountPage){window.closeAccountPage();}">
+            <button type="button" class="account-orders-shop-now-btn" onclick="if(window.streetCoCreateSampleOrder){window.streetCoCreateSampleOrder();}">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                <line x1="8" y1="21" x2="16" y2="21"></line>
+                <line x1="12" y1="17" x2="12" y2="21"></line>
+              </svg>
+              <span>Preview Sample Order</span>
+            </button>
+            <button type="button" class="account-orders-shop-now-btn account-orders-shop-now-btn--ghost" onclick="if(window.closeAccountPage){window.closeAccountPage();}">
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <circle cx="9" cy="21" r="1"></circle>
                 <circle cx="20" cy="21" r="1"></circle>
@@ -10628,6 +11022,8 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       return;
     }
 
+    // ── RENDER SHORT ORDER HISTORY CARDS ──
+    const returnRequests = typeof getSavedReturnExchangeRequests === 'function' ? getSavedReturnExchangeRequests() : [];
     const html = allOrders.map((ord) => {
       const orderCode = ord.orderCode || ord.orderId || 'ORD';
       const orderDateStr = ord.orderDateFormatted || (ord.orderDate ? new Date(ord.orderDate).toLocaleString('en-IN', {
@@ -10639,20 +11035,19 @@ window.openDelhiveryTracker = openDelhiveryTracker;
         hour12: true
       }) : 'Recently Placed');
 
+      const returnReq = returnRequests.find(r => r.orderCode === orderCode) || ord.returnRequest;
+      const isExchange = returnReq && returnReq.type === 'exchange';
+      const isReturn = returnReq && returnReq.type === 'return';
+
       const paymentMethod = String(ord.paymentMethod || ord.payment?.method || 'COD').toUpperCase();
       const payLabel = paymentMethod === 'COD' ? 'Cash on Delivery' : (paymentMethod === 'UPI' ? 'UPI' : (paymentMethod === 'CARD' ? 'Credit / Debit Card' : paymentMethod));
 
       const shipAddr = ord.shippingAddress || ord.address || ord.user || ord.contactDetails || {};
       const shipName = shipAddr.fullName || shipAddr.name || accountState.firstName || 'Customer';
-      const shipPhone = String(shipAddr.phone || ord.contactDetails?.phone || accountState.phone || '').replace(/\D/g, '').slice(-10);
-      const line1 = shipAddr.houseFlat || shipAddr.address1 || '';
-      const line2 = shipAddr.streetRoad || shipAddr.address2 || '';
-      const landmark = shipAddr.landmark || '';
       const city = shipAddr.city || '';
       const state = shipAddr.state || '';
       const pincode = shipAddr.pincode || '';
-      const fullAddrParts = [line1, line2, landmark ? `(Landmark: ${landmark})` : '', city, state ? `${state} - ${pincode}` : pincode].filter(Boolean);
-      const fullDeliveryAddress = shipAddr.fullAddress || fullAddrParts.join(', ') || 'Address on file';
+      const destSummary = [city, state].filter(Boolean).join(', ') || pincode || 'India';
 
       const items = Array.isArray(ord.items) && ord.items.length > 0
         ? ord.items
@@ -10663,97 +11058,94 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       const shippingFee = Number(ord.deliveryFeeInr || ord.delivery?.cost || (ord.delivery?.speed === 'express' ? 149 : 0));
       const grandTotal = Number(ord.grandTotalInr || ord.totalInr || (subtotal + shippingFee - discount));
 
-      const itemsHtml = items.map(it => {
+      // Build compact thumbnail preview strip (max 3 displayed + remaining counter)
+      const displayedItems = items.slice(0, 3);
+      const remainingItemCount = items.length - displayedItems.length;
+      const thumbsHtml = displayedItems.map(it => {
         const sku = it.sku || it.id || '';
         const relic = (typeof collectionsData !== 'undefined' && Array.isArray(collectionsData))
           ? collectionsData.find(c => (c.sku || c.id) === sku)
           : null;
 
-        let itemImg = it.image || it.imageUrl || it.img || (Array.isArray(it.images) ? it.images[0] : '') ||
+        const itemImg = it.image || it.imageUrl || it.img || (Array.isArray(it.images) ? it.images[0] : '') ||
           (relic && (relic.image || relic.imageUrl || (Array.isArray(relic.images) ? relic.images[0] : ''))) ||
           'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=200&auto=format&fit=crop&q=80';
 
-        const itemName = it.name || it.title || (relic && relic.name) || 'The Street Co Apparel';
-        const itemQty = Math.max(1, parseInt(it.qty || it.quantity, 10) || 1);
-        const itemPrice = Number(it.priceInr || it.price || (relic && relic.priceInr) || 0);
-        const itemTotal = Number(it.totalItemPriceInr || (itemPrice * itemQty));
-        const itemSize = it.size || 'M';
-        const itemFinish = it.finish || (relic && relic.finish) || '';
-
-        return `
-          <div class="account-order-item-row">
-            <div class="account-order-item__pic-wrap">
-              <img src="${itemImg}" alt="${itemName}" class="account-order-item__pic" loading="lazy" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=200&auto=format&fit=crop&q=80';" />
-            </div>
-            <div class="account-order-item__info">
-              <h5 class="account-order-item__name">${itemName}</h5>
-              <div class="account-order-item__tags">
-                <span class="account-order-item__tag">Size: ${itemSize}</span>
-                ${itemFinish ? `<span class="account-order-item__tag">${itemFinish}</span>` : ''}
-                <span class="account-order-item__tag account-order-item__tag--qty">Qty: ${itemQty}</span>
-              </div>
-              <div class="account-order-item__price-row">
-                <span class="account-order-item__price">₹${itemPrice.toLocaleString('en-IN')}</span>
-                ${itemQty > 1 ? `<span class="account-order-item__total">Total: ₹${itemTotal.toLocaleString('en-IN')}</span>` : ''}
-              </div>
-            </div>
-          </div>
-        `;
+        const itemName = it.name || it.title || (relic && relic.name) || 'Streetwear Item';
+        return `<img src="${itemImg}" alt="${itemName}" class="account-order-short-thumb" loading="lazy" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=200&auto=format&fit=crop&q=80';" />`;
       }).join('');
 
+      const firstItemName = items[0]?.name || items[0]?.title || 'Streetwear Item';
+      const itemsSummaryText = items.length === 1
+        ? firstItemName
+        : (items.length === 2 ? `${firstItemName} + 1 other item` : `${firstItemName} + ${items.length - 1} more items`);
+
+      const isAwaitingZoho = ord.status === 'AWAITING_ZOHO_CONFIRMATION' || ord.zoho_status === 'pending_confirmation';
+      const isDelivered = ord.status === 'DELIVERED' || ord.deliveryStatus === 'DELIVERY_DONE';
+
+      let statusBadgeMarkup = '<span class="account-order-short-badge">CONFIRMED</span>';
+      if (isExchange) {
+        statusBadgeMarkup = '<span class="account-order-short-badge account-order-short-badge--exchange">EXCHANGE REQUESTED</span>';
+      } else if (isReturn) {
+        statusBadgeMarkup = '<span class="account-order-short-badge account-order-short-badge--return">RETURN REQUESTED</span>';
+      } else if (isDelivered) {
+        statusBadgeMarkup = '<span class="account-order-short-badge account-order-short-badge--delivered">DELIVERED</span>';
+      } else if (isAwaitingZoho) {
+        statusBadgeMarkup = '<span class="account-order-short-badge account-order-short-badge--awaiting">AWAITING ZOHO CONFIRMATION</span>';
+      }
+
       return `
-        <article class="account-order-card is-clickable" data-order-code="${orderCode}" onclick="if(window.openFullOrderModal){window.openFullOrderModal('${orderCode}');}" role="button" tabindex="0" title="Click to view full order history">
-          <div class="account-order-card__header">
+        <article class="account-order-card account-order-card--short is-clickable" data-order-code="${orderCode}" onclick="if(window.openFullOrderModal){window.openFullOrderModal('${orderCode}');}" role="button" tabindex="0" title="Click to view full order history popup">
+          <!-- Short Order Card Header -->
+          <div class="account-order-card__header account-order-short__header">
             <div class="account-order-card__meta">
-              <h4 class="account-order-card__code">Order #${orderCode}</h4>
+              <div class="account-order-short__title-row">
+                <h4 class="account-order-card__code">Order #${orderCode}</h4>
+                ${statusBadgeMarkup}
+              </div>
               <span class="account-order-card__date">${orderDateStr}</span>
             </div>
-            <div class="account-order-card__click-prompt">
-              <span>View Full Order History →</span>
+          </div>
+
+          <!-- Short Order Card Body (Thumbnail previews & brief details) -->
+          <div class="account-order-short__body">
+            <div class="account-order-short__thumbs-wrap">
+              ${thumbsHtml}
+              ${remainingItemCount > 0 ? `<span class="account-order-short-thumb-more">+${remainingItemCount}</span>` : ''}
+            </div>
+            <div class="account-order-short__details">
+              <div class="account-order-short__items-title">
+                <strong>${items.length} ${items.length === 1 ? 'Item' : 'Items'}:</strong>
+                <span>${itemsSummaryText}</span>
+              </div>
+              <div class="account-order-short__destination">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                  <circle cx="12" cy="10" r="3"></circle>
+                </svg>
+                <span>Deliver to: <strong>${shipName}</strong> (${destSummary})</span>
+              </div>
             </div>
           </div>
 
-          <!-- Items with Pictures -->
-          <div class="account-order-items-list">
-            ${itemsHtml || '<p class="account-order-no-items">Order items verified.</p>'}
-          </div>
-
-          <!-- Full Delivery Address -->
-          <div class="account-order-card__address-block">
-            <span class="account-order-card__block-label">FULL DELIVERY ADDRESS</span>
-            <div class="account-order-card__address-content">
-              <div class="account-order-card__recipient-name">
-                <strong>${shipName}</strong>
-                ${shipPhone ? `<span>· +91 ${shipPhone}</span>` : ''}
-              </div>
-              <div class="account-order-card__recipient-addr">${fullDeliveryAddress}</div>
+          <!-- Short Order Card Footer (Payment, Total Price & Return/Exchange) -->
+          <div class="account-order-card__footer account-order-short__footer">
+            <div class="account-order-short__pay-summary">
+              <span class="account-order-short__label">Payment:</span>
+              <span class="account-order-short__value">${payLabel}</span>
             </div>
-          </div>
-
-          <!-- Price Breakdown, Shipping Price & Payment Method -->
-          <div class="account-order-card__footer">
-            <div class="account-order-card__pay-block">
-              <span class="account-order-card__pay-title">Payment Method:</span>
-              <strong class="account-order-card__pay-name">${payLabel}</strong>
-            </div>
-
-            <div class="account-order-card__price-table">
-              <div class="account-order-price-row">
-                <span class="account-order-price-lbl">Full Price:</span>
-                <span class="account-order-price-val">₹${subtotal.toLocaleString('en-IN')}</span>
+            <div class="account-order-short__footer-right">
+              <div class="account-order-short__total-summary">
+                <span class="account-order-short__label">Total:</span>
+                <strong class="account-order-short__total-val">₹${grandTotal.toLocaleString('en-IN')}</strong>
               </div>
-              <div class="account-order-price-row">
-                <span class="account-order-price-lbl">Discount:</span>
-                <span class="account-order-price-val ${discount > 0 ? 'text-discount' : ''}">${discount > 0 ? `-₹${discount.toLocaleString('en-IN')}` : '₹0'}</span>
-              </div>
-              <div class="account-order-price-row">
-                <span class="account-order-price-lbl">Shipping Price:</span>
-                <span class="account-order-price-val">${shippingFee > 0 ? `₹${shippingFee.toLocaleString('en-IN')}` : 'FREE (₹0)'}</span>
-              </div>
-              <div class="account-order-price-row account-order-price-row--total">
-                <span class="account-order-price-lbl">Grand Total:</span>
-                <strong class="account-order-price-val account-order-price-val--total">₹${grandTotal.toLocaleString('en-IN')}</strong>
-              </div>
+              <button type="button" class="account-order-return-btn ${returnReq ? 'account-order-return-btn--active' : ''}" onclick="event.stopPropagation(); if(window.openReturnExchangeModal){window.openReturnExchangeModal('${orderCode}');}" title="Return or exchange items for Order #${orderCode}">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M1 4v6h6"></path>
+                  <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+                </svg>
+                <span>${returnReq ? 'Track Return / Exchange' : 'Return or Exchange'}</span>
+              </button>
             </div>
           </div>
         </article>
@@ -10763,7 +11155,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     container.innerHTML = html;
   }
 
-  // ── FULL ORDER HISTORY MODAL HANDLERS ──
+  // ── FULL ORDER HISTORY MODAL POPUP (OPENED ON SHORT CARD CLICK) ──
   window.openFullOrderModal = function(orderCode) {
     accountState = loadLocalAccount();
     const cleanPhone = String(accountState.phone || '').replace(/\D/g, '').slice(-10);
@@ -10780,6 +11172,9 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     if (!modal || !bodyEl) return;
 
     const code = ord.orderCode || ord.orderId || orderCode;
+    const returnReqs = typeof getSavedReturnExchangeRequests === 'function' ? getSavedReturnExchangeRequests() : [];
+    const returnReq = returnReqs.find(r => r && (String(r.orderCode) === String(code) || String(r.orderCode) === String(orderCode))) || ord.returnRequest || null;
+
     const orderDateStr = ord.orderDateFormatted || (ord.orderDate ? new Date(ord.orderDate).toLocaleString('en-IN', {
       day: '2-digit',
       month: 'short',
@@ -10854,9 +11249,63 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       `;
     }).join('');
 
+    const isAwaitingZoho = ord.status === 'AWAITING_ZOHO_CONFIRMATION' || ord.zoho_status === 'pending_confirmation';
+    const isDelivered = ord.status === 'DELIVERED' || ord.deliveryStatus === 'DELIVERY_DONE';
+    const isConfirmed = ord.status === 'CONFIRMED' || isDelivered;
+
     bodyEl.innerHTML = `
       <div class="full-order-modal-sections">
-        <!-- 1. Purchased Items with Pictures -->
+        <!-- Live Status Timeline Tracker (Synced with Zoho Inventory & Delhivery) -->
+        <div class="full-order-tracker">
+          <div class="full-order-tracker__step is-done">
+            <span class="full-order-tracker__dot">✓</span>
+            <span>Order Placed</span>
+          </div>
+          <div class="full-order-tracker__step ${isConfirmed ? 'is-done' : (isAwaitingZoho ? 'is-active' : '')}">
+            <span class="full-order-tracker__dot">${isConfirmed ? '✓' : (isAwaitingZoho ? '●' : '○')}</span>
+            <span>Zoho Confirmed</span>
+          </div>
+          <div class="full-order-tracker__step ${isDelivered ? 'is-done' : (isConfirmed ? 'is-active' : '')}">
+            <span class="full-order-tracker__dot">${isDelivered ? '✓' : (isConfirmed ? '●' : '○')}</span>
+            <span>Dispatched</span>
+          </div>
+          <div class="full-order-tracker__step ${isDelivered ? 'is-done' : ''}">
+            <span class="full-order-tracker__dot">${isDelivered ? '✓' : '○'}</span>
+            <span>Delivered</span>
+          </div>
+        </div>
+
+        ${isAwaitingZoho ? `
+          <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.28); border-radius: 8px; padding: 12px 16px; margin-bottom: 14px; font-size: 12.5px; color: #d97706; line-height: 1.5;">
+            ⏳ <strong>Awaiting Zoho Confirmation:</strong> Your order has been registered in Zoho Inventory. Your official Zoho Invoice will be generated, and your confirmation SMS and email will be dispatched as soon as confirmed by our merchant team.
+          </div>
+        ` : ''}
+
+        ${isConfirmed && !isDelivered ? `
+          <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.28); border-radius: 8px; padding: 12px 16px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <div>
+              <div style="font-size: 12px; font-weight: 700; color: #10b981;">✓ CONFIRMED IN ZOHO INVENTORY</div>
+              <div style="font-size: 11.5px; color: #71717a; margin-top: 2px;">Official Zoho Invoice: <strong>#${ord.invoice_number || 'INV'}</strong></div>
+            </div>
+            <a href="/invoice/${code}" target="_blank" rel="noopener noreferrer" class="lookbook-piece-single-btn" style="text-decoration:none; padding: 6px 12px; font-size: 11px;">
+              View Official Zoho Invoice ↗
+            </a>
+          </div>
+        ` : ''}
+
+        ${isDelivered ? `
+          <div style="background: rgba(6, 182, 212, 0.08); border: 1px solid rgba(6, 182, 212, 0.28); border-radius: 8px; padding: 12px 16px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <div>
+              <div style="font-size: 12px; font-weight: 700; color: #0891b2;">✓ DELIVERED VIA DELHIVERY EXPRESS</div>
+              <div style="font-size: 11.5px; color: #71717a; margin-top: 2px;">Delhivery Done email sent · 7-Day Free Size Exchange / Return Eligible</div>
+            </div>
+            <a href="/invoice/${code}" target="_blank" rel="noopener noreferrer" class="lookbook-piece-single-btn" style="text-decoration:none; padding: 6px 12px; font-size: 11px;">
+              View Zoho Invoice ↗
+            </a>
+          </div>
+        ` : ''}
+
+        <!-- 1. Purchased Items with Full Pictures -->
         <div class="full-order-section">
           <h4 class="full-order-section-title">Purchased Items (${items.length})</h4>
           <div class="full-order-items-grid">
@@ -10904,6 +11353,23 @@ window.openDelhiveryTracker = openDelhiveryTracker;
             </div>
           </div>
         </div>
+
+        <!-- 4. Return or Exchange Action Section -->
+        <div class="full-order-section">
+          <div class="full-order-actions-bar">
+            <div class="full-order-actions-info">
+              <span class="full-order-actions-kicker">7-DAY RETURN &amp; EXCHANGE POLICY</span>
+              <p class="full-order-actions-note">${returnReq ? `Reverse pickup active (${returnReq.id}) · Scheduled within 48h` : 'Free doorstep size exchange or return eligible within 7 days of delivery.'}</p>
+            </div>
+            <button type="button" class="full-order-return-btn" onclick="if(window.openReturnExchangeModal){window.openReturnExchangeModal('${code}');}">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M1 4v6h6"></path>
+                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+              </svg>
+              <span>${returnReq ? 'Track Return / Exchange Status' : 'Return or Exchange'}</span>
+            </button>
+          </div>
+        </div>
       </div>
     `;
 
@@ -10912,16 +11378,539 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     document.body.classList.add('order-modal-open');
   };
 
+  // ═══════════ RETURN & EXCHANGE MODAL CONTROLLERS ═══════════
+  window.openReturnExchangeModal = function(orderCode) {
+    accountState = loadLocalAccount();
+    const memoryOrders = Array.isArray(accountState.orders) ? accountState.orders : [];
+    const localOrders = typeof getSavedLocalOrders === 'function' ? getSavedLocalOrders() : [];
+    const all = [...memoryOrders, ...localOrders];
+    const ord = all.find(o => o && (String(o.orderCode) === String(orderCode) || String(o.orderId) === String(orderCode)));
+    if (!ord) return;
+
+    const modal = document.getElementById('returnExchangeModal');
+    const titleEl = document.getElementById('returnExchangeModalTitle');
+    const subtitleEl = document.getElementById('returnExchangeModalSubtitle');
+    const bodyEl = document.getElementById('returnExchangeModalBody');
+    if (!modal || !bodyEl) return;
+
+    const code = ord.orderCode || ord.orderId || orderCode;
+    const returnReqs = getSavedReturnExchangeRequests();
+    const existingReq = returnReqs.find(r => r.orderCode === code) || ord.returnRequest;
+
+    if (titleEl) titleEl.textContent = `Return or Exchange — Order #${code}`;
+
+    const shipAddr = ord.shippingAddress || ord.address || ord.user || ord.contactDetails || {};
+    const shipName = shipAddr.fullName || shipAddr.name || accountState.firstName || 'Customer';
+    const shipPhone = String(shipAddr.phone || ord.contactDetails?.phone || accountState.phone || '').replace(/\D/g, '').slice(-10);
+    const line1 = shipAddr.houseFlat || shipAddr.address1 || '';
+    const line2 = shipAddr.streetRoad || shipAddr.address2 || '';
+    const landmark = shipAddr.landmark || '';
+    const city = shipAddr.city || '';
+    const state = shipAddr.state || '';
+    const pincode = shipAddr.pincode || '';
+    const fullAddrParts = [line1, line2, landmark ? `(Landmark: ${landmark})` : '', city, state ? `${state} - ${pincode}` : pincode].filter(Boolean);
+    const fullDeliveryAddress = shipAddr.fullAddress || fullAddrParts.join(', ') || 'Your delivery address on file';
+
+    const items = Array.isArray(ord.items) && ord.items.length > 0
+      ? ord.items
+      : (Array.isArray(ord.products) ? ord.products : (Array.isArray(ord.productDetails) ? ord.productDetails : []));
+
+    if (existingReq) {
+      if (subtitleEl) subtitleEl.textContent = `Active Request: ${existingReq.id} · Free Doorstep Courier`;
+      const isEx = existingReq.type === 'exchange';
+      bodyEl.innerHTML = `
+        <div class="return-tracking-card">
+          <div class="return-tracking-header">
+            <div>
+              <span class="return-tracking-badge">${isEx ? 'EXCHANGE IN PROGRESS' : 'RETURN IN PROGRESS'}</span>
+              <h4 style="margin: 0.45rem 0 0.15rem; font-size: 1.05rem; font-weight: 700; color: #0E0E11;">
+                ${isEx ? `Replacement Size: ${existingReq.requestedSize || 'Selected Size'}` : 'Refund Scheduled'}
+              </h4>
+              <p style="margin: 0; font-size: 0.8rem; color: #71717A;">
+                Reference ID: <strong>${existingReq.id}</strong> · Placed on ${new Date(existingReq.createdAt || Date.now()).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+              </p>
+            </div>
+            <div style="text-align: right;">
+              <span style="font-size: 0.72rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #8C857B;">REVERSE LOGISTICS</span>
+              <div style="font-size: 0.88rem; font-weight: 700; color: #0E0E11;">Delhivery Express</div>
+            </div>
+          </div>
+
+          <div class="return-tracking-steps">
+            <div class="return-tracking-step">
+              <span class="return-tracking-step-dot">✓</span>
+              <div class="return-tracking-step-body">
+                <span class="return-tracking-step-title">Request Approved</span>
+                <span class="return-tracking-step-desc">Your ${isEx ? 'size exchange' : 'return'} request has been automatically validated under our 7-day policy.</span>
+              </div>
+            </div>
+            <div class="return-tracking-step">
+              <span class="return-tracking-step-dot">✓</span>
+              <div class="return-tracking-step-body">
+                <span class="return-tracking-step-title">Reverse Courier Assigned</span>
+                <span class="return-tracking-step-desc">Tracking AWB #STC-${existingReq.id.replace(/\D/g, '') || '98214'} created.</span>
+              </div>
+            </div>
+            <div class="return-tracking-step">
+              <span class="return-tracking-step-dot return-tracking-step-dot--pending">●</span>
+              <div class="return-tracking-step-body">
+                <span class="return-tracking-step-title">Doorstep Reverse Pickup</span>
+                <span class="return-tracking-step-desc">Our courier partner will collect the packed garments within 24–48 hours.</span>
+              </div>
+            </div>
+            <div class="return-tracking-step">
+              <span class="return-tracking-step-dot return-tracking-step-dot--pending">○</span>
+              <div class="return-tracking-step-body">
+                <span class="return-tracking-step-title">${isEx ? 'Replacement Garment Dispatched' : 'Refund Credited'}</span>
+                <span class="return-tracking-step-desc">${isEx ? 'Your replacement size will be dispatched immediately once pickup is scanned.' : 'Amount credited to original payment method or UPI within 2 business days.'}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="return-pickup-box">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+              <circle cx="12" cy="10" r="3"></circle>
+            </svg>
+            <div class="return-pickup-info">
+              <span class="return-pickup-title">Pickup Address</span>
+              <span class="return-pickup-address">${existingReq.pickupAddress || fullDeliveryAddress}</span>
+              <span class="return-pickup-note">Please keep the item in original condition with brand tags attached.</span>
+            </div>
+          </div>
+
+          <div class="return-modal-actions">
+            <button type="button" class="return-btn-cancel" onclick="window.cancelReturnExchangeRequest('${code}');">
+              Cancel Request
+            </button>
+            <button type="button" class="return-btn-submit" onclick="window.closeReturnExchangeModal();">
+              Done
+            </button>
+          </div>
+        </div>
+      `;
+    } else {
+      if (subtitleEl) subtitleEl.textContent = 'Choose items to exchange for a different size or return for a refund';
+
+      const itemsListHtml = items.map((it, idx) => {
+        const sku = it.sku || it.id || '';
+        const relic = (typeof collectionsData !== 'undefined' && Array.isArray(collectionsData))
+          ? collectionsData.find(c => (c.sku || c.id) === sku)
+          : null;
+        let itemImg = it.image || it.imageUrl || it.img || (Array.isArray(it.images) ? it.images[0] : '') ||
+          (relic && (relic.image || relic.imageUrl || (Array.isArray(relic.images) ? relic.images[0] : ''))) ||
+          'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=200&auto=format&fit=crop&q=80';
+        const itemName = it.name || it.title || (relic && relic.name) || 'Streetwear Garment';
+        const itemSize = it.size || 'M';
+        const itemQty = Math.max(1, parseInt(it.qty || it.quantity, 10) || 1);
+        const itemPrice = Number(it.priceInr || it.price || (relic && relic.priceInr) || 0);
+
+        return `
+          <label class="return-item-row ${idx === 0 ? 'is-selected' : ''}" id="returnItemRow_${idx}">
+            <input type="checkbox" class="return-item-checkbox" name="returnItemCheckbox" value="${idx}" data-sku="${sku}" data-name="${itemName}" data-size="${itemSize}" ${idx === 0 ? 'checked' : ''} onchange="document.getElementById('returnItemRow_${idx}').classList.toggle('is-selected', this.checked);" />
+            <img src="${itemImg}" alt="${itemName}" class="return-item-thumb" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=200&auto=format&fit=crop&q=80';" />
+            <div class="return-item-meta">
+              <div class="return-item-name">${itemName}</div>
+              <div class="return-item-sub">
+                <span>Ordered Size: <strong>${itemSize}</strong></span>
+                <span>·</span>
+                <span>Qty: ${itemQty}</span>
+              </div>
+            </div>
+            <div class="return-item-price">₹${itemPrice.toLocaleString('en-IN')}</div>
+          </label>
+        `;
+      }).join('');
+
+      bodyEl.innerHTML = `
+        <div class="return-tabs-nav" role="tablist">
+          <button type="button" class="return-tab-btn is-active" id="returnTabExchangeBtn" onclick="window.setReturnExchangeType('exchange');" role="tab" aria-selected="true">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M1 4v6h6"></path>
+              <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+            </svg>
+            <span>Exchange Size (Free Replacement)</span>
+          </button>
+          <button type="button" class="return-tab-btn" id="returnTabReturnBtn" onclick="window.setReturnExchangeType('return');" role="tab" aria-selected="false">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="9 14 4 9 9 4"></polyline>
+              <path d="M20 20v-7a4 4 0 0 0-4-4H4"></path>
+            </svg>
+            <span>Return Item (Refund)</span>
+          </button>
+        </div>
+
+        <!-- 1. Select Items -->
+        <div class="return-form-group">
+          <label class="return-form-label">1. Select Garments to Return / Exchange</label>
+          <div class="return-items-selection">
+            ${itemsListHtml}
+          </div>
+        </div>
+
+        <!-- 2A. Exchange Size Selector -->
+        <div class="return-form-group" id="returnSizeGroup">
+          <label class="return-form-label">2. Select Replacement Size (Exchange)</label>
+          <div class="return-size-selector" id="returnSizeSelector">
+            <button type="button" class="return-size-chip" data-size="XS" onclick="window.selectReturnSize('XS');">XS</button>
+            <button type="button" class="return-size-chip" data-size="S" onclick="window.selectReturnSize('S');">S</button>
+            <button type="button" class="return-size-chip" data-size="M" onclick="window.selectReturnSize('M');">M</button>
+            <button type="button" class="return-size-chip is-selected" data-size="L" onclick="window.selectReturnSize('L');">L</button>
+            <button type="button" class="return-size-chip" data-size="XL" onclick="window.selectReturnSize('XL');">XL</button>
+            <button type="button" class="return-size-chip" data-size="XXL" onclick="window.selectReturnSize('XXL');">XXL</button>
+          </div>
+          <input type="hidden" id="returnSelectedSize" value="L" />
+        </div>
+
+        <!-- 2B. Return Refund Method Preview (No Size Needed for Return) -->
+        <div class="return-form-group" id="returnRefundGroup" style="display:none;">
+          <label class="return-form-label">2. Return for Full Refund (No Size Needed)</label>
+          <div style="background: #FAF9F5; border: 1.5px solid #EAE6DC; border-radius: 8px; padding: 0.85rem 1rem; font-size: 0.85rem; color: #0E0E11;">
+            <div style="display:flex; align-items:center; gap:8px; font-weight:700; color:#10B981; margin-bottom:4px;">
+              <span>✓ Full Purchase Price Refund</span>
+              <span style="font-size:0.75rem; background:rgba(16,185,129,0.12); padding:2px 6px; border-radius:4px; font-weight:700;">NO SIZE NEEDED</span>
+            </div>
+            <p style="margin: 0; font-size: 0.78rem; color: #71717A; line-height: 1.45;">
+              You are returning this garment for a direct refund. No replacement size is required. 100% of your payment will be refunded to your source account or bank UPI upon doorstep pickup verification.
+            </p>
+          </div>
+        </div>
+
+        <!-- 3. Reason for Return or Exchange -->
+        <div class="return-form-group">
+          <label class="return-form-label" for="returnReasonSelect">3. Reason for Request</label>
+          <select class="return-select" id="returnReasonSelect">
+            <option value="Fit / Size too small or tight">Fit / Size too small or tight</option>
+            <option value="Fit / Size too loose or oversized">Fit / Size too loose or oversized</option>
+            <option value="Looking for different drape / color">Looking for different drape / color</option>
+            <option value="Fabric or quality not as expected">Fabric or quality not as expected</option>
+            <option value="Received damaged or defective piece">Received damaged or defective piece</option>
+            <option value="Changed mind / Don't need anymore">Changed mind / Don't need anymore</option>
+          </select>
+        </div>
+
+        <!-- 4. Optional Additional Notes -->
+        <div class="return-form-group">
+          <label class="return-form-label" for="returnNotesInput">4. Additional Notes (Optional)</label>
+          <textarea class="return-textarea" id="returnNotesInput" rows="2" placeholder="Any specific fit preferences or instructions for our team..."></textarea>
+        </div>
+
+        <!-- 5. Pickup Address Confirmation -->
+        <div class="return-pickup-box">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+            <circle cx="12" cy="10" r="3"></circle>
+          </svg>
+          <div class="return-pickup-info">
+            <span class="return-pickup-title">Doorstep Pickup Address</span>
+            <span class="return-pickup-address">${fullDeliveryAddress}</span>
+            <span class="return-pickup-note">Free doorstep reverse courier pickup scheduled within 48 hours of confirmation.</span>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="return-modal-actions">
+          <button type="button" class="return-btn-cancel" onclick="window.closeReturnExchangeModal();">
+            Cancel
+          </button>
+          <button type="button" class="return-btn-submit" id="returnSubmitBtn" onclick="window.submitReturnExchangeForm('${code}');">
+            <span>Confirm Exchange Request</span>
+          </button>
+        </div>
+      `;
+    }
+
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('order-modal-open');
+  };
+
+  window.setReturnExchangeType = function(type) {
+    const exchangeBtn = document.getElementById('returnTabExchangeBtn');
+    const returnBtn = document.getElementById('returnTabReturnBtn');
+    const sizeGroup = document.getElementById('returnSizeGroup');
+    const refundGroup = document.getElementById('returnRefundGroup');
+    const submitBtn = document.getElementById('returnSubmitBtn');
+
+    if (type === 'exchange') {
+      if (exchangeBtn) {
+        exchangeBtn.classList.add('is-active');
+        exchangeBtn.setAttribute('aria-selected', 'true');
+      }
+      if (returnBtn) {
+        returnBtn.classList.remove('is-active');
+        returnBtn.setAttribute('aria-selected', 'false');
+      }
+      if (sizeGroup) sizeGroup.style.display = 'block';
+      if (refundGroup) refundGroup.style.display = 'none';
+      if (submitBtn) submitBtn.innerHTML = '<span>Confirm Exchange Request</span>';
+    } else {
+      if (exchangeBtn) {
+        exchangeBtn.classList.remove('is-active');
+        exchangeBtn.setAttribute('aria-selected', 'false');
+      }
+      if (returnBtn) {
+        returnBtn.classList.add('is-active');
+        returnBtn.setAttribute('aria-selected', 'true');
+      }
+      // Strictly hide product size for return!
+      if (sizeGroup) sizeGroup.style.display = 'none';
+      if (refundGroup) refundGroup.style.display = 'block';
+      if (submitBtn) submitBtn.innerHTML = '<span>Confirm Return Request (Full Refund)</span>';
+    }
+  };
+
+  window.selectReturnSize = function(size) {
+    const hidden = document.getElementById('returnSelectedSize');
+    if (hidden) hidden.value = size;
+    const chips = document.querySelectorAll('#returnSizeSelector .return-size-chip');
+    chips.forEach(c => {
+      c.classList.toggle('is-selected', c.getAttribute('data-size') === size);
+    });
+  };
+
+  window.submitReturnExchangeForm = async function(orderCode) {
+    const isExchange = document.getElementById('returnTabExchangeBtn')?.classList.contains('is-active');
+    const type = isExchange ? 'exchange' : 'return';
+    const checkboxes = document.querySelectorAll('input[name="returnItemCheckbox"]:checked');
+    if (checkboxes.length === 0) {
+      if (typeof showToast === 'function') {
+        showToast('PLEASE SELECT AN ITEM', 'Select at least one garment to return or exchange.', 'cart');
+      }
+      return;
+    }
+
+    const selectedItems = Array.from(checkboxes).map(cb => ({
+      name: cb.getAttribute('data-name') || 'Streetwear Garment',
+      sku: cb.getAttribute('data-sku') || '',
+      size: cb.getAttribute('data-size') || ''
+    }));
+
+    // In return you do NOT need product size (strictly null/omitted)
+    const requestedSize = isExchange ? (document.getElementById('returnSelectedSize')?.value || 'L') : null;
+    const reason = document.getElementById('returnReasonSelect')?.value || (isExchange ? 'Fit / Size too small or tight' : 'Looking for refund / changed mind');
+    const notes = document.getElementById('returnNotesInput')?.value || '';
+
+    accountState = loadLocalAccount();
+    const memoryOrders = Array.isArray(accountState.orders) ? accountState.orders : [];
+    const localOrders = typeof getSavedLocalOrders === 'function' ? getSavedLocalOrders() : [];
+    const all = [...memoryOrders, ...localOrders];
+    const ord = all.find(o => o && (String(o.orderCode) === String(orderCode) || String(o.orderId) === String(orderCode)));
+
+    const shipAddr = ord ? (ord.shippingAddress || ord.address || ord.user || ord.contactDetails || {}) : {};
+    const customerName = shipAddr.fullName || shipAddr.name || accountState.firstName || 'Customer';
+    const customerPhone = String(shipAddr.phone || ord?.contactDetails?.phone || accountState.phone || '').replace(/\D/g, '').slice(-10);
+    const customerEmail = shipAddr.email || ord?.contactDetails?.email || accountState.email || '';
+    const fullDeliveryAddress = shipAddr.fullAddress || [shipAddr.houseFlat, shipAddr.streetRoad, shipAddr.city, shipAddr.state, shipAddr.pincode].filter(Boolean).join(', ') || 'Your address on file';
+
+    const returnId = 'RET-' + Math.floor(10000 + Math.random() * 90000);
+    const req = {
+      id: returnId,
+      orderCode: orderCode,
+      type: type,
+      items: selectedItems,
+      itemNames: selectedItems.map(i => i.name).join(', '),
+      requestedSize: requestedSize, // null for return!
+      reason: reason,
+      notes: notes,
+      pickupAddress: fullDeliveryAddress,
+      customerName,
+      customerPhone,
+      customerEmail,
+      status: 'PICKUP_SCHEDULED',
+      createdAt: new Date().toISOString()
+    };
+
+    const submitBtn = document.getElementById('returnSubmitBtn');
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span>Registering in Zoho Inventory...</span>';
+    }
+
+    // Save in Zoho Inventory as a Sales Return via backend
+    try {
+      const apiRes = await fetch('/api/returns/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: returnId,
+          orderCode: orderCode,
+          type: type,
+          items: selectedItems,
+          itemNames: req.itemNames,
+          requestedSize: requestedSize,
+          reason: reason,
+          notes: notes,
+          pickupAddress: fullDeliveryAddress,
+          customerName,
+          customerPhone,
+          customerEmail,
+          zoho_salesorder_id: ord?.zoho_salesorder_id || null
+        })
+      });
+      const apiData = await apiRes.json();
+      if (apiData && apiData.success && apiData.returnRecord) {
+        req.salesreturn_number = apiData.returnRecord.salesreturn_number;
+        req.zoho_salesreturn_id = apiData.returnRecord.zoho_salesreturn_id;
+        req.reverseAwb = apiData.returnRecord.reverseAwb;
+      }
+    } catch (apiErr) {
+      console.warn('[Zoho Return Save Notice]:', apiErr.message);
+    }
+
+    saveReturnExchangeRequest(req);
+
+    if (ord) {
+      ord.returnStatus = type === 'exchange' ? 'EXCHANGE REQUESTED' : 'RETURN REQUESTED';
+      ord.returnRequest = req;
+      saveLocalOrder(ord);
+      if (Array.isArray(accountState.orders)) {
+        const accOrd = accountState.orders.find(o => String(o.orderCode) === String(orderCode) || String(o.orderId) === String(orderCode));
+        if (accOrd) {
+          accOrd.returnStatus = ord.returnStatus;
+          accOrd.returnRequest = req;
+          saveLocalAccount({ orders: accountState.orders });
+        }
+      }
+    }
+
+    if (typeof showToast === 'function') {
+      const zohoRefNotice = req.salesreturn_number ? `Zoho Return #${req.salesreturn_number}` : 'Recorded in Zoho Inventory';
+      showToast(
+        type === 'exchange' ? 'EXCHANGE REQUEST SUBMITTED' : 'RETURN REQUEST SUBMITTED',
+        `Order #${orderCode} · ${zohoRefNotice} · Free reverse pickup scheduled within 48h`,
+        'cart'
+      );
+    }
+
+    renderAccountOrdersUI();
+    window.openReturnExchangeModal(orderCode);
+  };
+
+  window.cancelReturnExchangeRequest = function(orderCode) {
+    try {
+      const returnReqs = getSavedReturnExchangeRequests();
+      const updated = returnReqs.filter(r => r.orderCode !== orderCode);
+      localStorage.setItem(RETURNS_STORAGE_KEY, JSON.stringify(updated));
+
+      const localOrders = typeof getSavedLocalOrders === 'function' ? getSavedLocalOrders() : [];
+      const ord = localOrders.find(o => String(o.orderCode) === String(orderCode) || String(o.orderId) === String(orderCode));
+      if (ord) {
+        delete ord.returnStatus;
+        delete ord.returnRequest;
+        saveLocalOrder(ord);
+      }
+      accountState = loadLocalAccount();
+      if (Array.isArray(accountState.orders)) {
+        const accOrd = accountState.orders.find(o => String(o.orderCode) === String(orderCode) || String(o.orderId) === String(orderCode));
+        if (accOrd) {
+          delete accOrd.returnStatus;
+          delete accOrd.returnRequest;
+          saveLocalAccount({ orders: accountState.orders });
+        }
+      }
+
+      if (typeof showToast === 'function') {
+        showToast('REQUEST CANCELLED', `Return/Exchange request for Order #${orderCode} has been cancelled.`, 'cart');
+      }
+
+      renderAccountOrdersUI();
+      window.openReturnExchangeModal(orderCode);
+    } catch (e) {
+      console.warn('Failed to cancel request', e);
+    }
+  };
+
+  window.closeReturnExchangeModal = function() {
+    const modal = document.getElementById('returnExchangeModal');
+    if (modal) {
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+    const fullOrderModal = document.getElementById('accountFullOrderModal');
+    if (!fullOrderModal || !fullOrderModal.classList.contains('open')) {
+      document.body.classList.remove('order-modal-open');
+    }
+  };
+
+  // Helper to create a realistic sample order for instant UI preview
+  window.streetCoCreateSampleOrder = function() {
+    accountState = loadLocalAccount();
+    const cleanPhone = String(accountState.phone || '').replace(/\D/g, '').slice(-10) || '9876543210';
+    const sampleOrder = {
+      orderCode: 'SC-' + Math.floor(10000 + Math.random() * 90000),
+      orderDate: new Date().toISOString(),
+      status: 'CONFIRMED',
+      accountPhone: cleanPhone,
+      paymentMethod: 'COD',
+      items: [
+        {
+          id: 'sample-1',
+          sku: 'STREET-01',
+          name: 'The Obsidian Heavyweight Graphic Hoodie',
+          size: 'L',
+          finish: 'Acid Mineral Wash',
+          qty: 1,
+          priceInr: 2499,
+          totalItemPriceInr: 2499,
+          image: 'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=500&auto=format&fit=crop&q=80'
+        },
+        {
+          id: 'sample-2',
+          sku: 'STREET-02',
+          name: 'Tokyo Oversized Distressed Tee',
+          size: 'XL',
+          finish: 'Vintage Carbon',
+          qty: 1,
+          priceInr: 1499,
+          totalItemPriceInr: 1499,
+          image: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=500&auto=format&fit=crop&q=80'
+        }
+      ],
+      shippingAddress: {
+        fullName: accountState.firstName ? `${accountState.firstName} ${accountState.lastName || ''}`.trim() : 'Alex Vance',
+        phone: cleanPhone,
+        houseFlat: 'Flat 402, Skyline Residency',
+        streetRoad: 'Bandra West, Linking Road',
+        landmark: 'Near Starbucks Coffee',
+        city: 'Mumbai',
+        state: 'Maharashtra',
+        pincode: '400050',
+        fullAddress: 'Flat 402, Skyline Residency, Bandra West, Linking Road, Near Starbucks Coffee, Mumbai, Maharashtra - 400050'
+      },
+      subtotalInr: 3998,
+      discountInr: 500,
+      deliveryFeeInr: 0,
+      grandTotalInr: 3498
+    };
+
+    saveLocalOrder(sampleOrder);
+    accountState.orders = [sampleOrder, ...(accountState.orders || [])];
+    saveLocalAccount({ orders: accountState.orders });
+    if (typeof showToast === 'function') {
+      showToast('SAMPLE ORDER CREATED', 'Previewing short order history card. Click it to view the full popup!', 'info');
+    }
+    renderAccountOrdersUI();
+  };
+
   window.closeFullOrderModal = function() {
     const modal = document.getElementById('accountFullOrderModal');
     if (!modal) return;
     modal.classList.remove('open');
     modal.setAttribute('aria-hidden', 'true');
-    document.body.classList.remove('order-modal-open');
+    const returnModal = document.getElementById('returnExchangeModal');
+    if (!returnModal || !returnModal.classList.contains('open')) {
+      document.body.classList.remove('order-modal-open');
+    }
   };
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
+      const returnModal = document.getElementById('returnExchangeModal');
+      if (returnModal && returnModal.classList.contains('open')) {
+        window.closeReturnExchangeModal();
+        return;
+      }
       const modal = document.getElementById('accountFullOrderModal');
       if (modal && modal.classList.contains('open')) {
         window.closeFullOrderModal();
@@ -11133,6 +12122,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     const emailInput = document.getElementById('accountEmailInput');
     const badge = document.getElementById('accountEmailStatusBadge');
     const sendBtn = document.getElementById('accountSendOtpBtn');
+    const changeEmailBtn = document.getElementById('accountChangeEmailBtn');
     const hint = document.getElementById('accountEmailHintText');
     if (!emailInput || !badge) return;
 
@@ -11147,15 +12137,24 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     if (isCurrentVerified) {
       badge.textContent = '✓ EMAIL VERIFIED & SAVED';
       badge.className = 'account-status-badge account-status-badge--verified';
-      if (sendBtn) sendBtn.textContent = 'Verified ✓';
+      if (sendBtn) sendBtn.style.display = 'none';
+      if (changeEmailBtn) changeEmailBtn.style.display = 'inline-block';
+      emailInput.readOnly = true;
+      emailInput.classList.add('account-input--readonly-curved');
       if (hint) {
-        hint.textContent = `Your email (${currentTypedEmail}) has been verified via 6-digit OTP and saved to your account.`;
+        hint.textContent = `Your email (${currentTypedEmail}) is verified and saved. Click "Change Email" to update it.`;
         hint.style.color = '#166534';
       }
     } else {
       badge.textContent = 'OTP VERIFICATION REQUIRED';
       badge.className = 'account-status-badge account-status-badge--unverified';
-      if (sendBtn) sendBtn.textContent = 'Verify Email via OTP';
+      if (sendBtn) {
+        sendBtn.style.display = 'inline-block';
+        sendBtn.textContent = 'Verify Email via OTP';
+      }
+      if (changeEmailBtn) changeEmailBtn.style.display = 'none';
+      emailInput.readOnly = false;
+      emailInput.classList.remove('account-input--readonly-curved');
       if (hint) {
         hint.textContent = 'Click "Verify Email via OTP" to receive a 6-digit OTP in your email and verify it in the OTP popup.';
         hint.style.color = '#71717a';
@@ -11424,8 +12423,12 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       mode: options.mode || 'phone',
       targetPhone: options.phone || '',
       targetEmail: options.email || '',
+      newPhone: options.newPhone || '',
+      newEmail: options.newEmail || '',
       firstName: options.firstName || '',
-      lastName: options.lastName || ''
+      lastName: options.lastName || '',
+      subTitle: options.subTitle || '',
+      instantOtpCode: options.instantOtpCode || null
     };
 
     const kickerEl = document.getElementById('unifiedOtpKicker');
@@ -11433,7 +12436,15 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     const subEl = document.getElementById('unifiedOtpSub');
     const bannerEl = document.getElementById('unifiedOtpInstantBanner');
 
-    if (activeOtpContext.mode === 'phone') {
+    if (activeOtpContext.mode === 'change_phone') {
+      if (kickerEl) kickerEl.textContent = 'SECURITY AUTHORIZATION';
+      if (titleEl) titleEl.textContent = 'Authorize Phone Change';
+      if (subEl) subEl.textContent = options.subTitle || `Enter the 6-digit authorization OTP sent to your current phone and email.`;
+    } else if (activeOtpContext.mode === 'change_email') {
+      if (kickerEl) kickerEl.textContent = 'SECURITY AUTHORIZATION';
+      if (titleEl) titleEl.textContent = 'Authorize Email Change';
+      if (subEl) subEl.textContent = options.subTitle || `Enter the 6-digit authorization OTP sent to your current phone and email.`;
+    } else if (activeOtpContext.mode === 'phone') {
       if (kickerEl) kickerEl.textContent = 'MOBILE OTP VERIFICATION';
       if (titleEl) titleEl.textContent = 'Verify Mobile OTP';
       if (subEl) subEl.textContent = `Enter the 6-digit OTP sent to mobile number ${activeOtpContext.targetPhone}`;
@@ -11471,6 +12482,10 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     window.closeUnifiedOtpModal();
     if (activeOtpContext.mode === 'phone') {
       window.openPhoneLoginPopup({ preserveReturnContext: Boolean(pendingAuthReturnContext) });
+    } else if (activeOtpContext.mode === 'change_phone') {
+      window.openChangeCredentialModal('phone');
+    } else if (activeOtpContext.mode === 'change_email') {
+      window.openChangeCredentialModal('email');
     }
   };
 
@@ -11617,7 +12632,98 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       showFlowFeedback('unifiedOtpStatusMsg', '');
 
       try {
-        if (activeOtpContext.mode === 'phone') {
+        if (activeOtpContext.mode === 'change_phone') {
+          const res = await fetch('/api/account/change-phone/verify-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              currentPhone: activeOtpContext.targetPhone,
+              otp: otpCode
+            })
+          });
+          const data = await res.json();
+          if (!res.ok || !data.success) {
+            throw new Error(data.error || 'Invalid 6-digit authorization code.');
+          }
+
+          const newPhone = activeOtpContext.newPhone;
+          saveLocalAccount({
+            phone: newPhone,
+            phoneVerified: true
+          });
+          try {
+            localStorage.setItem('the_street_co_user_phone', newPhone);
+          } catch (_) {}
+
+          if (window.streetCoFirebaseAuth && typeof window.streetCoFirebaseAuth.saveUserAuthDetails === 'function') {
+            try {
+              await window.streetCoFirebaseAuth.saveUserAuthDetails({
+                phone: newPhone,
+                phoneVerified: true,
+                firstName: accountState.firstName || '',
+                lastName: accountState.lastName || '',
+                email: accountState.email || '',
+                emailVerified: Boolean(accountState.emailVerified)
+              });
+            } catch (_) {}
+          }
+
+          window.closeUnifiedOtpModal();
+          renderAccountPageUI();
+          refreshAccountOrdersFromMongo(false);
+          showAccountFeedback(`✓ Mobile number successfully changed to +91 ${newPhone}!`, false);
+          if (window.streetCoShowToast) {
+            window.streetCoShowToast(`✓ Mobile number changed to +91 ${newPhone}`);
+          }
+        } else if (activeOtpContext.mode === 'change_email') {
+          const res = await fetch('/api/account/change-email/verify-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              currentPhone: activeOtpContext.targetPhone,
+              otp: otpCode
+            })
+          });
+          const data = await res.json();
+          if (!res.ok || !data.success) {
+            throw new Error(data.error || 'Invalid 6-digit authorization code.');
+          }
+
+          const newEmail = activeOtpContext.newEmail;
+          saveLocalAccount({
+            email: newEmail,
+            emailVerified: true
+          });
+          try {
+            localStorage.setItem('the_street_co_user_email', newEmail);
+          } catch (_) {}
+
+          if (window.streetCoFirebaseAuth && typeof window.streetCoFirebaseAuth.saveUserAuthDetails === 'function') {
+            try {
+              await window.streetCoFirebaseAuth.saveUserAuthDetails({
+                phone: accountState.phone,
+                phoneVerified: true,
+                firstName: accountState.firstName || '',
+                lastName: accountState.lastName || '',
+                email: newEmail,
+                emailVerified: true
+              });
+            } catch (_) {}
+          }
+
+          window.closeUnifiedOtpModal();
+          renderAccountPageUI();
+          showAccountFeedback(`✓ Email address successfully changed to ${newEmail}!`, false);
+          if (data && data.streetCashBonusAwarded && window.notifyStreetCashReceived) {
+            window.notifyStreetCashReceived(data.streetCashBonusAwarded.points, data.streetCashBonusAwarded.reason, data.streetCashBonusAwarded.newBalance);
+          }
+          if (window.syncStreetCashFromBackend) {
+            window.syncStreetCashFromBackend();
+          }
+          if (window.streetCoShowToast) {
+            window.streetCoShowToast(`✓ Email address changed to ${newEmail}`);
+          }
+        } else if (activeOtpContext.mode === 'phone') {
           const res = await fetch('/api/account/verify-phone-otp', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -11659,6 +12765,17 @@ window.openDelhiveryTracker = openDelhiveryTracker;
               : accountState.addresses,
             defaultAddressId: serverAccount.defaultAddressId || accountState.defaultAddressId || ''
           });
+
+          if (data.streetCashBonusAwarded && window.notifyStreetCashReceived) {
+            window.notifyStreetCashReceived(
+              data.streetCashBonusAwarded.points,
+              data.streetCashBonusAwarded.reason,
+              data.streetCashBonusAwarded.newBalance
+            );
+          }
+          if (window.syncStreetCashFromBackend) {
+            window.syncStreetCashFromBackend(activeOtpContext.targetPhone);
+          }
 
           window.closeUnifiedOtpModal();
           fetchFirebaseAccountByPhone(activeOtpContext.targetPhone);
@@ -11746,7 +12863,43 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       unifiedResendBtn.disabled = true;
       showFlowFeedback('unifiedOtpStatusMsg', 'Sending a new 6-digit OTP...', false);
       try {
-        if (activeOtpContext.mode === 'phone') {
+        if (activeOtpContext.mode === 'change_phone') {
+          const res = await fetch('/api/account/change-phone/send-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              currentPhone: activeOtpContext.targetPhone,
+              newPhone: activeOtpContext.newPhone
+            })
+          });
+          const data = await res.json();
+          if (!res.ok || !data.success) throw new Error(data.error || 'Failed to resend authorization code.');
+          const bannerEl = document.getElementById('unifiedOtpInstantBanner');
+          if (bannerEl && !data.smsDispatched && !data.emailDispatched && data.otpCode) {
+            bannerEl.style.display = 'block';
+            bannerEl.innerHTML = `Your 6-Digit Authorization OTP: <strong>${data.otpCode}</strong>`;
+          }
+          clearOtpBoxes();
+          showFlowFeedback('unifiedOtpStatusMsg', data.message || `New authorization code dispatched.`, false);
+        } else if (activeOtpContext.mode === 'change_email') {
+          const res = await fetch('/api/account/change-email/send-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              currentPhone: activeOtpContext.targetPhone,
+              newEmail: activeOtpContext.newEmail
+            })
+          });
+          const data = await res.json();
+          if (!res.ok || !data.success) throw new Error(data.error || 'Failed to resend authorization code.');
+          const bannerEl = document.getElementById('unifiedOtpInstantBanner');
+          if (bannerEl && !data.smsDispatched && !data.emailDispatched && data.otpCode) {
+            bannerEl.style.display = 'block';
+            bannerEl.innerHTML = `Your 6-Digit Authorization OTP: <strong>${data.otpCode}</strong>`;
+          }
+          clearOtpBoxes();
+          showFlowFeedback('unifiedOtpStatusMsg', data.message || `New authorization code dispatched.`, false);
+        } else if (activeOtpContext.mode === 'phone') {
           const res = await fetch('/api/account/send-phone-otp', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -11781,6 +12934,174 @@ window.openDelhiveryTracker = openDelhiveryTracker;
         showFlowFeedback('unifiedOtpStatusMsg', err.message || 'Could not resend OTP.', true);
       } finally {
         unifiedResendBtn.disabled = false;
+      }
+    });
+  }
+
+  // ── 4B. Change Credential Modal Logic & Event Listeners ──
+  let activeChangeCredentialType = 'phone';
+
+  window.openChangeCredentialModal = function(type = 'phone') {
+    activeChangeCredentialType = type;
+    const modal = document.getElementById('changeCredentialModal');
+    if (!modal) return;
+
+    const kickerEl = document.getElementById('changeCredentialKicker');
+    const titleEl = document.getElementById('changeCredentialTitle');
+    const subEl = document.getElementById('changeCredentialSub');
+    const phoneWrap = document.getElementById('changeCredentialPhoneWrap');
+    const emailWrap = document.getElementById('changeCredentialEmailWrap');
+    const phoneInput = document.getElementById('changeCredentialPhoneInput');
+    const emailInput = document.getElementById('changeCredentialEmailInput');
+    const submitBtn = document.getElementById('changeCredentialSubmitBtn');
+
+    accountState = loadLocalAccount();
+    const currentPhone = String(accountState.phone || '').replace(/\D/g, '').slice(-10);
+    const currentEmail = String(accountState.email || '').trim().toLowerCase();
+    const hasEmail = Boolean(accountState.emailVerified && currentEmail && currentEmail.includes('@'));
+    const maskedPhone = `+91 ******${currentPhone.slice(-4)}`;
+    const maskedEmail = hasEmail ? currentEmail.replace(/^([^@]{2})[^@]+(@.*)$/, '$1***$2') : '';
+
+    showFlowFeedback('changeCredentialFeedbackMsg', '');
+
+    if (type === 'phone') {
+      if (kickerEl) kickerEl.textContent = 'SECURITY AUTHORIZATION';
+      if (titleEl) titleEl.textContent = 'Change Mobile Number';
+      if (subEl) {
+        subEl.textContent = hasEmail
+          ? `Enter your new 10-digit mobile number below. A 6-digit authorization OTP will be sent to your current phone (${maskedPhone}) and email (${maskedEmail}).`
+          : `Enter your new 10-digit mobile number below. A 6-digit authorization OTP will be sent to your current phone (${maskedPhone}).`;
+      }
+      if (phoneWrap) phoneWrap.style.display = 'flex';
+      if (emailWrap) emailWrap.style.display = 'none';
+      if (phoneInput) {
+        phoneInput.value = '';
+        setTimeout(() => phoneInput.focus(), 60);
+      }
+      if (submitBtn) submitBtn.textContent = 'Send Authorization OTP';
+    } else {
+      if (kickerEl) kickerEl.textContent = 'SECURITY AUTHORIZATION';
+      if (titleEl) titleEl.textContent = 'Change Email Address';
+      if (subEl) {
+        subEl.textContent = `Enter your new email address below. A 6-digit authorization OTP will be sent to your current phone (${maskedPhone}) and current email (${maskedEmail || 'registered email'}).`;
+      }
+      if (phoneWrap) phoneWrap.style.display = 'none';
+      if (emailWrap) emailWrap.style.display = 'flex';
+      if (emailInput) {
+        emailInput.value = '';
+        setTimeout(() => emailInput.focus(), 60);
+      }
+      if (submitBtn) submitBtn.textContent = 'Send Authorization OTP';
+    }
+
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+  };
+
+  window.closeChangeCredentialModal = function() {
+    const modal = document.getElementById('changeCredentialModal');
+    if (!modal) return;
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+  };
+
+  const changePhoneBtn = document.getElementById('accountChangePhoneBtn');
+  if (changePhoneBtn) {
+    changePhoneBtn.addEventListener('click', () => {
+      window.openChangeCredentialModal('phone');
+    });
+  }
+
+  const changeEmailBtn = document.getElementById('accountChangeEmailBtn');
+  if (changeEmailBtn) {
+    changeEmailBtn.addEventListener('click', () => {
+      window.openChangeCredentialModal('email');
+    });
+  }
+
+  const changeCredForm = document.getElementById('changeCredentialForm');
+  if (changeCredForm) {
+    changeCredForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      accountState = loadLocalAccount();
+      const currentPhone = String(accountState.phone || '').replace(/\D/g, '').slice(-10);
+      if (currentPhone.length !== 10) {
+        showFlowFeedback('changeCredentialFeedbackMsg', 'Session error. Please log in again.', true);
+        return;
+      }
+
+      const submitBtn = document.getElementById('changeCredentialSubmitBtn');
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Sending OTP...';
+      }
+      showFlowFeedback('changeCredentialFeedbackMsg', '');
+
+      try {
+        if (activeChangeCredentialType === 'phone') {
+          const phoneInput = document.getElementById('changeCredentialPhoneInput');
+          const newPhone = String(phoneInput ? phoneInput.value : '').replace(/\D/g, '').slice(-10);
+          if (newPhone.length !== 10) {
+            throw new Error('Please enter a valid 10-digit new mobile number.');
+          }
+          if (newPhone === currentPhone) {
+            throw new Error('The new mobile number must be different from your current number.');
+          }
+
+          const res = await fetch('/api/account/change-phone/send-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ currentPhone, newPhone })
+          });
+          const data = await res.json();
+          if (!res.ok || !data.success) {
+            throw new Error(data.error || 'Failed to send authorization code.');
+          }
+
+          window.closeChangeCredentialModal();
+          window.openUnifiedOtpModal({
+            mode: 'change_phone',
+            phone: currentPhone,
+            newPhone,
+            subTitle: data.message,
+            instantOtpCode: (!data.smsDispatched && !data.emailDispatched) ? data.otpCode : null
+          });
+        } else {
+          const emailInput = document.getElementById('changeCredentialEmailInput');
+          const newEmail = String(emailInput ? emailInput.value : '').trim().toLowerCase();
+          if (!newEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
+            throw new Error('Please enter a valid new email address.');
+          }
+          if (accountState.email && newEmail === String(accountState.email).trim().toLowerCase()) {
+            throw new Error('The new email must be different from your current email.');
+          }
+
+          const res = await fetch('/api/account/change-email/send-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ currentPhone, newEmail })
+          });
+          const data = await res.json();
+          if (!res.ok || !data.success) {
+            throw new Error(data.error || 'Failed to send authorization code.');
+          }
+
+          window.closeChangeCredentialModal();
+          window.openUnifiedOtpModal({
+            mode: 'change_email',
+            phone: currentPhone,
+            newEmail,
+            subTitle: data.message,
+            instantOtpCode: (!data.smsDispatched && !data.emailDispatched) ? data.otpCode : null
+          });
+        }
+      } catch (err) {
+        showFlowFeedback('changeCredentialFeedbackMsg', err.message || 'Operation failed. Please try again.', true);
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Send Authorization OTP';
+        }
       }
     });
   }
@@ -11947,7 +13268,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
         }
 
         // Save user account profile + addresses to MongoDB Atlas
-        await fetch('/api/account/profile', {
+        const profRes = await fetch('/api/account/profile', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -11960,7 +13281,21 @@ window.openDelhiveryTracker = openDelhiveryTracker;
             addresses: accountState.addresses || [],
             defaultAddressId: accountState.defaultAddressId || ''
           })
-        }).catch(() => {});
+        }).catch(() => null);
+
+        if (profRes && profRes.ok) {
+          const profData = await profRes.json().catch(() => ({}));
+          if (profData && Array.isArray(profData.newlyAwardedBonuses) && profData.newlyAwardedBonuses.length > 0) {
+            profData.newlyAwardedBonuses.forEach(b => {
+              if (window.notifyStreetCashReceived) {
+                window.notifyStreetCashReceived(b.points, b.reason || b.label, b.newBalance);
+              }
+            });
+            if (window.syncStreetCashFromBackend) {
+              window.syncStreetCashFromBackend(accountState.phone);
+            }
+          }
+        }
 
         saveLocalAccount({
           firstName: fName,

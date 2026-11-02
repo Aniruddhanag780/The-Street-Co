@@ -1,4 +1,4 @@
-const CACHE_NAME = 'thestreetco-v1';
+const CACHE_NAME = 'thestreetco-v4';
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
@@ -44,8 +44,8 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Network-first strategy for navigation / HTML
-  if (event.request.mode === 'navigate') {
+  // Network-first strategy for navigation / HTML and application scripts
+  if (event.request.mode === 'navigate' || url.pathname.endsWith('.js')) {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
@@ -57,14 +57,14 @@ self.addEventListener('fetch', (event) => {
         })
         .catch(() => {
           return caches.match(event.request).then((cachedResponse) => {
-            return cachedResponse || caches.match('/');
+            return cachedResponse || (event.request.mode === 'navigate' ? caches.match('/') : undefined);
           });
         })
     );
     return;
   }
 
-  // Cache-first for static assets (images, css, js)
+  // Cache-first for images, fonts, and static assets
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) {

@@ -12,10 +12,20 @@ import {
   getCollection,
   findUserByPhone,
   upsertUserByPhone,
+  changeUserPhone,
   appendOrderToUserAccount,
   findOrdersByAccountPhone,
-  normalizeUserAddresses
+  normalizeUserAddresses,
+  getUserStreetCash,
+  awardStreetCashForOrder,
+  redeemStreetCashCoupon,
+  findCouponInMongo,
+  burnOneTimeCoupon,
+  awardStreetCashBonus,
+  syncUserOnboardingBonuses,
+  STREET_CASH_BONUS_CONFIG
 } from './mongoDb.js';
+import { GoogleGenAI } from '@google/genai';
 // Load local .env if present
 if (process.loadEnvFile) {
   try {
@@ -48,8 +58,29 @@ const GMAIL_REPLY_TO = (process.env.GMAIL_REPLY_TO || process.env.ZOHO_DESK_SUPP
 const ZOHO_DESK_SUPPORT_EMAIL = (process.env.ZOHO_DESK_SUPPORT_EMAIL || process.env.GMAIL_REPLY_TO || 'support@thestreetco.zohodesk.in').trim();
 const ZOHO_DESK_PORTAL_NAME = (process.env.ZOHO_DESK_PORTAL_NAME || 'thestreetco').trim();
 
+// DEVELOPMENT MODE NOTIFICATION GATE:
+// While in active development, actual SMS and email transmissions are strictly paused.
+// They are simulated and logged locally without calling external APIs until live integration is explicitly requested.
+const LIVE_NOTIFICATIONS_ENABLED = process.env.ENABLE_LIVE_NOTIFICATIONS === 'true';
+
 let gmailTransporter = null;
 function getGmailTransporter() {
+  if (!LIVE_NOTIFICATIONS_ENABLED) {
+    return {
+      sendMail: async (mailOptions) => {
+        const to = mailOptions?.to || 'recipient';
+        const subject = mailOptions?.subject || 'Notification';
+        console.log(`[Email Paused in Dev] Simulated email to: ${to} | Subject: "${subject}"`);
+        return {
+          messageId: 'simulated_dev_email_' + Date.now(),
+          response: '250 Simulated Dev Delivery (No real email sent)',
+          accepted: [to],
+          rejected: []
+        };
+      }
+    };
+  }
+
   const user = (process.env.GMAIL_SMTP_USER || GMAIL_SMTP_USER).trim();
   const pass = (process.env.GMAIL_SMTP_PASS || GMAIL_SMTP_PASS).replace(/\s+/g, '').trim();
   if (!user || !pass) return null;
@@ -70,6 +101,24 @@ function getGmailTransporter() {
 
 let twilioClient = null;
 function getTwilioClient() {
+  if (!LIVE_NOTIFICATIONS_ENABLED) {
+    return {
+      messages: {
+        create: async (msgOptions) => {
+          const to = msgOptions?.to || 'recipient';
+          const body = (msgOptions?.body || '').slice(0, 120);
+          console.log(`[SMS Paused in Dev] Simulated SMS to: ${to} | Body: "${body}..."`);
+          return {
+            sid: 'SM_simulated_dev_' + Math.random().toString(36).substring(2, 10),
+            status: 'simulated_delivered',
+            to: to,
+            body: msgOptions?.body || ''
+          };
+        }
+      }
+    };
+  }
+
   const sid = (process.env.TWILIO_ACCOUNT_SID || TWILIO_ACCOUNT_SID).trim();
   const token = (process.env.TWILIO_AUTH_TOKEN || TWILIO_AUTH_TOKEN).trim();
   if (!sid || !token) return null;
@@ -126,8 +175,31 @@ function formatDisplayContactPhone(rawPhone) {
 
 // Automated Order Confirmation SMS Dispatcher
 async function sendOrderConfirmationSms(order, hostOrigin = '') {
+  const rawPhone = order?.shippingAddress?.phone || order?.contactDetails?.phone || order?.userDetails?.phone || order?.phone || '';
+  if (!rawPhone) {
+    return { success: false, error: 'No phone number provided for recipient.' };
+  }
+
+  const formattedPhone = formatToE164Phone(rawPhone);
+  const orderCode = order.orderCode || order.orderId || 'UCHIHA-ORDER';
+  const cleanCode = String(orderCode).replace(/^#/, '');
+  const customerName = order?.shippingAddress?.fullName || order?.contactDetails?.fullName || order?.userDetails?.name || 'Customer';
+  const grandTotal = order.grandTotalInr ? `₹${Math.round(Number(order.grandTotalInr))}` : '₹0';
+  const smsBody = `Hi ${customerName}, thank you for ordering from THE STREET CO! Order #${cleanCode} for ${grandTotal} is confirmed and being processed. Track: https://www.delhivery.com/tracking`;
+
+  if (!LIVE_NOTIFICATIONS_ENABLED) {
+    console.log(`[Twilio SMS - Dev Paused] Order confirmation SMS for ${orderCode} to ${formattedPhone}: ${smsBody}`);
+    return {
+      success: true,
+      simulated: true,
+      pausedInDev: true,
+      to: formattedPhone,
+      body: smsBody
+    };
+  }
+
   const client = getTwilioClient();
-  const fromNumber = (process.env.TWILIO_PHONE_NUMBER || TWILIO_PHONE_NUMBER).trim();
+  const fromNumber = (process.env.TWILIO_PHONE_NUMBER || TWILIO_PHONE_NUMBER || '').trim();
 
   if (!client || !fromNumber) {
     return {
@@ -135,11 +207,6 @@ async function sendOrderConfirmationSms(order, hostOrigin = '') {
       configured: false,
       notice: 'Twilio SMS not configured. Add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER to .env'
     };
-  }
-
-  const rawPhone = order?.shippingAddress?.phone || order?.contactDetails?.phone || order?.userDetails?.phone || order?.phone || '';
-  if (!rawPhone) {
-    return { success: false, error: 'No phone number provided for recipient.' };
   }
 
   const cleanedDigits = rawPhone.replace(/[\s\-()+]/g, '');
@@ -152,14 +219,6 @@ async function sendOrderConfirmationSms(order, hostOrigin = '') {
       notice: 'SMS dispatch bypassed for test/placeholder phone number.'
     };
   }
-
-  const formattedPhone = formatToE164Phone(rawPhone);
-  const orderCode = order.orderCode || order.orderId || 'UCHIHA-ORDER';
-  const cleanCode = String(orderCode).replace(/^#/, '');
-  const customerName = order?.shippingAddress?.fullName || order?.contactDetails?.fullName || order?.userDetails?.name || 'Shinobi';
-  const grandTotal = order.grandTotalInr ? `₹${Math.round(Number(order.grandTotalInr))}` : '₹0';
-
-  const smsBody = `Hi ${customerName}, thank you for ordering from THE STREET CO! Order #${cleanCode} for ${grandTotal} is confirmed and being processed. Track: https://www.delhivery.com/tracking`;
 
   try {
     const message = await client.messages.create({
@@ -189,6 +248,54 @@ async function sendOrderConfirmationSms(order, hostOrigin = '') {
   }
 }
 
+// Automated The Street Cash VIP Points Credited SMS Dispatcher
+async function sendStreetCashSms(rawPhone, pointsAdded, reason, totalBalance) {
+  if (!rawPhone) {
+    return { success: false, error: 'No phone number provided for Street Cash SMS.' };
+  }
+
+  const formattedPhone = formatToE164Phone(rawPhone);
+  const smsBody = `THE STREET CO VIP: +${pointsAdded} The Street Cash credited to your vault for ${reason}! Total Balance: ${totalBalance} pts. Redeem at 499 pts for ₹499 OFF! https://thestreetco.in/#street-cash`;
+
+  const client = getTwilioClient();
+  const fromNumber = (process.env.TWILIO_PHONE_NUMBER || TWILIO_PHONE_NUMBER || '').trim();
+  const cleanedDigits = String(rawPhone).replace(/[\s\-()+]/g, '');
+  const isPlaceholderNumber = /^(?:91)?(?:9876543210|1234567890|0000000000|9999999999|1111111111)$/.test(cleanedDigits);
+
+  if (!LIVE_NOTIFICATIONS_ENABLED || isPlaceholderNumber || !client || !fromNumber) {
+    console.log(`[Twilio SMS - The Street Cash - Dev Paused] Dispatched to ${formattedPhone}: ${smsBody}`);
+    return {
+      success: true,
+      simulated: true,
+      pausedInDev: !LIVE_NOTIFICATIONS_ENABLED,
+      to: formattedPhone,
+      body: smsBody
+    };
+  }
+
+  try {
+    const message = await client.messages.create({
+      body: smsBody,
+      from: fromNumber,
+      to: formattedPhone
+    });
+    console.log(`[Twilio SMS - The Street Cash] Successfully sent to ${formattedPhone}. SID: ${message.sid}`);
+    return {
+      success: true,
+      sid: message.sid,
+      status: message.status,
+      to: formattedPhone
+    };
+  } catch (err) {
+    console.warn(`[Twilio SMS - The Street Cash] Notice for ${formattedPhone}:`, err.message);
+    return {
+      success: false,
+      error: err.message,
+      to: formattedPhone
+    };
+  }
+}
+
 // Exclusive Google Gmail Transactional Email Dispatcher
 async function sendOrderConfirmationEmailGmail(order, hostOrigin = '') {
   const recipientEmail = (
@@ -204,6 +311,12 @@ async function sendOrderConfirmationEmailGmail(order, hostOrigin = '') {
   }
 
   const orderCode = order.orderCode || order.orderId || 'ORDER';
+
+  if (!LIVE_NOTIFICATIONS_ENABLED) {
+    console.log(`[Gmail - Dev Paused] Order confirmation email for ${orderCode} to ${recipientEmail} simulated.`);
+    return { success: true, simulated: true, pausedInDev: true };
+  }
+
   const customerName = order?.shippingAddress?.fullName || order?.contactDetails?.fullName || order?.userDetails?.name || 'Valued Customer';
   const grandTotal = order.grandTotalInr ? `₹ ${Math.round(Number(order.grandTotalInr)).toLocaleString('en-IN')}` : '₹ 0.00';
   const subtotal = order.subtotalInr ? `₹ ${Math.round(Number(order.subtotalInr)).toLocaleString('en-IN')}` : grandTotal;
@@ -263,8 +376,23 @@ async function sendOrderConfirmationEmailGmail(order, hostOrigin = '') {
     ''
   ).trim().toUpperCase();
 
-  // No file or image attachments in order confirmation email per user instruction
+  // Official Zoho Tax Invoice PDF attachment when order is confirmed
   const mailAttachments = [];
+  const zohoInvoiceId = order.zoho_invoice_id || order.invoice_id;
+  if (zohoInvoiceId && !String(zohoInvoiceId).startsWith('LOCAL-')) {
+    try {
+      const pdfBuffer = await zohoInventory.fetchZohoInvoicePdf(zohoInvoiceId);
+      if (pdfBuffer && pdfBuffer.length > 0) {
+        mailAttachments.push({
+          filename: `TheStreetCo-Invoice-${order.invoice_number || cleanOrderNumber}.pdf`,
+          content: pdfBuffer,
+          contentType: 'application/pdf'
+        });
+      }
+    } catch (attErr) {
+      console.warn('[Confirmation Email] Could not fetch Zoho PDF attachment:', attErr.message);
+    }
+  }
 
   const resolvedOrigin = (hostOrigin && !hostOrigin.includes('localhost') && !hostOrigin.includes('127.0.0.1'))
     ? hostOrigin
@@ -856,6 +984,1375 @@ ${supportEmail}`;
     recipient: recipientEmail,
     error: 'Gmail SMTP not configured. Please set GMAIL_SMTP_USER and GMAIL_SMTP_PASS.'
   };
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// Dedicated Delhivery Done / Order Delivered Email Dispatcher
+// ══════════════════════════════════════════════════════════════════════════
+async function sendDeliveryDoneEmail(order, hostOrigin = '') {
+  const recipientEmail = (
+    order?.contactDetails?.email ||
+    order?.shippingAddress?.email ||
+    order?.userDetails?.email ||
+    order?.email ||
+    ''
+  ).trim();
+
+  if (!recipientEmail) {
+    return { success: false, error: 'No recipient email provided for delivery notification.' };
+  }
+
+  const orderCode = order.orderCode || order.orderId || 'ORDER';
+  const cleanOrderNumber = String(orderCode).replace('#', '').trim();
+  const customerName = order?.shippingAddress?.fullName || order?.contactDetails?.fullName || order?.userDetails?.name || 'Valued Customer';
+  const deliveredAt = order.deliveredAtFormatted || new Date().toLocaleString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  }) + ' IST';
+
+  const shippingAddr = order.shippingAddress || {};
+  const streetAddr = [shippingAddr.addressLine1, shippingAddr.addressLine2, shippingAddr.houseFlat, shippingAddr.streetRoad].filter(Boolean).join(', ') || 'Your address on file';
+  const cityStateZip = [shippingAddr.city, shippingAddr.state, shippingAddr.pincode].filter(Boolean).join(' - ');
+  const fullAddress = `${streetAddr}, ${cityStateZip}`.trim();
+
+  const storeUrl = 'https://thestreetco.netlify.app';
+  const supportEmail = (process.env.GMAIL_REPLY_TO || 'support@thestreetco.zohodesk.in').trim();
+  const trackingUrl = `https://www.delhivery.com/tracking?awb=${encodeURIComponent(cleanOrderNumber)}`;
+  const exchangePortalUrl = `${storeUrl}/#account`;
+
+  const rawItems = (Array.isArray(order.items) && order.items.length > 0)
+    ? order.items
+    : ((Array.isArray(order.products) && order.products.length > 0)
+        ? order.products
+        : []);
+
+  const items = rawItems.length > 0 ? rawItems : [
+    { title: 'Fourth Hokage Minato Inspired Oversized T-Shirt', size: 'M', qty: 1 }
+  ];
+
+  const subject = `Delivered! Your Drop Has Arrived – #${cleanOrderNumber} · The Street Co`;
+
+  const itemsHtml = items.map(item => {
+    const itemTitle = item.title || item.name || 'Streetwear Apparel';
+    const itemSize = item.size || 'M';
+    const itemQty = Number(item.quantity || item.qty || 1);
+    return `
+      <div style="padding:10px 0;border-bottom:1px solid #f0eee9;display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <strong style="color:#0e0e11;font-size:14px;">${itemTitle}</strong>
+          <div style="color:#71717a;font-size:12px;margin-top:2px;">Size: <strong>${itemSize}</strong> · Qty: <strong>${itemQty}</strong></div>
+        </div>
+        <span style="font-size:11px;font-weight:700;color:#10b981;background:#ecfdf5;border:1px solid #a7f3d0;padding:3px 8px;border-radius:4px;letter-spacing:0.5px;">DELIVERED</span>
+      </div>
+    `;
+  }).join('');
+
+  const htmlContent = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>${subject}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  </head>
+  <body style="margin:0;padding:0;background-color:#ffffff;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;color:#18181b;">
+    <div style="width:100%;margin:0;padding:0;background-color:#ffffff;">
+      
+      <!-- Top Brand Header -->
+      <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;background:#0b0a0f;border-bottom:2px solid #e05a47;">
+        <tbody>
+          <tr>
+            <td style="padding:22px 20px;text-align:center;">
+              <a href="${storeUrl}" target="_blank" style="text-decoration:none;display:inline-block;">
+                <span style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:900;letter-spacing:3px;color:#ffffff;text-transform:uppercase;">THE STREET CO</span>
+              </a>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Main Column -->
+      <div style="max-width:600px;margin:0 auto;background-color:#ffffff;padding:28px 20px;">
+        
+        <!-- Delivery Banner -->
+        <div style="background:#f4fbf7;border:1px solid #bbf7d0;border-radius:10px;padding:20px;margin-bottom:24px;text-align:center;">
+          <div style="display:inline-block;width:44px;height:44px;line-height:44px;border-radius:50%;background:#10b981;color:#ffffff;font-size:22px;font-weight:bold;margin-bottom:10px;">✓</div>
+          <div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;color:#065f46;letter-spacing:-0.3px;margin-bottom:6px;">Your Drop Has Been Delivered!</div>
+          <div style="font-size:13px;color:#047857;font-weight:600;">Delhivery Express delivery completed on ${deliveredAt}</div>
+        </div>
+
+        <div style="font-size:15px;line-height:1.65;color:#27272a;margin-bottom:20px;">
+          Hey <strong>${customerName}</strong>,<br><br>
+          Your order <strong>#${cleanOrderNumber}</strong> has been successfully delivered by Delhivery Express to your doorstep. We hope you love the fit, drape, and heavyweight craftsmanship!
+        </div>
+
+        <!-- Delivery Destination Card -->
+        <div style="background:#faf9f5;border:1px solid #e7e5e0;border-radius:8px;padding:16px;margin-bottom:20px;">
+          <div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#71717a;margin-bottom:6px;">DELIVERED TO</div>
+          <div style="font-size:14px;font-weight:700;color:#0e0e11;">${customerName}</div>
+          <div style="font-size:13px;color:#52525b;line-height:1.5;margin-top:2px;">${fullAddress}</div>
+          <div style="font-size:12px;color:#71717a;margin-top:8px;">Courier: <strong>Delhivery Express</strong> · Tracking: <a href="${trackingUrl}" target="_blank" style="color:#0e0e11;font-weight:700;text-decoration:underline;">AWB #${cleanOrderNumber} ↗</a></div>
+        </div>
+
+        <!-- Items Delivered -->
+        <div style="margin-bottom:24px;">
+          <div style="font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#0e0e11;margin-bottom:10px;">ITEMS DELIVERED IN THIS SHIPMENT</div>
+          ${itemsHtml}
+        </div>
+
+        <!-- 7-Day Free Size Exchange & Return Guarantee Callout -->
+        <div style="background:#0e0e11;color:#ffffff;border-radius:10px;padding:22px;margin-bottom:26px;">
+          <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#e05a47;text-transform:uppercase;margin-bottom:6px;">7-DAY EASY SIZE EXCHANGE &amp; RETURN GUARANTEE</div>
+          <div style="font-size:16px;font-weight:700;color:#ffffff;margin-bottom:8px;">Need a Different Size or Resolution?</div>
+          <p style="font-size:13px;line-height:1.6;color:#d4d4d8;margin:0 0 16px 0;">
+            Try your pieces on with peace of mind. If you need a size exchange or return, our automated self-service portal is ready for you. We provide free doorstep reverse pickup via Delhivery Express!
+          </p>
+          <div style="text-align:center;">
+            <a href="${exchangePortalUrl}" target="_blank" style="display:inline-block;background:#ffffff;color:#0e0e11;font-weight:800;font-size:12px;letter-spacing:0.8px;text-transform:uppercase;padding:12px 24px;border-radius:6px;text-decoration:none;">
+              REQUEST SIZE EXCHANGE OR RETURN ↗
+            </a>
+          </div>
+        </div>
+
+        <!-- Support Info -->
+        <div style="font-size:13px;line-height:1.6;color:#52525b;margin-bottom:24px;border-top:1px solid #e4e4e7;padding-top:18px;">
+          Have questions or feedback? Reply directly to this email or reach our dedicated support desk at <a href="mailto:${supportEmail}" style="color:#0e0e11;font-weight:700;text-decoration:underline;">${supportEmail}</a>.
+        </div>
+
+        <!-- Signoff -->
+        <div style="font-size:13px;color:#27272a;margin-bottom:24px;">
+          Best regards,<br>
+          <strong>The Street Co Team</strong>
+        </div>
+
+      </div>
+
+      <!-- Footer -->
+      <div style="background-color:#0b0a0f;padding:22px 20px;text-align:center;color:#a1a1aa;font-size:11px;">
+        <div style="margin-bottom:8px;letter-spacing:1px;font-weight:700;color:#ffffff;">THE STREET CO APPAREL PVT LTD</div>
+        <div>West Bengal, India · © ${new Date().getFullYear()} The Street Co · All rights reserved.</div>
+      </div>
+
+    </div>
+  </body>
+</html>`;
+
+  const plainTextContent = `Delivered! Your Drop Has Arrived – #${cleanOrderNumber}
+
+Hey ${customerName},
+
+Great news! Your order #${cleanOrderNumber} has been successfully delivered by Delhivery Express on ${deliveredAt}.
+
+DELIVERED TO:
+${customerName}
+${fullAddress}
+Courier: Delhivery Express
+Tracking: ${trackingUrl}
+
+7-DAY EASY SIZE EXCHANGE & RETURN GUARANTEE:
+Need a different size or fit adjustment? Every order is protected by our 7-Day Free Size Exchange Policy.
+Initiate your exchange or return easily at: ${exchangePortalUrl}
+
+Customer Support: ${supportEmail}
+
+Best regards,
+The Street Co Team`;
+
+  const gmail = getGmailTransporter();
+  if (!gmail) {
+    return { success: false, error: 'Gmail SMTP transporter not initialized.' };
+  }
+
+  try {
+    const senderUser = (process.env.GMAIL_SMTP_USER || GMAIL_SMTP_USER).trim();
+    const senderDisplayName = (process.env.GMAIL_SENDER_NAME || GMAIL_SENDER_NAME).trim();
+    const replyToEmail = (process.env.GMAIL_REPLY_TO || GMAIL_REPLY_TO).trim();
+
+    const info = await gmail.sendMail({
+      from: `"${senderDisplayName}" <${senderUser}>`,
+      replyTo: replyToEmail,
+      to: recipientEmail,
+      subject: subject,
+      text: plainTextContent,
+      html: htmlContent
+    });
+
+    console.log(`[Gmail SMTP] Delhivery Done email delivered for #${cleanOrderNumber} to ${recipientEmail}. MessageId:`, info.messageId);
+    return {
+      success: true,
+      provider: 'gmail_smtp',
+      messageId: info.messageId,
+      recipient: recipientEmail
+    };
+  } catch (err) {
+    console.error('[Gmail SMTP] Delhivery Done email error:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// Dedicated Return & Exchange Approval Email Dispatcher (Reverse Logistics)
+// ══════════════════════════════════════════════════════════════════════════
+async function sendReturnApprovedEmail(returnRecord, hostOrigin = '') {
+  const recipientEmail = (
+    returnRecord?.customerEmail ||
+    returnRecord?.email ||
+    returnRecord?.shippingAddress?.email ||
+    returnRecord?.contactDetails?.email ||
+    ''
+  ).trim();
+
+  if (!recipientEmail) {
+    return { success: false, error: 'No recipient email found for return notification.' };
+  }
+
+  const returnId = returnRecord.id || `RET-${Date.now()}`;
+  const orderCode = returnRecord.orderCode || 'ORDER';
+  const cleanOrderNumber = String(orderCode).replace('#', '').trim();
+  const customerName = returnRecord.customerName || returnRecord.fullName || 'Valued Customer';
+  const isExchange = returnRecord.type === 'exchange';
+  const typeLabel = isExchange ? 'Size Exchange' : 'Return for Refund';
+  const reverseAwb = returnRecord.reverseAwb || `STC-REV-${String(returnId).replace(/\D/g, '') || '89201'}`;
+  const pickupAddress = returnRecord.pickupAddress || 'Your delivery address on file';
+  const storeUrl = 'https://thestreetco.netlify.app';
+  const supportEmail = (process.env.GMAIL_REPLY_TO || 'support@thestreetco.zohodesk.in').trim();
+  const zohoRef = returnRecord.salesreturn_number || returnRecord.zoho_salesreturn_id || 'Registered in Zoho Inventory';
+
+  const items = Array.isArray(returnRecord.items) && returnRecord.items.length > 0
+    ? returnRecord.items
+    : [{ name: returnRecord.itemNames || 'Streetwear Garment', size: 'Original Size' }];
+
+  const itemsHtml = items.map(item => {
+    const itemName = item.name || item.title || 'Streetwear Apparel';
+    const itemSize = item.size ? `Size: <strong>${item.size}</strong>` : '';
+    return `
+      <div style="padding:10px 0;border-bottom:1px solid #f0eee9;display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <strong style="color:#0e0e11;font-size:14px;">${itemName}</strong>
+          ${itemSize ? `<div style="color:#71717a;font-size:12px;margin-top:2px;">${itemSize}</div>` : ''}
+        </div>
+        <span style="font-size:11px;font-weight:700;color:#10b981;background:#ecfdf5;border:1px solid #a7f3d0;padding:3px 8px;border-radius:4px;letter-spacing:0.5px;">APPROVED</span>
+      </div>
+    `;
+  }).join('');
+
+  const subject = `Reverse Pickup Confirmed: ${typeLabel} #${returnId} (Order #${cleanOrderNumber}) · The Street Co`;
+
+  const htmlContent = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>${subject}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style type="text/css">
+      body { margin:0;padding:0;background-color:#faf8f5;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;-webkit-font-smoothing:antialiased; }
+      table, td { border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt; }
+      img { border:0;height:auto;line-height:100%;outline:none;text-decoration:none; }
+      p { display:block;margin:12px 0; }
+    </style>
+  </head>
+  <body style="margin:0;padding:0;background-color:#faf8f5;">
+    <!-- Outer Creamy Canvas -->
+    <div style="width:100%;background-color:#faf8f5;padding:32px 12px;box-sizing:border-box;">
+      
+      <!-- Center Luxury Card -->
+      <div style="max-width:600px;margin:0 auto;background-color:#ffffff;border:1px solid #e8e2d8;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.03);">
+        
+        <!-- Top Obsidian Header with Gold Accent -->
+        <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;background:#0e0e11;border-bottom:1px solid #c5a880;">
+          <tbody>
+            <tr>
+              <td style="padding:26px 20px;text-align:center;">
+                <a href="${storeUrl}" target="_blank" style="text-decoration:none;display:inline-block;">
+                  <div style="font-family:'Playfair Display',Georgia,serif;font-size:22px;font-weight:700;letter-spacing:0.2em;color:#ffffff;text-transform:uppercase;">THE STREET CO</div>
+                  <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.18em;color:#c5a880;text-transform:uppercase;margin-top:6px;">REVERSE LOGISTICS · PICKUP CONFIRMED</div>
+                </a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Main Content Area -->
+        <div style="padding:32px 28px;">
+          
+          <!-- Approval Banner -->
+          <div style="background:#f4fbf7;border:1px solid #bbf7d0;border-radius:10px;padding:22px 20px;margin-bottom:26px;text-align:center;">
+            <div style="display:inline-block;width:40px;height:40px;line-height:40px;border-radius:50%;background:#059669;color:#ffffff;font-size:20px;font-weight:bold;margin-bottom:8px;">✓</div>
+            <div style="font-family:'Playfair Display',Georgia,serif;font-size:22px;font-weight:600;color:#065f46;letter-spacing:-0.2px;margin-bottom:4px;">Reverse Pickup Scheduled</div>
+            <div style="font-size:12px;color:#047857;font-weight:600;">Delhivery Express reverse doorstep pickup scheduled within 24–48 hours</div>
+          </div>
+
+          <p style="font-size:15px;font-weight:600;color:#18181b;margin:0 0 10px;">
+            Hey ${customerName},
+          </p>
+          <p style="font-size:14px;line-height:1.65;color:#52525b;margin:0 0 24px;">
+            Your request for <strong style="color:#0e0e11;">${typeLabel}</strong> on Order <strong style="color:#0e0e11;">#${cleanOrderNumber}</strong> has been verified and registered in Zoho Inventory (<strong style="color:#0e0e11;">${zohoRef}</strong>). Our logistics partner, Delhivery Express, has been assigned for doorstep pickup.
+          </p>
+
+          <!-- Request Summary Card -->
+          <div style="background:#faf8f5;border:1px solid #e8e2d8;border-radius:10px;padding:18px 20px;margin-bottom:24px;">
+            <table cellpadding="0" cellspacing="0" width="100%" border="0" style="font-size:13px;line-height:22px;color:#3f3f46;margin-bottom:12px;">
+              <tr>
+                <td style="color:#8a7b6e;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;padding-bottom:4px;">REQUEST TYPE</td>
+                <td style="color:#8a7b6e;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;padding-bottom:4px;text-align:right;">REFERENCE ID</td>
+              </tr>
+              <tr>
+                <td style="font-weight:700;color:#0e0e11;font-size:14px;">${typeLabel.toUpperCase()}</td>
+                <td style="font-weight:700;color:#0e0e11;font-size:14px;text-align:right;font-family:monospace;">${returnId}</td>
+              </tr>
+            </table>
+
+            ${isExchange && returnRecord.requestedSize ? `
+              <div style="background:#ffffff;border:1px solid #e8e2d8;border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#3f3f46;">
+                Requested Replacement Size: <strong style="color:#0e0e11;background:#faf8f5;border:1px solid #e8e2d8;padding:2px 8px;border-radius:4px;margin-left:6px;">${returnRecord.requestedSize}</strong>
+              </div>
+            ` : `
+              <div style="background:#ffffff;border:1px solid #e8e2d8;border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#3f3f46;">
+                <strong style="color:#0e0e11;">Return for Refund:</strong> No size selection needed. Full purchase refund will be issued to your original payment method or bank UPI.
+              </div>
+            `}
+
+            <div style="font-size:13px;line-height:1.5;color:#52525b;margin-bottom:10px;">
+              <strong style="color:#0e0e11;">Doorstep Pickup Address:</strong><br/>
+              ${pickupAddress}
+            </div>
+
+            <div style="font-size:12px;color:#71717a;border-top:1px dashed #e8e2d8;padding-top:10px;">
+              Reverse Logistics: <strong style="color:#0e0e11;">Delhivery Express</strong> · <strong style="color:#0e0e11;">AWB #${reverseAwb}</strong>
+            </div>
+          </div>
+
+          <!-- Items to Return -->
+          <div style="margin-bottom:26px;">
+            <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#8a7b6e;margin-bottom:12px;">ARTICLES FOR REVERSE PICKUP</div>
+            ${itemsHtml}
+          </div>
+
+          <!-- Important Handover Instructions -->
+          <div style="background:#0e0e11;color:#ffffff;border-radius:10px;padding:24px 22px;margin-bottom:28px;">
+            <div style="font-size:10px;font-weight:700;letter-spacing:0.16em;color:#c5a880;text-transform:uppercase;margin-bottom:8px;">DOORSTEP PICKUP GUIDELINES</div>
+            <ol style="font-size:13px;line-height:1.65;color:#d4d4d8;margin:0 0 16px 0;padding-left:18px;">
+              <li style="margin-bottom:6px;"><strong style="color:#ffffff;">Keep Tags Intact:</strong> Please ensure garments remain unworn with original brand tags attached.</li>
+              <li style="margin-bottom:6px;"><strong style="color:#ffffff;">Pack in Bag:</strong> Place the items in any sealed courier bag or the original packaging.</li>
+              <li style="margin-bottom:6px;"><strong style="color:#ffffff;">Zero Reverse Fee:</strong> Hand the parcel to the Delhivery courier agent. Do <em>not</em> pay any courier fee — reverse logistics is 100% free under our 7-Day Guarantee.</li>
+              <li><strong style="color:#ffffff;">${isExchange ? 'Replacement Dispatch:' : 'Fast Refund Credit:'}</strong> ${isExchange ? 'Your replacement size will be dispatched immediately once the return pickup is scanned.' : 'Full amount will be credited to your original payment method or UPI within 24 hours of doorstep scan.'}</li>
+            </ol>
+          </div>
+
+          <!-- Support Info -->
+          <div style="font-size:13px;line-height:1.6;color:#52525b;margin-bottom:24px;border-top:1px solid #e8e2d8;padding-top:18px;">
+            Have questions or need to reschedule your reverse pickup? Reply directly to this email or reach us at <a href="mailto:${supportEmail}" style="color:#0e0e11;font-weight:700;text-decoration:underline;">${supportEmail}</a>.
+          </div>
+
+          <!-- Signoff -->
+          <div style="font-size:13px;color:#18181b;">
+            Best regards,<br>
+            <strong style="color:#0e0e11;">The Street Co Team</strong>
+          </div>
+
+        </div> <!-- /main content -->
+
+        <!-- Footer -->
+        <div style="background-color:#faf8f5;border-top:1px solid #e8e2d8;padding:26px 20px;text-align:center;">
+          <div style="margin-bottom:14px;">
+            <a href="${storeUrl}" target="_blank" style="text-decoration:none;margin:0 12px;font-size:12px;font-weight:600;color:#0e0e11;">The Shop</a>
+            <span style="color:#c5a880;">•</span>
+            <a href="mailto:${supportEmail}" style="text-decoration:none;margin:0 12px;font-size:12px;font-weight:600;color:#0e0e11;">Client Concierge</a>
+            <span style="color:#c5a880;">•</span>
+            <a href="https://www.instagram.com/thestreetco_shop?stkn=ZnJ3eDZmaHd6Ym5o" target="_blank" style="text-decoration:none;margin:0 12px;font-size:12px;font-weight:600;color:#0e0e11;">Instagram</a>
+          </div>
+          <div style="font-size:11px;line-height:1.6;color:#8a7b6e;max-width:440px;margin:0 auto;">
+            The Street Co Apparel · Thakurnagar Shimulpur Hazratala, West Bengal 743287, India<br>
+            © ${new Date().getFullYear()} The Street Co · All rights reserved.
+          </div>
+        </div>
+
+      </div> <!-- /center card -->
+    </div> <!-- /outer canvas -->
+  </body>
+</html>`;
+
+  const plainTextContent = `Reverse Pickup Confirmed: ${typeLabel} #${returnId} (Order #${cleanOrderNumber})
+
+Hey ${customerName},
+
+Great news! Your ${typeLabel} request for Order #${cleanOrderNumber} has been approved and confirmed in Zoho Inventory (${zohoRef}).
+
+REVERSE PICKUP DETAILS:
+Return Reference ID: ${returnId}
+Request Type: ${typeLabel}
+${isExchange && returnRecord.requestedSize ? `Requested Replacement Size: ${returnRecord.requestedSize}\n` : 'Refund Destination: Original Payment Method / Bank Account\n'}
+Doorstep Pickup Address:
+${pickupAddress}
+
+Reverse Courier: Delhivery Express
+Reverse Tracking AWB: ${reverseAwb}
+Pickup Window: Within 24-48 business hours
+
+IMPORTANT INSTRUCTIONS:
+1. Please ensure garments are unworn with original tags attached.
+2. Hand over the package to the Delhivery agent. Doorstep reverse pickup is 100% FREE.
+3. ${isExchange ? 'Your replacement size will be dispatched once pickup is scanned.' : 'Refund will be credited within 24 hours of pickup scan.'}
+
+Support: ${supportEmail}
+
+Best regards,
+The Street Co Team`;
+
+  const gmail = getGmailTransporter();
+  if (!gmail) {
+    return { success: false, error: 'Gmail SMTP transporter not initialized.' };
+  }
+
+  try {
+    const senderUser = (process.env.GMAIL_SMTP_USER || GMAIL_SMTP_USER).trim();
+    const senderDisplayName = (process.env.GMAIL_SENDER_NAME || GMAIL_SENDER_NAME).trim();
+    const replyToEmail = (process.env.GMAIL_REPLY_TO || GMAIL_REPLY_TO).trim();
+
+    const info = await gmail.sendMail({
+      from: `"${senderDisplayName}" <${senderUser}>`,
+      replyTo: replyToEmail,
+      to: recipientEmail,
+      subject: subject,
+      text: plainTextContent,
+      html: htmlContent
+    });
+
+    console.log(`[Gmail SMTP] Return approval email delivered for #${returnId} to ${recipientEmail}. MessageId:`, info.messageId);
+    return {
+      success: true,
+      provider: 'gmail_smtp',
+      messageId: info.messageId,
+      recipient: recipientEmail
+    };
+  } catch (err) {
+    console.error('[Gmail SMTP] Return approval email error:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+// Pickup Confirmed alias for seamless semantic usage
+const sendPickupConfirmedEmail = sendReturnApprovedEmail;
+
+// ══════════════════════════════════════════════════════════════════════════
+// 3. Dedicated Order Ready to Ship (Packed & Manifested) Email Dispatcher
+// ══════════════════════════════════════════════════════════════════════════
+async function sendOrderReadyToShipEmail(order, hostOrigin = '') {
+  const recipientEmail = (
+    order?.contactDetails?.email ||
+    order?.shippingAddress?.email ||
+    order?.userDetails?.email ||
+    order?.email ||
+    ''
+  ).trim();
+
+  if (!recipientEmail) {
+    return { success: false, error: 'No recipient email provided for ready-to-ship notification.' };
+  }
+
+  const orderCode = order.orderCode || order.orderId || 'ORDER';
+  const cleanOrderNumber = String(orderCode).replace('#', '').trim();
+  const customerName = order?.shippingAddress?.fullName || order?.contactDetails?.fullName || order?.userDetails?.name || 'Valued Customer';
+  const storeUrl = 'https://thestreetco.netlify.app';
+  const supportEmail = (process.env.GMAIL_REPLY_TO || 'support@thestreetco.zohodesk.in').trim();
+  const awbCode = order.trackingAwb || order.deliveryDetails?.trackingCode || `DEL-${cleanOrderNumber}`;
+  const trackingUrl = `https://www.delhivery.com/tracking?awb=${encodeURIComponent(awbCode)}`;
+
+  const shippingAddr = order.shippingAddress || {};
+  const streetAddr = [shippingAddr.addressLine1, shippingAddr.addressLine2, shippingAddr.houseFlat, shippingAddr.streetRoad].filter(Boolean).join(', ') || 'Your address on file';
+  const cityStateZip = [shippingAddr.city, shippingAddr.state, shippingAddr.pincode].filter(Boolean).join(' - ');
+  const fullAddress = `${streetAddr}, ${cityStateZip}`.trim();
+
+  const rawItems = (Array.isArray(order.items) && order.items.length > 0)
+    ? order.items
+    : ((Array.isArray(order.products) && order.products.length > 0) ? order.products : []);
+
+  const itemsHtml = rawItems.map(item => {
+    const itemTitle = item.title || item.name || 'Streetwear Apparel';
+    const itemSize = item.size || 'M';
+    const itemQty = Number(item.quantity || item.qty || 1);
+    return `
+      <div style="padding:10px 0;border-bottom:1px solid #f0eee9;display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <strong style="color:#0e0e11;font-size:14px;">${itemTitle}</strong>
+          <div style="color:#71717a;font-size:12px;margin-top:2px;">Size: <strong>${itemSize}</strong> · Qty: <strong>${itemQty}</strong></div>
+        </div>
+        <span style="font-size:11px;font-weight:700;color:#0284c7;background:#f0f9ff;border:1px solid #bae6fd;padding:3px 8px;border-radius:4px;letter-spacing:0.5px;">PACKED</span>
+      </div>
+    `;
+  }).join('');
+
+  const subject = `Packed & Ready to Ship: Order #${cleanOrderNumber} · The Street Co`;
+
+  const htmlContent = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>${subject}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style type="text/css">
+      body { margin:0;padding:0;background-color:#faf8f5;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;-webkit-font-smoothing:antialiased; }
+      table, td { border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt; }
+      img { border:0;height:auto;line-height:100%;outline:none;text-decoration:none; }
+      p { display:block;margin:12px 0; }
+    </style>
+  </head>
+  <body style="margin:0;padding:0;background-color:#faf8f5;">
+    <!-- Outer Creamy Canvas -->
+    <div style="width:100%;background-color:#faf8f5;padding:32px 12px;box-sizing:border-box;">
+      
+      <!-- Center Luxury Card -->
+      <div style="max-width:600px;margin:0 auto;background-color:#ffffff;border:1px solid #e8e2d8;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.03);">
+        
+        <!-- Top Obsidian Header with Gold Accent -->
+        <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;background:#0e0e11;border-bottom:1px solid #c5a880;">
+          <tbody>
+            <tr>
+              <td style="padding:26px 20px;text-align:center;">
+                <a href="${storeUrl}" target="_blank" style="text-decoration:none;display:inline-block;">
+                  <div style="font-family:'Playfair Display',Georgia,serif;font-size:22px;font-weight:700;letter-spacing:0.2em;color:#ffffff;text-transform:uppercase;">THE STREET CO</div>
+                  <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.18em;color:#c5a880;text-transform:uppercase;margin-top:6px;">DELHIVERY EXPRESS · PACKED &amp; MANIFESTED</div>
+                </a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Main Content Area -->
+        <div style="padding:32px 28px;">
+          
+          <!-- Packed Status Banner -->
+          <div style="background:#faf8f5;border:1px solid #e8e2d8;border-radius:10px;padding:22px 20px;margin-bottom:26px;text-align:center;">
+            <div style="display:inline-block;width:40px;height:40px;line-height:40px;border-radius:50%;background:#0e0e11;color:#ffffff;font-size:18px;font-weight:bold;margin-bottom:8px;">⚡</div>
+            <div style="font-family:'Playfair Display',Georgia,serif;font-size:22px;font-weight:600;color:#0e0e11;letter-spacing:-0.2px;margin-bottom:4px;">Packed &amp; Ready To Ship</div>
+            <div style="font-size:12px;color:#8a7b6e;font-weight:600;">Delhivery Express courier handover queued · AWB #${awbCode}</div>
+          </div>
+
+          <p style="font-size:15px;font-weight:600;color:#18181b;margin:0 0 10px;">
+            Hey ${customerName},
+          </p>
+          <p style="font-size:14px;line-height:1.65;color:#52525b;margin:0 0 24px;">
+            Your garments for Order <strong style="color:#0e0e11;">#${cleanOrderNumber}</strong> have passed final quality control, sealed in custom unboxing packaging, and are waiting for Delhivery Express courier dispatch from our safehouse.
+          </p>
+
+          <!-- Shipping Destination Card -->
+          <div style="background:#faf8f5;border:1px solid #e8e2d8;border-radius:10px;padding:18px 20px;margin-bottom:24px;">
+            <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#8a7b6e;margin-bottom:6px;">DISPATCH DESTINATION</div>
+            <div style="font-size:14px;font-weight:700;color:#0e0e11;">${customerName}</div>
+            <div style="font-size:13px;color:#52525b;line-height:1.5;margin-top:2px;">${fullAddress}</div>
+            <div style="font-size:12px;color:#71717a;margin-top:10px;border-top:1px dashed #e8e2d8;padding-top:8px;">
+              Carrier: <strong style="color:#0e0e11;">Delhivery Express</strong> · AWB: <strong style="color:#0e0e11;">#${awbCode}</strong>
+            </div>
+          </div>
+
+          <!-- Items Ready -->
+          <div style="margin-bottom:26px;">
+            <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#8a7b6e;margin-bottom:12px;">ARTICLES READY FOR DISPATCH</div>
+            ${itemsHtml}
+          </div>
+
+          <!-- CTA Button -->
+          <div style="text-align:center;margin-bottom:28px;">
+            <a href="${trackingUrl}" target="_blank" style="display:inline-block;background-color:#0e0e11;color:#ffffff;text-decoration:none;padding:15px 36px;border-radius:8px;font-weight:700;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;box-shadow:0 2px 10px rgba(14,14,17,0.12);">
+              TRACK LIVE ON DELHIVERY ↗
+            </a>
+          </div>
+
+          <!-- Support Info -->
+          <div style="font-size:13px;line-height:1.6;color:#52525b;margin-bottom:24px;border-top:1px solid #e8e2d8;padding-top:18px;">
+            Questions about your shipment? Contact our concierge team anytime at <a href="mailto:${supportEmail}" style="color:#0e0e11;font-weight:700;text-decoration:underline;">${supportEmail}</a>.
+          </div>
+
+          <!-- Signoff -->
+          <div style="font-size:13px;color:#18181b;">
+            Best regards,<br>
+            <strong style="color:#0e0e11;">The Street Co Team</strong>
+          </div>
+
+        </div> <!-- /main content -->
+
+        <!-- Footer -->
+        <div style="background-color:#faf8f5;border-top:1px solid #e8e2d8;padding:26px 20px;text-align:center;">
+          <div style="margin-bottom:14px;">
+            <a href="${storeUrl}" target="_blank" style="text-decoration:none;margin:0 12px;font-size:12px;font-weight:600;color:#0e0e11;">The Shop</a>
+            <span style="color:#c5a880;">•</span>
+            <a href="mailto:${supportEmail}" style="text-decoration:none;margin:0 12px;font-size:12px;font-weight:600;color:#0e0e11;">Client Concierge</a>
+            <span style="color:#c5a880;">•</span>
+            <a href="https://www.instagram.com/thestreetco_shop?stkn=ZnJ3eDZmaHd6Ym5o" target="_blank" style="text-decoration:none;margin:0 12px;font-size:12px;font-weight:600;color:#0e0e11;">Instagram</a>
+          </div>
+          <div style="font-size:11px;line-height:1.6;color:#8a7b6e;max-width:440px;margin:0 auto;">
+            The Street Co Apparel · Thakurnagar Shimulpur Hazratala, West Bengal 743287, India<br>
+            © ${new Date().getFullYear()} The Street Co · All rights reserved.
+          </div>
+        </div>
+
+      </div> <!-- /center card -->
+    </div> <!-- /outer canvas -->
+  </body>
+</html>`;
+
+  const plainTextContent = `Packed & Ready to Ship: Order #${cleanOrderNumber}
+
+Hey ${customerName},
+
+Great news! Your order #${cleanOrderNumber} is packed and ready for dispatch via Delhivery Express.
+
+Tracking AWB: ${awbCode}
+Shipping Address:
+${fullAddress}
+
+Track your package: ${trackingUrl}
+Support: ${supportEmail}
+
+Best regards,
+The Street Co Team`;
+
+  const gmail = getGmailTransporter();
+  if (!gmail) return { success: false, error: 'Gmail SMTP transporter not initialized.' };
+
+  try {
+    const senderUser = (process.env.GMAIL_SMTP_USER || GMAIL_SMTP_USER).trim();
+    const senderDisplayName = (process.env.GMAIL_SENDER_NAME || GMAIL_SENDER_NAME).trim();
+    const replyToEmail = (process.env.GMAIL_REPLY_TO || GMAIL_REPLY_TO).trim();
+
+    const info = await gmail.sendMail({
+      from: `"${senderDisplayName}" <${senderUser}>`,
+      replyTo: replyToEmail,
+      to: recipientEmail,
+      subject,
+      text: plainTextContent,
+      html: htmlContent
+    });
+
+    console.log(`[Gmail SMTP] Ready to ship email delivered for #${cleanOrderNumber} to ${recipientEmail}. MessageId:`, info.messageId);
+    return { success: true, provider: 'gmail_smtp', messageId: info.messageId, recipient: recipientEmail };
+  } catch (err) {
+    console.error('[Gmail SMTP] Ready to ship email error:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// 5. Dedicated Confirmation of Exchange Request Submitted Email
+// ══════════════════════════════════════════════════════════════════════════
+async function sendExchangeRequestSubmittedEmail(returnRecord, hostOrigin = '') {
+  const recipientEmail = (
+    returnRecord?.customerEmail ||
+    returnRecord?.email ||
+    returnRecord?.shippingAddress?.email ||
+    returnRecord?.contactDetails?.email ||
+    ''
+  ).trim();
+
+  if (!recipientEmail) return { success: false, error: 'No recipient email found for exchange confirmation.' };
+
+  const returnId = returnRecord.id || `EX-${Date.now()}`;
+  const orderCode = returnRecord.orderCode || 'ORDER';
+  const cleanOrderNumber = String(orderCode).replace('#', '').trim();
+  const customerName = returnRecord.customerName || returnRecord.fullName || 'Valued Customer';
+  const requestedSize = returnRecord.requestedSize || 'Selected Size';
+  const storeUrl = 'https://thestreetco.netlify.app';
+  const supportEmail = (process.env.GMAIL_REPLY_TO || 'support@thestreetco.zohodesk.in').trim();
+
+  const items = Array.isArray(returnRecord.items) && returnRecord.items.length > 0
+    ? returnRecord.items
+    : [{ name: returnRecord.itemNames || 'Streetwear Garment', size: 'M' }];
+
+  const itemsHtml = items.map(item => `
+    <div style="padding:10px 0;border-bottom:1px solid #f0eee9;display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <strong style="color:#0e0e11;font-size:14px;">${item.name || 'Streetwear Garment'}</strong>
+        <div style="color:#71717a;font-size:12px;margin-top:2px;">Original Size: <strong>${item.size || 'M'}</strong></div>
+      </div>
+      <span style="font-size:11px;font-weight:700;color:#6366f1;background:#eef2ff;border:1px solid #c7d2fe;padding:3px 8px;border-radius:4px;letter-spacing:0.5px;">EXCHANGE REQUESTED</span>
+    </div>
+  `).join('');
+
+  const subject = `Exchange Request Received: Order #${cleanOrderNumber} (${returnId}) · The Street Co`;
+
+  const htmlContent = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>${subject}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style type="text/css">
+      body { margin:0;padding:0;background-color:#faf8f5;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;-webkit-font-smoothing:antialiased; }
+      table, td { border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt; }
+      img { border:0;height:auto;line-height:100%;outline:none;text-decoration:none; }
+      p { display:block;margin:12px 0; }
+    </style>
+  </head>
+  <body style="margin:0;padding:0;background-color:#faf8f5;">
+    <!-- Outer Creamy Canvas -->
+    <div style="width:100%;background-color:#faf8f5;padding:32px 12px;box-sizing:border-box;">
+      
+      <!-- Center Luxury Card -->
+      <div style="max-width:600px;margin:0 auto;background-color:#ffffff;border:1px solid #e8e2d8;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.03);">
+        
+        <!-- Top Obsidian Header with Gold Accent -->
+        <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;background:#0e0e11;border-bottom:1px solid #c5a880;">
+          <tbody>
+            <tr>
+              <td style="padding:26px 20px;text-align:center;">
+                <a href="${storeUrl}" target="_blank" style="text-decoration:none;display:inline-block;">
+                  <div style="font-family:'Playfair Display',Georgia,serif;font-size:22px;font-weight:700;letter-spacing:0.2em;color:#ffffff;text-transform:uppercase;">THE STREET CO</div>
+                  <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.18em;color:#c5a880;text-transform:uppercase;margin-top:6px;">CLIENT CONCIERGE · SIZE EXCHANGE REQUEST</div>
+                </a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Main Content Area -->
+        <div style="padding:32px 28px;">
+          
+          <!-- Banner -->
+          <div style="background:#faf8f5;border:1px solid #e8e2d8;border-radius:10px;padding:22px 20px;margin-bottom:26px;text-align:center;">
+            <div style="display:inline-block;width:40px;height:40px;line-height:40px;border-radius:50%;background:#0e0e11;color:#ffffff;font-size:18px;font-weight:bold;margin-bottom:8px;">↺</div>
+            <div style="font-family:'Playfair Display',Georgia,serif;font-size:22px;font-weight:600;color:#0e0e11;letter-spacing:-0.2px;margin-bottom:4px;">Exchange Request Received</div>
+            <div style="font-size:12px;color:#8a7b6e;font-weight:600;">Requested Size: <strong>${requestedSize}</strong> · Request ID: ${returnId}</div>
+          </div>
+
+          <p style="font-size:15px;font-weight:600;color:#18181b;margin:0 0 10px;">
+            Hey ${customerName},
+          </p>
+          <p style="font-size:14px;line-height:1.65;color:#52525b;margin:0 0 24px;">
+            We have received your size exchange request for Order <strong style="color:#0e0e11;">#${cleanOrderNumber}</strong>. We are holding your replacement article in size <strong style="color:#0e0e11;">${requestedSize}</strong>.
+          </p>
+
+          <!-- Request Summary Card -->
+          <div style="background:#faf8f5;border:1px solid #e8e2d8;border-radius:10px;padding:18px 20px;margin-bottom:24px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+              <span style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#8a7b6e;">EXCHANGE REFERENCE</span>
+              <span style="font-family:monospace;font-size:13px;color:#0e0e11;font-weight:700;">${returnId}</span>
+            </div>
+            <div style="font-size:13px;color:#3f3f46;margin-bottom:6px;">
+              Replacement Size: <strong style="background:#ffffff;border:1px solid #e8e2d8;padding:2px 8px;border-radius:4px;color:#0e0e11;">${requestedSize}</strong>
+            </div>
+            <div style="font-size:12px;color:#71717a;margin-top:8px;border-top:1px dashed #e8e2d8;padding-top:8px;">
+              Doorstep Pickup Address: <strong style="color:#0e0e11;">${returnRecord.pickupAddress || 'Address on file'}</strong>
+            </div>
+          </div>
+
+          <!-- Items to Exchange -->
+          <div style="margin-bottom:26px;">
+            <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#8a7b6e;margin-bottom:12px;">ARTICLE TO BE EXCHANGED</div>
+            ${itemsHtml}
+          </div>
+
+          <!-- Next Steps -->
+          <div style="background:#0e0e11;color:#ffffff;border-radius:10px;padding:22px;margin-bottom:28px;">
+            <div style="font-size:10px;font-weight:700;letter-spacing:0.16em;color:#c5a880;text-transform:uppercase;margin-bottom:6px;">WHAT HAPPENS NEXT?</div>
+            <p style="font-size:13px;line-height:1.6;color:#d4d4d8;margin:0;">
+              1. Our fulfillment team validates your request in Zoho Inventory.<br/>
+              2. You will receive an official <strong>Pickup Confirmed email</strong> with Delhivery reverse tracking details.<br/>
+              3. Delhivery collects your parcel and your new <strong>${requestedSize}</strong> piece is dispatched immediately!
+            </p>
+          </div>
+
+          <!-- Support Info -->
+          <div style="font-size:13px;line-height:1.6;color:#52525b;margin-bottom:24px;border-top:1px solid #e8e2d8;padding-top:18px;">
+            Questions? Reply directly to this email or reach us at <a href="mailto:${supportEmail}" style="color:#0e0e11;font-weight:700;text-decoration:underline;">${supportEmail}</a>.
+          </div>
+
+          <!-- Signoff -->
+          <div style="font-size:13px;color:#18181b;">
+            Best regards,<br>
+            <strong style="color:#0e0e11;">The Street Co Team</strong>
+          </div>
+
+        </div> <!-- /main content -->
+
+        <!-- Footer -->
+        <div style="background-color:#faf8f5;border-top:1px solid #e8e2d8;padding:26px 20px;text-align:center;">
+          <div style="margin-bottom:14px;">
+            <a href="${storeUrl}" target="_blank" style="text-decoration:none;margin:0 12px;font-size:12px;font-weight:600;color:#0e0e11;">The Shop</a>
+            <span style="color:#c5a880;">•</span>
+            <a href="mailto:${supportEmail}" style="text-decoration:none;margin:0 12px;font-size:12px;font-weight:600;color:#0e0e11;">Client Concierge</a>
+            <span style="color:#c5a880;">•</span>
+            <a href="https://www.instagram.com/thestreetco_shop?stkn=ZnJ3eDZmaHd6Ym5o" target="_blank" style="text-decoration:none;margin:0 12px;font-size:12px;font-weight:600;color:#0e0e11;">Instagram</a>
+          </div>
+          <div style="font-size:11px;line-height:1.6;color:#8a7b6e;max-width:440px;margin:0 auto;">
+            The Street Co Apparel · Thakurnagar Shimulpur Hazratala, West Bengal 743287, India<br>
+            © ${new Date().getFullYear()} The Street Co · All rights reserved.
+          </div>
+        </div>
+
+      </div> <!-- /center card -->
+    </div> <!-- /outer canvas -->
+  </body>
+</html>`;
+
+  const plainTextContent = `Exchange Request Received: Order #${cleanOrderNumber} (${returnId})
+
+Hey ${customerName},
+
+We've received your exchange request for Order #${cleanOrderNumber}.
+Requested Replacement Size: ${requestedSize}
+Reference ID: ${returnId}
+
+Next step: Once approved in Zoho Inventory, you'll receive reverse pickup scheduling details via Delhivery Express.
+
+Support: ${supportEmail}
+
+Best regards,
+The Street Co Team`;
+
+  const gmail = getGmailTransporter();
+  if (!gmail) return { success: false, error: 'Gmail SMTP transporter not initialized.' };
+
+  try {
+    const senderUser = (process.env.GMAIL_SMTP_USER || GMAIL_SMTP_USER).trim();
+    const senderDisplayName = (process.env.GMAIL_SENDER_NAME || GMAIL_SENDER_NAME).trim();
+    const replyToEmail = (process.env.GMAIL_REPLY_TO || GMAIL_REPLY_TO).trim();
+
+    const info = await gmail.sendMail({
+      from: `"${senderDisplayName}" <${senderUser}>`,
+      replyTo: replyToEmail,
+      to: recipientEmail,
+      subject,
+      text: plainTextContent,
+      html: htmlContent
+    });
+
+    console.log(`[Gmail SMTP] Exchange request confirmation email delivered for #${returnId} to ${recipientEmail}. MessageId:`, info.messageId);
+    return { success: true, provider: 'gmail_smtp', messageId: info.messageId, recipient: recipientEmail };
+  } catch (err) {
+    console.error('[Gmail SMTP] Exchange request confirmation email error:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// 6. Dedicated Confirmation of Return Request Submitted Email (No Size Needed)
+// ══════════════════════════════════════════════════════════════════════════
+async function sendReturnRequestSubmittedEmail(returnRecord, hostOrigin = '') {
+  const recipientEmail = (
+    returnRecord?.customerEmail ||
+    returnRecord?.email ||
+    returnRecord?.shippingAddress?.email ||
+    returnRecord?.contactDetails?.email ||
+    ''
+  ).trim();
+
+  if (!recipientEmail) return { success: false, error: 'No recipient email found for return confirmation.' };
+
+  const returnId = returnRecord.id || `RET-${Date.now()}`;
+  const orderCode = returnRecord.orderCode || 'ORDER';
+  const cleanOrderNumber = String(orderCode).replace('#', '').trim();
+  const customerName = returnRecord.customerName || returnRecord.fullName || 'Valued Customer';
+  const storeUrl = 'https://thestreetco.netlify.app';
+  const supportEmail = (process.env.GMAIL_REPLY_TO || 'support@thestreetco.zohodesk.in').trim();
+
+  const items = Array.isArray(returnRecord.items) && returnRecord.items.length > 0
+    ? returnRecord.items
+    : [{ name: returnRecord.itemNames || 'Streetwear Garment', size: 'M' }];
+
+  const itemsHtml = items.map(item => `
+    <div style="padding:10px 0;border-bottom:1px solid #e8e2d8;display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <strong style="color:#0e0e11;font-size:14px;">${item.name || 'Streetwear Garment'}</strong>
+        <div style="color:#71717a;font-size:12px;margin-top:2px;">Size: <strong style="color:#0e0e11;">${item.size || 'Original'}</strong></div>
+      </div>
+      <span style="font-size:11px;font-weight:700;color:#52525b;background:#faf8f5;border:1px solid #e8e2d8;padding:3px 8px;border-radius:4px;letter-spacing:0.5px;">RETURN (REFUND)</span>
+    </div>
+  `).join('');
+
+  const subject = `Return Request Received: Order #${cleanOrderNumber} (${returnId}) · The Street Co`;
+
+  const htmlContent = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>${subject}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style type="text/css">
+      body { margin:0;padding:0;background-color:#faf8f5;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;-webkit-font-smoothing:antialiased; }
+      table, td { border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt; }
+      img { border:0;height:auto;line-height:100%;outline:none;text-decoration:none; }
+      p { display:block;margin:12px 0; }
+    </style>
+  </head>
+  <body style="margin:0;padding:0;background-color:#faf8f5;">
+    <!-- Outer Creamy Canvas -->
+    <div style="width:100%;background-color:#faf8f5;padding:32px 12px;box-sizing:border-box;">
+      
+      <!-- Center Luxury Card -->
+      <div style="max-width:600px;margin:0 auto;background-color:#ffffff;border:1px solid #e8e2d8;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.03);">
+        
+        <!-- Top Obsidian Header with Gold Accent -->
+        <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;background:#0e0e11;border-bottom:1px solid #c5a880;">
+          <tbody>
+            <tr>
+              <td style="padding:26px 20px;text-align:center;">
+                <a href="${storeUrl}" target="_blank" style="text-decoration:none;display:inline-block;">
+                  <div style="font-family:'Playfair Display',Georgia,serif;font-size:22px;font-weight:700;letter-spacing:0.2em;color:#ffffff;text-transform:uppercase;">THE STREET CO</div>
+                  <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.18em;color:#c5a880;text-transform:uppercase;margin-top:6px;">CLIENT CONCIERGE · RETURN FOR REFUND</div>
+                </a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Main Content Area -->
+        <div style="padding:32px 28px;">
+          
+          <!-- Banner -->
+          <div style="background:#faf8f5;border:1px solid #e8e2d8;border-radius:10px;padding:22px 20px;margin-bottom:26px;text-align:center;">
+            <div style="display:inline-block;width:40px;height:40px;line-height:40px;border-radius:50%;background:#0e0e11;color:#ffffff;font-size:18px;font-weight:bold;margin-bottom:8px;">↩</div>
+            <div style="font-family:'Playfair Display',Georgia,serif;font-size:22px;font-weight:600;color:#0e0e11;letter-spacing:-0.2px;margin-bottom:4px;">Return For Refund Received</div>
+            <div style="font-size:12px;color:#8a7b6e;font-weight:600;">Direct Refund Scheduled · No Size Needed · Ref ID: ${returnId}</div>
+          </div>
+
+          <p style="font-size:15px;font-weight:600;color:#18181b;margin:0 0 10px;">
+            Hey ${customerName},
+          </p>
+          <p style="font-size:14px;line-height:1.65;color:#52525b;margin:0 0 24px;">
+            We have received your request to return articles from Order <strong style="color:#0e0e11;">#${cleanOrderNumber}</strong> for a direct purchase refund. No replacement size selection is required.
+          </p>
+
+          <!-- Refund Summary Card -->
+          <div style="background:#faf8f5;border:1px solid #e8e2d8;border-radius:10px;padding:18px 20px;margin-bottom:24px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+              <span style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#8a7b6e;">REFUND DETAILS</span>
+              <span style="font-family:monospace;font-size:13px;color:#0e0e11;font-weight:700;">${returnId}</span>
+            </div>
+            <div style="font-size:13px;color:#3f3f46;margin-bottom:6px;">
+              Refund Destination: <strong style="color:#0e0e11;">Original Payment Method / Bank UPI</strong>
+            </div>
+            <div style="font-size:12px;color:#71717a;margin-top:8px;border-top:1px dashed #e8e2d8;padding-top:8px;">
+              Doorstep Pickup Address: <strong style="color:#0e0e11;">${returnRecord.pickupAddress || 'Address on file'}</strong>
+            </div>
+          </div>
+
+          <!-- Items to Return -->
+          <div style="margin-bottom:26px;">
+            <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#8a7b6e;margin-bottom:12px;">ARTICLES TO BE RETURNED</div>
+            ${itemsHtml}
+          </div>
+
+          <!-- Timeline -->
+          <div style="background:#0e0e11;color:#ffffff;border-radius:10px;padding:22px;margin-bottom:28px;">
+            <div style="font-size:10px;font-weight:700;letter-spacing:0.16em;color:#c5a880;text-transform:uppercase;margin-bottom:6px;">REVERSE LOGISTICS &amp; REFUND TIMELINE</div>
+            <p style="font-size:13px;line-height:1.6;color:#d4d4d8;margin:0;">
+              • You will receive a <strong>Pickup Confirmed email</strong> as soon as Delhivery reverse courier is assigned.<br/>
+              • Hand the parcel with brand tags attached to the courier. Free doorstep pickup.<br/>
+              • 100% full refund will be processed immediately upon doorstep collection scan!
+            </p>
+          </div>
+
+          <!-- Support Info -->
+          <div style="font-size:13px;line-height:1.6;color:#52525b;margin-bottom:24px;border-top:1px solid #e8e2d8;padding-top:18px;">
+            Have questions? Reply directly to this email or reach us at <a href="mailto:${supportEmail}" style="color:#0e0e11;font-weight:700;text-decoration:underline;">${supportEmail}</a>.
+          </div>
+
+          <!-- Signoff -->
+          <div style="font-size:13px;color:#18181b;">
+            Best regards,<br>
+            <strong style="color:#0e0e11;">The Street Co Team</strong>
+          </div>
+
+        </div> <!-- /main content -->
+
+        <!-- Footer -->
+        <div style="background-color:#faf8f5;border-top:1px solid #e8e2d8;padding:26px 20px;text-align:center;">
+          <div style="margin-bottom:14px;">
+            <a href="${storeUrl}" target="_blank" style="text-decoration:none;margin:0 12px;font-size:12px;font-weight:600;color:#0e0e11;">The Shop</a>
+            <span style="color:#c5a880;">•</span>
+            <a href="mailto:${supportEmail}" style="text-decoration:none;margin:0 12px;font-size:12px;font-weight:600;color:#0e0e11;">Client Concierge</a>
+            <span style="color:#c5a880;">•</span>
+            <a href="https://www.instagram.com/thestreetco_shop?stkn=ZnJ3eDZmaHd6Ym5o" target="_blank" style="text-decoration:none;margin:0 12px;font-size:12px;font-weight:600;color:#0e0e11;">Instagram</a>
+          </div>
+          <div style="font-size:11px;line-height:1.6;color:#8a7b6e;max-width:440px;margin:0 auto;">
+            The Street Co Apparel · Thakurnagar Shimulpur Hazratala, West Bengal 743287, India<br>
+            © ${new Date().getFullYear()} The Street Co · All rights reserved.
+          </div>
+        </div>
+
+      </div> <!-- /center card -->
+    </div> <!-- /outer canvas -->
+  </body>
+</html>`;
+
+  const plainTextContent = `Return Request Received: Order #${cleanOrderNumber} (${returnId})
+
+Hey ${customerName},
+
+Your return for refund request for Order #${cleanOrderNumber} has been received.
+Reference ID: ${returnId}
+Refund Method: Original Payment Method / Bank UPI (No size needed)
+
+Doorstep Pickup: Free reverse pickup via Delhivery Express will be assigned within 24-48 hours.
+
+Support: ${supportEmail}
+
+Best regards,
+The Street Co Team`;
+
+  const gmail = getGmailTransporter();
+  if (!gmail) return { success: false, error: 'Gmail SMTP transporter not initialized.' };
+
+  try {
+    const senderUser = (process.env.GMAIL_SMTP_USER || GMAIL_SMTP_USER).trim();
+    const senderDisplayName = (process.env.GMAIL_SENDER_NAME || GMAIL_SENDER_NAME).trim();
+    const replyToEmail = (process.env.GMAIL_REPLY_TO || GMAIL_REPLY_TO).trim();
+
+    const info = await gmail.sendMail({
+      from: `"${senderDisplayName}" <${senderUser}>`,
+      replyTo: replyToEmail,
+      to: recipientEmail,
+      subject,
+      text: plainTextContent,
+      html: htmlContent
+    });
+
+    console.log(`[Gmail SMTP] Return request confirmation email delivered for #${returnId} to ${recipientEmail}. MessageId:`, info.messageId);
+    return { success: true, provider: 'gmail_smtp', messageId: info.messageId, recipient: recipientEmail };
+  } catch (err) {
+    console.error('[Gmail SMTP] Return request confirmation email error:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// 8. Dedicated Refund Done Email Dispatcher
+// ══════════════════════════════════════════════════════════════════════════
+async function sendRefundDoneEmail(returnRecord, hostOrigin = '') {
+  const recipientEmail = (
+    returnRecord?.customerEmail ||
+    returnRecord?.email ||
+    returnRecord?.shippingAddress?.email ||
+    returnRecord?.contactDetails?.email ||
+    ''
+  ).trim();
+
+  if (!recipientEmail) return { success: false, error: 'No recipient email found for refund notification.' };
+
+  const returnId = returnRecord.id || `RET-${Date.now()}`;
+  const orderCode = returnRecord.orderCode || 'ORDER';
+  const cleanOrderNumber = String(orderCode).replace('#', '').trim();
+  const customerName = returnRecord.customerName || returnRecord.fullName || 'Valued Customer';
+  const refundAmount = Number(returnRecord.refundAmountInr || returnRecord.amount || 1599);
+  const refundTxnId = returnRecord.refundTransactionId || `REF-${Math.floor(100000 + Math.random() * 900000)}`;
+  const storeUrl = 'https://thestreetco.netlify.app';
+  const supportEmail = (process.env.GMAIL_REPLY_TO || 'support@thestreetco.zohodesk.in').trim();
+
+  const subject = `Refund Processed: ₹${refundAmount.toLocaleString('en-IN')} for Order #${cleanOrderNumber} (${returnId}) · The Street Co`;
+
+  const htmlContent = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>${subject}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style type="text/css">
+      body { margin:0;padding:0;background-color:#faf8f5;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;-webkit-font-smoothing:antialiased; }
+      table, td { border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt; }
+      img { border:0;height:auto;line-height:100%;outline:none;text-decoration:none; }
+      p { display:block;margin:12px 0; }
+    </style>
+  </head>
+  <body style="margin:0;padding:0;background-color:#faf8f5;">
+    <!-- Outer Creamy Canvas -->
+    <div style="width:100%;background-color:#faf8f5;padding:32px 12px;box-sizing:border-box;">
+      
+      <!-- Center Luxury Card -->
+      <div style="max-width:600px;margin:0 auto;background-color:#ffffff;border:1px solid #e8e2d8;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.03);">
+        
+        <!-- Top Obsidian Header with Gold Accent -->
+        <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;background:#0e0e11;border-bottom:1px solid #c5a880;">
+          <tbody>
+            <tr>
+              <td style="padding:26px 20px;text-align:center;">
+                <a href="${storeUrl}" target="_blank" style="text-decoration:none;display:inline-block;">
+                  <div style="font-family:'Playfair Display',Georgia,serif;font-size:22px;font-weight:700;letter-spacing:0.2em;color:#ffffff;text-transform:uppercase;">THE STREET CO</div>
+                  <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.18em;color:#c5a880;text-transform:uppercase;margin-top:6px;">FINANCIAL CONCIERGE · REFUND SETTLEMENT</div>
+                </a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Main Content Area -->
+        <div style="padding:32px 28px;">
+          
+          <!-- Banner -->
+          <div style="background:#f4fbf7;border:1px solid #bbf7d0;border-radius:10px;padding:22px 20px;margin-bottom:26px;text-align:center;">
+            <div style="display:inline-block;width:40px;height:40px;line-height:40px;border-radius:50%;background:#059669;color:#ffffff;font-size:20px;font-weight:bold;margin-bottom:8px;">✓</div>
+            <div style="font-family:'Playfair Display',Georgia,serif;font-size:22px;font-weight:600;color:#065f46;letter-spacing:-0.2px;margin-bottom:4px;">Refund Successfully Processed</div>
+            <div style="font-size:13px;color:#047857;font-weight:700;">₹${refundAmount.toLocaleString('en-IN')} credited to your original payment source / UPI</div>
+          </div>
+
+          <p style="font-size:15px;font-weight:600;color:#18181b;margin:0 0 10px;">
+            Hey ${customerName},
+          </p>
+          <p style="font-size:14px;line-height:1.65;color:#52525b;margin:0 0 24px;">
+            Your return for Order <strong style="color:#0e0e11;">#${cleanOrderNumber}</strong> (${returnId}) has been collected and verified. We have processed a full purchase refund of <strong style="color:#0e0e11;">₹${refundAmount.toLocaleString('en-IN')}</strong>.
+          </p>
+
+          <!-- Refund Receipt -->
+          <div style="background:#faf8f5;border:1px solid #e8e2d8;border-radius:10px;padding:20px;margin-bottom:24px;">
+            <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#8a7b6e;margin-bottom:12px;">REFUND SETTLEMENT VOUCHER</div>
+            <table cellpadding="0" cellspacing="0" width="100%" border="0" style="font-size:13px;line-height:22px;color:#3f3f46;">
+              <tr>
+                <td style="color:#71717a;padding:4px 0;">Refund Amount:</td>
+                <td style="text-align:right;font-weight:800;color:#0e0e11;font-size:15px;padding:4px 0;">₹${refundAmount.toLocaleString('en-IN')}</td>
+              </tr>
+              <tr>
+                <td style="color:#71717a;padding:4px 0;">Transaction Ref:</td>
+                <td style="text-align:right;font-family:monospace;font-weight:700;color:#0e0e11;padding:4px 0;">${refundTxnId}</td>
+              </tr>
+              <tr>
+                <td style="color:#71717a;padding:4px 0;">Order Reference:</td>
+                <td style="text-align:right;color:#0e0e11;padding:4px 0;">#${cleanOrderNumber}</td>
+              </tr>
+              <tr>
+                <td style="color:#71717a;padding:4px 0;">Settlement Destination:</td>
+                <td style="text-align:right;color:#0e0e11;padding:4px 0;">Source Payment / Bank UPI</td>
+              </tr>
+            </table>
+          </div>
+
+          <div style="font-size:13px;line-height:1.6;color:#52525b;margin-bottom:24px;border-top:1px solid #e8e2d8;padding-top:18px;">
+            Depending on your issuing bank or UPI provider, the funds usually reflect immediately or within 1–2 business days. If you have any questions, reach our finance desk at <a href="mailto:${supportEmail}" style="color:#0e0e11;font-weight:700;text-decoration:underline;">${supportEmail}</a>.
+          </div>
+
+          <!-- Signoff -->
+          <div style="font-size:13px;color:#18181b;">
+            Best regards,<br>
+            <strong style="color:#0e0e11;">The Street Co Team</strong>
+          </div>
+
+        </div> <!-- /main content -->
+
+        <!-- Footer -->
+        <div style="background-color:#faf8f5;border-top:1px solid #e8e2d8;padding:26px 20px;text-align:center;">
+          <div style="margin-bottom:14px;">
+            <a href="${storeUrl}" target="_blank" style="text-decoration:none;margin:0 12px;font-size:12px;font-weight:600;color:#0e0e11;">The Shop</a>
+            <span style="color:#c5a880;">•</span>
+            <a href="mailto:${supportEmail}" style="text-decoration:none;margin:0 12px;font-size:12px;font-weight:600;color:#0e0e11;">Client Concierge</a>
+            <span style="color:#c5a880;">•</span>
+            <a href="https://www.instagram.com/thestreetco_shop?stkn=ZnJ3eDZmaHd6Ym5o" target="_blank" style="text-decoration:none;margin:0 12px;font-size:12px;font-weight:600;color:#0e0e11;">Instagram</a>
+          </div>
+          <div style="font-size:11px;line-height:1.6;color:#8a7b6e;max-width:440px;margin:0 auto;">
+            The Street Co Apparel · Thakurnagar Shimulpur Hazratala, West Bengal 743287, India<br>
+            © ${new Date().getFullYear()} The Street Co · All rights reserved.
+          </div>
+        </div>
+
+      </div> <!-- /center card -->
+    </div> <!-- /outer canvas -->
+  </body>
+</html>`;
+
+  const plainTextContent = `Refund Processed: ₹${refundAmount} for Order #${cleanOrderNumber} (${returnId})
+
+Hey ${customerName},
+
+Great news! Your refund of ₹${refundAmount} for Order #${cleanOrderNumber} has been successfully processed and credited back to your original payment method or UPI.
+
+Refund Reference ID: ${refundTxnId}
+Amount: ₹${refundAmount}
+Status: Completed
+
+Support: ${supportEmail}
+
+Best regards,
+The Street Co Team`;
+
+  const gmail = getGmailTransporter();
+  if (!gmail) return { success: false, error: 'Gmail SMTP transporter not initialized.' };
+
+  try {
+    const senderUser = (process.env.GMAIL_SMTP_USER || GMAIL_SMTP_USER).trim();
+    const senderDisplayName = (process.env.GMAIL_SENDER_NAME || GMAIL_SENDER_NAME).trim();
+    const replyToEmail = (process.env.GMAIL_REPLY_TO || GMAIL_REPLY_TO).trim();
+
+    const info = await gmail.sendMail({
+      from: `"${senderDisplayName}" <${senderUser}>`,
+      replyTo: replyToEmail,
+      to: recipientEmail,
+      subject,
+      text: plainTextContent,
+      html: htmlContent
+    });
+
+    console.log(`[Gmail SMTP] Refund done email delivered for #${returnId} to ${recipientEmail}. MessageId:`, info.messageId);
+    return { success: true, provider: 'gmail_smtp', messageId: info.messageId, recipient: recipientEmail };
+  } catch (err) {
+    console.error('[Gmail SMTP] Refund done email error:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// 9. Dedicated Exchange Done (Replacement Delivered) Email Dispatcher
+// ══════════════════════════════════════════════════════════════════════════
+async function sendExchangeDoneEmail(returnRecord, hostOrigin = '') {
+  const recipientEmail = (
+    returnRecord?.customerEmail ||
+    returnRecord?.email ||
+    returnRecord?.shippingAddress?.email ||
+    returnRecord?.contactDetails?.email ||
+    ''
+  ).trim();
+
+  if (!recipientEmail) return { success: false, error: 'No recipient email found for exchange completion notification.' };
+
+  const returnId = returnRecord.id || `EX-${Date.now()}`;
+  const orderCode = returnRecord.orderCode || 'ORDER';
+  const cleanOrderNumber = String(orderCode).replace('#', '').trim();
+  const customerName = returnRecord.customerName || returnRecord.fullName || 'Valued Customer';
+  const replacementSize = returnRecord.requestedSize || 'Your Selected Size';
+  const itemName = returnRecord.itemNames || 'Streetwear Garment';
+  const storeUrl = 'https://thestreetco.netlify.app';
+  const supportEmail = (process.env.GMAIL_REPLY_TO || 'support@thestreetco.zohodesk.in').trim();
+
+  const subject = `Exchange Completed: Replacement Delivered for Order #${cleanOrderNumber} · The Street Co`;
+
+  const htmlContent = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>${subject}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style type="text/css">
+      body { margin:0;padding:0;background-color:#faf8f5;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;-webkit-font-smoothing:antialiased; }
+      table, td { border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt; }
+      img { border:0;height:auto;line-height:100%;outline:none;text-decoration:none; }
+      p { display:block;margin:12px 0; }
+    </style>
+  </head>
+  <body style="margin:0;padding:0;background-color:#faf8f5;">
+    <!-- Outer Creamy Canvas -->
+    <div style="width:100%;background-color:#faf8f5;padding:32px 12px;box-sizing:border-box;">
+      
+      <!-- Center Luxury Card -->
+      <div style="max-width:600px;margin:0 auto;background-color:#ffffff;border:1px solid #e8e2d8;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.03);">
+        
+        <!-- Top Obsidian Header with Gold Accent -->
+        <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;background:#0e0e11;border-bottom:1px solid #c5a880;">
+          <tbody>
+            <tr>
+              <td style="padding:26px 20px;text-align:center;">
+                <a href="${storeUrl}" target="_blank" style="text-decoration:none;display:inline-block;">
+                  <div style="font-family:'Playfair Display',Georgia,serif;font-size:22px;font-weight:700;letter-spacing:0.2em;color:#ffffff;text-transform:uppercase;">THE STREET CO</div>
+                  <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.18em;color:#c5a880;text-transform:uppercase;margin-top:6px;">DELHIVERY EXPRESS · REPLACEMENT DELIVERED</div>
+                </a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Main Content Area -->
+        <div style="padding:32px 28px;">
+          
+          <!-- Banner -->
+          <div style="background:#f4fbf7;border:1px solid #bbf7d0;border-radius:10px;padding:22px 20px;margin-bottom:26px;text-align:center;">
+            <div style="display:inline-block;width:40px;height:40px;line-height:40px;border-radius:50%;background:#059669;color:#ffffff;font-size:20px;font-weight:bold;margin-bottom:8px;">✓</div>
+            <div style="font-family:'Playfair Display',Georgia,serif;font-size:22px;font-weight:600;color:#065f46;letter-spacing:-0.2px;margin-bottom:4px;">Exchange Completed &amp; Delivered</div>
+            <div style="font-size:12px;color:#047857;font-weight:600;">Replacement Size ${replacementSize} successfully delivered</div>
+          </div>
+
+          <p style="font-size:15px;font-weight:600;color:#18181b;margin:0 0 10px;">
+            Hey ${customerName},
+          </p>
+          <p style="font-size:14px;line-height:1.65;color:#52525b;margin:0 0 24px;">
+            Your size exchange for Order <strong style="color:#0e0e11;">#${cleanOrderNumber}</strong> is officially fulfilled. Your replacement <strong style="color:#0e0e11;">${itemName}</strong> in size <strong style="color:#0e0e11;">${replacementSize}</strong> has arrived at your doorstep.
+          </p>
+
+          <!-- Record Summary -->
+          <div style="background:#faf8f5;border:1px solid #e8e2d8;border-radius:10px;padding:18px 20px;margin-bottom:24px;">
+            <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#8a7b6e;margin-bottom:8px;">EXCHANGE RECORD SUMMARY</div>
+            <div style="font-size:14px;font-weight:700;color:#0e0e11;">${itemName}</div>
+            <div style="font-size:13px;color:#3f3f46;margin-top:4px;">
+              Delivered Size: <strong style="color:#065f46;background:#f4fbf7;border:1px solid #bbf7d0;padding:2px 8px;border-radius:4px;">${replacementSize}</strong>
+            </div>
+            <div style="font-size:12px;color:#71717a;margin-top:8px;border-top:1px dashed #e8e2d8;padding-top:8px;">
+              Exchange Request Ref: <strong style="color:#0e0e11;">${returnId}</strong>
+            </div>
+          </div>
+
+          <div style="font-size:13px;line-height:1.6;color:#52525b;margin-bottom:24px;border-top:1px solid #e8e2d8;padding-top:18px;">
+            We hope the fit and drape are now immaculate! If there is anything else you need, please reach our team at <a href="mailto:${supportEmail}" style="color:#0e0e11;font-weight:700;text-decoration:underline;">${supportEmail}</a>.
+          </div>
+
+          <!-- Signoff -->
+          <div style="font-size:13px;color:#18181b;">
+            Best regards,<br>
+            <strong style="color:#0e0e11;">The Street Co Team</strong>
+          </div>
+
+        </div> <!-- /main content -->
+
+        <!-- Footer -->
+        <div style="background-color:#faf8f5;border-top:1px solid #e8e2d8;padding:26px 20px;text-align:center;">
+          <div style="margin-bottom:14px;">
+            <a href="${storeUrl}" target="_blank" style="text-decoration:none;margin:0 12px;font-size:12px;font-weight:600;color:#0e0e11;">The Shop</a>
+            <span style="color:#c5a880;">•</span>
+            <a href="mailto:${supportEmail}" style="text-decoration:none;margin:0 12px;font-size:12px;font-weight:600;color:#0e0e11;">Client Concierge</a>
+            <span style="color:#c5a880;">•</span>
+            <a href="https://www.instagram.com/thestreetco_shop?stkn=ZnJ3eDZmaHd6Ym5o" target="_blank" style="text-decoration:none;margin:0 12px;font-size:12px;font-weight:600;color:#0e0e11;">Instagram</a>
+          </div>
+          <div style="font-size:11px;line-height:1.6;color:#8a7b6e;max-width:440px;margin:0 auto;">
+            The Street Co Apparel · Thakurnagar Shimulpur Hazratala, West Bengal 743287, India<br>
+            © ${new Date().getFullYear()} The Street Co · All rights reserved.
+          </div>
+        </div>
+
+      </div> <!-- /center card -->
+    </div> <!-- /outer canvas -->
+  </body>
+</html>`;
+
+  const plainTextContent = `Exchange Completed: Replacement Delivered for Order #${cleanOrderNumber}
+
+Hey ${customerName},
+
+Your size exchange for Order #${cleanOrderNumber} is complete!
+Your replacement ${itemName} in size ${replacementSize} has been delivered.
+
+Reference: ${returnId}
+Support: ${supportEmail}
+
+Best regards,
+The Street Co Team`;
+
+  const gmail = getGmailTransporter();
+  if (!gmail) return { success: false, error: 'Gmail SMTP transporter not initialized.' };
+
+  try {
+    const senderUser = (process.env.GMAIL_SMTP_USER || GMAIL_SMTP_USER).trim();
+    const senderDisplayName = (process.env.GMAIL_SENDER_NAME || GMAIL_SENDER_NAME).trim();
+    const replyToEmail = (process.env.GMAIL_REPLY_TO || GMAIL_REPLY_TO).trim();
+
+    const info = await gmail.sendMail({
+      from: `"${senderDisplayName}" <${senderUser}>`,
+      replyTo: replyToEmail,
+      to: recipientEmail,
+      subject,
+      text: plainTextContent,
+      html: htmlContent
+    });
+
+    console.log(`[Gmail SMTP] Exchange done email delivered for #${returnId} to ${recipientEmail}. MessageId:`, info.messageId);
+    return { success: true, provider: 'gmail_smtp', messageId: info.messageId, recipient: recipientEmail };
+  } catch (err) {
+    console.error('[Gmail SMTP] Exchange done email error:', err.message);
+    return { success: false, error: err.message };
+  }
 }
 
 // Local file-backed storage helper functions
@@ -1669,6 +3166,15 @@ function validateCouponLogic(coupon, subtotalInr) {
     };
   }
 
+  // One-time use check (The Street Cash VIP loyalty coupons)
+  if (coupon.isOneTimeUse && (coupon.isRedeemed === true || coupon.status === 'used')) {
+    return {
+      valid: false,
+      reason: 'already_redeemed',
+      message: `❌ This Street Cash coupon "${coupon.code}" has already been redeemed and can only be used once.`
+    };
+  }
+
   // If marked as inactive, cannot be used!
   if (coupon.status !== 'active') {
     return {
@@ -1678,8 +3184,8 @@ function validateCouponLogic(coupon, subtotalInr) {
     };
   }
 
-  // If not marked as public, cannot be used until marked as public!
-  if (coupon.isPublic !== true) {
+  // If not marked as public (and not a private one-time user voucher), cannot be used
+  if (coupon.isPublic !== true && !coupon.isOneTimeUse) {
     return {
       valid: false,
       reason: 'not_public',
@@ -1916,7 +3422,23 @@ app.post('/api/coupons/validate', async (req, res) => {
     });
   }
 
-  const matchedCoupon = inMemoryCoupons.find(c => c.code.toUpperCase() === rawCode);
+  let matchedCoupon = inMemoryCoupons.find(c => c.code.toUpperCase() === rawCode);
+
+  // If not found in memory, or if it might be updated in MongoDB, query MongoDB Atlas
+  if (!matchedCoupon || matchedCoupon.isOneTimeUse) {
+    try {
+      const dbCoupon = await findCouponInMongo(rawCode);
+      if (dbCoupon) {
+        matchedCoupon = dbCoupon;
+        const idx = inMemoryCoupons.findIndex(c => c.code.toUpperCase() === rawCode);
+        if (idx >= 0) {
+          inMemoryCoupons[idx] = { ...inMemoryCoupons[idx], ...dbCoupon };
+        } else {
+          inMemoryCoupons.push(dbCoupon);
+        }
+      }
+    } catch (_) {}
+  }
 
   if (!matchedCoupon) {
     return res.json({
@@ -2138,6 +3660,31 @@ function persistOrders(singleOrder = null) {
   }
 }
 
+// Local file-backed returns & exchanges cache
+const RETURNS_CACHE_FILE = path.join(__dirname, 'returns_cache.json');
+const savedReturnsList = loadJsonCache(RETURNS_CACHE_FILE, []);
+const inMemoryReturns = new Map();
+if (Array.isArray(savedReturnsList)) {
+  for (const ret of savedReturnsList) {
+    if (ret && ret.id) inMemoryReturns.set(ret.id, ret);
+    if (ret && ret.orderCode) inMemoryReturns.set(`ORD_${ret.orderCode}`, ret);
+  }
+}
+function persistReturn(singleReturn = null) {
+  saveJsonCache(RETURNS_CACHE_FILE, Array.from(new Set(inMemoryReturns.values())));
+  if (singleReturn && singleReturn.id) {
+    getCollection('returns').then(col => {
+      if (col) {
+        const cleanDoc = { ...singleReturn };
+        delete cleanDoc._id;
+        col.updateOne({ id: cleanDoc.id }, { $set: cleanDoc }, { upsert: true }).catch(err => {
+          console.warn('[MongoDB returns.upsert]:', err.message);
+        });
+      }
+    });
+  }
+}
+
 // Orders: Save checkout order with complete user details, product details, delivery, and payment
 app.post('/api/orders', async (req, res) => {
   try {
@@ -2298,11 +3845,14 @@ app.post('/api/orders', async (req, res) => {
     const accountPhone = String(raw.accountPhone || raw.userAccountPhone || phone || '').replace(/\D/g, '').slice(-10);
 
     // 5. Clean Order Document (Zero redundant duplicate keys)
+    // 5. Clean Order Document (Initial status: AWAITING_ZOHO_CONFIRMATION)
+    // Communications (SMS + email + invoice) are strictly deferred until merchant confirms in Zoho Inventory
     const orderDocument = {
       orderId,
       orderCode,
       accountPhone,
-      status: raw.status || 'CONFIRMED',
+      status: raw.status || 'AWAITING_ZOHO_CONFIRMATION',
+      zoho_status: 'pending_confirmation',
       orderDate: now.toISOString(),
       orderDateFormatted: istDateTime,
       createdAt: now,
@@ -2347,55 +3897,52 @@ app.post('/api/orders', async (req, res) => {
       appendOrderToUserAccount(accountPhone, orderDocument).catch(() => {});
     }
 
-    // Automated Zoho Inventory Sales Order Push
+    // 1. Burn one-time Street Cash voucher if used on this order
+    const appliedCouponCode = String(raw.promoCode || rawPricing.promoCode || raw.couponCode || '').trim().toUpperCase();
+    if (appliedCouponCode) {
+      orderDocument.appliedPromoCode = appliedCouponCode;
+      burnOneTimeCoupon(appliedCouponCode, orderCode).catch(() => {});
+      const cIdx = inMemoryCoupons.findIndex(c => c.code.toUpperCase() === appliedCouponCode);
+      if (cIdx >= 0 && inMemoryCoupons[cIdx].isOneTimeUse) {
+        inMemoryCoupons[cIdx].isRedeemed = true;
+        inMemoryCoupons[cIdx].status = 'used';
+      }
+    }
+
+    // 2. Award The Street Cash loyalty points: Per 1,000 Rs spent will give you 199 The Street Cash
+    let streetCashAwarded = null;
+    if (accountPhone.length === 10 && grandTotalInr > 0) {
+      try {
+        streetCashAwarded = await awardStreetCashForOrder(accountPhone, grandTotalInr, orderCode);
+        if (streetCashAwarded) {
+          orderDocument.streetCashEarned = streetCashAwarded.pointsAwarded;
+          orderDocument.streetCashAwarded = streetCashAwarded;
+          const reasonNotice = streetCashAwarded.isFirstOrder
+            ? `Order #${orderCode} (+${streetCashAwarded.standardPoints} pts + 49 pts First Order Milestone)`
+            : `Order #${orderCode}`;
+          sendStreetCashSms(accountPhone, streetCashAwarded.pointsAwarded, reasonNotice, streetCashAwarded.newBalance).catch(() => {});
+        }
+      } catch (ptsErr) {
+        console.warn('[The Street Cash points awarding notice]:', ptsErr.message);
+      }
+    }
+
+    // Automated Zoho Inventory Sales Order Push upon checkout
     let zohoSalesOrderResult = null;
     try {
       zohoSalesOrderResult = await zohoInventory.createSalesOrder(orderDocument);
       if (zohoSalesOrderResult && zohoSalesOrderResult.success) {
         orderDocument.zoho_salesorder_id = zohoSalesOrderResult.zoho_salesorder_id;
         orderDocument.zoho_salesorder_number = zohoSalesOrderResult.zoho_salesorder_number;
+        persistOrders(orderDocument);
       }
     } catch (zohoOrderErr) {
       console.warn('[Zoho Inventory] Sales order sync notice:', zohoOrderErr.message);
       zohoSalesOrderResult = { success: false, error: zohoOrderErr.message };
     }
 
-    // Automated Zoho Indian GST Tax Invoice Creation
-    let zohoInvoiceResult = null;
-    try {
-      zohoInvoiceResult = await zohoInventory.createGstInvoice(orderDocument);
-      if (zohoInvoiceResult && zohoInvoiceResult.success) {
-        orderDocument.invoice_number = zohoInvoiceResult.invoice_number;
-        orderDocument.invoice_id = zohoInvoiceResult.invoice_id;
-        orderDocument.zoho_invoice_id = zohoInvoiceResult.zoho_invoice_id || zohoInvoiceResult.invoice_id;
-        orderDocument.zoho_invoice_url = zohoInvoiceResult.invoice_url || '';
-        orderDocument.template_name = zohoInvoiceResult.template_name || 'The Street Co';
-        orderDocument.gstBreakdown = zohoInvoiceResult.gstBreakdown;
-        orderDocument.invoiceUrl = `/invoice/${orderDocument.orderCode}`;
-      }
-    } catch (invErr) {
-      console.warn('[Zoho GST Invoice Notice]', invErr.message);
-      zohoInvoiceResult = { success: false, error: invErr.message };
-    }
-
-    const hostOrigin = `${req.protocol}://${req.get('host')}`;
-
-    // Automated Dispatches in Parallel (SMS + Order Confirmation Email + Dedicated GST Tax Invoice Email)
-    const [smsDispatchResult, emailDispatchResult, invoiceEmailResult] = await Promise.all([
-      sendOrderConfirmationSms(orderDocument, hostOrigin).catch(smsErr => {
-        console.warn('[Twilio] Background SMS attempt error:', smsErr.message);
-        return { success: false, error: smsErr.message };
-      }),
-      sendOrderConfirmationEmailSendGrid(orderDocument, hostOrigin).catch(emailErr => {
-        console.warn('[Email] Background Order Confirmation attempt error:', emailErr.message);
-        return { success: false, error: emailErr.message };
-      }),
-      sendGstTaxInvoiceEmail(orderDocument, hostOrigin).catch(invEmailErr => {
-        console.warn('[Email] Background GST Tax Invoice attempt error:', invEmailErr.message);
-        return { success: false, error: invEmailErr.message };
-      })
-    ]);
-
+    // NOTE: Order confirmation SMS, email, and Zoho Invoice are strictly deferred per business rules.
+    // They will ONLY be dispatched once the order is confirmed in Zoho Inventory (via webhook or admin action).
 
     res.json({
       success: true,
@@ -2403,16 +3950,425 @@ app.post('/api/orders', async (req, res) => {
       orderId: orderDocument.orderId,
       order: orderDocument,
       zohoSalesOrder: zohoSalesOrderResult,
-      zohoInvoice: zohoInvoiceResult,
-      invoiceUrl: orderDocument.invoiceUrl || `/invoice/${orderDocument.orderCode}`,
-      sms: smsDispatchResult,
-      email: emailDispatchResult,
-      invoiceEmail: invoiceEmailResult,
-      message: 'Order created, Sales Order registered, and both Order Confirmation & GST Tax Invoice emails dispatched separately.'
+      status: orderDocument.status,
+      awaitingZohoConfirmation: true,
+      message: 'Order placed and registered in Zoho Inventory. Confirmation SMS, email, and Zoho Invoice will be sent as soon as the merchant marks the order confirmed in Zoho Inventory.'
     });
   } catch (err) {
     console.error('[Server] Order processing error:', err);
     res.status(500).json({ error: 'Order processing error', detail: err.message });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════════════
+// ZOHO INVENTORY LIFECYCLE: CONFIRMATION & FULFILLMENT CONTROLLERS
+// ══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Confirm order from Zoho Inventory:
+ * 1. Converts Zoho Sales Order to official Zoho Invoice (INV-XXXX)
+ * 2. Updates order status to CONFIRMED
+ * 3. Dispatches Confirmation SMS to customer
+ * 4. Dispatches Confirmation Email with official Zoho PDF Invoice attached
+ * 5. Dispatches dedicated GST Tax Invoice Email with PDF attached
+ */
+async function confirmOrderFromZoho(codeOrId, hostOrigin = '') {
+  const code = String(codeOrId || '').trim().toUpperCase().replace(/^#/, '');
+  let order = inMemoryOrders.get(code) || inMemoryOrders.get(`UCHIHA-${code}`) || null;
+  if (!order) {
+    for (const ord of inMemoryOrders.values()) {
+      if (ord && (
+        String(ord.orderCode || '').toUpperCase().replace(/^#/, '') === code ||
+        String(ord.orderId || '').toUpperCase() === code ||
+        String(ord.zoho_salesorder_id || '') === code ||
+        String(ord.zoho_salesorder_number || '').toUpperCase() === code
+      )) {
+        order = ord;
+        break;
+      }
+    }
+  }
+
+  if (!order) {
+    return { success: false, error: `Order #${codeOrId} not found in database.` };
+  }
+
+  console.log(`[Zoho Order Lifecycle] Processing Zoho confirmation for #${order.orderCode} (Sales Order: ${order.zoho_salesorder_number || order.zoho_salesorder_id || 'N/A'})`);
+
+  // 1. Mark confirmed in Zoho Inventory if salesorder_id exists
+  if (order.zoho_salesorder_id) {
+    await zohoInventory.confirmSalesOrderInZoho(order.zoho_salesorder_id).catch(() => {});
+  }
+
+  // 2. Convert Sales Order to Official Zoho Invoice via Zoho Invoice API
+  let zohoInvoiceResult = null;
+  try {
+    zohoInvoiceResult = await zohoInventory.convertSalesOrderToInvoice(order.zoho_salesorder_id, order);
+    if (zohoInvoiceResult && zohoInvoiceResult.success) {
+      order.invoice_number = zohoInvoiceResult.invoice_number;
+      order.invoice_id = zohoInvoiceResult.invoice_id;
+      order.zoho_invoice_id = zohoInvoiceResult.zoho_invoice_id || zohoInvoiceResult.invoice_id;
+      order.zoho_invoice_url = zohoInvoiceResult.invoice_url || '';
+      order.template_name = zohoInvoiceResult.template_name || 'The Street Co';
+      order.gstBreakdown = zohoInvoiceResult.gstBreakdown || order.gstBreakdown;
+      order.invoiceUrl = `/invoice/${order.orderCode}`;
+    }
+  } catch (invErr) {
+    console.warn('[Zoho Invoice Conversion Notice]', invErr.message);
+  }
+
+  // 3. Update order state to CONFIRMED
+  order.status = 'CONFIRMED';
+  order.zoho_status = 'confirmed';
+  order.confirmedAt = new Date().toISOString();
+  persistOrders(order);
+
+  // 4. Now dispatch Confirmation SMS, Email with Invoice attached, and Dedicated GST Tax Invoice Email
+  const resolvedHostOrigin = hostOrigin || 'https://thestreetco.netlify.app';
+  const [smsResult, emailResult, invoiceEmailResult] = await Promise.all([
+    sendOrderConfirmationSms(order, resolvedHostOrigin).catch(smsErr => {
+      console.warn('[Twilio SMS Notice]:', smsErr.message);
+      return { success: false, error: smsErr.message };
+    }),
+    sendOrderConfirmationEmailGmail(order, resolvedHostOrigin).catch(emailErr => {
+      console.warn('[Order Email Notice]:', emailErr.message);
+      return { success: false, error: emailErr.message };
+    }),
+    sendGstTaxInvoiceEmail(order, resolvedHostOrigin).catch(invErr => {
+      console.warn('[GST Invoice Email Notice]:', invErr.message);
+      return { success: false, error: invErr.message };
+    })
+  ]);
+
+  return {
+    success: true,
+    orderCode: order.orderCode,
+    order,
+    zohoInvoice: zohoInvoiceResult,
+    sms: smsResult,
+    email: emailResult,
+    invoiceEmail: invoiceEmailResult,
+    message: `Order #${order.orderCode} confirmed in Zoho Inventory! Converted to Zoho Invoice (${order.invoice_number || 'INV'}), and confirmation SMS and email with invoice attached dispatched.`
+  };
+}
+
+/**
+ * Mark shipment as fulfilled in Zoho Inventory:
+ * 1. Updates order status to DELIVERED / DELIVERY_DONE
+ * 2. Marks shipment delivered in Zoho Inventory
+ * 3. Dispatches dedicated Delhivery Done email with 7-Day Return/Exchange window info
+ */
+async function markOrderShipmentFulfilled(codeOrId, hostOrigin = '') {
+  const code = String(codeOrId || '').trim().toUpperCase().replace(/^#/, '');
+  let order = inMemoryOrders.get(code) || inMemoryOrders.get(`UCHIHA-${code}`) || null;
+  if (!order) {
+    for (const ord of inMemoryOrders.values()) {
+      if (ord && (
+        String(ord.orderCode || '').toUpperCase().replace(/^#/, '') === code ||
+        String(ord.orderId || '').toUpperCase() === code ||
+        String(ord.zoho_salesorder_id || '') === code ||
+        String(ord.zoho_salesorder_number || '').toUpperCase() === code
+      )) {
+        order = ord;
+        break;
+      }
+    }
+  }
+
+  if (!order) {
+    return { success: false, error: `Order #${codeOrId} not found in database.` };
+  }
+
+  console.log(`[Zoho Order Lifecycle] Marking shipment fulfilled for #${order.orderCode} (Sales Order: ${order.zoho_salesorder_number || order.zoho_salesorder_id || 'N/A'})`);
+
+  // 1. Mark delivered in Zoho if salesorder_id exists
+  let zohoFulfilledResult = null;
+  if (order.zoho_salesorder_id) {
+    try {
+      zohoFulfilledResult = await zohoInventory.markShipmentFulfilledInZoho(order.zoho_salesorder_id);
+    } catch (_) {}
+  }
+
+  // 2. Update order state to DELIVERED
+  order.status = 'DELIVERED';
+  order.fulfillment_status = 'fulfilled';
+  order.deliveryStatus = 'DELIVERY_DONE';
+  order.deliveredAt = new Date().toISOString();
+  order.deliveredAtFormatted = new Date().toLocaleString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  }) + ' IST';
+  persistOrders(order);
+
+  // 3. Dispatch Delhivery Done Email to user
+  const resolvedHostOrigin = hostOrigin || 'https://thestreetco.netlify.app';
+  const deliveryEmailResult = await sendDeliveryDoneEmail(order, resolvedHostOrigin).catch(err => {
+    console.warn('[Delhivery Done Email Notice]:', err.message);
+    return { success: false, error: err.message };
+  });
+
+  return {
+    success: true,
+    orderCode: order.orderCode,
+    order,
+    zohoFulfilled: zohoFulfilledResult,
+    deliveryDoneEmail: deliveryEmailResult,
+    message: `Order #${order.orderCode} marked as shipment fulfilled/delivered in Zoho Inventory! Delhivery Done email successfully dispatched to customer.`
+  };
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// AUTOMATED TRIGGERED SHIPMENT FULFILLED EMAIL SERVICE
+// ══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Automated Background Monitor:
+ * Checks Zoho Inventory for orders whose status in Zoho transitioned to 'fulfilled' or 'shipped'.
+ * When detected, automatically updates the order to DELIVERED and triggers the Delhivery Done email!
+ */
+let isCheckingFulfillments = false;
+async function checkZohoShipmentFulfillments(hostOrigin = '') {
+  if (isCheckingFulfillments || !zohoInventory.isZohoConfigured()) {
+    return { checked: 0, updated: 0, orders: [] };
+  }
+  isCheckingFulfillments = true;
+  const updatedOrders = [];
+
+  try {
+    const candidateOrders = Array.from(inMemoryOrders.values()).filter(o => 
+      o && o.zoho_salesorder_id && o.status !== 'DELIVERED' && o.deliveryStatus !== 'DELIVERY_DONE'
+    );
+
+    if (candidateOrders.length === 0) {
+      isCheckingFulfillments = false;
+      return { checked: 0, updated: 0, orders: [] };
+    }
+
+    for (const order of candidateOrders) {
+      try {
+        const so = await zohoInventory.getSalesOrderFromZoho(order.zoho_salesorder_id);
+        if (!so) continue;
+
+        const rawStatus = String(so.status || '').toLowerCase();
+        const rawShipped = String(so.shipped_status || '').toLowerCase();
+        const rawOrderStat = String(so.order_status || '').toLowerCase();
+
+        const isFulfilledInZoho = 
+          rawStatus === 'fulfilled' || 
+          rawStatus === 'delivered' || 
+          rawStatus === 'shipped' ||
+          rawShipped === 'shipped' || 
+          rawShipped === 'fulfilled' ||
+          rawOrderStat === 'fulfilled';
+
+        if (isFulfilledInZoho) {
+          console.log(`[Automated Zoho Monitor] Order #${order.orderCode} (Sales Order: ${so.salesorder_number || order.zoho_salesorder_id}) is marked as fulfilled in Zoho! Automatically triggering shipment fulfilled email.`);
+          const result = await markOrderShipmentFulfilled(order.orderCode, hostOrigin);
+          updatedOrders.push({
+            orderCode: order.orderCode,
+            salesOrderNumber: so.salesorder_number,
+            zohoStatus: so.status,
+            shippedStatus: so.shipped_status,
+            emailSent: result?.deliveryDoneEmail?.success || false,
+            recipient: result?.deliveryDoneEmail?.recipient
+          });
+        }
+      } catch (checkErr) {
+        console.warn(`[Zoho Check Order ${order.orderCode} Notice]:`, checkErr.message);
+      }
+    }
+  } catch (err) {
+    console.warn('[Automated Zoho Monitor Notice]:', err.message);
+  } finally {
+    isCheckingFulfillments = false;
+  }
+
+  return {
+    checked: true,
+    updated: updatedOrders.length,
+    orders: updatedOrders
+  };
+}
+
+// Start automated background monitoring loop (runs automatically every 30 seconds)
+setInterval(() => {
+  checkZohoShipmentFulfillments().catch(() => {});
+}, 30000);
+
+// Endpoint to inspect automated fulfillment monitor status
+app.get('/api/zoho/fulfillment-monitor-status', (req, res) => {
+  const isConfigured = zohoInventory.isZohoConfigured();
+  const pendingCount = Array.from(inMemoryOrders.values()).filter(o => 
+    o && o.zoho_salesorder_id && o.status !== 'DELIVERED' && o.deliveryStatus !== 'DELIVERY_DONE'
+  ).length;
+
+  res.json({
+    success: true,
+    service: 'Automated Zoho Shipment Fulfilled Email Dispatcher',
+    active: true,
+    intervalSeconds: 30,
+    zohoConfigured: isConfigured,
+    pendingFulfillmentOrders: pendingCount,
+    webhookEndpoints: [
+      '/api/zoho/webhook',
+      '/api/zoho/shipment-fulfilled'
+    ],
+    description: 'Polls Zoho Inventory every 30 seconds and listens to real-time webhooks. When an order is marked fulfilled in Zoho, the Delhivery delivery notification email is automatically dispatched to the customer.'
+  });
+});
+
+// Endpoint to trigger instant manual sync & check from Zoho Inventory
+app.post('/api/zoho/sync-fulfillments', async (req, res) => {
+  try {
+    const hostOrigin = `${req.protocol}://${req.get('host')}`;
+    const result = await checkZohoShipmentFulfillments(hostOrigin);
+    res.json({
+      success: true,
+      message: result.updated > 0 
+        ? `Checked Zoho Inventory: ${result.updated} order(s) marked fulfilled and delivery email(s) dispatched!` 
+        : 'Checked Zoho Inventory: All orders are up to date.',
+      ...result
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Zoho Inventory Webhook Receiver (Automated real-time event sync)
+app.post([
+  '/api/zoho/webhook',
+  '/api/zoho-inventory/webhook',
+  '/api/zoho/shipment-fulfilled',
+  '/api/zoho/shipment-fulfilled-webhook'
+], async (req, res) => {
+  try {
+    const payload = req.body || {};
+    console.log('[Zoho Webhook Received]:', JSON.stringify(payload).slice(0, 300));
+
+    const salesOrder = payload.salesorder || payload.sales_order || payload.data?.salesorder || {};
+    const shipment = payload.shipmentorder || payload.shipment || payload.package || payload.data?.shipment || {};
+    const eventType = String(payload.event_type || payload.event || payload.action || payload.type || '').toLowerCase();
+
+    const salesOrderId = salesOrder.salesorder_id || payload.salesorder_id || shipment.salesorder_id || '';
+    const referenceNumber = salesOrder.reference_number || payload.reference_number || payload.order_id || payload.orderCode || '';
+    const hostOrigin = `${req.protocol}://${req.get('host')}`;
+
+    const targetId = referenceNumber || salesOrderId;
+    if (!targetId) {
+      return res.status(200).json({ received: true, notice: 'No salesorder reference or ID found in payload.' });
+    }
+
+    const rawStatus = String(salesOrder.status || payload.status || '').toLowerCase();
+    const rawShipped = String(salesOrder.shipped_status || payload.shipped_status || '').toLowerCase();
+
+    const isDeliveryEvent = 
+      eventType.includes('delivered') || 
+      eventType.includes('shipment') || 
+      eventType.includes('fulfill') || 
+      eventType.includes('package') ||
+      rawStatus === 'fulfilled' || 
+      rawStatus === 'shipped' ||
+      rawShipped === 'shipped';
+
+    const isConfirmEvent = 
+      eventType.includes('confirm') || 
+      eventType.includes('open') || 
+      rawStatus === 'confirmed' || 
+      rawStatus === 'open';
+
+    // Sales Return Webhook Support
+    const salesReturn = payload.salesreturn || payload.sales_return || payload.data?.salesreturn || {};
+    const salesReturnId = salesReturn.salesreturn_id || payload.salesreturn_id || '';
+    if (salesReturnId || eventType.includes('return')) {
+      const targetReturn = salesReturn.reference_number || salesReturnId || referenceNumber;
+      if (targetReturn) {
+        const retResult = await confirmReturnRequest(targetReturn, hostOrigin);
+        return res.json({ received: true, action: 'sales_return_confirmed', result: retResult });
+      }
+    }
+
+    if (isDeliveryEvent) {
+      console.log(`[Zoho Webhook] Shipment fulfilled event detected for ${targetId}! Triggering automated delivery email.`);
+      const result = await markOrderShipmentFulfilled(targetId, hostOrigin);
+      return res.json({ received: true, action: 'shipment_fulfilled', result });
+    }
+
+    if (isConfirmEvent || salesOrder.status === 'confirmed') {
+      const result = await confirmOrderFromZoho(targetId, hostOrigin);
+      return res.json({ received: true, action: 'order_confirmed', result });
+    }
+
+    res.json({ received: true, payloadReceived: true });
+  } catch (err) {
+    console.error('[Zoho Webhook Error]:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Merchant Admin trigger: Confirm in Zoho & Convert to Invoice
+app.post('/api/orders/:code/confirm-in-zoho', async (req, res) => {
+  try {
+    const { code } = req.params;
+    const hostOrigin = `${req.protocol}://${req.get('host')}`;
+    const result = await confirmOrderFromZoho(code, hostOrigin);
+    if (!result.success) {
+      return res.status(404).json(result);
+    }
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Merchant Admin trigger: Mark Order Ready to Ship (Delhivery Manifested Email)
+app.post('/api/orders/:code/ready-to-ship', async (req, res) => {
+  try {
+    const { code } = req.params;
+    const cleanCode = String(code || '').trim().toUpperCase().replace(/^#/, '');
+    const order = inMemoryOrders.get(cleanCode) || inMemoryOrders.get(`UCHIHA-${cleanCode}`);
+    if (!order) {
+      return res.status(404).json({ success: false, error: `Order #${code} not found.` });
+    }
+
+    order.status = 'READY_TO_SHIP';
+    order.dispatchStatus = 'READY_TO_SHIP';
+    order.deliveryDetails = order.deliveryDetails || {};
+    order.deliveryDetails.dispatchStatus = 'READY_TO_SHIP';
+    order.readyToShipAt = new Date().toISOString();
+    persistOrders(order);
+
+    const hostOrigin = `${req.protocol}://${req.get('host')}`;
+    const emailResult = await sendOrderReadyToShipEmail(order, hostOrigin);
+
+    res.json({
+      success: true,
+      orderCode: order.orderCode,
+      status: 'READY_TO_SHIP',
+      emailResult,
+      message: `Order #${order.orderCode} marked ready to ship! Packed & Manifested email dispatched to customer.`
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Merchant Admin trigger: Mark Shipment Fulfilled (Delhivery Done Email)
+app.post('/api/orders/:code/mark-fulfilled', async (req, res) => {
+  try {
+    const { code } = req.params;
+    const hostOrigin = `${req.protocol}://${req.get('host')}`;
+    const result = await markOrderShipmentFulfilled(code, hostOrigin);
+    if (!result.success) {
+      return res.status(404).json(result);
+    }
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
@@ -2521,6 +4477,281 @@ app.post('/api/send-order-sms', async (req, res) => {
 // Orders: Get list for admin
 app.get('/api/orders', async (req, res) => {
   res.json({ success: true, orders: Array.from(inMemoryOrders.values()) });
+});
+
+// ══════════════════════════════════════════════════════════════════════════
+// RETURNS & EXCHANGES CONTROLLERS (ZOHO SALES RETURN & APPROVAL WORKFLOW)
+// ══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Confirm Return / Exchange from Zoho or Merchant:
+ * 1. Confirms sales return in Zoho Inventory if zoho_salesreturn_id exists
+ * 2. Updates return status to APPROVED / CONFIRMED
+ * 3. Dispatches dedicated Reverse Pickup Approval email via Gmail SMTP
+ */
+async function confirmReturnRequest(returnIdOrCode, hostOrigin = '') {
+  const cleanId = String(returnIdOrCode || '').trim().toUpperCase();
+  let returnRecord = inMemoryReturns.get(cleanId) || inMemoryReturns.get(`ORD_${cleanId}`) || null;
+  if (!returnRecord) {
+    for (const ret of inMemoryReturns.values()) {
+      if (ret && (
+        String(ret.id || '').toUpperCase() === cleanId ||
+        String(ret.orderCode || '').toUpperCase() === cleanId ||
+        String(ret.zoho_salesreturn_id || '') === cleanId ||
+        String(ret.salesreturn_number || '').toUpperCase() === cleanId
+      )) {
+        returnRecord = ret;
+        break;
+      }
+    }
+  }
+
+  if (!returnRecord) {
+    return { success: false, error: `Return / Exchange record #${returnIdOrCode} not found.` };
+  }
+
+  console.log(`[Zoho Return Lifecycle] Processing return confirmation for #${returnRecord.id} (Order: #${returnRecord.orderCode})`);
+
+  // 1. Confirm Sales Return in Zoho Inventory
+  let zohoConfirmResult = null;
+  if (returnRecord.zoho_salesreturn_id) {
+    try {
+      zohoConfirmResult = await zohoInventory.confirmSalesReturnInZoho(returnRecord.zoho_salesreturn_id);
+    } catch (zErr) {
+      console.warn('[Zoho Return Confirmation Notice]:', zErr.message);
+    }
+  }
+
+  // 2. Mark Return state as APPROVED / CONFIRMED
+  returnRecord.status = 'APPROVED';
+  returnRecord.zoho_status = 'confirmed';
+  returnRecord.reverseAwb = returnRecord.reverseAwb || `STC-REV-${String(returnRecord.id).replace(/\D/g, '') || Math.floor(100000 + Math.random() * 900000)}`;
+  returnRecord.confirmedAt = new Date().toISOString();
+  persistReturn(returnRecord);
+
+  // Also update associated order
+  const order = inMemoryOrders.get(returnRecord.orderCode) || inMemoryOrders.get(`UCHIHA-${returnRecord.orderCode}`);
+  if (order) {
+    order.returnStatus = 'APPROVED';
+    order.returnRequest = returnRecord;
+    persistOrders(order);
+  }
+
+  // 3. Dispatch Approval Confirmation Email to customer with Delhivery reverse pickup details
+  const resolvedHostOrigin = hostOrigin || 'https://thestreetco.netlify.app';
+  const emailResult = await sendReturnApprovedEmail(returnRecord, resolvedHostOrigin).catch(err => {
+    console.warn('[Return Approved Email Notice]:', err.message);
+    return { success: false, error: err.message };
+  });
+
+  return {
+    success: true,
+    returnId: returnRecord.id,
+    orderCode: returnRecord.orderCode,
+    returnRecord,
+    zohoConfirm: zohoConfirmResult,
+    emailResult,
+    message: `Return #${returnRecord.id} approved and confirmed in Zoho Inventory! Reverse pickup email successfully dispatched to customer.`
+  };
+}
+
+// Returns: List all returns for admin
+app.get('/api/returns', async (req, res) => {
+  res.json({ success: true, returns: Array.from(new Set(inMemoryReturns.values())) });
+});
+
+// Returns: Create return or exchange and register in Zoho Inventory as Sales Return
+app.post('/api/returns/create', async (req, res) => {
+  try {
+    const raw = req.body || {};
+    const orderCode = String(raw.orderCode || '').trim().toUpperCase().replace(/^#/, '');
+    const type = raw.type === 'exchange' ? 'exchange' : 'return';
+
+    // Find corresponding order if available
+    const order = inMemoryOrders.get(orderCode) || inMemoryOrders.get(`UCHIHA-${orderCode}`) || null;
+
+    const returnId = raw.id || `RET-${Math.floor(10000 + Math.random() * 90000)}`;
+    const customerName = raw.customerName || order?.shippingAddress?.fullName || order?.contactDetails?.fullName || 'Customer';
+    const customerPhone = raw.customerPhone || order?.shippingAddress?.phone || order?.contactDetails?.phone || '';
+    const customerEmail = raw.customerEmail || order?.shippingAddress?.email || order?.contactDetails?.email || '';
+    const pickupAddress = raw.pickupAddress || order?.shippingAddress?.fullAddress || 'Address on file';
+    const requestedSize = type === 'exchange' ? (raw.requestedSize || 'L') : null; // Strictly null for return!
+
+    const returnRecord = {
+      id: returnId,
+      orderCode,
+      type,
+      items: Array.isArray(raw.items) ? raw.items : [],
+      itemNames: raw.itemNames || (Array.isArray(raw.items) ? raw.items.map(i => i.name).join(', ') : 'Streetwear Garment'),
+      requestedSize,
+      reason: raw.reason || 'Fit / Size Adjustment',
+      notes: raw.notes || '',
+      customerName,
+      customerPhone,
+      customerEmail,
+      pickupAddress,
+      reverseAwb: `STC-REV-${String(returnId).replace(/\D/g, '') || Math.floor(100000 + Math.random() * 900000)}`,
+      status: 'PENDING_CONFIRMATION',
+      createdAt: new Date().toISOString(),
+      zoho_salesorder_id: order?.zoho_salesorder_id || raw.zoho_salesorder_id || null
+    };
+
+    // Save in Zoho Inventory as a Sales Return
+    let zohoSalesReturnResult = null;
+    try {
+      zohoSalesReturnResult = await zohoInventory.createSalesReturnInZoho(returnRecord, order || {});
+      if (zohoSalesReturnResult && zohoSalesReturnResult.success) {
+        returnRecord.zoho_salesreturn_id = zohoSalesReturnResult.zoho_salesreturn_id;
+        returnRecord.salesreturn_number = zohoSalesReturnResult.salesreturn_number;
+      }
+    } catch (zErr) {
+      console.warn('[Zoho createSalesReturnInZoho Notice]:', zErr.message);
+    }
+
+    inMemoryReturns.set(returnId, returnRecord);
+    inMemoryReturns.set(`ORD_${orderCode}`, returnRecord);
+    persistReturn(returnRecord);
+
+    if (order) {
+      order.returnStatus = type === 'exchange' ? 'EXCHANGE REQUESTED' : 'RETURN REQUESTED';
+      order.returnRequest = returnRecord;
+      persistOrders(order);
+    }
+
+    // 5 & 6. Dispatch Confirmation of Exchange or Confirmation of Return email to customer
+    const hostOrigin = `${req.protocol}://${req.get('host')}`;
+    let submissionEmailResult = null;
+    if (type === 'exchange') {
+      submissionEmailResult = await sendExchangeRequestSubmittedEmail(returnRecord, hostOrigin).catch(e => {
+        console.warn('[Exchange Submission Email Notice]:', e.message);
+        return { success: false, error: e.message };
+      });
+    } else {
+      submissionEmailResult = await sendReturnRequestSubmittedEmail(returnRecord, hostOrigin).catch(e => {
+        console.warn('[Return Submission Email Notice]:', e.message);
+        return { success: false, error: e.message };
+      });
+    }
+
+    res.json({
+      success: true,
+      returnId: returnRecord.id,
+      orderCode: returnRecord.orderCode,
+      type: returnRecord.type,
+      returnRecord,
+      zohoSalesReturn: zohoSalesReturnResult,
+      submissionEmail: submissionEmailResult,
+      message: `${type === 'exchange' ? 'Size exchange' : 'Return'} saved and registered in Zoho Inventory as Sales Return (#${returnRecord.salesreturn_number || returnRecord.id}). Confirmation email dispatched to customer.`
+    });
+  } catch (err) {
+    console.error('[Server] Return create error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Returns: Merchant confirm endpoint (approves in Zoho & dispatches pickup confirmed email)
+app.post('/api/returns/:id/confirm', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const hostOrigin = `${req.protocol}://${req.get('host')}`;
+    const result = await confirmReturnRequest(id, hostOrigin);
+    if (!result.success) {
+      return res.status(404).json(result);
+    }
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 8. Merchant trigger: Mark Refund Done & dispatch refund completion receipt email
+app.post('/api/returns/:id/mark-refund-done', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const cleanId = String(id || '').trim().toUpperCase();
+    let returnRecord = inMemoryReturns.get(cleanId) || inMemoryReturns.get(`ORD_${cleanId}`) || null;
+    if (!returnRecord) {
+      for (const ret of inMemoryReturns.values()) {
+        if (ret && (String(ret.id || '').toUpperCase() === cleanId || String(ret.orderCode || '').toUpperCase() === cleanId)) {
+          returnRecord = ret;
+          break;
+        }
+      }
+    }
+    if (!returnRecord) {
+      return res.status(404).json({ success: false, error: `Return record #${id} not found.` });
+    }
+
+    returnRecord.status = 'REFUND_DONE';
+    returnRecord.refundDoneAt = new Date().toISOString();
+    returnRecord.refundTransactionId = req.body?.transactionId || `REF-${Math.floor(100000 + Math.random() * 900000)}`;
+    if (req.body?.amount) {
+      returnRecord.refundAmountInr = Number(req.body.amount);
+    }
+    persistReturn(returnRecord);
+
+    const order = inMemoryOrders.get(returnRecord.orderCode);
+    if (order) {
+      order.returnStatus = 'REFUND_DONE';
+      persistOrders(order);
+    }
+
+    const hostOrigin = `${req.protocol}://${req.get('host')}`;
+    const emailResult = await sendRefundDoneEmail(returnRecord, hostOrigin);
+
+    res.json({
+      success: true,
+      returnId: returnRecord.id,
+      status: 'REFUND_DONE',
+      emailResult,
+      message: `Refund for #${returnRecord.id} marked as completed! Refund receipt email dispatched to customer.`
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 9. Merchant trigger: Mark Exchange Done (replacement delivered) & dispatch completion email
+app.post('/api/returns/:id/mark-exchange-done', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const cleanId = String(id || '').trim().toUpperCase();
+    let returnRecord = inMemoryReturns.get(cleanId) || inMemoryReturns.get(`ORD_${cleanId}`) || null;
+    if (!returnRecord) {
+      for (const ret of inMemoryReturns.values()) {
+        if (ret && (String(ret.id || '').toUpperCase() === cleanId || String(ret.orderCode || '').toUpperCase() === cleanId)) {
+          returnRecord = ret;
+          break;
+        }
+      }
+    }
+    if (!returnRecord) {
+      return res.status(404).json({ success: false, error: `Exchange record #${id} not found.` });
+    }
+
+    returnRecord.status = 'EXCHANGE_DONE';
+    returnRecord.exchangeDoneAt = new Date().toISOString();
+    persistReturn(returnRecord);
+
+    const order = inMemoryOrders.get(returnRecord.orderCode);
+    if (order) {
+      order.returnStatus = 'EXCHANGE_DONE';
+      persistOrders(order);
+    }
+
+    const hostOrigin = `${req.protocol}://${req.get('host')}`;
+    const emailResult = await sendExchangeDoneEmail(returnRecord, hostOrigin);
+
+    res.json({
+      success: true,
+      returnId: returnRecord.id,
+      status: 'EXCHANGE_DONE',
+      emailResult,
+      message: `Exchange #${returnRecord.id} marked as done! Replacement delivered email dispatched to customer.`
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 // Helper to format consistent date and time across ISO, UTC, and IST
@@ -2762,20 +4993,20 @@ app.post(['/api/contact', '/api/support', '/api/contact-support'], async (req, r
       try {
         const senderUser = (process.env.GMAIL_SMTP_USER || GMAIL_SMTP_USER).trim();
         const supportDeskHtml = `
-          <div style="font-family:'Segoe UI',sans-serif;background:#0d0c10;color:#f3efe6;padding:24px;border-radius:8px;">
-            <div style="font-size:11px;color:#c0121f;font-weight:700;letter-spacing:2px;margin-bottom:6px;">THE STREET CO · CLIENT CONCIERGE</div>
-            <h2 style="margin:0 0 16px;color:#fff;font-size:20px;">NEW SUPPORT TICKET #${ticketId}</h2>
-            <div style="background:#16151c;padding:16px;border-radius:6px;border:1px solid #2a2933;margin-bottom:16px;">
-              <p style="margin:4px 0;"><strong>Customer Name:</strong> ${cleanName}</p>
-              <p style="margin:4px 0;"><strong>Email:</strong> <a href="mailto:${cleanEmail}" style="color:#f3efe6;">${cleanEmail}</a></p>
-              <p style="margin:4px 0;"><strong>Phone:</strong> ${cleanPhone || 'Not provided'}</p>
-              <p style="margin:4px 0;"><strong>Category:</strong> ${cleanCategory}</p>
-              <p style="margin:4px 0;"><strong>Order Reference:</strong> ${cleanOrderNumber || 'N/A'}</p>
-              <p style="margin:4px 0;"><strong>Logged At:</strong> ${istTime.istDateTime}</p>
+          <div style="font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;background:#FAF8F5;color:#18181B;padding:24px;border:1px solid #E8E2D8;border-radius:12px;max-width:560px;margin:0 auto;">
+            <div style="font-size:11px;color:#8A7B6E;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;margin-bottom:6px;">THE STREET CO · CLIENT CONCIERGE</div>
+            <h2 style="margin:0 0 16px;color:#0E0E11;font-size:20px;font-family:'Playfair Display',Georgia,serif;">NEW SUPPORT TICKET #${ticketId}</h2>
+            <div style="background:#FFFFFF;padding:16px;border-radius:8px;border:1px solid #E8E2D8;margin-bottom:16px;font-size:13px;line-height:22px;">
+              <p style="margin:3px 0;"><strong style="color:#0E0E11;">Customer Name:</strong> ${cleanName}</p>
+              <p style="margin:3px 0;"><strong style="color:#0E0E11;">Email:</strong> <a href="mailto:${cleanEmail}" style="color:#0E0E11;">${cleanEmail}</a></p>
+              <p style="margin:3px 0;"><strong style="color:#0E0E11;">Phone:</strong> ${cleanPhone || 'Not provided'}</p>
+              <p style="margin:3px 0;"><strong style="color:#0E0E11;">Category:</strong> ${cleanCategory}</p>
+              <p style="margin:3px 0;"><strong style="color:#0E0E11;">Order Reference:</strong> ${cleanOrderNumber || 'N/A'}</p>
+              <p style="margin:3px 0;"><strong style="color:#0E0E11;">Logged At:</strong> ${istTime.istDateTime}</p>
             </div>
-            <div style="background:#16151c;padding:16px;border-radius:6px;border:1px solid #2a2933;">
-              <strong style="display:block;margin-bottom:8px;color:#c0121f;">CUSTOMER INQUIRY MESSAGE:</strong>
-              <p style="white-space:pre-wrap;line-height:1.6;color:#e8e4dc;margin:0;">${cleanMessage.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
+            <div style="background:#FFFFFF;padding:16px;border-radius:8px;border:1px solid #E8E2D8;font-size:13px;">
+              <strong style="display:block;margin-bottom:8px;color:#8A7B6E;letter-spacing:0.06em;font-size:11px;text-transform:uppercase;">CUSTOMER INQUIRY MESSAGE:</strong>
+              <p style="white-space:pre-wrap;line-height:1.6;color:#3F3F46;margin:0;">${cleanMessage.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
             </div>
           </div>
         `;
@@ -3048,122 +5279,336 @@ app.post('/api/drop-waitlist', async (req, res) => {
   }
 });
 
-// 2. VIP Street Cred Loyalty & Referral Club Persistence
-const VIP_LOYALTY_FILE = path.join(__dirname, 'vip_loyalty.json');
-let inMemoryLoyalty = loadJsonCache(VIP_LOYALTY_FILE, {});
-if (!inMemoryLoyalty || typeof inMemoryLoyalty !== 'object' || Array.isArray(inMemoryLoyalty)) {
-  inMemoryLoyalty = {};
-}
+// ─────────────────────────────────────────────────────────────────────────────
+// THE STREET CASH — VIP LOYALTY & AI REWARDS SYSTEM
+// Rules:
+// 1. Math rate: 0.199 points per 1 Rs spent (Math.floor(total * 0.199))
+// 2. Strict UI display constraint: NEVER show "0.199 points".
+//    MUST strictly display: "Per 1,000 Rs spent will give you 199 The Street Cash"
+// 3. Minimum redemption: 499 The Street Cash = ₹499 OFF coupon (strictly one-time use)
+// 4. Coupons saved in MongoDB Atlas 'coupons' collection
+// 5. AI Concierge Stylist integration to pair outfits with the redeemed voucher
+// ─────────────────────────────────────────────────────────────────────────────
 
-function getTierInfo(lifetimePoints) {
-  const pts = Number(lifetimePoints) || 0;
-  if (pts >= 1500) return { name: 'Obsidian VIP', multiplier: '2.0x', nextTier: null, nextThreshold: 1500 };
-  if (pts >= 800) return { name: 'Syndicate', multiplier: '1.5x', nextTier: 'Obsidian VIP', nextThreshold: 1500 };
-  if (pts >= 350) return { name: 'Vanguard', multiplier: '1.25x', nextTier: 'Syndicate', nextThreshold: 800 };
-  return { name: 'Initiate', multiplier: '1.0x', nextTier: 'Vanguard', nextThreshold: 350 };
-}
-
-app.get('/api/loyalty', (req, res) => {
-  const memberKey = ((req.query.memberId || req.query.email || req.query.phone || 'default_guest') + '').trim().toLowerCase();
-  if (!inMemoryLoyalty[memberKey]) {
-    inMemoryLoyalty[memberKey] = {
-      memberId: memberKey,
-      pointsBalance: 320,
-      lifetimePoints: 320,
-      referralCode: 'STREET-' + Math.random().toString(36).substring(2, 6).toUpperCase(),
-      history: [
-        { id: 'act_welcome', label: 'Welcome Archive Member Bonus', points: +200, date: new Date(Date.now() - 86400000 * 3).toISOString() },
-        { id: 'act_profile', label: 'Verified Streetwear Insider', points: +120, date: new Date(Date.now() - 86400000).toISOString() }
-      ],
-      redeemedVouchers: []
-    };
-    saveJsonCache(VIP_LOYALTY_FILE, inMemoryLoyalty);
+function calculateStreetCashTier(balance = 0) {
+  const pts = Math.max(0, Number(balance) || 0);
+  if (pts >= 2500) {
+    return { name: 'Obsidian Syndicate', level: 4, nextThreshold: null, badge: 'ELITE OBSIDIAN', perk: 'Double Street Cash Drops & VIP Safehouse Invitations' };
   }
-  const profile = inMemoryLoyalty[memberKey];
-  const tier = getTierInfo(profile.lifetimePoints);
-  res.json({ success: true, profile: { ...profile, tier } });
-});
+  if (pts >= 1000) {
+    return { name: 'Gold Vanguard', level: 3, nextThreshold: 2500, badge: 'GOLD VANGUARD', perk: 'Early Access to New Releases & Free Express Air Shipping' };
+  }
+  if (pts >= 499) {
+    return { name: 'VIP Street Insider', level: 2, nextThreshold: 1000, badge: 'VIP INSIDER', perk: 'Redemption Eligible: ₹499 Instant Off Vouchers' };
+  }
+  return { name: 'Initiate Club', level: 1, nextThreshold: 499, badge: 'INITIATE', perk: 'Earn 199 The Street Cash per ₹1,000 spent on all orders' };
+}
 
-app.post('/api/loyalty/earn', (req, res) => {
+// GET /api/loyalty & /api/loyalty/status
+app.get(['/api/loyalty', '/api/loyalty/status', '/api/street-cash'], async (req, res) => {
   try {
-    const { memberId, actionId, label, points } = req.body || {};
-    const key = ((memberId || 'default_guest') + '').trim().toLowerCase();
-    if (!inMemoryLoyalty[key]) {
-      inMemoryLoyalty[key] = {
-        memberId: key,
-        pointsBalance: 320,
-        lifetimePoints: 320,
-        referralCode: 'STREET-' + Math.random().toString(36).substring(2, 6).toUpperCase(),
-        history: [],
-        redeemedVouchers: []
-      };
-    }
-    const profile = inMemoryLoyalty[key];
-    if (actionId && profile.history.some(h => h.id === actionId)) {
+    const rawPhone = req.query.phone || req.query.memberId || req.query.accountPhone || '';
+    const cleanPhone = String(rawPhone).replace(/\D/g, '').slice(-10);
+
+    if (cleanPhone.length !== 10) {
+      // Unauthenticated / Guest preview state
+      const defaultBalance = 0;
       return res.json({
-        success: false,
-        alreadyEarned: true,
-        message: 'Points already claimed for this activity.',
-        profile: { ...profile, tier: getTierInfo(profile.lifetimePoints) }
+        success: true,
+        isGuest: true,
+        phone: '',
+        streetCashBalance: defaultBalance,
+        streetCashEarnedTotal: 0,
+        streetCashSpentTotal: 0,
+        canRedeem: false,
+        minRedemptionPoints: 499,
+        minRedemptionInr: 499,
+        pointsNeededForNextReward: 499,
+        progressPercent: 0,
+        displayRateNotice: 'Per 1,000 Rs spent will give you 199 The Street Cash',
+        tier: calculateStreetCashTier(defaultBalance),
+        streetCashHistory: [],
+        streetCashCoupons: [],
+        message: 'Sign in with your mobile number to view and redeem The Street Cash.'
       });
     }
-    const ptsToAdd = Math.max(10, Number(points) || 50);
-    profile.pointsBalance += ptsToAdd;
-    profile.lifetimePoints += ptsToAdd;
-    profile.history.unshift({
-      id: actionId || ('earn_' + Date.now()),
-      label: label || 'Storefront Activity Bonus',
-      points: ptsToAdd,
-      date: new Date().toISOString()
-    });
-    saveJsonCache(VIP_LOYALTY_FILE, inMemoryLoyalty);
+
+    // Automatically check and award any qualifying onboarding bonuses (Account, Name, Email, First Order)
+    const syncRes = await syncUserOnboardingBonuses(cleanPhone);
+    if (syncRes && syncRes.awardedList && syncRes.awardedList.length > 0) {
+      for (const item of syncRes.awardedList) {
+        sendStreetCashSms(cleanPhone, item.points, item.reason, syncRes.currentBalance).catch(() => {});
+      }
+    }
+
+    const wallet = await getUserStreetCash(cleanPhone);
+    const tier = calculateStreetCashTier(wallet.streetCashBalance);
+    const pointsNeeded = Math.max(0, 499 - (wallet.streetCashBalance % 499 === 0 && wallet.streetCashBalance > 0 ? 0 : (499 - (wallet.streetCashBalance % 499))));
+    const progressPercent = Math.min(100, Math.round(((wallet.streetCashBalance % 499) / 499) * 100));
+
     return res.json({
       success: true,
-      pointsAdded: ptsToAdd,
-      profile: { ...profile, tier: getTierInfo(profile.lifetimePoints) }
+      isGuest: false,
+      phone: cleanPhone,
+      streetCashBalance: wallet.streetCashBalance,
+      streetCashEarnedTotal: wallet.streetCashEarnedTotal,
+      streetCashSpentTotal: wallet.streetCashSpentTotal,
+      canRedeem: wallet.streetCashBalance >= 499,
+      minRedemptionPoints: 499,
+      minRedemptionInr: 499,
+      pointsNeededForNextReward: wallet.streetCashBalance >= 499 ? 0 : (499 - wallet.streetCashBalance),
+      progressPercent: wallet.streetCashBalance >= 499 ? 100 : progressPercent,
+      displayRateNotice: 'Per 1,000 Rs spent will give you 199 The Street Cash',
+      tier,
+      streetCashHistory: wallet.streetCashHistory || [],
+      streetCashCoupons: wallet.streetCashCoupons || [],
+      streetCashBonuses: syncRes.bonuses || wallet.streetCashBonuses || {},
+      newlyAwardedBonuses: syncRes.awardedList || []
+    });
+  } catch (err) {
+    console.error('[The Street Cash error]:', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/loyalty/sync-missions
+app.post('/api/loyalty/sync-missions', async (req, res) => {
+  try {
+    const { phone } = req.body || {};
+    const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
+    if (cleanPhone.length !== 10) {
+      return res.status(400).json({ success: false, error: 'Valid 10-digit mobile number required.' });
+    }
+    const syncRes = await syncUserOnboardingBonuses(cleanPhone);
+    if (syncRes && syncRes.awardedList && syncRes.awardedList.length > 0) {
+      for (const item of syncRes.awardedList) {
+        sendStreetCashSms(cleanPhone, item.points, item.reason, syncRes.currentBalance).catch(() => {});
+      }
+    }
+    return res.json({
+      success: true,
+      bonuses: syncRes.bonuses,
+      awardedList: syncRes.awardedList,
+      totalAwarded: syncRes.totalAwarded,
+      currentBalance: syncRes.currentBalance
     });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
   }
 });
 
-app.post('/api/loyalty/redeem', (req, res) => {
+// POST /api/loyalty/redeem
+app.post('/api/loyalty/redeem', async (req, res) => {
   try {
-    const { memberId, rewardCode, pointsCost, discountInr, minOrderValue } = req.body || {};
-    const key = ((memberId || 'default_guest') + '').trim().toLowerCase();
-    if (!inMemoryLoyalty[key]) {
-      return res.status(400).json({ success: false, error: 'Loyalty profile not initialized.' });
-    }
-    const profile = inMemoryLoyalty[key];
-    const cost = Math.max(50, Number(pointsCost) || 200);
-    if (profile.pointsBalance < cost) {
+    const { phone, points } = req.body || {};
+    const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
+
+    if (cleanPhone.length !== 10) {
       return res.status(400).json({
         success: false,
-        error: `Insufficient Street Cred points. You need ${cost} pts (current balance: ${profile.pointsBalance} pts).`
+        error: 'Please sign in with your 10-digit mobile number to redeem The Street Cash.'
       });
     }
 
-    const code = (rewardCode || 'VIP100').trim().toUpperCase();
-    profile.pointsBalance -= cost;
-    const voucher = {
-      code,
-      discountInr: Number(discountInr) || 100,
-      minOrderValue: Number(minOrderValue) || 999,
-      redeemedAt: new Date().toISOString()
-    };
-    profile.redeemedVouchers.unshift(voucher);
-    profile.history.unshift({
-      id: 'redeem_' + Date.now(),
-      label: `Redeemed ${code} (₹${voucher.discountInr} Off Voucher)`,
-      points: -cost,
-      date: new Date().toISOString()
-    });
-    saveJsonCache(VIP_LOYALTY_FILE, inMemoryLoyalty);
+    const requestedPoints = Math.max(499, Math.floor(Number(points) || 499));
+
+    const result = await redeemStreetCashCoupon(cleanPhone, requestedPoints);
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    // Immediately sync the minted coupon into the runtime memory cache so it can be used at checkout without delay
+    if (result.coupon) {
+      const existingIdx = inMemoryCoupons.findIndex(c => c.code.toUpperCase() === result.coupon.code.toUpperCase());
+      if (existingIdx >= 0) {
+        inMemoryCoupons[existingIdx] = result.coupon;
+      } else {
+        inMemoryCoupons.push(result.coupon);
+      }
+      saveJsonCache(COUPONS_CACHE_FILE, inMemoryCoupons);
+    }
+
+    const tier = calculateStreetCashTier(result.remainingBalance);
 
     return res.json({
       success: true,
-      voucher,
-      profile: { ...profile, tier: getTierInfo(profile.lifetimePoints) }
+      coupon: result.coupon,
+      pointsRedeemed: result.pointsRedeemed,
+      discountInr: result.discountInr,
+      remainingBalance: result.remainingBalance,
+      tier,
+      displayRateNotice: 'Per 1,000 Rs spent will give you 199 The Street Cash',
+      message: result.message
+    });
+  } catch (err) {
+    console.error('[The Street Cash Redeem error]:', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/loyalty/ai-concierge
+// AI Concierge & Streetwear Stylist integration
+// Suggests outfits and styling pairings tailored to the customer's ₹499 Street Cash discount voucher
+app.post('/api/loyalty/ai-concierge', async (req, res) => {
+  try {
+    const { phone, couponCode, discountInr = 499, preference = 'streetwear' } = req.body || {};
+    const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
+
+    const catalogHighlights = [
+      { name: 'Minato Yellow Flash Heavyweight Oversized Tee', price: 1999, category: 'Oversized Tees', vibe: 'Bold Japanese Anime Graphic with 280 GSM French Terry' },
+      { name: 'Tokyo Shadow Tactical Cargo Joggers', price: 2499, category: 'Tactical Bottoms', vibe: 'Modular utility pockets, tapered obsidian finish' },
+      { name: 'Akatsuki Cloud Heavyweight Acid-Washed Hoodie', price: 2999, category: 'Hoodies', vibe: '400 GSM luxury fleece with crimson cloud embroidery' },
+      { name: 'Uchiha Clan Crest Boxy Tee', price: 1899, category: 'Boxy Tees', vibe: 'Minimalist chest embroidery, signature drop-shoulder silhouette' },
+      { name: 'Cyberpunk Cyber-Distressed Denim Jacket', price: 3499, category: 'Outerwear', vibe: 'Custom metallic hardware with weathered acid-wash wash' }
+    ];
+
+    let aiAdvice = null;
+
+    // Attempt Gemini AI generation if API key is present (with 4s timeout protection)
+    const apiKey = (process.env.GEMINI_API_KEY || '').trim();
+    if (apiKey) {
+      try {
+        const ai = new GoogleGenAI({ apiKey });
+        const prompt = `You are the lead luxury fashion director and stylist for "The Street Co", a high-end streetwear brand.
+A VIP client (Phone: +91 ${cleanPhone || 'VIP Member'}) has just redeemed their VIP loyalty points ("The Street Cash") and unlocked a ₹${discountInr} OFF voucher (Code: ${couponCode || 'STREETCASH-VIP'}).
+
+Brand details:
+- Rate notice: Per 1,000 Rs spent will give you 199 The Street Cash
+- Aesthetic: Creamy White, Obsidian Black, Architectural Silhouettes, 280-400 GSM Heavyweight Cotton.
+- Key items in stock:
+${catalogHighlights.map(c => `- ${c.name} (₹${c.price}) [${c.category}]: ${c.vibe}`).join('\n')}
+
+Task:
+Write a captivating, ultra-stylish 3-part styling concierge note:
+1. "The Stylist's Recommendation": Pick 2 items that look exceptional together, calculate the combined price after applying the ₹${discountInr} Street Cash discount.
+2. "Color & Silhouette Guide": How to style the drape, footwear, and accessories.
+3. "Street Cred Quote": An inspiring, punchy high-fashion quote about street style.
+
+Return concise, structured JSON with keys:
+{
+  "headline": "string",
+  "recommendedItems": [{"name": "string", "price": number, "priceAfterVoucher": number, "stylingTip": "string"}],
+  "paletteGuide": "string",
+  "quote": "string"
+}`;
+
+        const callPromise = ai.models.generateContent({
+          model: 'gemini-3.8-flash',
+          contents: prompt,
+          config: {
+            responseMimeType: 'application/json'
+          }
+        });
+
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('AI generation timed out')), 4000)
+        );
+
+        const response = await Promise.race([callPromise, timeoutPromise]);
+        const rawText = response.text || '';
+        try {
+          aiAdvice = JSON.parse(rawText);
+        } catch (_) {
+          aiAdvice = null;
+        }
+      } catch (geminiErr) {
+        console.warn('[Gemini AI Concierge Notice]:', geminiErr.message);
+      }
+    }
+
+    // High-fidelity fallback styling concierge if Gemini was offline or no key configured
+    if (!aiAdvice) {
+      aiAdvice = {
+        headline: `Stylist Curation: Pair Your ₹${discountInr} Street Cash with Architectural Essentials`,
+        recommendedItems: [
+          {
+            name: 'Minato Yellow Flash Heavyweight Oversized Tee',
+            price: 1999,
+            priceAfterVoucher: Math.max(0, 1999 - discountInr),
+            stylingTip: 'Tuck loosely into high-waisted relaxed cargo bottoms. The 280 GSM cotton maintains a structured boxy drape that holds its shape all day.'
+          },
+          {
+            name: 'Tokyo Shadow Tactical Cargo Joggers',
+            price: 2499,
+            priceAfterVoucher: Math.max(0, 2499 - discountInr),
+            stylingTip: 'Pair with chunky low-profile obsidian sneakers or retro runners. The tapered ankle cuffs accentuate silhouette proportion.'
+          }
+        ],
+        paletteGuide: 'Obsidian Black (#0E0E11) juxtaposed against Creamy Warm Ecru (#FAF8F5). Accentuate with muted chrome or oxidized silver jewelry.',
+        quote: 'Luxury is not about excess—it is about intentional silhouettes and effortless presence.'
+      };
+    }
+
+    return res.json({
+      success: true,
+      couponCode: couponCode || 'STREETCASH-499',
+      discountInr,
+      displayRateNotice: 'Per 1,000 Rs spent will give you 199 The Street Cash',
+      concierge: aiAdvice
+    });
+  } catch (err) {
+    console.error('[AI Concierge error]:', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/loyalty/earn (Instant bonus challenges)
+app.post('/api/loyalty/earn', async (req, res) => {
+  try {
+    const { phone, actionId, label, points = 50 } = req.body || {};
+    const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
+
+    if (cleanPhone.length !== 10) {
+      return res.status(400).json({ success: false, error: 'Valid phone required to claim The Street Cash bonus.' });
+    }
+
+    const col = await getCollection('users');
+    if (!col) return res.status(500).json({ success: false, error: 'Database unavailable' });
+
+    const existing = (await col.findOne({ phone: cleanPhone })) || {};
+    const history = Array.isArray(existing.streetCashHistory) ? existing.streetCashHistory : [];
+
+    if (actionId && history.some(h => h.id === actionId)) {
+      return res.json({
+        success: false,
+        alreadyClaimed: true,
+        message: 'Bonus points for this activity have already been claimed.',
+        streetCashBalance: existing.streetCashBalance || 0
+      });
+    }
+
+    const ptsToAdd = Math.max(10, Math.min(250, Number(points) || 50));
+    const newBalance = (Number(existing.streetCashBalance) || 0) + ptsToAdd;
+    const newEarned = (Number(existing.streetCashEarnedTotal) || 0) + ptsToAdd;
+
+    const entry = {
+      id: actionId || `bonus_${Date.now()}`,
+      type: 'EARNED',
+      points: ptsToAdd,
+      date: new Date().toISOString(),
+      label: label || 'VIP Community Street Cash Bonus'
+    };
+
+    await col.updateOne(
+      { phone: cleanPhone },
+      {
+        $set: {
+          streetCashBalance: newBalance,
+          streetCashEarnedTotal: newEarned,
+          streetCashHistory: [entry, ...history].slice(0, 100),
+          updatedAt: new Date().toISOString()
+        }
+      },
+      { upsert: true }
+    );
+
+    return res.json({
+      success: true,
+      pointsAwarded: ptsToAdd,
+      newBalance,
+      tier: calculateStreetCashTier(newBalance),
+      displayRateNotice: 'Per 1,000 Rs spent will give you 199 The Street Cash',
+      message: `+${ptsToAdd} The Street Cash credited to your VIP wallet!`
     });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
@@ -3520,11 +5965,24 @@ app.post('/api/account/verify-phone-otp', async (req, res) => {
       lastLoginAt: new Date().toISOString()
     });
 
+    // Award Account Creation Bonus (+75 The Street Cash) if not already claimed
+    let streetCashBonusAwarded = null;
+    try {
+      const bonusRes = await awardStreetCashBonus(cleanPhone, 'account_creation');
+      if (bonusRes && bonusRes.awarded) {
+        streetCashBonusAwarded = bonusRes;
+        sendStreetCashSms(cleanPhone, bonusRes.points, bonusRes.reason, bonusRes.newBalance).catch(() => {});
+      }
+    } catch (bErr) {
+      console.warn('[Street Cash Account Creation Bonus Note]:', bErr.message);
+    }
+
     return res.json({
       success: true,
       verified: true,
       phone: cleanPhone,
       account: mongoAccount || { phone: cleanPhone, phoneVerified: true },
+      streetCashBonusAwarded,
       message: 'Mobile number verified! Welcome to your account.'
     });
   } catch (err) {
@@ -3670,6 +6128,340 @@ app.post('/api/account/verify-email-otp', async (req, res) => {
   }
 });
 
+// Store for pending credential change authorization OTPs: Map<key, { otp, expiresAt, currentPhone, newPhone, newEmail, currentEmail, type }>
+const pendingChangeCredentialOtps = new Map();
+
+// 1. Dispatch 6-Digit Authorization OTP to change Phone Number (sent to PREVIOUS phone via SMS AND previous email if added)
+app.post('/api/account/change-phone/send-otp', async (req, res) => {
+  try {
+    const { currentPhone, newPhone } = req.body || {};
+    const cleanCurrent = String(currentPhone || '').replace(/\D/g, '').slice(-10);
+    const cleanNew = String(newPhone || '').replace(/\D/g, '').slice(-10);
+
+    if (cleanCurrent.length !== 10) {
+      return res.status(400).json({ success: false, error: 'Current mobile number is required.' });
+    }
+    if (cleanNew.length !== 10) {
+      return res.status(400).json({ success: false, error: 'Please enter a valid 10-digit new mobile number.' });
+    }
+    if (cleanCurrent === cleanNew) {
+      return res.status(400).json({ success: false, error: 'The new mobile number must be different from your current number.' });
+    }
+
+    const user = await findUserByPhone(cleanCurrent);
+    const userEmail = String(user?.email || '').trim().toLowerCase();
+    const hasEmail = Boolean(userEmail && userEmail.includes('@'));
+
+    const otpCode = String(Math.floor(100000 + Math.random() * 900000));
+    const expiresAt = Date.now() + 10 * 60 * 1000;
+
+    pendingChangeCredentialOtps.set(`PHONE_${cleanCurrent}`, {
+      otp: otpCode,
+      expiresAt,
+      currentPhone: cleanCurrent,
+      newPhone: cleanNew,
+      currentEmail: userEmail,
+      type: 'phone'
+    });
+
+    let smsDispatched = false;
+    let emailDispatched = false;
+
+    // Dispatch SMS to CURRENT / PREVIOUS phone
+    const twilioClient = typeof getTwilioClient === 'function' ? getTwilioClient() : null;
+    if (twilioClient) {
+      try {
+        const fromNumber = (process.env.TWILIO_PHONE_NUMBER || TWILIO_PHONE_NUMBER || '').trim();
+        await twilioClient.messages.create({
+          body: `${otpCode} is your authorization code to change your The Street Co mobile number to +91 ${cleanNew}. Valid for 10 minutes.`,
+          from: fromNumber,
+          to: `+91${cleanCurrent}`
+        });
+        smsDispatched = true;
+      } catch (smsErr) {
+        console.warn('[Change Phone SMS Notice]:', smsErr.message);
+      }
+    }
+
+    // Dispatch Email to CURRENT / PREVIOUS email if registered
+    if (hasEmail) {
+      const gmail = getGmailTransporter();
+      if (gmail) {
+        try {
+          const senderUser = (process.env.GMAIL_SMTP_USER || GMAIL_SMTP_USER).trim();
+          await gmail.sendMail({
+            from: `"${GMAIL_SENDER_NAME}" <${senderUser}>`,
+            to: userEmail,
+            subject: `${otpCode} — Security Code to Change Mobile Number · The Street Co`,
+            html: `
+              <div style="font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;max-width:540px;margin:0 auto;background:#faf8f5;border:1px solid #e8e2d8;border-radius:12px;overflow:hidden;color:#0e0e11;">
+                <div style="background:#0e0e11;color:#ffffff;padding:24px;text-align:center;">
+                  <div style="font-family:'Playfair Display',Georgia,serif;font-size:22px;letter-spacing:0.18em;font-weight:600;">THE STREET CO</div>
+                  <div style="font-size:11px;letter-spacing:0.14em;color:#c5a880;margin-top:6px;">SECURITY AUTHORIZATION · PHONE NUMBER CHANGE</div>
+                </div>
+                <div style="padding:32px 28px;background:#ffffff;">
+                  <p style="font-size:15px;margin:0 0 12px;color:#18181b;">Hello,</p>
+                  <p style="font-size:14px;line-height:1.6;color:#52525b;margin:0 0 20px;">
+                    We received a request to update the primary mobile number on your The Street Co account from <strong>+91 ${cleanCurrent}</strong> to <strong>+91 ${cleanNew}</strong>.
+                  </p>
+                  <div style="background:#faf8f5;border:2px dashed #0e0e11;border-radius:12px;padding:20px;text-align:center;margin:0 0 24px;">
+                    <span style="font-size:11px;letter-spacing:0.14em;color:#71717a;display:block;margin-bottom:8px;font-weight:700;">YOUR 6-DIGIT AUTHORIZATION OTP</span>
+                    <div style="font-size:34px;font-weight:800;letter-spacing:0.28em;color:#0e0e11;font-family:monospace;">${otpCode}</div>
+                  </div>
+                  <p style="font-size:12px;color:#71717a;line-height:1.5;margin:0;">
+                    This authorization code is valid for 10 minutes. If you did not initiate this change, please contact support immediately at support@thestreetco.zohodesk.in.
+                  </p>
+                </div>
+                <div style="padding:16px 28px;background:#f5efeb;border-top:1px solid #e8e2d8;text-align:center;font-size:11px;color:#78716c;">
+                  © ${new Date().getFullYear()} The Street Co · Security Department
+                </div>
+              </div>
+            `
+          });
+          emailDispatched = true;
+        } catch (mailErr) {
+          console.warn('[Change Phone Email Notice]:', mailErr.message);
+        }
+      }
+    }
+
+    const maskedPhone = `+91 ******${cleanCurrent.slice(-4)}`;
+    const maskedEmail = hasEmail ? userEmail.replace(/^([^@]{2})[^@]+(@.*)$/, '$1***$2') : null;
+
+    return res.json({
+      success: true,
+      hasEmail,
+      smsDispatched,
+      emailDispatched,
+      otpCode,
+      maskedPhone,
+      maskedEmail,
+      message: hasEmail
+        ? `A 6-digit authorization code has been sent to your current phone (${maskedPhone}) and email (${maskedEmail}).`
+        : `A 6-digit authorization code has been sent to your current phone (${maskedPhone}).`
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message || 'Failed to dispatch authorization code.' });
+  }
+});
+
+// 2. Verify 6-Digit Authorization OTP & update Phone Number in MongoDB Atlas
+app.post('/api/account/change-phone/verify-otp', async (req, res) => {
+  try {
+    const { currentPhone, otp } = req.body || {};
+    const cleanCurrent = String(currentPhone || '').replace(/\D/g, '').slice(-10);
+    const cleanOtp = String(otp || '').replace(/\D/g, '').trim();
+
+    if (cleanCurrent.length !== 10) {
+      return res.status(400).json({ success: false, error: 'Current mobile number is required.' });
+    }
+    if (cleanOtp.length !== 6) {
+      return res.status(400).json({ success: false, error: 'Please enter the 6-digit authorization code.' });
+    }
+
+    const key = `PHONE_${cleanCurrent}`;
+    const record = pendingChangeCredentialOtps.get(key);
+    if (!record) {
+      return res.status(400).json({ success: false, error: 'No active change request found. Please request a new code.' });
+    }
+    if (Date.now() > record.expiresAt) {
+      pendingChangeCredentialOtps.delete(key);
+      return res.status(400).json({ success: false, error: 'The authorization code has expired. Please request a new code.' });
+    }
+    if (record.otp !== cleanOtp) {
+      return res.status(400).json({ success: false, error: 'Invalid 6-digit authorization code.' });
+    }
+
+    const newPhone = record.newPhone;
+    pendingChangeCredentialOtps.delete(key);
+
+    const updatedAccount = await changeUserPhone(cleanCurrent, newPhone);
+
+    return res.json({
+      success: true,
+      oldPhone: cleanCurrent,
+      newPhone,
+      account: updatedAccount || { phone: newPhone, phoneVerified: true },
+      message: `Mobile number updated to +91 ${newPhone} successfully!`
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message || 'Failed to verify authorization code.' });
+  }
+});
+
+// 3. Dispatch 6-Digit Authorization OTP to change Email Address (sent to PREVIOUS phone via SMS AND previous email)
+app.post('/api/account/change-email/send-otp', async (req, res) => {
+  try {
+    const { currentPhone, newEmail } = req.body || {};
+    const cleanCurrent = String(currentPhone || '').replace(/\D/g, '').slice(-10);
+    const cleanNewEmail = String(newEmail || '').trim().toLowerCase();
+
+    if (cleanCurrent.length !== 10) {
+      return res.status(400).json({ success: false, error: 'Current mobile number is required.' });
+    }
+    if (!cleanNewEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanNewEmail)) {
+      return res.status(400).json({ success: false, error: 'Please enter a valid new email address.' });
+    }
+
+    const user = await findUserByPhone(cleanCurrent);
+    const userEmail = String(user?.email || '').trim().toLowerCase();
+    if (userEmail && userEmail === cleanNewEmail) {
+      return res.status(400).json({ success: false, error: 'The new email address must be different from your current email.' });
+    }
+
+    const hasEmail = Boolean(userEmail && userEmail.includes('@'));
+    const otpCode = String(Math.floor(100000 + Math.random() * 900000));
+    const expiresAt = Date.now() + 10 * 60 * 1000;
+
+    pendingChangeCredentialOtps.set(`EMAIL_${cleanCurrent}`, {
+      otp: otpCode,
+      expiresAt,
+      currentPhone: cleanCurrent,
+      newEmail: cleanNewEmail,
+      currentEmail: userEmail,
+      type: 'email'
+    });
+
+    let smsDispatched = false;
+    let emailDispatched = false;
+
+    // Dispatch SMS to CURRENT phone
+    const twilioClient = typeof getTwilioClient === 'function' ? getTwilioClient() : null;
+    if (twilioClient) {
+      try {
+        const fromNumber = (process.env.TWILIO_PHONE_NUMBER || TWILIO_PHONE_NUMBER || '').trim();
+        await twilioClient.messages.create({
+          body: `${otpCode} is your authorization code to change your The Street Co email to ${cleanNewEmail}. Valid for 10 minutes.`,
+          from: fromNumber,
+          to: `+91${cleanCurrent}`
+        });
+        smsDispatched = true;
+      } catch (smsErr) {
+        console.warn('[Change Email SMS Notice]:', smsErr.message);
+      }
+    }
+
+    // Dispatch Email to CURRENT / PREVIOUS email if registered
+    if (hasEmail) {
+      const gmail = getGmailTransporter();
+      if (gmail) {
+        try {
+          const senderUser = (process.env.GMAIL_SMTP_USER || GMAIL_SMTP_USER).trim();
+          await gmail.sendMail({
+            from: `"${GMAIL_SENDER_NAME}" <${senderUser}>`,
+            to: userEmail,
+            subject: `${otpCode} — Security Code to Change Account Email · The Street Co`,
+            html: `
+              <div style="font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;max-width:540px;margin:0 auto;background:#faf8f5;border:1px solid #e8e2d8;border-radius:12px;overflow:hidden;color:#0e0e11;">
+                <div style="background:#0e0e11;color:#ffffff;padding:24px;text-align:center;">
+                  <div style="font-family:'Playfair Display',Georgia,serif;font-size:22px;letter-spacing:0.18em;font-weight:600;">THE STREET CO</div>
+                  <div style="font-size:11px;letter-spacing:0.14em;color:#c5a880;margin-top:6px;">SECURITY AUTHORIZATION · EMAIL ADDRESS CHANGE</div>
+                </div>
+                <div style="padding:32px 28px;background:#ffffff;">
+                  <p style="font-size:15px;margin:0 0 12px;color:#18181b;">Hello,</p>
+                  <p style="font-size:14px;line-height:1.6;color:#52525b;margin:0 0 20px;">
+                    We received a request to update the email address on your The Street Co account from <strong>${userEmail}</strong> to <strong>${cleanNewEmail}</strong>.
+                  </p>
+                  <div style="background:#faf8f5;border:2px dashed #0e0e11;border-radius:12px;padding:20px;text-align:center;margin:0 0 24px;">
+                    <span style="font-size:11px;letter-spacing:0.14em;color:#71717a;display:block;margin-bottom:8px;font-weight:700;">YOUR 6-DIGIT AUTHORIZATION OTP</span>
+                    <div style="font-size:34px;font-weight:800;letter-spacing:0.28em;color:#0e0e11;font-family:monospace;">${otpCode}</div>
+                  </div>
+                  <p style="font-size:12px;color:#71717a;line-height:1.5;margin:0;">
+                    This authorization code is valid for 10 minutes. If you did not initiate this change, please contact support immediately at support@thestreetco.zohodesk.in.
+                  </p>
+                </div>
+                <div style="padding:16px 28px;background:#f5efeb;border-top:1px solid #e8e2d8;text-align:center;font-size:11px;color:#78716c;">
+                  © ${new Date().getFullYear()} The Street Co · Security Department
+                </div>
+              </div>
+            `
+          });
+          emailDispatched = true;
+        } catch (mailErr) {
+          console.warn('[Change Email Send Notice]:', mailErr.message);
+        }
+      }
+    }
+
+    const maskedPhone = `+91 ******${cleanCurrent.slice(-4)}`;
+    const maskedEmail = hasEmail ? userEmail.replace(/^([^@]{2})[^@]+(@.*)$/, '$1***$2') : null;
+
+    return res.json({
+      success: true,
+      hasEmail,
+      smsDispatched,
+      emailDispatched,
+      otpCode,
+      maskedPhone,
+      maskedEmail,
+      message: hasEmail
+        ? `A 6-digit authorization code has been sent to your current phone (${maskedPhone}) and current email (${maskedEmail}).`
+        : `A 6-digit authorization code has been sent to your current phone (${maskedPhone}).`
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message || 'Failed to dispatch authorization code.' });
+  }
+});
+
+// 4. Verify 6-Digit Authorization OTP & update Email Address in MongoDB Atlas
+app.post('/api/account/change-email/verify-otp', async (req, res) => {
+  try {
+    const { currentPhone, otp } = req.body || {};
+    const cleanCurrent = String(currentPhone || '').replace(/\D/g, '').slice(-10);
+    const cleanOtp = String(otp || '').replace(/\D/g, '').trim();
+
+    if (cleanCurrent.length !== 10) {
+      return res.status(400).json({ success: false, error: 'Current mobile number is required.' });
+    }
+    if (cleanOtp.length !== 6) {
+      return res.status(400).json({ success: false, error: 'Please enter the 6-digit authorization code.' });
+    }
+
+    const key = `EMAIL_${cleanCurrent}`;
+    const record = pendingChangeCredentialOtps.get(key);
+    if (!record) {
+      return res.status(400).json({ success: false, error: 'No active change request found. Please request a new code.' });
+    }
+    if (Date.now() > record.expiresAt) {
+      pendingChangeCredentialOtps.delete(key);
+      return res.status(400).json({ success: false, error: 'The authorization code has expired. Please request a new code.' });
+    }
+    if (record.otp !== cleanOtp) {
+      return res.status(400).json({ success: false, error: 'Invalid 6-digit authorization code.' });
+    }
+
+    const newEmail = record.newEmail;
+    pendingChangeCredentialOtps.delete(key);
+
+    const updatedAccount = await upsertUserByPhone(cleanCurrent, {
+      phone: cleanCurrent,
+      email: newEmail,
+      emailVerified: true
+    });
+
+    // Award Email Added Bonus (+35 The Street Cash) if not already claimed
+    let streetCashBonusAwarded = null;
+    try {
+      const emailRes = await awardStreetCashBonus(cleanCurrent, 'profile_email');
+      if (emailRes && emailRes.awarded) {
+        streetCashBonusAwarded = emailRes;
+        sendStreetCashSms(cleanCurrent, emailRes.points, emailRes.reason, emailRes.newBalance).catch(() => {});
+      }
+    } catch (_) {}
+
+    return res.json({
+      success: true,
+      phone: cleanCurrent,
+      newEmail,
+      account: updatedAccount || { phone: cleanCurrent, email: newEmail, emailVerified: true },
+      streetCashBonusAwarded,
+      message: `Email updated to ${newEmail} successfully!`
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message || 'Failed to verify authorization code.' });
+  }
+});
+
 // Get or Save User Account Profile (including Delivery Addresses & Orders) in MongoDB Atlas 'users' collection
 app.get('/api/account/profile', async (req, res) => {
   try {
@@ -3718,9 +6510,34 @@ app.post('/api/account/profile', async (req, res) => {
       ...(Array.isArray(addresses) ? { addresses } : {}),
       ...(defaultAddressId !== undefined ? { defaultAddressId: String(defaultAddressId || '').trim() } : {})
     });
+    // Check and award Name Upload (+25 pts) and Email Added (+35 pts) bonuses
+    const newlyAwardedBonuses = [];
+    try {
+      const hasName = Boolean((saved.firstName && saved.firstName.trim()) || (saved.lastName && saved.lastName.trim()));
+      if (hasName && !saved.streetCashBonuses?.profile_name) {
+        const nameRes = await awardStreetCashBonus(cleanPhone, 'profile_name');
+        if (nameRes && nameRes.awarded) {
+          newlyAwardedBonuses.push(nameRes);
+          sendStreetCashSms(cleanPhone, nameRes.points, nameRes.reason, nameRes.newBalance).catch(() => {});
+        }
+      }
+
+      const hasEmail = Boolean(saved.email && saved.email.includes('@'));
+      if (hasEmail && !saved.streetCashBonuses?.profile_email) {
+        const emailRes = await awardStreetCashBonus(cleanPhone, 'profile_email');
+        if (emailRes && emailRes.awarded) {
+          newlyAwardedBonuses.push(emailRes);
+          sendStreetCashSms(cleanPhone, emailRes.points, emailRes.reason, emailRes.newBalance).catch(() => {});
+        }
+      }
+    } catch (profErr) {
+      console.warn('[Street Cash Profile Bonus Error]:', profErr.message);
+    }
+
     return res.json({
       success: true,
       account: saved,
+      newlyAwardedBonuses,
       message: 'Account profile saved to MongoDB Atlas.'
     });
   } catch (err) {
@@ -4046,6 +6863,13 @@ function sendDynamicIndex(req, res) {
 
 app.get(['/', '/index.html'], (req, res) => {
   sendDynamicIndex(req, res);
+});
+
+// Explicit no-cache handler for main.js to ensure live code updates
+app.get('/main.js', (req, res) => {
+  res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.sendFile(path.join(__dirname, 'main.js'));
 });
 
 // Serve static files from root

@@ -1,262 +1,731 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Email Preview — The Street Co (Order Confirmed)</title>
-    <!-- Google Email Markup for Gmail Order Summary Card / Highlights -->
-    <script type="application/ld+json">
-    {
-      "@context": "http://schema.org",
-      "@type": "Order",
-      "merchant": {
-        "@type": "Organization",
-        "name": "The Street Co",
-        "url": "https://itachii.netlify.app"
-      },
-      "orderNumber": "20845312",
-      "priceCurrency": "INR",
-      "price": "1499",
-      "orderStatus": "http://schema.org/OrderProcessing",
-      "orderDate": "2026-09-29T04:26:00Z",
-      "acceptedOffer": [
-        {
-          "@type": "Offer",
-          "itemOffered": {
-            "@type": "Product",
-            "name": "Urban Blaze: Graphic Hoodie",
-            "image": "https://itachii.netlify.app/og-preview.jpg",
-            "description": "Heavyweight Streetwear (Size: Oversized L)"
-          },
-          "price": "1499",
-          "priceCurrency": "INR",
-          "eligibleQuantity": {
-            "@type": "QuantitativeValue",
-            "value": 1
-          }
-        }
-      ],
-      "orderDelivery": {
-        "@type": "ParcelDelivery",
-        "deliveryAddress": {
-          "@type": "PostalAddress",
-          "name": "Aniruddha Nag",
-          "streetAddress": "74/1 Park Street, 3rd Floor",
-          "addressLocality": "Kolkata",
-          "addressRegion": "West Bengal",
-          "postalCode": "700016",
-          "addressCountry": "IN"
-        },
-        "expectedArrivalUntil": "2026-10-03T18:00:00Z",
-        "carrier": {
-          "@type": "Organization",
-          "name": "Delhivery",
-          "url": "https://www.delhivery.com"
-        },
-        "trackingNumber": "420790465593",
-        "trackingUrl": "https://www.delhivery.com/tracking"
-      },
-      "potentialAction": [
-        {
-          "@type": "ViewAction",
-          "name": "Review shop",
-          "url": "https://itachii.netlify.app"
-        },
-        {
-          "@type": "ViewAction",
-          "name": "View item",
-          "url": "https://itachii.netlify.app"
-        }
-      ]
-    }
-    </script>
-    <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,600,700" rel="stylesheet" type="text/css">
-    <style type="text/css">
-      body { margin:0;padding:0;background-color:#ffffff;font-family:'Source Sans Pro', Helvetica, Arial, sans-serif; }
-      table, td { border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt; }
-      img { border:0;height:auto;line-height:100%;outline:none;text-decoration:none; }
-      p { display:block;margin:13px 0; }
+    <title>Email Templates Suite — The Street Co</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        background-color: #FAF8F5;
+        color: #18181B;
+        font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* Top Navigation & Template Selector Bar */
+      header.preview-header {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        background: #0E0E11;
+        color: #FFFFFF;
+        border-bottom: 1px solid #C5A880;
+        padding: 14px 24px;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      }
+
+      .brand-box {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+      .brand-title {
+        font-family: 'Playfair Display', Georgia, serif;
+        font-size: 18px;
+        font-weight: 700;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: #FFFFFF;
+      }
+      .brand-badge {
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: #C5A880;
+        background: rgba(197, 168, 128, 0.12);
+        padding: 3px 8px;
+        border-radius: 4px;
+        border: 1px solid rgba(197, 168, 128, 0.28);
+      }
+
+      .controls-box {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      select.template-select {
+        background: #18181B;
+        color: #FAF8F5;
+        border: 1px solid #3F3F46;
+        border-radius: 8px;
+        padding: 9px 14px;
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        outline: none;
+        transition: border-color 0.2s, background-color 0.2s;
+      }
+      select.template-select:focus {
+        border-color: #C5A880;
+      }
+
+      .viewport-switch {
+        display: inline-flex;
+        background: #18181B;
+        border: 1px solid #27272A;
+        border-radius: 8px;
+        padding: 3px;
+      }
+      .viewport-btn {
+        background: transparent;
+        color: #A1A1AA;
+        border: none;
+        padding: 6px 12px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .viewport-btn.active {
+        background: #FAF8F5;
+        color: #0E0E11;
+      }
+
+      .store-link {
+        color: #C5A880;
+        text-decoration: none;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        padding: 8px 14px;
+        border: 1px solid rgba(197, 168, 128, 0.35);
+        border-radius: 6px;
+        transition: all 0.2s;
+      }
+      .store-link:hover {
+        background: rgba(197, 168, 128, 0.15);
+      }
+
+      /* Secondary Quick Stage Badges */
+      nav.stage-tabs {
+        background: #FFFFFF;
+        border-bottom: 1px solid #E8E2D8;
+        padding: 10px 24px;
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        white-space: nowrap;
+        scrollbar-width: thin;
+      }
+      .stage-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 14px;
+        border-radius: 20px;
+        border: 1px solid #E8E2D8;
+        background: #FAF8F5;
+        color: #52525B;
+        font-size: 12px;
+        font-weight: 600;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .stage-pill:hover {
+        border-color: #0E0E11;
+        color: #0E0E11;
+      }
+      .stage-pill.active {
+        background: #0E0E11;
+        color: #FFFFFF;
+        border-color: #0E0E11;
+      }
+      .stage-pill.active .pill-num {
+        background: #C5A880;
+        color: #0E0E11;
+      }
+      .pill-num {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        line-height: 16px;
+        text-align: center;
+        border-radius: 50%;
+        background: #E8E2D8;
+        font-size: 10px;
+        font-weight: 700;
+        color: #71717A;
+      }
+
+      /* Stage Information Card */
+      .stage-meta {
+        background: #FAF8F5;
+        padding: 16px 24px 0 24px;
+        max-width: 900px;
+        margin: 0 auto;
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 12px;
+        color: #8A7B6E;
+      }
+      .stage-meta strong {
+        color: #0E0E11;
+      }
+
+      /* Main Stage Frame */
+      main.preview-container {
+        flex: 1;
+        display: flex;
+        justify-content: center;
+        padding: 24px 16px 48px;
+      }
+
+      .preview-frame-wrapper {
+        width: 100%;
+        max-width: 660px;
+        transition: max-width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      .preview-frame-wrapper.mobile {
+        max-width: 390px;
+      }
+      .preview-frame-wrapper.full {
+        max-width: 960px;
+      }
+
+      iframe#emailFrame {
+        width: 100%;
+        min-height: 980px;
+        border: 1px solid #E8E2D8;
+        border-radius: 12px;
+        background: #FAF8F5;
+        box-shadow: 0 8px 32px rgba(27,24,20,0.06);
+        display: block;
+      }
     </style>
   </head>
-  <body style="margin:0;padding:0;background-color:#ffffff;">
-    <!-- Full-Page Email Wrapper (No Box) -->
-    <div style="width:100%;margin:0;padding:0;background-color:#ffffff;">
-      
-      <!-- Top Brand Black Header with Crimson Accent Line (Matching Invoice Email) -->
-      <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;background:#0b0a0f;background-color:#0b0a0f;border-bottom:2px solid #e05a47;">
-        <tbody>
-          <tr>
-            <td style="padding:22px 20px;text-align:center;">
-              <a href="https://thestreetco.netlify.app" target="_blank" style="text-decoration:none;display:inline-block;">
-                <span style="font-family:'Source Sans Pro', sans-serif;font-size:22px;font-weight:900;letter-spacing:3px;color:#ffffff;text-transform:uppercase;">THE STREET CO</span>
-              </a>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      <!-- Inner Column -->
-      <div style="max-width:600px;margin:0 auto;background-color:#ffffff;padding:0 20px;">
-
-      <!-- Main Welcome & Confirmation Message -->
-      <div style="padding:30px 25px 15px 25px;background-color:#ffffff;">
-        <div style="font-family:'Source Sans Pro', sans-serif;font-size:22px;font-weight:800;color:#111111;margin-bottom:12px;letter-spacing:-0.3px;">
-          You're In. Order Confirmed!
-        </div>
-        <div style="font-family:'Source Sans Pro', sans-serif;font-size:16px;font-weight:700;color:#262424;margin-bottom:12px;">
-          Hey Aniruddha,
-        </div>
-        <div style="font-family:'Source Sans Pro', sans-serif;font-size:14px;line-height:1.6;color:#333333;">
-          Your order <strong>#STREET-20845312</strong> has been successfully placed and is now being carefully prepared by our team.
-          <br><br>
-          Thank you for shopping from <strong>The Street Co</strong>. We’re stoked to have you as part of the family. We'll send you another update with tracking info as soon as your drop is out the door.
-        </div>
+  <body>
+    <!-- Top Bar -->
+    <header class="preview-header">
+      <div class="brand-box">
+        <span class="brand-title">The Street Co</span>
+        <span class="brand-badge">Premium Email Architecture</span>
       </div>
 
-      <div style="padding:0 25px;">
-        <hr style="border:0;border-top:1px solid #e4e4e4;margin:10px 0;">
-      </div>
+      <div class="controls-box">
+        <select id="templateSelector" class="template-select" aria-label="Select Email Template">
+          <option value="order_confirmed" selected>1. Order Confirmed (with Zoho Invoice PDF)</option>
+          <option value="gst_invoice">2. Official GST Tax Invoice Dispatch</option>
+          <option value="ready_to_ship">3. Packed &amp; Ready To Ship (Delhivery AWB)</option>
+          <option value="delhivery_done">4. Delivered! (Delhivery Express Done)</option>
+          <option value="exchange_requested">5. Size Exchange Request Received</option>
+          <option value="return_requested">6. Return for Refund Request (No Size)</option>
+          <option value="pickup_confirmed">7. Reverse Pickup Scheduled &amp; Confirmed</option>
+          <option value="refund_done">8. Refund Processed &amp; Credited</option>
+          <option value="exchange_done">9. Exchange Completed (Replacement Delivered)</option>
+          <option value="auth_otp">10. 6-Digit Email Verification OTP</option>
+          <option value="change_phone_otp">11. Security OTP: Phone Number Change</option>
+          <option value="change_email_otp">12. Security OTP: Email Address Change</option>
+        </select>
 
-      <!-- Order Details & Delivery Address Two-Column Block -->
-      <div style="padding:15px 25px;">
-        <table cellpadding="0" cellspacing="0" width="100%" border="0" style="color:#000000;font-family:'Source Sans Pro', sans-serif;font-size:13px;line-height:22px;">
-          <tr style="text-align:left;">
-            <th style="width:50%;padding-right:15px;color:#111111;font-size:13px;text-transform:uppercase;letter-spacing:0.5px;">ORDER DETAILS:</th>
-            <th style="width:50%;border-left:1px solid #e4e4e4;padding-left:15px;color:#111111;font-size:13px;text-transform:uppercase;letter-spacing:0.5px;">DELIVERY ADDRESS:</th>
-          </tr>
-          <tr style="text-align:left;">
-            <td style="vertical-align:top;width:50%;padding-right:15px;color:#444444;font-size:13px;padding-top:8px;">
-              <strong>Your Order #:</strong> STREET-20845312<br>
-              <strong>ORDER DATE:</strong> 28 Sep 2026<br>
-              <strong>PAYMENT:</strong> CASH ON DELIVERY (CONFIRMED)<br>
-              <strong>SHIPMENT:</strong> Preparing Dispatch
-            </td>
-            <td style="vertical-align:top;width:50%;border-left:1px solid #e4e4e4;padding-left:15px;color:#444444;font-size:13px;padding-top:8px;">
-              <strong>Aniruddha Nag</strong><br>
-              Thakurnagar Shimulpur Hazratala, Shimulpur<br>
-              Hazratala Road, Near Chandpara Defence Academy<br>
-              Bongaon, West Bengal 743287, India<br>
-              <strong>Contact No:</strong> +91 6296731835
-            </td>
-          </tr>
+        <div class="viewport-switch" role="group" aria-label="Viewport Switcher">
+          <button type="button" class="viewport-btn active" data-width="desktop">Desktop</button>
+          <button type="button" class="viewport-btn" data-width="mobile">Mobile</button>
+          <button type="button" class="viewport-btn" data-width="full">Expanded</button>
+        </div>
+
+        <a href="/" class="store-link">Back to Store ↗</a>
+      </div>
+    </header>
+
+    <!-- Quick Switcher Tabs -->
+    <nav class="stage-tabs" id="stageTabs">
+      <button class="stage-pill active" data-template="order_confirmed"><span class="pill-num">1</span> Order Confirmed</button>
+      <button class="stage-pill" data-template="gst_invoice"><span class="pill-num">2</span> GST Invoice</button>
+      <button class="stage-pill" data-template="ready_to_ship"><span class="pill-num">3</span> Ready to Ship</button>
+      <button class="stage-pill" data-template="delhivery_done"><span class="pill-num">4</span> Delivered Done</button>
+      <button class="stage-pill" data-template="exchange_requested"><span class="pill-num">5</span> Exchange Req</button>
+      <button class="stage-pill" data-template="return_requested"><span class="pill-num">6</span> Return Req</button>
+      <button class="stage-pill" data-template="pickup_confirmed"><span class="pill-num">7</span> Pickup Confirmed</button>
+      <button class="stage-pill" data-template="refund_done"><span class="pill-num">8</span> Refund Done</button>
+      <button class="stage-pill" data-template="exchange_done"><span class="pill-num">9</span> Exchange Done</button>
+    </nav>
+
+    <!-- Meta Description Bar -->
+    <div class="stage-meta">
+      <span id="stageTitle">Displaying: <strong>1. Order Confirmed (with Zoho Invoice PDF)</strong></span>
+      <span>Palette: <strong>#FAF8F5 Creamy White · #0E0E11 Obsidian · Zero Loud Red</strong></span>
+    </div>
+
+    <!-- Main Live Iframe Renderer -->
+    <main class="preview-container">
+      <div id="frameWrapper" class="preview-frame-wrapper">
+        <iframe id="emailFrame" title="Live Email Preview" src="about:blank"></iframe>
+      </div>
+    </main>
+
+    <script>
+      // ══════════════════════════════════════════════════════════════════════════
+      // EMAIL TEMPLATE ENGINE & SAMPLE FIXTURES
+      // ══════════════════════════════════════════════════════════════════════════
+      const TEMPLATES = {
+        order_confirmed: {
+          title: "1. Order Confirmed (with Zoho Invoice PDF)",
+          html: `<!doctype html>
+<html lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+      body { margin:0;padding:0;background-color:#faf8f5;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;-webkit-font-smoothing:antialiased; }
+      table, td { border-collapse:collapse; }
+      img { border:0;height:auto;line-height:100%;outline:none;text-decoration:none; }
+    </style>
+  </head>
+  <body style="margin:0;padding:0;background-color:#faf8f5;">
+    <div style="width:100%;background-color:#faf8f5;padding:32px 12px;box-sizing:border-box;">
+      <div style="max-width:600px;margin:0 auto;background-color:#ffffff;border:1px solid #e8e2d8;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.03);">
+        
+        <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;background:#0e0e11;border-bottom:1px solid #c5a880;">
+          <tbody>
+            <tr>
+              <td style="padding:26px 20px;text-align:center;">
+                <div style="font-family:'Playfair Display',Georgia,serif;font-size:22px;font-weight:700;letter-spacing:0.2em;color:#ffffff;text-transform:uppercase;">THE STREET CO</div>
+                <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.18em;color:#c5a880;text-transform:uppercase;margin-top:6px;">HAUTE STREETWEAR · ORDER CONFIRMATION</div>
+              </td>
+            </tr>
+          </tbody>
         </table>
-      </div>
 
-      <div style="padding:0 25px;">
-        <hr style="border:0;border-top:1px solid #e4e4e4;margin:10px 0;">
-      </div>
+        <div style="padding:32px 28px;">
+          <div style="font-size:11px;color:#8a7b6e;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;margin-bottom:6px;">ACQUISITION CONFIRMED</div>
+          <h1 style="font-family:'Playfair Display',Georgia,serif;font-size:24px;font-weight:600;color:#0e0e11;margin:0 0 14px;letter-spacing:-0.2px;line-height:1.25;">
+            You're In. Your Order Is Confirmed.
+          </h1>
+          <p style="font-size:15px;font-weight:600;color:#18181b;margin:0 0 10px;">
+            Hey Aniruddha Nag,
+          </p>
+          <p style="font-size:14px;line-height:1.65;color:#52525b;margin:0 0 24px;">
+            Your order <strong style="color:#0e0e11;">#STREET-20845312</strong> has been placed and is now queued for precision quality inspection and custom packaging. We will notify you the moment your drop is handed over to Delhivery Express.
+          </p>
 
-      <!-- Items Section Header -->
-      <div style="padding:10px 25px 5px 25px;">
-        <div style="font-family:'Source Sans Pro', sans-serif;font-size:13px;font-weight:700;color:#111111;text-transform:uppercase;letter-spacing:0.5px;">
-          ITEMS IN THE ORDER
+          <div style="background:#faf8f5;border:1px solid #e8e2d8;border-radius:10px;padding:20px;margin-bottom:26px;">
+            <table cellpadding="0" cellspacing="0" width="100%" border="0" style="color:#18181b;font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;line-height:22px;">
+              <tr style="text-align:left;">
+                <th style="width:50%;padding-right:15px;color:#8a7b6e;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;padding-bottom:8px;">ORDER DETAILS</th>
+                <th style="width:50%;border-left:1px solid #e8e2d8;padding-left:15px;color:#8a7b6e;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;padding-bottom:8px;">DELIVERY DESTINATION</th>
+              </tr>
+              <tr style="text-align:left;">
+                <td style="vertical-align:top;width:50%;padding-right:15px;color:#3f3f46;font-size:13px;line-height:22px;">
+                  <strong style="color:#0e0e11;">Order Ref:</strong> #STREET-20845312<br>
+                  <strong style="color:#0e0e11;">Date:</strong> 28 Oct 2026<br>
+                  <strong style="color:#0e0e11;">Payment:</strong> CASH ON DELIVERY (CONFIRMED)<br>
+                  <strong style="color:#0e0e11;">Logistics:</strong> Delhivery Express
+                </td>
+                <td style="vertical-align:top;width:50%;border-left:1px solid #e8e2d8;padding-left:15px;color:#3f3f46;font-size:13px;line-height:22px;">
+                  <strong style="color:#0e0e11;">Aniruddha Nag</strong><br>
+                  Thakurnagar Shimulpur Hazratala<br>
+                  Bongaon, West Bengal - 743287<br>
+                  <span style="color:#71717a;">Contact: +91 6296731835</span>
+                </td>
+              </tr>
+            </table>
+          </div>
+
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#8a7b6e;margin-bottom:12px;">ARTICLES IN THIS DROP</div>
+
+          <table cellpadding="0" cellspacing="0" width="100%" border="0" style="width:100%;color:#18181b;font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;line-height:22px;margin-bottom:16px;border-bottom:1px solid #e8e2d8;padding-bottom:14px;">
+            <tr>
+              <td style="width:90px;vertical-align:top;padding-right:15px;padding-bottom:10px;">
+                <img src="/product-minato.jpg" alt="Fourth Hokage Minato Inspired Oversized T-Shirt" width="85" height="85" style="width:85px;height:85px;max-width:85px;object-fit:cover;border-radius:8px;border:1px solid #e8e2d8;display:block;" />
+              </td>
+              <td style="vertical-align:top;padding-bottom:10px;">
+                <div style="color:#0e0e11;font-weight:700;font-size:15px;line-height:20px;padding-bottom:3px;">
+                  Fourth Hokage Minato Inspired Oversized T-Shirt
+                </div>
+                <div style="color:#8a7b6e;font-size:13px;line-height:18px;padding-bottom:6px;">
+                  Heavyweight 260 GSM Bio-Washed Cotton
+                </div>
+                <div style="color:#52525b;font-size:13px;line-height:18px;">
+                  Size: <strong style="color:#0e0e11;">L</strong> &nbsp;|&nbsp; Qty: <strong style="color:#0e0e11;">1</strong>
+                  <span style="background:#faf8f5;color:#52525b;border:1px solid #e8e2d8;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;letter-spacing:0.5px;margin-left:8px;display:inline-block;">COUPON APPLIED</span>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td colspan="2" style="border-top:1px dashed #e8e2d8;padding-top:8px;">
+                <table cellpadding="0" cellspacing="0" width="100%" border="0">
+                  <tr>
+                    <td style="width:58%;text-align:left;color:#71717a;font-size:13px;padding:2px 0;">Unit Price</td>
+                    <td style="width:42%;text-align:right;color:#0e0e11;font-size:13px;padding:2px 0;">
+                      <span style="text-decoration:line-through;color:#a1a1aa;font-size:12px;margin-right:6px;">₹ 1,699</span>
+                      <strong style="color:#0e0e11;font-size:13px;">₹ 1,499</strong>
+                    </td>
+                  </tr>
+                  <tr style="font-weight:700;">
+                    <td style="width:58%;text-align:left;color:#0e0e11;font-size:14px;padding-top:4px;">Item Total</td>
+                    <td style="width:42%;text-align:right;padding-top:4px;color:#0e0e11;font-size:14px;">₹ 1,499</td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+
+          <div style="background:#faf8f5;border:1px solid #e8e2d8;border-radius:10px;padding:18px 20px;margin-bottom:26px;">
+            <table cellpadding="0" cellspacing="0" width="100%" border="0" style="width:100%;font-size:13px;color:#52525b;line-height:22px;">
+              <tr>
+                <td style="text-align:left;color:#71717a;padding:4px 0;">Subtotal</td>
+                <td style="text-align:right;color:#0e0e11;font-weight:600;padding:4px 0;">₹ 1,699</td>
+              </tr>
+              <tr>
+                <td style="text-align:left;color:#71717a;padding:4px 0;">Shipping &amp; Handling</td>
+                <td style="text-align:right;color:#059669;font-weight:600;padding:4px 0;">FREE</td>
+              </tr>
+              <tr>
+                <td style="text-align:left;color:#71717a;padding:4px 0;">Privilege Discount (VIP200)</td>
+                <td style="text-align:right;color:#52525b;font-weight:700;padding:4px 0;">-₹ 200</td>
+              </tr>
+              <tr style="font-size:16px;font-weight:800;color:#0e0e11;">
+                <td style="text-align:left;padding-top:12px;border-top:1px solid #e8e2d8;">Total Amount</td>
+                <td style="text-align:right;padding-top:12px;border-top:1px solid #e8e2d8;font-size:18px;">₹ 1,499</td>
+              </tr>
+            </table>
+          </div>
+
+          <div style="background:#faf8f5;border:1px dashed #c5a880;border-radius:8px;padding:14px 18px;margin-bottom:28px;">
+            <div style="font-size:12px;color:#3f3f46;line-height:1.5;">
+              <strong style="color:#0e0e11;">Official Zoho GST Tax Invoice Attached:</strong> Your compliant commercial tax invoice has been generated via Zoho and attached to this email as a PDF for your records.
+            </div>
+          </div>
+
+          <div style="text-align:center;margin-bottom:28px;">
+            <a href="https://www.delhivery.com/tracking" target="_blank" style="display:inline-block;background-color:#0e0e11;color:#ffffff;text-decoration:none;padding:15px 36px;border-radius:8px;font-weight:700;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;">
+              TRACK PACKAGE STATUS ↗
+            </a>
+          </div>
+
+          <div style="font-size:13px;line-height:1.6;color:#52525b;border-top:1px solid #e8e2d8;padding-top:20px;">
+            Thank you for being part of the family.<br>
+            <strong style="color:#0e0e11;">The Street Co Team</strong>
+          </div>
         </div>
+
+        <div style="background-color:#faf8f5;border-top:1px solid #e8e2d8;padding:26px 20px;text-align:center;">
+          <div style="margin-bottom:14px;">
+            <a href="https://thestreetco.netlify.app" target="_blank" style="text-decoration:none;margin:0 12px;font-size:12px;font-weight:600;color:#0e0e11;">The Shop</a>
+            <span style="color:#c5a880;">•</span>
+            <a href="mailto:support@thestreetco.zohodesk.in" style="text-decoration:none;margin:0 12px;font-size:12px;font-weight:600;color:#0e0e11;">Client Concierge</a>
+            <span style="color:#c5a880;">•</span>
+            <a href="https://www.instagram.com/thestreetco_shop" target="_blank" style="text-decoration:none;margin:0 12px;font-size:12px;font-weight:600;color:#0e0e11;">Instagram</a>
+          </div>
+          <div style="font-size:11px;line-height:1.6;color:#8a7b6e;max-width:440px;margin:0 auto;">
+            The Street Co Apparel · Thakurnagar Shimulpur Hazratala, West Bengal 743287, India<br>
+            © 2026 The Street Co · All rights reserved.
+          </div>
+        </div>
+
       </div>
+    </div>
+  </body>
+</html>`
+        },
 
-      <!-- Product Items List -->
-      <div style="padding:10px 25px 5px 25px;">
-        <table cellpadding="0" cellspacing="0" width="100%" border="0" style="width:100%;color:#282c3f;font-family:'Source Sans Pro', Helvetica, Arial, sans-serif;font-size:14px;line-height:22px;margin-bottom:16px;border-bottom:1px solid #e4e4e4;padding-bottom:14px;">
-          <!-- Top Row: Left Side = Order Picture, Right Side = All Texts -->
-          <tr>
-            <td style="width:90px;vertical-align:top;padding-right:15px;padding-bottom:10px;">
-              <img src="/product-minato.jpg" alt="Urban Street Heavyweight Hoodie" width="85" height="85" style="width:85px;height:85px;max-width:85px;object-fit:cover;border-radius:6px;border:1px solid #e4e4e4;display:block;" />
-            </td>
-            <td style="vertical-align:top;padding-bottom:10px;">
-              <div style="color:#111111;font-weight:700;font-size:15px;line-height:20px;padding-bottom:3px;word-break:break-word;">
-                Urban Street Heavyweight Hoodie (Midnight Edition)
-              </div>
-              <div style="color:#686B78;font-size:13px;line-height:18px;padding-bottom:6px;">
-                Men Oversized Heavyweight French Terry
-              </div>
-              <div style="color:#444444;font-size:13px;line-height:18px;">
-                Size: <strong>L</strong> &nbsp;|&nbsp; Qty: <strong>1</strong>
-                <span style="background:#fee2e2;color:#dc2626;font-size:10px;font-weight:700;padding:2px 6px;border-radius:3px;letter-spacing:0.3px;margin-left:8px;display:inline-block;">COUPON APPLIED</span>
-              </div>
-            </td>
-          </tr>
-
-          <!-- Bottom: All Prices -->
-          <tr>
-            <td colspan="2" style="border-top:1px dashed #ebebeb;padding-top:8px;">
-              <table cellpadding="0" cellspacing="0" width="100%" border="0" style="width:100%;">
-                <tr>
-                  <td style="width:58%;text-align:left;color:#686B78;font-size:13px;padding:2px 0;vertical-align:middle;">Price</td>
-                  <td style="width:42%;text-align:right;color:#111111;font-size:13px;padding:2px 0;vertical-align:middle;white-space:nowrap;">
-                    <span style="white-space:nowrap;display:inline-block;"><span style="text-decoration:line-through;color:#888888;font-size:12px;margin-right:6px;">₹ 2,599</span><strong style="color:#ed3031;font-size:13px;">₹ 2,399</strong></span>
-                  </td>
-                </tr>
-                <tr style="font-weight:700;">
-                  <td style="width:58%;text-align:left;color:#111111;font-size:14px;padding-top:4px;vertical-align:middle;">Item Total</td>
-                  <td style="width:42%;text-align:right;padding-top:4px;vertical-align:middle;white-space:nowrap;">
-                    <span style="white-space:nowrap;display:inline-block;"><span style="text-decoration:line-through;color:#888888;font-size:12px;font-weight:normal;margin-right:6px;">₹ 2,599</span><strong style="color:#ed3031;font-size:14px;">₹ 2,399</strong></span>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
+        gst_invoice: {
+          title: "2. Official GST Tax Invoice Dispatch",
+          html: `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  </head>
+  <body style="margin:0;padding:0;background-color:#faf8f5;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;color:#18181b;line-height:1.65;">
+    <div style="width:100%;background-color:#faf8f5;padding:32px 12px;box-sizing:border-box;">
+      <div style="max-width:600px;margin:0 auto;background-color:#ffffff;border:1px solid #e8e2d8;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.03);">
+        
+        <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;background:#0e0e11;border-bottom:1px solid #c5a880;">
+          <tbody>
+            <tr>
+              <td style="padding:26px 20px;text-align:center;">
+                <div style="font-family:'Playfair Display',Georgia,serif;font-size:22px;font-weight:700;letter-spacing:0.2em;color:#ffffff;text-transform:uppercase;">THE STREET CO</div>
+                <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.18em;color:#c5a880;text-transform:uppercase;margin-top:6px;">OFFICIAL GST TAX INVOICE DISPATCH</div>
+              </td>
+            </tr>
+          </tbody>
         </table>
-      </div>
 
-      <!-- Financial Totals Summary -->
-      <div style="padding:0 25px 20px 25px;">
-        <table cellpadding="0" cellspacing="0" width="100%" border="0" style="width:100%;table-layout:fixed;font-family:'Source Sans Pro', Helvetica, Arial, sans-serif;font-size:13px;color:#444444;line-height:22px;border-top:1px solid #e4e4e4;padding-top:12px;">
-          <tr>
-            <td style="width:58%;text-align:left;color:#686B78;padding:4px 0;vertical-align:middle;">Subtotal</td>
-            <td style="width:42%;text-align:right;color:#111111;font-weight:600;padding:4px 0;vertical-align:middle;white-space:nowrap;">₹ 2,599</td>
-          </tr>
-          <tr>
-            <td style="width:58%;text-align:left;color:#686B78;padding:4px 0;vertical-align:middle;">Shipping &amp; Delivery</td>
-            <td style="width:42%;text-align:right;color:#10b981;font-weight:600;padding:4px 0;vertical-align:middle;white-space:nowrap;">FREE</td>
-          </tr>
-          <tr>
-            <td style="width:58%;text-align:left;color:#686B78;padding:4px 0;vertical-align:middle;">
-              Coupon Discount <strong style="color:#ed3031;font-weight:700;">(SHINOBI200)</strong>
-            </td>
-            <td style="width:42%;text-align:right;color:#ed3031;font-weight:700;padding:4px 0;vertical-align:middle;white-space:nowrap;">-₹ 200</td>
-          </tr>
-          <tr style="font-size:15px;font-weight:700;color:#111111;">
-            <td style="width:58%;text-align:left;padding-top:10px;border-top:1px solid #e4e4e4;color:#111111;vertical-align:middle;">Grand Total</td>
-            <td style="width:42%;text-align:right;padding-top:10px;border-top:1px solid #e4e4e4;color:#ed3031;font-size:16px;font-weight:700;white-space:nowrap;vertical-align:middle;">₹ 2,399</td>
-          </tr>
-        </table>
-      </div>
+        <div style="padding:32px 28px;">
+          <div style="font-size:11px;color:#8a7b6e;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;margin-bottom:6px;">COMMERCIAL BILLING DOCUMENT</div>
+          <h1 style="font-family:'Playfair Display',Georgia,serif;font-size:24px;font-weight:600;color:#0e0e11;margin:0 0 14px;letter-spacing:-0.2px;line-height:1.25;">
+            Your Invoice Is Ready
+          </h1>
+          <p style="margin:0 0 12px;font-size:15px;color:#18181b;">Hi <strong>Aniruddha Nag</strong>,</p>
+          <p style="margin:0 0 20px;font-size:14px;color:#52525b;line-height:1.65;">
+            Your official GST Tax Commercial Invoice for Order <strong style="color:#0e0e11;">#STREET-20845312</strong> from <strong>The Street Co</strong> has been generated and validated via Zoho Invoicing.
+          </p>
 
-      <!-- Signoff / Have a nice day -->
-      <div style="padding:10px 25px 20px 25px;">
-        <div style="font-family:'Source Sans Pro', sans-serif;font-size:14px;color:#282c3f;font-weight:600;">Have a nice day!</div>
-        <div style="font-family:'Source Sans Pro', sans-serif;font-size:14px;color:#282c3f;margin-top:2px;">The Street Co Team</div>
-      </div>
+          <div style="background:#faf8f5;border:1px solid #e8e2d8;border-radius:10px;padding:20px;margin-bottom:24px;">
+            <table cellpadding="0" cellspacing="0" width="100%" border="0" style="font-size:13px;line-height:22px;color:#3f3f46;">
+              <tr>
+                <td style="color:#8a7b6e;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;padding-bottom:4px;">INVOICE NUMBER</td>
+                <td style="color:#8a7b6e;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;padding-bottom:4px;text-align:right;">ORDER REFERENCE</td>
+              </tr>
+              <tr>
+                <td style="font-weight:700;color:#0e0e11;font-size:14px;font-family:monospace;">INV-2026-00481</td>
+                <td style="font-weight:700;color:#0e0e11;font-size:14px;text-align:right;">#STREET-20845312</td>
+              </tr>
+            </table>
+            <div style="border-top:1px dashed #e8e2d8;margin-top:12px;padding-top:12px;font-size:12px;color:#71717a;">
+              Document: <strong>TheStreetCo-Invoice-INV-2026-00481.pdf</strong> (Attached directly to this email)
+            </div>
+          </div>
 
-      <div style="padding:0 25px;">
-        <hr style="border:0;border-top:1px solid #e4e4e4;margin:0 0 20px 0;">
-      </div>
+          <p style="margin:0 0 20px;font-size:13px;color:#52525b;line-height:1.6;">
+            A tamper-evident, GST-compliant PDF copy of your tax invoice is attached below for your bookkeeping, tax filing, and warranty records.
+          </p>
 
-      <!-- Track Requisition CTA Button (Black Box matching View Invoice) -->
-      <div style="padding:0 25px 25px 25px;text-align:center;">
-        <a href="https://www.delhivery.com/tracking" target="_blank" style="display:inline-block;background-color:#0b0a0f;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:6px;font-weight:700;font-size:13px;letter-spacing:1px;text-transform:uppercase;">
-          TRACK ORDER STATUS ↗
-        </a>
-      </div>
+          <p style="margin:0 0 24px;font-size:13px;color:#52525b;line-height:1.6;">
+            If you have any questions regarding your invoice or need further documentation, please contact our accounts concierge at <a href="mailto:support@thestreetco.zohodesk.in" style="color:#0e0e11;font-weight:700;text-decoration:underline;">support@thestreetco.zohodesk.in</a>.
+          </p>
 
-      <!-- Footer Social Icons & Address -->
-      <div style="background-color:#F8F8F9;padding:25px 25px 30px 25px;text-align:center;border-top:1px solid #ebebeb;">
-        <div style="font-family:'Source Sans Pro', sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;color:#282C3F;letter-spacing:1px;margin-bottom:12px;">
-          WANT TO STAY IN THE LOOP?
+          <div style="border-top:1px solid #e8e2d8;padding-top:18px;font-size:13px;color:#18181b;line-height:1.6;">
+            Warm regards,<br/>
+            <strong style="color:#0e0e11;">The Street Co Accounts &amp; Billing</strong><br/>
+            <a href="mailto:support@thestreetco.zohodesk.in" style="color:#71717a;text-decoration:none;font-size:12px;">support@thestreetco.zohodesk.in</a>
+          </div>
         </div>
-        <div style="margin-bottom:15px;">
-          <a href="https://thestreetco.netlify.app" target="_blank" style="text-decoration:none;margin:0 10px;font-size:12px;font-weight:700;color:#ed3031;">Visit Shop</a>
-          <span style="color:#d9d9d9;">•</span>
-          <a href="mailto:support@thestreetco.zohodesk.in" style="text-decoration:none;margin:0 10px;font-size:12px;font-weight:700;color:#ed3031;">Customer Support</a>
-          <span style="color:#d9d9d9;">•</span>
-          <a href="https://www.instagram.com/thestreetco_shop?stkn=ZnJ3eDZmaHd6Ym5o" target="_blank" style="text-decoration:none;margin:0 10px;font-size:12px;font-weight:700;color:#ed3031;">Instagram</a>
-        </div>
-        <div style="font-family:'Source Sans Pro', sans-serif;font-size:11px;line-height:18px;color:#686B78;max-width:480px;margin:0 auto;">
-          The Street Co • Thakurnagar Shimulpur Hazratala, West Bengal 743287, India<br>
+
+        <div style="background-color:#faf8f5;border-top:1px solid #e8e2d8;padding:22px 20px;font-size:11px;color:#8a7b6e;text-align:center;">
+          The Street Co · Client Care Concierge: <a href="mailto:support@thestreetco.zohodesk.in" style="color:#0e0e11;font-weight:600;text-decoration:none;">support@thestreetco.zohodesk.in</a><br>
           © 2026 The Street Co · All rights reserved.
         </div>
       </div>
+    </div>
+  </body>
+</html>`
+        },
 
-      </div> <!-- /inner column -->
-    </div> <!-- /full-page wrapper -->
+        delhivery_done: {
+          title: "4. Delivered! (Delhivery Express Done)",
+          html: `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  </head>
+  <body style="margin:0;padding:0;background-color:#faf8f5;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;color:#18181b;">
+    <div style="width:100%;background-color:#faf8f5;padding:32px 12px;box-sizing:border-box;">
+      <div style="max-width:600px;margin:0 auto;background-color:#ffffff;border:1px solid #e8e2d8;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.03);">
+        
+        <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;background:#0e0e11;border-bottom:1px solid #c5a880;">
+          <tbody>
+            <tr>
+              <td style="padding:26px 20px;text-align:center;">
+                <div style="font-family:'Playfair Display',Georgia,serif;font-size:22px;font-weight:700;letter-spacing:0.2em;color:#ffffff;text-transform:uppercase;">THE STREET CO</div>
+                <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.18em;color:#c5a880;text-transform:uppercase;margin-top:6px;">DELHIVERY EXPRESS · SHIPMENT FULFILLED</div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style="padding:32px 28px;">
+          <div style="background:#f4fbf7;border:1px solid #bbf7d0;border-radius:10px;padding:22px 20px;margin-bottom:26px;text-align:center;">
+            <div style="display:inline-block;width:40px;height:40px;line-height:40px;border-radius:50%;background:#059669;color:#ffffff;font-size:20px;font-weight:bold;margin-bottom:8px;">✓</div>
+            <div style="font-family:'Playfair Display',Georgia,serif;font-size:22px;font-weight:600;color:#065f46;letter-spacing:-0.2px;margin-bottom:4px;">Your Drop Has Been Delivered</div>
+            <div style="font-size:12px;color:#047857;font-weight:600;">Delhivery Express delivery fulfilled on 31 Oct 2026, 03:45 PM IST</div>
+          </div>
+
+          <p style="font-size:15px;font-weight:600;color:#18181b;margin:0 0 10px;">
+            Hey Aniruddha Nag,
+          </p>
+          <p style="font-size:14px;line-height:1.65;color:#52525b;margin:0 0 24px;">
+            Your order <strong style="color:#0e0e11;">#STREET-20845312</strong> has been successfully handed over to your doorstep by Delhivery Express. We hope you appreciate the silhouette, drape, and heavyweight craftsmanship.
+          </p>
+
+          <div style="background:#faf8f5;border:1px solid #e8e2d8;border-radius:10px;padding:18px 20px;margin-bottom:24px;">
+            <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#8a7b6e;margin-bottom:6px;">DELIVERY DESTINATION</div>
+            <div style="font-size:14px;font-weight:700;color:#0e0e11;">Aniruddha Nag</div>
+            <div style="font-size:13px;color:#52525b;line-height:1.5;margin-top:2px;">Thakurnagar Shimulpur Hazratala, Bongaon, West Bengal - 743287</div>
+            <div style="font-size:12px;color:#71717a;margin-top:10px;border-top:1px dashed #e8e2d8;padding-top:8px;">
+              Carrier: <strong style="color:#0e0e11;">Delhivery Express</strong> · Tracking: <a href="https://www.delhivery.com" target="_blank" style="color:#0e0e11;font-weight:700;text-decoration:underline;">AWB #STREET-20845312 ↗</a>
+            </div>
+          </div>
+
+          <div style="background:#0e0e11;color:#ffffff;border-radius:10px;padding:24px 22px;margin-bottom:28px;">
+            <div style="font-size:10px;font-weight:700;letter-spacing:0.16em;color:#c5a880;text-transform:uppercase;margin-bottom:6px;">7-DAY EASY SIZE EXCHANGE &amp; RETURN GUARANTEE</div>
+            <div style="font-family:'Playfair Display',Georgia,serif;font-size:18px;font-weight:600;color:#ffffff;margin-bottom:8px;">Need a Different Size or Fit?</div>
+            <p style="font-size:13px;line-height:1.6;color:#d4d4d8;margin:0 0 18px 0;">
+              Try your garments with complete peace of mind. If you require an alternate size or a return, our automated client portal is ready for you. We provide free doorstep reverse pickup via Delhivery Express.
+            </p>
+            <div style="text-align:center;">
+              <a href="/#account" target="_blank" style="display:inline-block;background:#ffffff;color:#0e0e11;font-weight:700;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;padding:13px 28px;border-radius:6px;text-decoration:none;">
+                REQUEST SIZE EXCHANGE OR RETURN ↗
+              </a>
+            </div>
+          </div>
+
+          <div style="font-size:13px;color:#18181b;">
+            Best regards,<br>
+            <strong style="color:#0e0e11;">The Street Co Team</strong>
+          </div>
+        </div>
+
+        <div style="background-color:#faf8f5;border-top:1px solid #e8e2d8;padding:26px 20px;text-align:center;">
+          <div style="font-size:11px;line-height:1.6;color:#8a7b6e;">
+            © 2026 The Street Co Apparel · West Bengal, India · All rights reserved.
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>`
+        },
+
+        auth_otp: {
+          title: "10. 6-Digit Email Verification OTP",
+          html: `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  </head>
+  <body style="margin:0;padding:0;background-color:#faf8f5;font-family:'Plus Jakarta Sans',sans-serif;color:#18181b;">
+    <div style="width:100%;background-color:#faf8f5;padding:32px 12px;box-sizing:border-box;">
+      <div style="font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:540px;margin:0 auto;background:#faf8f5;border:1px solid #e8e2d8;border-radius:12px;overflow:hidden;color:#0e0e11;box-shadow:0 4px 20px rgba(0,0,0,0.03);">
+        <div style="background:#0e0e11;color:#ffffff;padding:26px;text-align:center;border-bottom:1px solid #c5a880;">
+          <div style="font-family:'Playfair Display',Georgia,serif;font-size:22px;letter-spacing:0.18em;font-weight:600;">THE STREET CO</div>
+          <div style="font-size:10px;letter-spacing:0.16em;color:#c5a880;margin-top:6px;text-transform:uppercase;">EMAIL VERIFICATION · SECURITY AUTHORIZATION</div>
+        </div>
+        <div style="padding:32px 28px;background:#ffffff;">
+          <p style="font-size:15px;margin:0 0 12px;color:#18181b;">Hello <strong>Aniruddha Nag</strong>,</p>
+          <p style="font-size:14px;line-height:1.6;color:#52525b;margin:0 0 24px;">
+            Use the 6-digit verification code below to verify and link your email address (<strong>aniruddhanag9@gmail.com</strong>) to your The Street Co account:
+          </p>
+          <div style="background:#faf8f5;border:2px dashed #0e0e11;border-radius:12px;padding:22px;text-align:center;margin:0 0 24px;">
+            <span style="font-size:11px;letter-spacing:0.14em;color:#8a7b6e;display:block;margin-bottom:8px;font-weight:700;">YOUR 6-DIGIT VERIFICATION OTP</span>
+            <div style="font-size:36px;font-weight:800;letter-spacing:0.28em;color:#0e0e11;font-family:monospace;">849201</div>
+          </div>
+          <p style="font-size:12px;color:#71717a;line-height:1.5;margin:0;">
+            This security code is valid for 10 minutes. If you did not request this verification, you can safely ignore this email.
+          </p>
+        </div>
+        <div style="padding:18px 28px;background:#faf8f5;border-top:1px solid #e8e2d8;text-align:center;font-size:11px;color:#8a7b6e;">
+          © 2026 The Street Co · Elevated Streetwear. Modern Essentials.
+        </div>
+      </div>
+    </div>
+  </body>
+</html>`
+        }
+      };
+
+      // Add aliases for the remaining templates so the switcher works smoothly
+      TEMPLATES.ready_to_ship = {
+        title: "3. Packed & Ready To Ship (Delhivery AWB)",
+        html: TEMPLATES.order_confirmed.html.replace("You're In. Your Order Is Confirmed.", "Your Drop Is Packed & Ready To Ship").replace("ACQUISITION CONFIRMED", "MANIFEST CREATED")
+      };
+      TEMPLATES.exchange_requested = {
+        title: "5. Size Exchange Request Received",
+        html: TEMPLATES.order_confirmed.html.replace("You're In. Your Order Is Confirmed.", "Exchange Request Received").replace("ACQUISITION CONFIRMED", "SIZE EXCHANGE QUEUED")
+      };
+      TEMPLATES.return_requested = {
+        title: "6. Return for Refund Request (No Size)",
+        html: TEMPLATES.order_confirmed.html.replace("You're In. Your Order Is Confirmed.", "Return For Refund Received").replace("ACQUISITION CONFIRMED", "RETURN FOR REFUND")
+      };
+      TEMPLATES.pickup_confirmed = {
+        title: "7. Reverse Pickup Scheduled & Confirmed",
+        html: TEMPLATES.delhivery_done.html.replace("Your Drop Has Been Delivered", "Reverse Pickup Scheduled").replace("DELIVERED TO", "DOORSTEP PICKUP FROM")
+      };
+      TEMPLATES.refund_done = {
+        title: "8. Refund Processed & Credited",
+        html: TEMPLATES.delhivery_done.html.replace("Your Drop Has Been Delivered", "Refund Successfully Processed").replace("DELIVERED TO", "SETTLEMENT RECEIPT")
+      };
+      TEMPLATES.exchange_done = {
+        title: "9. Exchange Completed (Replacement Delivered)",
+        html: TEMPLATES.delhivery_done.html.replace("Your Drop Has Been Delivered", "Replacement Garment Delivered")
+      };
+      TEMPLATES.change_phone_otp = {
+        title: "11. Security OTP: Phone Number Change",
+        html: TEMPLATES.auth_otp.html.replace("EMAIL VERIFICATION", "SECURITY AUTHORIZATION · PHONE NUMBER CHANGE").replace("verify and link your email address", "authorize updating the mobile number on your account from +91 6296731835 to +91 9876543210")
+      };
+      TEMPLATES.change_email_otp = {
+        title: "12. Security OTP: Email Address Change",
+        html: TEMPLATES.auth_otp.html.replace("EMAIL VERIFICATION", "SECURITY AUTHORIZATION · EMAIL ADDRESS CHANGE").replace("verify and link your email address", "authorize updating the email on your account from aniruddhanag9@gmail.com to newcontact@thestreetco.com")
+      };
+
+      // ══════════════════════════════════════════════════════════════════════════
+      // INTERACTIVE CONTROLS BINDING
+      // ══════════════════════════════════════════════════════════════════════════
+      const selector = document.getElementById('templateSelector');
+      const stageTabs = document.getElementById('stageTabs');
+      const frame = document.getElementById('emailFrame');
+      const stageTitle = document.getElementById('stageTitle');
+      const frameWrapper = document.getElementById('frameWrapper');
+
+      function loadTemplate(key) {
+        const item = TEMPLATES[key] || TEMPLATES.order_confirmed;
+        selector.value = key;
+        stageTitle.innerHTML = 'Displaying: <strong>' + item.title + '</strong>';
+
+        // Update pills
+        document.querySelectorAll('.stage-pill').forEach(btn => {
+          btn.classList.toggle('active', btn.getAttribute('data-template') === key);
+        });
+
+        // Inject into iframe
+        const doc = frame.contentWindow.document;
+        doc.open();
+        doc.write(item.html);
+        doc.close();
+      }
+
+      selector.addEventListener('change', (e) => loadTemplate(e.target.value));
+
+      stageTabs.addEventListener('click', (e) => {
+        const btn = e.target.closest('.stage-pill');
+        if (btn) {
+          const t = btn.getAttribute('data-template');
+          loadTemplate(t);
+        }
+      });
+
+      // Viewport Switcher
+      document.querySelectorAll('.viewport-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.viewport-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          const width = btn.getAttribute('data-width');
+          frameWrapper.classList.remove('mobile', 'full');
+          if (width === 'mobile') frameWrapper.classList.add('mobile');
+          if (width === 'full') frameWrapper.classList.add('full');
+        });
+      });
+
+      // Initial Load
+      loadTemplate('order_confirmed');
+    </script>
   </body>
 </html>

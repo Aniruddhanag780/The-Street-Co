@@ -1,0 +1,60 @@
+[
+  {
+    "id": "RET-23665",
+    "orderCode": "TEST-ZOHO-991",
+    "type": "return",
+    "items": [
+      {
+        "name": "Fourth Hokage Minato Inspired Oversized T-Shirt",
+        "sku": "TS-MIN-001",
+        "size": "L"
+      }
+    ],
+    "itemNames": "Fourth Hokage Minato Inspired Oversized T-Shirt",
+    "requestedSize": null,
+    "reason": "Return for full refund",
+    "notes": "Doorstep pickup please",
+    "customerName": "Kavya Sharma",
+    "customerPhone": "9876543210",
+    "customerEmail": "thestreetco.official@gmail.com",
+    "pickupAddress": "Flat 302, Lotus Enclave, Park Street, Kolkata, West Bengal - 700016",
+    "reverseAwb": "STC-REV-23665",
+    "status": "REFUND_DONE",
+    "createdAt": "2026-10-30T12:27:52.865Z",
+    "zoho_salesorder_id": "4226403000000247001",
+    "salesreturn_number": "SR-23665",
+    "zoho_status": "confirmed",
+    "confirmedAt": "2026-10-30T12:28:03.573Z",
+    "refundDoneAt": "2026-10-30T12:50:48.494Z",
+    "refundTransactionId": "REF-432910",
+    "refundAmountInr": 2499
+  },
+  {
+    "id": "RET-64033",
+    "orderCode": "TEST-ZOHO-991",
+    "type": "exchange",
+    "items": [
+      {
+        "name": "Fourth Hokage Minato Inspired Oversized T-Shirt",
+        "sku": "TS-MIN-001",
+        "size": "L"
+      }
+    ],
+    "itemNames": "Fourth Hokage Minato Inspired Oversized T-Shirt",
+    "requestedSize": "XL",
+    "reason": "Fit / Size too small or tight",
+    "notes": "Want a baggier oversized fit in XL",
+    "customerName": "Kavya Sharma",
+    "customerPhone": "9876543210",
+    "customerEmail": "thestreetco.official@gmail.com",
+    "pickupAddress": "Flat 302, Lotus Enclave, Park Street, Kolkata, West Bengal - 700016",
+    "reverseAwb": "STC-REV-64033",
+    "status": "EXCHANGE_DONE",
+    "createdAt": "2026-10-30T12:28:17.433Z",
+    "zoho_salesorder_id": "4226403000000247001",
+    "salesreturn_number": "SR-64033",
+    "zoho_status": "confirmed",
+    "confirmedAt": "2026-10-30T12:28:24.198Z",
+    "exchangeDoneAt": "2026-10-30T12:50:59.772Z"
+  }
+]

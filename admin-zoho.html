@@ -485,6 +485,83 @@
       <div id="syncResultBanner" class="notification"></div>
     </div>
 
+    <!-- Storefront Orders & Zoho Fulfillment Pipeline -->
+    <div class="card" id="ordersCard" style="background: #0d0d12; border: 1px solid rgba(255, 255, 255, 0.12);">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
+        <div>
+          <h3 class="card-title" style="color: #ffffff;">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+            Storefront Orders &amp; Zoho Fulfillment Pipeline
+          </h3>
+          <p class="card-desc" style="margin-bottom: 0;">
+            New orders register as Sales Orders in Zoho and await confirmation before sending confirmation SMS/email with invoice. Once confirmed, convert to Zoho Invoice. When shipment is marked fulfilled, Delhivery Done email is dispatched.
+          </p>
+        </div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button type="button" class="btn btn-secondary" id="btnSyncFulfillments" style="background: #14141c; border-color: #06b6d4; color: #67e8f9;">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            <span>CHECK ZOHO FULFILLMENTS NOW</span>
+          </button>
+          <button type="button" class="btn btn-secondary" id="btnRefreshOrders" style="background: #18181f; border-color: rgba(255,255,255,0.18);">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            <span>REFRESH ORDERS</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Real-Time Automated Webhook Endpoint Box -->
+      <div style="background: rgba(255, 255, 255, 0.03); border: 1px dashed rgba(255, 255, 255, 0.16); border-radius: 8px; padding: 14px 16px; margin-bottom: 1.25rem;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap;">
+          <span style="font-size: 0.7rem; font-weight: 700; color: #22d3ee; background: rgba(6, 182, 212, 0.15); border: 1px solid rgba(6, 182, 212, 0.35); padding: 3px 8px; border-radius: 4px; letter-spacing: 0.05em;">AUTOMATED SHIPMENT FULFILLED MONITOR: ACTIVE</span>
+          <span style="font-size: 0.72rem; color: #a1a1aa;">Background sync every 30s + Instant Real-Time Webhooks</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+          <div>
+            <span style="font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: #a1a1aa; font-weight: 700;">Zoho Inventory Automation Webhook URL</span>
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: #f4f4f5; margin-top: 2px;" id="webhookUrlDisplay">/api/zoho/webhook</div>
+          </div>
+          <button type="button" class="btn btn-secondary" id="btnCopyWebhook" style="padding: 6px 12px; font-size: 0.74rem;">
+            <span>COPY WEBHOOK URL</span>
+          </button>
+        </div>
+        <p style="font-size: 0.74rem; color: #9ca3af; margin-top: 8px; line-height: 1.45;">
+          <strong>Automatic Trigger:</strong> Whenever you mark an order's shipment as fulfilled in Zoho Inventory (or create a package/shipment), our automated service detects it instantly or within 30 seconds, marks the storefront order as delivered, and automatically dispatches the branded Delhivery Done delivery email to the customer!
+        </p>
+      </div>
+
+      <div id="ordersNotification" class="notification" style="display: none; margin-bottom: 1rem;"></div>
+
+      <div id="ordersListContainer">
+        <div style="text-align: center; padding: 2rem; color: #71717a; font-size: 0.85rem;">
+          Loading storefront orders...
+        </div>
+      </div>
+    </div>
+
+    <!-- Storefront Customer Returns & Exchanges Pipeline -->
+    <div class="card" id="cardReturnsPipeline">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 0.75rem;">
+        <div>
+          <h3 class="card-title" style="margin-bottom: 0.25rem;">Customer Returns &amp; Exchanges (Zoho Sales Returns)</h3>
+          <p class="card-desc" style="margin-bottom: 0;">
+            Track customer size exchange and return requests. Confirming a return here approves the reverse logistics in Zoho Inventory and dispatches the doorstep pickup approval email.
+          </p>
+        </div>
+        <button type="button" class="btn btn-secondary" id="btnRefreshReturns" style="background: #18181f; border-color: rgba(255,255,255,0.18);">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          <span>REFRESH RETURNS</span>
+        </button>
+      </div>
+
+      <div id="returnsNotification" class="notification" style="display: none; margin-bottom: 1rem;"></div>
+
+      <div id="returnsListContainer">
+        <div style="text-align: center; padding: 2rem; color: #71717a; font-size: 0.85rem;">
+          Loading returns &amp; exchanges...
+        </div>
+      </div>
+    </div>
+
     <!-- Zoho API Credentials Configuration Form -->
     <div class="card">
       <h3 class="card-title">Zoho Inventory Credentials</h3>
@@ -806,7 +883,455 @@
       loadStatus();
     });
 
+    // ── STOREFRONT ORDERS & ZOHO FULFILLMENT SCRIPT ──
+    const webhookEl = document.getElementById('webhookUrlDisplay');
+    if (webhookEl) {
+      webhookEl.textContent = `${window.location.origin}/api/zoho/webhook`;
+    }
+
+    document.getElementById('btnCopyWebhook')?.addEventListener('click', () => {
+      const url = `${window.location.origin}/api/zoho/webhook`;
+      navigator.clipboard?.writeText(url);
+      const btn = document.getElementById('btnCopyWebhook');
+      if (btn) {
+        btn.textContent = 'COPIED!';
+        setTimeout(() => { btn.textContent = 'COPY WEBHOOK URL'; }, 2000);
+      }
+    });
+
+    function showOrderNotification(message, type = 'success') {
+      const notif = document.getElementById('ordersNotification');
+      if (!notif) return;
+      notif.className = `notification ${type}`;
+      notif.style.display = 'block';
+      notif.innerHTML = message;
+      setTimeout(() => { notif.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 100);
+    }
+
+    async function loadOrders() {
+      const container = document.getElementById('ordersListContainer');
+      if (!container) return;
+      container.innerHTML = '<div style="text-align: center; padding: 2rem; color: #71717a; font-size: 0.85rem;">Refreshing storefront orders...</div>';
+
+      try {
+        const res = await fetch('/api/orders');
+        const data = await res.json();
+        const orders = Array.isArray(data.orders) ? data.orders : [];
+
+        if (orders.length === 0) {
+          container.innerHTML = `
+            <div style="text-align: center; padding: 2.5rem 1rem; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px dashed rgba(255,255,255,0.08);">
+              <div style="font-size: 1.1rem; font-weight: 700; color: #f4f4f5; margin-bottom: 6px;">No Storefront Orders Recorded Yet</div>
+              <p style="font-size: 0.8rem; color: #9ca3af; max-width: 460px; margin: 0 auto 16px;">
+                When customers checkout on the store, their order registers as a Zoho Sales Order in "Awaiting Confirmation" status until confirmed.
+              </p>
+              <a href="/" target="_blank" class="back-btn" style="display: inline-flex;">Visit Storefront &amp; Place Test Order &rarr;</a>
+            </div>
+          `;
+          return;
+        }
+
+        // Render newest orders first
+        const sorted = [...orders].reverse();
+        container.innerHTML = sorted.map(ord => {
+          const code = ord.orderCode || ord.orderId || 'UNKNOWN';
+          const isAwaiting = ord.status === 'AWAITING_ZOHO_CONFIRMATION' || ord.zoho_status === 'pending_confirmation';
+          const isDelivered = ord.status === 'DELIVERED' || ord.deliveryStatus === 'DELIVERY_DONE';
+          const isConfirmed = ord.status === 'CONFIRMED' || isDelivered;
+
+          let statusBadgeHtml = '';
+          if (isDelivered) {
+            statusBadgeHtml = '<span style="font-size: 0.7rem; font-weight: 700; color: #22d3ee; background: rgba(6, 182, 212, 0.15); border: 1px solid rgba(6, 182, 212, 0.35); padding: 3px 8px; border-radius: 4px; letter-spacing: 0.05em;">DELIVERED (DELHIVERY DONE)</span>';
+          } else if (isConfirmed) {
+            statusBadgeHtml = `<span style="font-size: 0.7rem; font-weight: 700; color: #34d399; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.35); padding: 3px 8px; border-radius: 4px; letter-spacing: 0.05em;">CONFIRMED · INVOICE #${ord.invoice_number || 'INV'}</span>`;
+          } else {
+            statusBadgeHtml = '<span style="font-size: 0.7rem; font-weight: 700; color: #fbbf24; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.35); padding: 3px 8px; border-radius: 4px; letter-spacing: 0.05em;">AWAITING ZOHO CONFIRMATION</span>';
+          }
+
+          const items = Array.isArray(ord.items) && ord.items.length > 0 ? ord.items : (Array.isArray(ord.products) ? ord.products : []);
+          const itemsSummary = items.map(it => `${it.name || it.title || 'Item'} (Size: ${it.size || 'M'}, Qty: ${it.quantity || it.qty || 1})`).join(', ') || 'No item details';
+          const ship = ord.shippingAddress || ord.contactDetails || {};
+          const customerName = ship.fullName || ship.name || 'Storefront Customer';
+          const customerPhone = ship.phone || 'N/A';
+          const customerEmail = ship.email || 'N/A';
+          const grandTotal = Number(ord.grandTotalInr || ord.totalInr || 0);
+          const dateStr = ord.orderDateFormatted || (ord.orderDate ? new Date(ord.orderDate).toLocaleString('en-IN') : 'Recent');
+
+          const salesOrderRef = ord.zoho_salesorder_number || ord.zoho_salesorder_id || 'Registered';
+
+          return `
+            <div class="order-pipeline-row" style="background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 16px; margin-bottom: 14px;">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 10px;">
+                <div>
+                  <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <strong style="font-size: 0.95rem; color: #ffffff; letter-spacing: 0.05em;">#${code}</strong>
+                    ${statusBadgeHtml}
+                  </div>
+                  <div style="font-size: 0.74rem; color: #9ca3af; margin-top: 4px;">Placed on: ${dateStr}</div>
+                </div>
+                <div style="text-align: right;">
+                  <div style="font-size: 1rem; font-weight: 800; color: #f4f4f5;">₹${grandTotal.toLocaleString('en-IN')}</div>
+                  <div style="font-size: 0.72rem; color: #a1a1aa;">Zoho SO: <span style="font-family: monospace; color: #f4f4f5;">${salesOrderRef}</span></div>
+                </div>
+              </div>
+
+              <!-- Customer & Items Details -->
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; font-size: 0.8rem; margin-bottom: 14px; color: #d4d4d8;">
+                <div>
+                  <div style="font-size: 0.7rem; color: #71717a; text-transform: uppercase; font-weight: 700; margin-bottom: 2px;">Customer Details</div>
+                  <div><strong>${customerName}</strong></div>
+                  <div>Phone: ${customerPhone}</div>
+                  <div>Email: ${customerEmail}</div>
+                </div>
+                <div>
+                  <div style="font-size: 0.7rem; color: #71717a; text-transform: uppercase; font-weight: 700; margin-bottom: 2px;">Items in Order</div>
+                  <div style="line-height: 1.4;">${itemsSummary}</div>
+                </div>
+              </div>
+
+              <!-- Action Bar -->
+              <div style="display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; border-top: 1px dashed rgba(255,255,255,0.08); padding-top: 12px;">
+                ${isAwaiting ? `
+                  <button type="button" class="btn btn-secondary" style="background: #14141c; border-color: #3b82f6; color: #93c5fd;" onclick="confirmOrder('${code}')">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                    <span>CONFIRM IN ZOHO &amp; CONVERT TO INVOICE</span>
+                  </button>
+                ` : `
+                  <span style="font-size: 0.72rem; color: #10b981; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; padding: 6px 10px;">
+                    ✓ Confirmed in Zoho (SMS + Invoice Sent)
+                  </span>
+                `}
+
+                ${isConfirmed && !isDelivered ? `
+                  <button type="button" class="btn btn-secondary" style="background: #14141c; border-color: #38bdf8; color: #38bdf8;" onclick="markReadyToShip('${code}')">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                    <span>MARK READY TO SHIP (DISPATCH EMAIL)</span>
+                  </button>
+                ` : ''}
+
+                ${!isDelivered ? `
+                  <button type="button" class="btn btn-secondary" style="background: #14141c; border-color: #06b6d4; color: #67e8f9;" onclick="markFulfilled('${code}')">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+                    <span>MARK SHIPMENT FULFILLED (DELHIVERY DONE MAIL)</span>
+                  </button>
+                ` : `
+                  <span style="font-size: 0.72rem; color: #06b6d4; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; padding: 6px 10px;">
+                    ✓ Delhivery Done Email Sent
+                  </span>
+                `}
+
+                <a href="/invoice/${code}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary" style="background: #18181f; border-color: rgba(255,255,255,0.18); text-decoration: none; padding: 6px 12px; font-size: 0.76rem;">
+                  <span>VIEW ZOHO INVOICE ↗</span>
+                </a>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (err) {
+        container.innerHTML = `<div style="color: #ef4444; font-size: 0.8rem; padding: 1rem;">Failed to load orders: ${err.message}</div>`;
+      }
+    }
+
+    window.markReadyToShip = async function(orderCode) {
+      if (!confirm(`Mark order #${orderCode} as Ready to Ship?\n\nThis will:\n1. Update order dispatch status to READY_TO_SHIP\n2. Dispatch the dedicated "Order Packed & Ready to Ship" email to the customer with Delhivery AWB tracking`)) {
+        return;
+      }
+      showOrderNotification(`Marking order #${orderCode} ready to ship...`, 'notification');
+      try {
+        const res = await fetch(`/api/orders/${encodeURIComponent(orderCode)}/ready-to-ship`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        if (data.success) {
+          showOrderNotification(`✓ Order #${orderCode} marked ready to ship! Packed & Manifested email dispatched to customer.`, 'success');
+          loadOrders();
+        } else {
+          showOrderNotification(`Failed: ${data.error || 'Server error'}`, 'error');
+        }
+      } catch (err) {
+        showOrderNotification(`Error: ${err.message}`, 'error');
+      }
+    };
+
+    window.confirmOrder = async function(orderCode) {
+      if (!confirm(`Confirm order #${orderCode} in Zoho Inventory?\n\nThis will:\n1. Convert the Sales Order to an official Zoho Invoice\n2. Dispatch customer confirmation SMS\n3. Dispatch order confirmation email with Zoho invoice attached`)) {
+        return;
+      }
+
+      showOrderNotification(`Confirming order #${orderCode} in Zoho & converting to Zoho Invoice...`, 'notification');
+      try {
+        const res = await fetch(`/api/orders/${encodeURIComponent(orderCode)}/confirm-in-zoho`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        if (data.success) {
+          showOrderNotification(`✓ Order #${orderCode} confirmed! Converted to Zoho Invoice #${data.order?.invoice_number || 'INV'}. Confirmation SMS and email with invoice attached dispatched to customer!`, 'success');
+          loadOrders();
+        } else {
+          showOrderNotification(`Failed to confirm order: ${data.error || 'Server error'}`, 'error');
+        }
+      } catch (err) {
+        showOrderNotification(`Error: ${err.message}`, 'error');
+      }
+    };
+
+    window.markFulfilled = async function(orderCode) {
+      if (!confirm(`Mark shipment fulfilled for order #${orderCode} in Zoho Inventory?\n\nThis will:\n1. Mark the shipment delivered in Zoho Inventory\n2. Dispatch the dedicated "Delhivery Done" delivery completion email to the customer`)) {
+        return;
+      }
+
+      showOrderNotification(`Marking shipment fulfilled for order #${orderCode}...`, 'notification');
+      try {
+        const res = await fetch(`/api/orders/${encodeURIComponent(orderCode)}/mark-fulfilled`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        if (data.success) {
+          showOrderNotification(`✓ Order #${orderCode} marked as shipment fulfilled/delivered! Delhivery Done email successfully dispatched to customer.`, 'success');
+          loadOrders();
+        } else {
+          showOrderNotification(`Failed to mark fulfilled: ${data.error || 'Server error'}`, 'error');
+        }
+      } catch (err) {
+        showOrderNotification(`Error: ${err.message}`, 'error');
+      }
+    };
+
+    document.getElementById('btnRefreshOrders')?.addEventListener('click', loadOrders);
+
+    document.getElementById('btnSyncFulfillments')?.addEventListener('click', async () => {
+      const btn = document.getElementById('btnSyncFulfillments');
+      const originalHtml = btn?.innerHTML;
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span>CHECKING ZOHO INVENTORY...</span>';
+      }
+      showOrderNotification('Pinging Zoho Inventory API to inspect live shipment fulfillment statuses...', 'notification');
+      try {
+        const res = await fetch('/api/zoho/sync-fulfillments', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          showOrderNotification(`✓ ${data.message || 'Zoho Inventory fulfillment check complete.'}`, 'success');
+          loadOrders();
+        } else {
+          showOrderNotification(`Sync check error: ${data.error || 'Server error'}`, 'error');
+        }
+      } catch (err) {
+        showOrderNotification(`Error: ${err.message}`, 'error');
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = originalHtml;
+        }
+      }
+    });
+
+    // ── CUSTOMER RETURNS & EXCHANGES PIPELINE SCRIPT ──
+    function showReturnsNotification(message, type = 'success') {
+      const notif = document.getElementById('returnsNotification');
+      if (!notif) return;
+      notif.className = `notification ${type}`;
+      notif.style.display = 'block';
+      notif.innerHTML = message;
+      setTimeout(() => { notif.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 100);
+    }
+
+    async function loadReturns() {
+      const container = document.getElementById('returnsListContainer');
+      if (!container) return;
+      container.innerHTML = '<div style="text-align: center; padding: 2rem; color: #71717a; font-size: 0.85rem;">Refreshing returns &amp; exchanges...</div>';
+
+      try {
+        const res = await fetch('/api/returns');
+        const data = await res.json();
+        const returns = Array.isArray(data.returns) ? data.returns : [];
+
+        if (returns.length === 0) {
+          container.innerHTML = `
+            <div style="text-align: center; padding: 2.5rem 1rem; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px dashed rgba(255,255,255,0.08);">
+              <div style="font-size: 1.1rem; font-weight: 700; color: #f4f4f5; margin-bottom: 6px;">No Return or Exchange Requests Yet</div>
+              <p style="font-size: 0.8rem; color: #9ca3af; max-width: 460px; margin: 0 auto 16px;">
+                Customer return (refund) and size exchange requests submitted on the storefront will appear here and register automatically in Zoho Inventory as Sales Returns.
+              </p>
+            </div>
+          `;
+          return;
+        }
+
+        const sorted = [...returns].reverse();
+        container.innerHTML = sorted.map(ret => {
+          const retId = ret.id || 'RET';
+          const isExchange = ret.type === 'exchange';
+          const isApproved = ret.status === 'APPROVED' || ret.zoho_status === 'confirmed';
+          const typeBadge = isExchange
+            ? '<span style="font-size: 0.7rem; font-weight: 700; color: #818cf8; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.35); padding: 3px 8px; border-radius: 4px; letter-spacing: 0.05em;">SIZE EXCHANGE</span>'
+            : '<span style="font-size: 0.7rem; font-weight: 700; color: #f43f5e; background: rgba(244, 63, 94, 0.15); border: 1px solid rgba(244, 63, 94, 0.35); padding: 3px 8px; border-radius: 4px; letter-spacing: 0.05em;">RETURN (REFUND)</span>';
+
+          const statusBadge = isApproved
+            ? '<span style="font-size: 0.7rem; font-weight: 700; color: #34d399; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.35); padding: 3px 8px; border-radius: 4px; letter-spacing: 0.05em;">APPROVED &amp; EMAIL SENT</span>'
+            : '<span style="font-size: 0.7rem; font-weight: 700; color: #fbbf24; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.35); padding: 3px 8px; border-radius: 4px; letter-spacing: 0.05em;">PENDING CONFIRMATION</span>';
+
+          const zohoSr = ret.salesreturn_number || ret.zoho_salesreturn_id || 'Registered in Zoho';
+          const dateStr = ret.createdAt ? new Date(ret.createdAt).toLocaleString('en-IN') : 'Recent';
+
+          return `
+            <div class="order-pipeline-row" style="background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 16px; margin-bottom: 14px;">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 10px;">
+                <div>
+                  <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <strong style="font-size: 0.95rem; color: #ffffff; letter-spacing: 0.05em;">${retId}</strong>
+                    <span style="font-size: 0.8rem; color: #9ca3af;">(Order #${ret.orderCode})</span>
+                    ${typeBadge}
+                    ${statusBadge}
+                  </div>
+                  <div style="font-size: 0.74rem; color: #9ca3af; margin-top: 4px;">Submitted: ${dateStr}</div>
+                </div>
+                <div style="text-align: right;">
+                  <div style="font-size: 0.74rem; color: #a1a1aa;">Zoho Sales Return:</div>
+                  <div style="font-family: monospace; font-size: 0.88rem; font-weight: 700; color: #34d399;">${zohoSr}</div>
+                </div>
+              </div>
+
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; font-size: 0.8rem; margin-bottom: 14px; color: #d4d4d8;">
+                <div>
+                  <div style="font-size: 0.7rem; color: #71717a; text-transform: uppercase; font-weight: 700; margin-bottom: 2px;">Customer &amp; Pickup</div>
+                  <div><strong>${ret.customerName || 'Customer'}</strong> (${ret.customerPhone || 'No Phone'})</div>
+                  <div>Email: ${ret.customerEmail || 'No Email'}</div>
+                  <div style="margin-top: 4px; color: #a1a1aa;">Address: ${ret.pickupAddress || 'Address on file'}</div>
+                </div>
+                <div>
+                  <div style="font-size: 0.7rem; color: #71717a; text-transform: uppercase; font-weight: 700; margin-bottom: 2px;">Items &amp; Details</div>
+                  <div>Items: <strong>${ret.itemNames || 'Streetwear Garment'}</strong></div>
+                  ${isExchange ? `<div>Replacement Size: <strong style="color: #818cf8; background: rgba(99,102,241,0.15); padding: 1px 6px; border-radius: 3px;">${ret.requestedSize || 'L'}</strong></div>` : `<div style="color: #34d399; font-weight: 600;">Return for Full Refund (No Size Needed)</div>`}
+                  <div style="margin-top: 4px; color: #a1a1aa;">Reason: ${ret.reason || 'Not specified'}</div>
+                </div>
+              </div>
+
+              <div style="display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; border-top: 1px dashed rgba(255,255,255,0.08); padding-top: 12px;">
+                ${!isApproved ? `
+                  <button type="button" class="btn btn-secondary" style="background: #14141c; border-color: #10b981; color: #34d399;" onclick="confirmReturn('${retId}')">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                    <span>CONFIRM PICKUP IN ZOHO &amp; SEND EMAIL</span>
+                  </button>
+                ` : `
+                  <span style="font-size: 0.74rem; color: #10b981; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; padding: 6px 10px;">
+                    ✓ Pickup Confirmed in Zoho · Reverse Pickup Email Dispatched
+                  </span>
+
+                  ${!isExchange ? (
+                    ret.status !== 'REFUND_DONE' ? `
+                      <button type="button" class="btn btn-secondary" style="background: #14141c; border-color: #f59e0b; color: #fbbf24;" onclick="markRefundDone('${retId}', ${ret.refundAmountInr || 0})">
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                        <span>MARK REFUND DONE (SEND RECEIPT EMAIL)</span>
+                      </button>
+                    ` : `
+                      <span style="font-size: 0.74rem; color: #fbbf24; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; padding: 6px 10px; background: rgba(245, 158, 11, 0.1); border-radius: 4px;">
+                        ✓ Refund Completed (Receipt Email Sent)
+                      </span>
+                    `
+                  ) : (
+                    ret.status !== 'EXCHANGE_DONE' ? `
+                      <button type="button" class="btn btn-secondary" style="background: #14141c; border-color: #818cf8; color: #a5b4fc;" onclick="markExchangeDone('${retId}')">
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+                        <span>MARK EXCHANGE DONE (SEND REPLACEMENT DELIVERED EMAIL)</span>
+                      </button>
+                    ` : `
+                      <span style="font-size: 0.74rem; color: #818cf8; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; padding: 6px 10px; background: rgba(129, 140, 248, 0.1); border-radius: 4px;">
+                        ✓ Exchange Completed (Replacement Delivered Email Sent)
+                      </span>
+                    `
+                  )}
+                `}
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (err) {
+        container.innerHTML = `<div style="color: #ef4444; font-size: 0.8rem; padding: 1rem;">Failed to load returns: ${err.message}</div>`;
+      }
+    }
+
+    window.confirmReturn = async function(returnId) {
+      if (!confirm(`Confirm pickup for return request #${returnId} in Zoho Inventory?\n\nThis will:\n1. Confirm the Sales Return in Zoho Inventory\n2. Dispatch the "Pickup Confirmed" email to the customer with Delhivery reverse pickup window & tracking details`)) {
+        return;
+      }
+
+      showReturnsNotification(`Confirming return #${returnId} in Zoho Inventory & dispatching pickup confirmed email...`, 'notification');
+      try {
+        const res = await fetch(`/api/returns/${encodeURIComponent(returnId)}/confirm`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        if (data.success) {
+          showReturnsNotification(`✓ Return #${returnId} pickup confirmed in Zoho! Reverse pickup email dispatched to customer.`, 'success');
+          loadReturns();
+          loadOrders();
+        } else {
+          showReturnsNotification(`Failed to confirm return: ${data.error || 'Server error'}`, 'error');
+        }
+      } catch (err) {
+        showReturnsNotification(`Error: ${err.message}`, 'error');
+      }
+    };
+
+    window.markRefundDone = async function(returnId, defaultAmount) {
+      const promptAmount = prompt(`Confirm Refund for Return #${returnId}:\nEnter refund amount in ₹:`, defaultAmount || '2499');
+      if (promptAmount === null) return;
+      const amount = Number(promptAmount) || 0;
+
+      showReturnsNotification(`Marking refund as completed for #${returnId} & dispatching refund receipt email...`, 'notification');
+      try {
+        const res = await fetch(`/api/returns/${encodeURIComponent(returnId)}/mark-refund-done`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ amount })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showReturnsNotification(`✓ Refund for #${returnId} (₹${amount.toLocaleString('en-IN')}) marked as completed! Official Refund Receipt email dispatched via Gmail SMTP.`, 'success');
+          loadReturns();
+          loadOrders();
+        } else {
+          showReturnsNotification(`Failed: ${data.error || 'Server error'}`, 'error');
+        }
+      } catch (err) {
+        showReturnsNotification(`Error: ${err.message}`, 'error');
+      }
+    };
+
+    window.markExchangeDone = async function(returnId) {
+      if (!confirm(`Mark exchange #${returnId} as completed (Replacement Delivered)?\n\nThis will:\n1. Mark exchange resolution as complete\n2. Dispatch the dedicated "Exchange Done / Replacement Delivered" email to the customer`)) {
+        return;
+      }
+
+      showReturnsNotification(`Marking exchange #${returnId} as done & dispatching replacement delivered email...`, 'notification');
+      try {
+        const res = await fetch(`/api/returns/${encodeURIComponent(returnId)}/mark-exchange-done`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        if (data.success) {
+          showReturnsNotification(`✓ Exchange #${returnId} marked as completed! Replacement delivered email dispatched via Gmail SMTP.`, 'success');
+          loadReturns();
+          loadOrders();
+        } else {
+          showReturnsNotification(`Failed: ${data.error || 'Server error'}`, 'error');
+        }
+      } catch (err) {
+        showReturnsNotification(`Error: ${err.message}`, 'error');
+      }
+    };
+
+    document.getElementById('btnRefreshReturns')?.addEventListener('click', loadReturns);
+
     loadStatus();
+    loadOrders();
+    loadReturns();
   </script>
 </body>
 </html>

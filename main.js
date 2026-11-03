@@ -1720,8 +1720,11 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
 
   // Calculate session subtotals
   function getCheckoutTotals() {
-    const subtotalInr = checkoutSession.items.reduce((sum, it) => sum + (it.priceInr * it.qty), 0);
-    const subtotalRyo = checkoutSession.items.reduce((sum, it) => sum + (it.priceRyo * it.qty), 0);
+    let items = (checkoutSession.items && checkoutSession.items.length > 0)
+      ? checkoutSession.items
+      : (typeof cart !== 'undefined' && cart.length > 0 ? cart : []);
+    const subtotalInr = items.reduce((sum, it) => sum + (Number(it.priceInr || 0) * (Number(it.qty) || 1)), 0);
+    const subtotalRyo = items.reduce((sum, it) => sum + (Number(it.priceRyo || 0) * (Number(it.qty) || 1)), 0);
     const deliveryCost = checkoutSession.delivery.speed === 'express' ? 149 : 0;
     const discount = checkoutSession.discount || 0;
     const totalInr = Math.max(0, subtotalInr + deliveryCost - discount);
@@ -1876,15 +1879,18 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       if (viewsWrap) viewsWrap.scrollTop = 0;
     }
 
-    // On step 2 (Payment page), make Cash on Delivery (COD) the active selected method
+    // On step 2 (Payment page), select UPI by default (or preserve chosen method)
     if (stepNumber === 2) {
+      const activeMethod = checkoutSession.payment.method || 'upi';
       payOptions.forEach(opt => {
-        if (opt.dataset.method === 'cod') {
+        if (opt.dataset.method === activeMethod) {
           opt.classList.add('active');
           const hdr = opt.querySelector('.checkout-pay-header');
           if (hdr) hdr.setAttribute('aria-expanded', 'true');
-          checkoutSession.payment.method = 'cod';
-          checkoutSession.payment.detail = 'Cash on Delivery (COD) · Pay upon arrival';
+          checkoutSession.payment.method = activeMethod;
+          checkoutSession.payment.detail = activeMethod === 'upi'
+            ? 'UPI Payment (Google Pay / PhonePe / Paytm / QR)'
+            : 'Cash on Delivery (COD) · Pay upon arrival';
         } else {
           opt.classList.remove('active');
           const hdr = opt.querySelector('.checkout-pay-header');
@@ -2028,12 +2034,12 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
   }
   window.streetCoProceedToPaymentStep = handleAddressStepSubmit;
 
-  // Step 2 Validation & Proceed (Only COD Available)
+  // Step 2 Validation & Proceed (Supports UPI Dynamic QR and COD)
   function handlePaymentStepSubmit(chosenMethod) {
-    let activeMethod = chosenMethod || checkoutSession.payment.method || 'cod';
-    if (activeMethod !== 'cod') {
-      showToast('PAYMENT NOTICE', 'Online payment methods are temporarily unavailable. Cash on Delivery (COD) is selected.', 'bag');
-      activeMethod = 'cod';
+    let activeMethod = chosenMethod || checkoutSession.payment.method || 'upi';
+    if (activeMethod === 'upi') {
+      openUpiPaymentGateway();
+      return;
     }
 
     const detail = 'Cash on Delivery (COD) · Pay upon doorstep arrival';
@@ -2044,6 +2050,210 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
 
     // Advance to Step 3: Confirm Order ("conform order")
     goToCheckoutStep(3);
+  }
+
+  // ══════════ UPI PAYMENT GATEWAY & 1.2 MIN VERIFICATION CONTROLLER ══════════
+  let upiPaymentTimer = null;
+  const UPI_MERCHANT_VPA = 'thestreetco@okhdfcbank';
+  const UPI_MERCHANT_NAME = 'The Street Co';
+
+  function openUpiPaymentGateway() {
+    let { totalInr } = getCheckoutTotals();
+    if (!totalInr || totalInr <= 0) {
+      if (checkoutSession && checkoutSession.items && checkoutSession.items.length > 0) {
+        totalInr = checkoutSession.items.reduce((sum, it) => sum + ((Number(it.priceInr) || 0) * (Number(it.qty) || 1)), 0);
+      } else if (typeof cart !== 'undefined' && cart.length > 0) {
+        totalInr = cart.reduce((sum, it) => sum + ((Number(it.priceInr) || 0) * (Number(it.qty) || 1)), 0);
+      }
+      totalInr = Math.max(1, totalInr || 1599);
+    }
+    const upiModal = document.getElementById('upiPaymentGatewayModal');
+    const mainCard = document.getElementById('upiGatewayMainCard');
+    const verifyingCard = document.getElementById('upiVerifyingCard');
+    const payableAmountEl = document.getElementById('upiPayableAmount');
+    const orderRefEl = document.getElementById('upiOrderRef');
+    const qrContainer = document.getElementById('upiQrContainer');
+    const timerClock = document.getElementById('upiTimerClock');
+    const timerCircle = document.getElementById('upiTimerCircle');
+    const mobileIntentBtn = document.getElementById('upiMobileIntentBtn');
+    const copyVpaBtn = document.getElementById('upiCopyVpaBtn');
+    const copyVpaTxt = document.getElementById('upiCopyVpaBtnTxt');
+
+    if (!upiModal) return;
+
+    // Generate unique transaction / order reference
+    const refNum = String(Math.floor(100000 + Math.random() * 900000));
+    const refId = `TS-UPI-${refNum}`;
+
+    if (payableAmountEl) payableAmountEl.textContent = `₹${totalInr.toLocaleString('en-IN')}`;
+    if (orderRefEl) orderRefEl.textContent = `#${refNum}`;
+
+    // Construct NPCI standard UPI URI
+    const upiUri = `upi://pay?pa=${encodeURIComponent(UPI_MERCHANT_VPA)}&pn=${encodeURIComponent(UPI_MERCHANT_NAME)}&am=${totalInr}&cu=INR&tn=${encodeURIComponent('The Street Co Order ' + refNum)}`;
+
+    // Set mobile deep link
+    if (mobileIntentBtn) {
+      mobileIntentBtn.href = upiUri;
+    }
+
+    // Copy UPI ID button logic
+    if (copyVpaBtn) {
+      copyVpaBtn.onclick = () => {
+        navigator.clipboard.writeText(UPI_MERCHANT_VPA).then(() => {
+          if (copyVpaTxt) copyVpaTxt.textContent = 'COPIED! ✓';
+          setTimeout(() => {
+            if (copyVpaTxt) copyVpaTxt.textContent = 'COPY UPI ID';
+          }, 2000);
+        }).catch(() => {
+          if (copyVpaTxt) copyVpaTxt.textContent = 'COPIED! ✓';
+        });
+      };
+    }
+
+    // Render Dynamic QR Code via server endpoint or client SVG fallback
+    if (qrContainer) {
+      qrContainer.innerHTML = '<div class="upi-qr-skeleton">Generating Dynamic UPI QR Code...</div>';
+      fetch(`/api/upi/qr?format=svg&text=${encodeURIComponent(upiUri)}`)
+        .then(res => {
+          if (!res.ok) throw new Error('API error');
+          return res.text();
+        })
+        .then(svgText => {
+          if (svgText && svgText.includes('<svg')) {
+            qrContainer.innerHTML = svgText;
+          } else {
+            qrContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(upiUri)}" alt="UPI QR Code" style="width:100%;height:100%;object-fit:contain;" />`;
+          }
+        })
+        .catch(() => {
+          qrContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(upiUri)}" alt="UPI QR Code" style="width:100%;height:100%;object-fit:contain;" />`;
+        });
+    }
+
+    // Reset views inside modal
+    if (mainCard) mainCard.style.setProperty('display', 'flex', 'important');
+    if (verifyingCard) verifyingCard.style.setProperty('display', 'none', 'important');
+
+    // Open modal
+    upiModal.classList.add('open');
+    upiModal.setAttribute('aria-hidden', 'false');
+
+    // 1.2-Minute Countdown Timer (1.2 min = 72 seconds)
+    if (upiPaymentTimer) clearInterval(upiPaymentTimer);
+    let secondsLeft = 72;
+    const totalCircumference = 94.25;
+
+    function updateTimerDisplay() {
+      const mins = Math.floor(secondsLeft / 60);
+      const secs = secondsLeft % 60;
+      if (timerClock) {
+        timerClock.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+      }
+      if (timerCircle) {
+        const offset = totalCircumference * (1 - (secondsLeft / 72));
+        timerCircle.style.strokeDashoffset = offset;
+      }
+    }
+    updateTimerDisplay();
+
+    upiPaymentTimer = setInterval(() => {
+      secondsLeft--;
+      if (secondsLeft <= 0) {
+        clearInterval(upiPaymentTimer);
+        upiPaymentTimer = null;
+        secondsLeft = 0;
+        updateTimerDisplay();
+        startUpiVerification(totalInr, refNum);
+      } else {
+        updateTimerDisplay();
+      }
+    }, 1000);
+
+    // Wire "I have completed payment" button for immediate manual test verification
+    const verifyNowBtn = document.getElementById('upiVerifyPaidBtn');
+    if (verifyNowBtn) {
+      verifyNowBtn.onclick = () => {
+        if (upiPaymentTimer) {
+          clearInterval(upiPaymentTimer);
+          upiPaymentTimer = null;
+        }
+        startUpiVerification(totalInr, refNum);
+      };
+    }
+
+    // Wire Cancel / Close buttons
+    const closeBtn = document.getElementById('upiGatewayCloseBtn');
+    const backBtn = document.getElementById('upiBackToPaymentBtn');
+    const backdrop = document.getElementById('upiGatewayBackdrop');
+    const cancelFn = () => closeUpiPaymentGateway();
+    if (closeBtn) closeBtn.onclick = cancelFn;
+    if (backBtn) backBtn.onclick = cancelFn;
+    if (backdrop) backdrop.onclick = cancelFn;
+  }
+
+  function closeUpiPaymentGateway() {
+    if (upiPaymentTimer) {
+      clearInterval(upiPaymentTimer);
+      upiPaymentTimer = null;
+    }
+    const upiModal = document.getElementById('upiPaymentGatewayModal');
+    if (upiModal) {
+      upiModal.classList.remove('open');
+      upiModal.setAttribute('aria-hidden', 'true');
+    }
+  }
+
+  function startUpiVerification(totalInr, refNum) {
+    if (upiPaymentTimer) {
+      clearInterval(upiPaymentTimer);
+      upiPaymentTimer = null;
+    }
+
+    const mainCard = document.getElementById('upiGatewayMainCard');
+    const verifyingCard = document.getElementById('upiVerifyingCard');
+    const amountEl = document.getElementById('upiVerifyingAmount');
+    const txnEl = document.getElementById('upiVerifyingTxnId');
+    const statusEl = document.getElementById('upiVerifyingStatus');
+    const progBar = document.getElementById('upiVerifyingProgressBar');
+
+    if (mainCard) mainCard.style.setProperty('display', 'none', 'important');
+    if (verifyingCard) verifyingCard.style.setProperty('display', 'flex', 'important');
+
+    if (amountEl) amountEl.textContent = `₹${totalInr.toLocaleString('en-IN')} INR`;
+    if (txnEl) txnEl.textContent = `UPI-TXN-${refNum}`;
+
+    if (progBar) progBar.style.width = '15%';
+    if (statusEl) statusEl.textContent = 'Connecting to NPCI & HDFC Bank UPI settlement gateway...';
+
+    setTimeout(() => {
+      if (progBar) progBar.style.width = '55%';
+      if (statusEl) statusEl.textContent = `Verifying ₹${totalInr.toLocaleString('en-IN')} payment transaction with bank servers...`;
+    }, 800);
+
+    setTimeout(() => {
+      if (progBar) progBar.style.width = '90%';
+      if (statusEl) statusEl.textContent = 'Payment authorized by bank! Confirming order...';
+    }, 1600);
+
+    setTimeout(() => {
+      if (progBar) progBar.style.width = '100%';
+      if (statusEl) statusEl.textContent = 'Payment Confirmed! Redirecting to receipt...';
+    }, 2200);
+
+    setTimeout(() => {
+      closeUpiPaymentGateway();
+
+      // Configure session payment state
+      checkoutSession.payment = {
+        method: 'upi',
+        detail: `Paid Online via UPI (Dynamic QR) · Txn: UPI-TXN-${refNum}`,
+        txnId: `UPI-TXN-${refNum}`,
+        status: 'PAID'
+      };
+
+      // Place and confirm the order directly -> switches to Step 4 Order Confirmation
+      handleConfirmAndPlaceOrder();
+    }, 2600);
   }
 
   // Step 3: Render Order Review & Confirmation
@@ -9457,39 +9667,39 @@ window.openDelhiveryTracker = openDelhiveryTracker;
 
     if (isDone) {
       if (check) {
-        check.style.background = '#15803D';
-        check.style.borderColor = '#15803D';
-        check.style.color = '#FFFFFF';
+        check.style.background = '#0E0E11';
+        check.style.borderColor = '#0E0E11';
+        check.style.color = '#F3E5AB';
         check.textContent = '✓';
       }
       if (goBtn) {
-        goBtn.style.background = 'rgba(21,128,61,0.08)';
-        goBtn.style.borderColor = 'rgba(21,128,61,0.25)';
-        goBtn.style.color = '#15803D';
+        goBtn.style.background = 'rgba(14,14,17,0.06)';
+        goBtn.style.borderColor = 'rgba(14,14,17,0.18)';
+        goBtn.style.color = '#0E0E11';
         goBtn.style.cursor = 'default';
         goBtn.innerHTML = `<span>Claimed ✓</span>`;
         goBtn.onclick = null;
       }
-      item.style.borderColor = 'rgba(21,128,61,0.25)';
-      item.style.background = '#F9FBF8';
+      item.style.borderColor = '#E2DBD0';
+      item.style.background = '#FAF9F6';
     } else {
       if (check) {
         check.style.background = '#FFFFFF';
-        check.style.borderColor = '#D4D4D8';
+        check.style.borderColor = '#D6CEBE';
         check.style.color = 'transparent';
         check.textContent = '✓';
       }
       if (goBtn) {
-        goBtn.style.background = key === 'first_order' ? 'linear-gradient(135deg, #C5A880, #A88658)' : '#FFFFFF';
-        goBtn.style.borderColor = key === 'first_order' ? '#997D55' : '#D6C2A5';
-        goBtn.style.color = key === 'first_order' ? '#FFFFFF' : '#18181B';
+        goBtn.style.background = key === 'first_order' ? 'linear-gradient(135deg, #F3E5AB, #D4AF37)' : '#0E0E11';
+        goBtn.style.borderColor = key === 'first_order' ? '#D4AF37' : '#0E0E11';
+        goBtn.style.color = key === 'first_order' ? '#0B0A09' : '#FFFFFF';
         goBtn.style.cursor = 'pointer';
         goBtn.innerHTML = `Go →`;
         goBtn.onclick = function() {
           if (window.handleMissionGo) window.handleMissionGo(key);
         };
       }
-      item.style.borderColor = '#E8E2D8';
+      item.style.borderColor = '#EBE4D8';
       item.style.background = '#FAF8F5';
     }
   }
@@ -9553,6 +9763,24 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     const inrEl = document.getElementById('streetCashInrValueDisplay');
     if (inrEl) inrEl.textContent = inrValueStr;
 
+    // Topbar Street Cash Button sync (Mobile & Desktop)
+    const headerScBtn = document.getElementById('headerStreetCashBtn');
+    const headerScBadge = document.getElementById('headerStreetCashBadge');
+    if (headerScBtn) {
+      headerScBtn.title = balance > 0 
+        ? `The Street Cash: ${balanceStr} pts (Click to view & redeem)` 
+        : `The Street Cash VIP Pass (Earn 199 pts per ₹1,000 spent)`;
+      if (headerScBadge) {
+        if (balance >= 499) {
+          headerScBadge.textContent = '₹499';
+          headerScBadge.style.background = 'linear-gradient(135deg, #15803D, #16A34A)';
+        } else {
+          headerScBadge.textContent = 'VIP';
+          headerScBadge.style.background = 'linear-gradient(135deg, #C5A880, #A88658)';
+        }
+      }
+    }
+
     // 2. User phone on wallet card
     const phoneEl = document.getElementById('streetCashUserPhoneDisplay');
     const activePhone = streetCashState.phone || getActiveUserPhone();
@@ -9587,18 +9815,18 @@ window.openDelhiveryTracker = openDelhiveryTracker;
 
     if (neededNote) {
       if (balance >= 499) {
-        neededNote.innerHTML = `<span style="color:#15803d;font-weight:600;">✓ Ready to redeem!</span> You have enough The Street Cash to claim your ₹499 OFF coupon right now.`;
+        neededNote.innerHTML = `<span style="color:#15803D;font-weight:700;">✓ Ready to redeem!</span> <span style="color:#52525B;">You have enough The Street Cash to claim your ₹499 OFF coupon right now.</span>`;
       } else {
         const diff = 499 - balance;
-        neededNote.innerHTML = `Need <strong style="color:#18181B;">${diff} more The Street Cash</strong> to unlock your ₹499 OFF coupon. <br><em style="color:#997D55;">Per 1,000 Rs spent will give you 199 The Street Cash.</em>`;
+        neededNote.innerHTML = `<span style="color:#52525B;">Need <strong style="color:#0E0E11;font-weight:700;">${diff} more The Street Cash</strong> to unlock your ₹499 OFF voucher.</span><br><span style="color:#71717A;font-size:0.74rem;">Per 1,000 Rs spent will give you 199 The Street Cash.</span>`;
       }
     }
 
-    // 5. Digital VIP Wallet Card "Redeem" Button
+    // 5. Store Rewards "Redeem" Button
     const walletRedeemBtn = document.getElementById('streetCashWalletRedeemBtn');
     if (walletRedeemBtn) {
       walletRedeemBtn.disabled = false;
-      walletRedeemBtn.innerHTML = `<span>✨ Redeem (₹499 OFF)</span>`;
+      walletRedeemBtn.innerHTML = `<span>Redeem (₹499 OFF)</span>`;
     }
 
     // 6. Active Minted Street Cash Coupon Card (under luxury wallet card)

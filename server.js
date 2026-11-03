@@ -26,6 +26,7 @@ import {
   STREET_CASH_BONUS_CONFIG
 } from './mongoDb.js';
 import { GoogleGenAI } from '@google/genai';
+import QRCode from 'qrcode';
 // Load local .env if present
 if (process.loadEnvFile) {
   try {
@@ -3331,6 +3332,42 @@ app.get(['/api/db-status', '/api/mongodb-status'], async (req, res) => {
       ? `Connected to MongoDB Atlas (${mongoStatus.cluster} / ${mongoStatus.dbName}) and Firebase Auth (the-street-co-780).`
       : `MongoDB Atlas connection pending (${mongoStatus.lastError || 'check Network Access IP whitelist'}).`
   });
+});
+
+// ──────────────────────────────────────────
+// UPI DYNAMIC QR GENERATOR API
+// ──────────────────────────────────────────
+app.get('/api/upi/qr', async (req, res) => {
+  try {
+    const { text, pa = 'thestreetco@okhdfcbank', pn = 'The Street Co', am, cu = 'INR', tn = 'Order Payment' } = req.query;
+    let upiUri = text;
+    if (!upiUri) {
+      const encodedPn = encodeURIComponent(pn);
+      const encodedTn = encodeURIComponent(tn);
+      upiUri = `upi://pay?pa=${pa}&pn=${encodedPn}&am=${am || 0}&cu=${cu}&tn=${encodedTn}`;
+    }
+    const format = req.query.format || 'svg';
+    if (format === 'svg') {
+      const svg = await QRCode.toString(upiUri, {
+        type: 'svg',
+        margin: 2,
+        width: 320,
+        color: { dark: '#111111', light: '#ffffff' }
+      });
+      res.setHeader('Content-Type', 'image/svg+xml');
+      return res.send(svg);
+    } else {
+      const dataUrl = await QRCode.toDataURL(upiUri, {
+        margin: 2,
+        width: 360,
+        color: { dark: '#111111', light: '#ffffff' }
+      });
+      return res.json({ success: true, dataUrl, upiUri });
+    }
+  } catch (err) {
+    console.error('[UPI QR Error]', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 // ──────────────────────────────────────────

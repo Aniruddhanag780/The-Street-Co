@@ -32,7 +32,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Cinzel:wght@400;700&family=Space+Grotesk:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20261028_account_v6" />
+<link rel="stylesheet" href="style.css?v=20261103_upi_v3" />
 <link rel="manifest" href="/manifest.json" />
 <meta name="theme-color" content="#ffffff" />
 <meta name="mobile-web-app-capable" content="yes" />
@@ -98,6 +98,18 @@
           <circle cx="11" cy="11" r="8"/>
           <line x1="21" y1="21" x2="16.65" y2="16.65"/>
         </svg>
+      </button>
+
+      <!-- The Street Cash VIP Loyalty Pass Icon Button (Mobile & Desktop Topbar) -->
+      <button class="store-header__action-btn store-header__street-cash-btn" id="headerStreetCashBtn" type="button" aria-label="The Street Cash VIP Pass" title="The Street Cash (VIP Points)" onclick="if(window.openStreetCashHub){window.openStreetCashHub();}else{window.location.hash='street-cash';}">
+        <span style="position:relative;display:inline-flex;align-items:center;justify-content:center;">
+          <svg class="chrome__header-icon-svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="2" y="6" width="20" height="12" rx="2.5"></rect>
+            <circle cx="12" cy="12" r="2.5"></circle>
+            <path d="M6 12h.01M18 12h.01"></path>
+          </svg>
+          <span class="street-cash-vip-pill" id="headerStreetCashBadge" style="position:absolute;top:-5px;right:-7px;background:linear-gradient(135deg, #C5A880, #A88658);color:#FFFFFF;font-size:0.52rem;font-weight:800;padding:1px 3.5px;border-radius:3.5px;letter-spacing:0.02em;line-height:1;box-shadow:0 1px 3px rgba(197,168,128,0.35);">VIP</span>
+        </span>
       </button>
 
       <!-- Push Notifications Bell Button with Unseen Count Badge -->
@@ -2324,8 +2336,54 @@
           </div>
 
           <div class="checkout-payment-methods" id="checkoutPaymentMethods">
+            <!-- Official UPI Instant Payment Option -->
+            <div class="checkout-pay-option" data-method="upi" id="checkoutPayOptionUpi">
+              <div class="checkout-pay-header" role="button" tabindex="0" aria-expanded="false">
+                <div class="checkout-pay-title-group">
+                  <span class="checkout-pay-icon checkout-pay-icon--upi" aria-label="UPI Logo">
+                    <svg viewBox="0 0 44 28" width="38" height="24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <rect width="44" height="28" rx="5" fill="#097939" fill-opacity="0.08" stroke="#097939" stroke-width="1"/>
+                      <path d="M12 7L7 21H11.5L13 17.5H18L16.5 21H21L26 7H21.5L20 10.5H15L16.5 7H12Z" fill="#097939"/>
+                      <path d="M28 7L23 21H27.5L32.5 7H28Z" fill="#E86114"/>
+                      <path d="M34 7L29 21H33.5L38.5 7H34Z" fill="#097939"/>
+                    </svg>
+                  </span>
+                  <div class="checkout-pay-info">
+                    <div class="checkout-pay-title-row">
+                      <strong>UPI (Google Pay / PhonePe / Paytm / QR)</strong>
+                      <span class="pay-chip pay-chip--green">⚡ INSTANT</span>
+                    </div>
+                    <small>Pay instantly via dynamic QR code or any UPI App with 1.2 min auto-verification</small>
+                  </div>
+                </div>
+                <div class="checkout-pay-badges">
+                  <div class="upi-app-mini-logos" title="Supported UPI Apps">
+                    <span class="upi-mini-pill gpay">GPay</span>
+                    <span class="upi-mini-pill phonepe">PhonePe</span>
+                    <span class="upi-mini-pill paytm">Paytm</span>
+                    <span class="upi-mini-pill bhim">BHIM</span>
+                  </div>
+                </div>
+              </div>
+              <div class="checkout-pay-body" style="display:none;">
+                <div class="checkout-upi-box">
+                  <div class="checkout-upi-box-header">
+                    <div class="upi-box-badge">⚡ DYNAMIC QR PAYMENT</div>
+                    <p class="checkout-upi-info">
+                      We'll generate a single-use dynamic UPI QR code with your exact order amount. Open Google Pay, PhonePe, Paytm, or any UPI app to scan and pay. The system verifies payment with the bank in 1.2 minutes and instantly confirms your order.
+                    </p>
+                  </div>
+                  <div class="checkout-pay-action-row">
+                    <button type="button" class="checkout-pay-continue-btn checkout-pay-continue-btn--upi" data-pay-method="upi" id="checkoutProceedUpiBtn">
+                      <span>OPEN UPI QR PAYMENT PAGE →</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- Simple Clean COD Option -->
-            <div class="checkout-pay-option active" data-method="cod">
+            <div class="checkout-pay-option active" data-method="cod" id="checkoutPayOptionCod">
               <div class="checkout-pay-header" role="button" tabindex="0" aria-expanded="true">
                 <div class="checkout-pay-title-group">
                   <span class="checkout-pay-icon">📦</span>
@@ -2585,6 +2643,186 @@
       </aside>
 
     </div>
+  </div>
+</div>
+
+<!-- ══════════ UPI PAYMENT GATEWAY MODAL (DYNAMIC QR + 1.2 MIN TIMER) ══════════ -->
+<div class="upi-gateway-modal" id="upiPaymentGatewayModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="upiGatewayTitle">
+  <div class="upi-gateway-backdrop" id="upiGatewayBackdrop"></div>
+  <div class="upi-gateway-dialog" id="upiGatewayDialog">
+    
+    <!-- Top Bar: Security & Close -->
+    <div class="upi-gateway-topbar">
+      <div class="upi-gateway-secure-tag">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+        </svg>
+        <span>256-BIT ENCRYPTED NPCI UPI GATEWAY</span>
+      </div>
+      <button type="button" class="upi-gateway-close-btn" id="upiGatewayCloseBtn" aria-label="Cancel UPI payment">
+        <span>CANCEL &amp; RETURN</span>
+        ✕
+      </button>
+    </div>
+
+    <!-- Main Payment Screen -->
+    <div class="upi-gateway-card" id="upiGatewayMainCard">
+      
+      <!-- Merchant & Amount Header -->
+      <div class="upi-gateway-header">
+        <div class="upi-brand-block">
+          <div class="upi-official-badge">
+            <span class="upi-txt-green">U</span><span class="upi-txt-orange">P</span><span class="upi-txt-green">I</span>
+            <span class="upi-tag-sub">NPCI OFFICIAL</span>
+          </div>
+          <div class="upi-merchant-details">
+            <span class="merchant-label">PAYEE</span>
+            <strong class="merchant-name">THE STREET CO APPAREL</strong>
+            <span class="merchant-vpa" id="upiDisplayVpa">thestreetco@okhdfcbank</span>
+          </div>
+        </div>
+
+        <div class="upi-amount-block">
+          <span class="amount-label">AMOUNT PAYABLE</span>
+          <div class="amount-val" id="upiPayableAmount">₹0</div>
+          <span class="amount-note">Order Reference: <strong id="upiOrderRef">#---</strong></span>
+        </div>
+      </div>
+
+      <!-- Live 1.2-Minute Countdown Timer Banner -->
+      <div class="upi-timer-strip" id="upiTimerStrip">
+        <div class="upi-timer-icon-wrap">
+          <svg class="upi-timer-svg" viewBox="0 0 36 36" width="36" height="36">
+            <circle class="timer-bg" cx="18" cy="18" r="15" fill="none" stroke="#E5E0D8" stroke-width="3" />
+            <circle class="timer-bar" id="upiTimerCircle" cx="18" cy="18" r="15" fill="none" stroke="#097939" stroke-width="3" stroke-dasharray="94.25" stroke-dashoffset="0" transform="rotate(-90 18 18)" />
+          </svg>
+        </div>
+        <div class="upi-timer-info">
+          <span class="upi-timer-label">PAYMENT SESSION TIME REMAINING</span>
+          <strong class="upi-timer-clock" id="upiTimerClock">01:12</strong>
+        </div>
+        <div class="upi-timer-badge">
+          <span>Auto-verifying on 1.2 min timeout</span>
+        </div>
+      </div>
+
+      <!-- QR Code Scanning Section -->
+      <div class="upi-qr-section">
+        <div class="upi-qr-frame">
+          <div class="upi-qr-image-wrap" id="upiQrContainer">
+            <!-- Dynamic QR code rendered here -->
+            <div class="upi-qr-skeleton">Generating Dynamic UPI QR...</div>
+          </div>
+          <div class="upi-qr-scan-hint">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 7V5a2 2 0 0 1 2-2h2"></path>
+              <path d="M17 3h2a2 2 0 0 1 2 2v2"></path>
+              <path d="M21 17v2a2 2 0 0 1-2 2h-2"></path>
+              <path d="M7 21H5a2 2 0 0 1-2-2v-2"></path>
+            </svg>
+            <span>Scan with any UPI App</span>
+          </div>
+        </div>
+
+        <!-- Supported UPI Apps Badges -->
+        <div class="upi-supported-apps">
+          <span class="apps-heading">SCAN &amp; PAY USING ANY APP</span>
+          <div class="apps-icons-grid">
+            <div class="app-chip" title="Google Pay"><span class="app-chip-dot gpay-dot"></span><strong>Google Pay</strong></div>
+            <div class="app-chip" title="PhonePe"><span class="app-chip-dot phonepe-dot"></span><strong>PhonePe</strong></div>
+            <div class="app-chip" title="Paytm"><span class="app-chip-dot paytm-dot"></span><strong>Paytm</strong></div>
+            <div class="app-chip" title="BHIM UPI"><span class="app-chip-dot bhim-dot"></span><strong>BHIM</strong></div>
+            <div class="app-chip" title="CRED"><span class="app-chip-dot cred-dot"></span><strong>CRED</strong></div>
+            <div class="app-chip" title="Any Banking App"><span class="app-chip-dot bank-dot"></span><strong>Any UPI App</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Copy UPI ID / Mobile Intent Deep-link -->
+      <div class="upi-quick-actions">
+        <div class="upi-vpa-copy-card">
+          <div class="upi-vpa-info">
+            <span class="vpa-tag">OFFICIAL VPA / UPI ID:</span>
+            <code class="vpa-code" id="upiVpaCodeText">thestreetco@okhdfcbank</code>
+          </div>
+          <button type="button" class="upi-copy-vpa-btn" id="upiCopyVpaBtn" title="Copy UPI ID">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            <span id="upiCopyVpaBtnTxt">COPY UPI ID</span>
+          </button>
+        </div>
+
+        <!-- Mobile Quick Intent Button (direct opens installed UPI apps) -->
+        <a href="#" class="upi-mobile-intent-btn" id="upiMobileIntentBtn" rel="noopener noreferrer">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+            <line x1="12" y1="18" x2="12.01" y2="18"></line>
+          </svg>
+          <span>TAP TO PAY VIA INSTALLED UPI APP (MOBILE)</span>
+        </a>
+      </div>
+
+      <!-- Action Verification Buttons -->
+      <div class="upi-actions-row">
+        <button type="button" class="upi-verify-paid-btn" id="upiVerifyPaidBtn">
+          <span>✓ I HAVE COMPLETED PAYMENT (VERIFY NOW)</span>
+        </button>
+        <button type="button" class="upi-back-method-btn" id="upiBackToPaymentBtn">
+          <span>Cancel &amp; Select Different Payment Method</span>
+        </button>
+      </div>
+
+      <div class="upi-footer-note">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#097939" stroke-width="2">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+        </svg>
+        <span>Instant UPI settlements protected by National Payments Corporation of India (NPCI) &amp; RBI banking guidelines.</span>
+      </div>
+
+    </div>
+
+    <!-- Verification Loading Screen (Shows during 1.2 min or on manual verify) -->
+    <div class="upi-verifying-card" id="upiVerifyingCard" style="display:none;">
+      <div class="upi-verifying-spinner-wrap">
+        <div class="upi-spinner-ring"></div>
+        <div class="upi-spinner-icon">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#097939" stroke-width="2.5">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+          </svg>
+        </div>
+      </div>
+
+      <h3 class="upi-verifying-title">Verifying Payment With Bank...</h3>
+      <p class="upi-verifying-status" id="upiVerifyingStatus">Connecting to NPCI &amp; Bank UPI settlement server...</p>
+
+      <div class="upi-verifying-progress-track">
+        <div class="upi-verifying-progress-bar" id="upiVerifyingProgressBar"></div>
+      </div>
+
+      <div class="upi-verifying-details">
+        <div class="verifying-row">
+          <span>Amount:</span>
+          <strong id="upiVerifyingAmount">₹0 INR</strong>
+        </div>
+        <div class="verifying-row">
+          <span>Payee:</span>
+          <strong>The Street Co Apparel</strong>
+        </div>
+        <div class="verifying-row">
+          <span>Transaction Ref:</span>
+          <strong id="upiVerifyingTxnId">UPI-TXN-PENDING</strong>
+        </div>
+      </div>
+
+      <div class="upi-verifying-safe-note">
+        <span class="safe-lock">🔒</span>
+        <span>Payment confirmed! Redirecting to your Order Confirmation receipt...</span>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -2855,199 +3093,189 @@
   </div>
 </div>
 
-<!-- ══════════ MODAL 2: THE STREET CASH — VIP LOYALTY & REWARDS HUB ══════════ -->
+<!-- ══════════ MODAL 2: THE STREET CASH — MEMBER REWARDS & STORE CREDIT ══════════ -->
 <div class="suite-modal streetcash-modal" id="suiteVipLoyaltyModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="vipLoyaltyModalTitle">
   <div class="suite-modal__backdrop" onclick="window.closeVipLoyaltyModal()"></div>
-  <div class="suite-modal__dialog streetcash-dialog" style="max-width:680px;background:#FAF8F5;border-radius:18px;border:1px solid #E8E2D8;box-shadow:0 24px 60px rgba(0,0,0,0.28);padding:0;overflow:hidden;">
+  <div class="suite-modal__dialog streetcash-dialog" style="max-width:680px;background:#FAF8F5;border-radius:14px;border:1px solid #E5E5E5;box-shadow:0 20px 50px rgba(0,0,0,0.12);padding:0;overflow:hidden;">
     
-    <!-- Header banner -->
-    <div style="background:#FAF8F5;color:#18181B;padding:22px 28px;display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid #E8E2D8;">
+    <!-- Clean E-Commerce Header -->
+    <div class="streetcash-header" style="background:#FFFFFF;color:#0E0E11;padding:20px 24px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #EAE6DF;">
       <div>
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-          <span style="font-size:0.68rem;letter-spacing:0.2em;color:#997D55;font-weight:700;text-transform:uppercase;">THE STREET CO · VIP REWARDS CLUB</span>
-          <span style="background:linear-gradient(135deg,#C5A880,#D9B88F);color:#FFFFFF;font-size:0.6rem;font-weight:800;padding:2px 8px;border-radius:12px;letter-spacing:0.06em;box-shadow:0 1px 3px rgba(197,168,128,0.3);">MEMBERS ONLY</span>
-        </div>
-        <h3 id="vipLoyaltyModalTitle" style="font-family:'Playfair Display',Georgia,serif;font-size:1.65rem;font-weight:700;letter-spacing:-0.02em;margin:0;color:#18181B;">The Street Cash</h3>
-        <p style="font-size:0.8rem;color:#71717A;margin:3px 0 0;font-weight:400;">Your private treasury of streetwear dividends and exclusive discount vouchers.</p>
+        <div style="font-size:0.68rem;letter-spacing:0.18em;color:#71717A;font-weight:700;text-transform:uppercase;">THE STREET CO. · MEMBER REWARDS</div>
+        <h3 id="vipLoyaltyModalTitle" style="font-size:1.5rem;font-weight:800;letter-spacing:-0.02em;margin:3px 0 0;color:#0E0E11;">The Street Cash</h3>
+        <p style="font-size:0.78rem;color:#71717A;margin:2px 0 0;font-weight:400;">Your store reward points and discount vouchers for your orders.</p>
       </div>
-      <button type="button" class="suite-modal__close" onclick="window.closeVipLoyaltyModal()" aria-label="Close VIP Club" style="color:#71717A;font-size:1.1rem;background:#F4EFE6;border:1px solid #E8E2D8;cursor:pointer;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:all 0.2s;" onmouseover="this.style.color='#18181B';this.style.background='#E8E2D8'" onmouseout="this.style.color='#71717A';this.style.background='#F4EFE6'">✕</button>
+      <button type="button" class="suite-modal__close" onclick="window.closeVipLoyaltyModal()" aria-label="Close Rewards Hub" style="color:#71717A;font-size:1rem;background:#F4F4F5;border:1px solid #E4E4E7;cursor:pointer;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:all 0.16s;" onmouseover="this.style.color='#0E0E11';this.style.background='#E4E4E7'" onmouseout="this.style.color='#71717A';this.style.background='#F4F4F5'">✕</button>
     </div>
 
-    <div style="padding:24px 28px;max-height:calc(85vh - 120px);overflow-y:auto;">
+    <div class="streetcash-body" style="padding:22px 24px;max-height:calc(85vh - 120px);overflow-y:auto;">
 
-      <!-- MANDATORY COPY BANNER (Strict rule: Per 1,000 Rs spent will give you 199 The Street Cash) -->
-      <div style="background:linear-gradient(135deg, rgba(197,168,128,0.14) 0%, rgba(197,168,128,0.05) 100%);border:1px solid #C5A880;border-radius:12px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:14px;">
-        <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg, #C5A880, #D9B88F);color:#FFFFFF;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:700;flex-shrink:0;box-shadow:0 2px 6px rgba(197,168,128,0.25);">
+      <!-- OFFICIAL EARN RATE BANNER -->
+      <div class="streetcash-earn-banner" style="background:#FFFFFF;border:1px solid #EAE6DF;border-radius:10px;padding:14px 18px;margin-bottom:18px;display:flex;align-items:center;gap:14px;">
+        <div style="width:38px;height:38px;border-radius:8px;background:#0E0E11;color:#FFFFFF;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:800;flex-shrink:0;">
           ₹
         </div>
         <div style="flex:1;">
-          <div style="font-size:0.7rem;font-weight:700;letter-spacing:0.12em;color:#997D55;text-transform:uppercase;">OFFICIAL EARN RATE</div>
-          <div style="font-size:0.98rem;font-weight:700;color:#18181B;margin-top:1px;">Per 1,000 Rs spent will give you 199 The Street Cash</div>
-          <div style="font-size:0.75rem;color:#52525B;margin-top:2px;">Points are automatically credited on all confirmed orders. Minimum 499 points gives ₹499 OFF!</div>
+          <div style="font-size:0.68rem;font-weight:700;letter-spacing:0.12em;color:#71717A;text-transform:uppercase;">OFFICIAL EARN RATE</div>
+          <div style="font-size:0.95rem;font-weight:700;color:#0E0E11;margin-top:1px;">Per 1,000 Rs spent will give you 199 The Street Cash</div>
+          <div style="font-size:0.74rem;color:#71717A;margin-top:2px;">Points are automatically credited on all confirmed orders. Minimum 499 points gives ₹499 OFF!</div>
         </div>
       </div>
 
-      <!-- LUXURY WALLET CARD (Creamy White & Champagne Gold) -->
-      <div style="background:linear-gradient(135deg, #FFFFFF 0%, #FAF6EE 50%, #F5EFE4 100%);border:1.5px solid #D6C2A5;border-radius:16px;padding:22px 24px;color:#18181B;box-shadow:0 10px 24px rgba(197,168,128,0.15);margin-bottom:22px;position:relative;overflow:hidden;">
+      <!-- STORE REWARDS & CREDITS BALANCE CARD -->
+      <div class="streetcash-wallet-card" style="background:#FFFFFF;border:1px solid #EAE6DF;border-radius:12px;padding:20px 22px;color:#0E0E11;margin-bottom:18px;box-shadow:0 2px 8px rgba(0,0,0,0.03);">
         <!-- Card top row -->
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;">
-          <div>
-            <span style="font-size:0.68rem;letter-spacing:0.18em;color:#997D55;text-transform:uppercase;font-weight:700;display:block;">DIGITAL VIP PASS · THE STREET CO</span>
-            <div style="display:inline-block;background:rgba(197,168,128,0.18);color:#8A6D44;font-size:0.72rem;padding:3px 10px;border-radius:20px;font-weight:700;margin-top:4px;border:1px solid rgba(197,168,128,0.35);" id="streetCashTierBadge">
-              VIP Street Insider
-            </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+          <span style="font-size:0.68rem;letter-spacing:0.14em;color:#71717A;text-transform:uppercase;font-weight:700;">STORE REWARDS BALANCE</span>
+          <div style="background:#F4F4F5;color:#0E0E11;font-size:0.7rem;padding:3px 10px;border-radius:6px;font-weight:700;border:1px solid #E4E4E7;" id="streetCashTierBadge">
+            Street Member
           </div>
         </div>
 
         <!-- Card balance row -->
-        <div style="display:flex;justify-content:space-between;align-items:flex-end;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px;">
           <div>
-            <span style="font-size:0.7rem;letter-spacing:0.12em;color:#71717A;text-transform:uppercase;font-weight:600;">AVAILABLE BALANCE</span>
-            <div style="font-size:2.2rem;font-weight:800;color:#18181B;line-height:1.1;letter-spacing:-0.03em;margin-top:2px;">
-              <span id="vipModalPointsBalance">0</span> <span style="font-size:1.05rem;color:#997D55;font-weight:700;">The Street Cash</span>
+            <div style="font-size:2.4rem;font-weight:800;color:#0E0E11;line-height:1.05;letter-spacing:-0.03em;">
+              <span id="vipModalPointsBalance">0</span> <span style="font-size:1rem;color:#71717A;font-weight:600;">The Street Cash</span>
             </div>
             <div style="font-size:0.8rem;color:#52525B;margin-top:4px;">
-              Equivalent Value: <strong style="color:#997D55;">₹<span id="streetCashInrValueDisplay">0</span> OFF</strong> on checkout
+              Equivalent Value: <strong style="color:#0E0E11;">₹<span id="streetCashInrValueDisplay">0</span> OFF</strong> on checkout
             </div>
           </div>
-          <button type="button" id="streetCashWalletRedeemBtn" onclick="if(window.handleWalletRedeemStreetCash){window.handleWalletRedeemStreetCash();}" style="background:linear-gradient(135deg, #C5A880, #A88658);border:1px solid #997D55;color:#FFFFFF;font-size:0.82rem;font-weight:700;padding:9px 18px;border-radius:8px;cursor:pointer;transition:all 0.2s;box-shadow:0 3px 10px rgba(197,168,128,0.35);display:flex;align-items:center;gap:6px;" onmouseover="this.style.opacity='0.92'" onmouseout="this.style.opacity='1'">
-            <span>✨ Redeem (₹499 OFF)</span>
+          <button type="button" id="streetCashWalletRedeemBtn" onclick="if(window.handleWalletRedeemStreetCash){window.handleWalletRedeemStreetCash();}" style="background:#0E0E11;border:none;color:#FFFFFF;font-size:0.82rem;font-weight:700;padding:10px 18px;border-radius:6px;cursor:pointer;transition:all 0.16s;display:flex;align-items:center;gap:6px;" onmouseover="this.style.background='#27272A'" onmouseout="this.style.background='#0E0E11'">
+            <span>Redeem (₹499 OFF)</span>
           </button>
         </div>
 
         <!-- Milestone Progress bar -->
-        <div style="margin-top:18px;padding-top:14px;border-top:1px solid rgba(197,168,128,0.25);">
-          <div style="display:flex;justify-content:space-between;font-size:0.72rem;color:#71717A;margin-bottom:6px;font-weight:500;">
+        <div style="margin-top:16px;padding-top:14px;border-top:1px solid #F4F4F5;">
+          <div style="display:flex;justify-content:space-between;font-size:0.72rem;color:#71717A;margin-bottom:6px;font-weight:600;">
             <span id="streetCashMilestoneLabel">Next Milestone: 499 The Street Cash (₹499 Flat Discount)</span>
-            <span id="streetCashProgressPercent" style="font-weight:700;color:#997D55;">0%</span>
+            <span id="streetCashProgressPercent" style="font-weight:800;color:#0E0E11;">0%</span>
           </div>
-          <div style="background:#EAE3D5;height:7px;border-radius:4px;overflow:hidden;">
-            <div id="streetCashProgressBar" style="background:linear-gradient(90deg, #C5A880, #B89668);height:100%;width:0%;transition:width 0.4s ease;"></div>
+          <div style="background:#F4F4F5;height:6px;border-radius:9999px;overflow:hidden;">
+            <div id="streetCashProgressBar" style="background:#0E0E11;height:100%;width:0%;border-radius:9999px;transition:width 0.4s ease;"></div>
           </div>
-          <div style="font-size:0.7rem;color:#71717A;margin-top:5px;" id="streetCashNeededNote">
+          <div style="font-size:0.72rem;color:#71717A;margin-top:6px;" id="streetCashNeededNote">
             Minimum 499 The Street Cash required to redeem ₹499 OFF single-use coupon.
           </div>
         </div>
       </div>
 
       <!-- MINTED STREET CASH COUPON CARD (Shown when user has active Street Cash coupon) -->
-      <div id="streetCashMintedCouponCard" style="display:none;background:linear-gradient(135deg, #FFFDF8 0%, #FAF5EB 100%);border:2px dashed #C5A880;border-radius:14px;padding:18px 20px;margin-bottom:20px;box-shadow:0 6px 18px rgba(197,168,128,0.18);cursor:pointer;transition:transform 0.2s, box-shadow 0.2s;" onclick="if(window.copyActiveStreetCashCoupon){window.copyActiveStreetCashCoupon();}" title="Click to copy coupon code">
+      <div id="streetCashMintedCouponCard" style="display:none;background:#FAF8F5;border:1.5px dashed #0E0E11;border-radius:10px;padding:16px 20px;margin-bottom:18px;cursor:pointer;transition:all 0.16s;" onclick="if(window.copyActiveStreetCashCoupon){window.copyActiveStreetCashCoupon();}" title="Click to copy coupon code">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;">
           <div>
             <div style="display:flex;align-items:center;gap:8px;">
-              <span style="font-size:1.15rem;">🎟️</span>
-              <span style="font-size:0.68rem;letter-spacing:0.16em;text-transform:uppercase;color:#8A6D44;font-weight:800;">ACTIVE STREET CASH VOUCHER</span>
-              <span style="background:#15803D;color:#FFFFFF;font-size:0.62rem;font-weight:800;padding:2px 7px;border-radius:4px;letter-spacing:0.04em;">SAVED TO ACCOUNT</span>
+              <span style="font-size:1.05rem;">🎟️</span>
+              <span style="font-size:0.68rem;letter-spacing:0.14em;text-transform:uppercase;color:#0E0E11;font-weight:800;">ACTIVE STORE VOUCHER</span>
+              <span style="background:#0E0E11;color:#FFFFFF;font-size:0.62rem;font-weight:700;padding:2px 7px;border-radius:4px;">SAVED TO ACCOUNT</span>
             </div>
-            <div style="font-size:1.35rem;font-weight:800;color:#18181B;font-family:monospace;letter-spacing:0.08em;margin-top:6px;" id="streetCashMintedCodeDisplay">
+            <div style="font-size:1.35rem;font-weight:800;color:#0E0E11;font-family:monospace;letter-spacing:0.08em;margin-top:4px;" id="streetCashMintedCodeDisplay">
               STREETCASH-XXXX
             </div>
-            <div style="font-size:0.78rem;color:#52525B;margin-top:3px;">
+            <div style="font-size:0.75rem;color:#52525B;margin-top:2px;">
               ₹499 Flat Discount · Auto-applies to your bag · Click card to copy code
             </div>
           </div>
-          <button type="button" onclick="event.stopPropagation();if(window.copyActiveStreetCashCoupon){window.copyActiveStreetCashCoupon();}" style="padding:8px 16px;background:#FFFFFF;border:1.5px solid #D6C2A5;border-radius:8px;font-size:0.78rem;font-weight:700;color:#8A6D44;display:flex;align-items:center;gap:6px;cursor:pointer;box-shadow:0 2px 5px rgba(0,0,0,0.04);transition:all 0.2s;">
-            <span>📋 Copy Code</span>
+          <button type="button" onclick="event.stopPropagation();if(window.copyActiveStreetCashCoupon){window.copyActiveStreetCashCoupon();}" style="padding:8px 16px;background:#0E0E11;border:none;border-radius:6px;font-size:0.75rem;font-weight:700;color:#FFFFFF;display:flex;align-items:center;gap:6px;cursor:pointer;transition:all 0.16s;">
+            <span>Copy Code</span>
           </button>
         </div>
       </div>
 
-
       <!-- VIP MEMBER MISSIONS & ONBOARDING REWARDS CARD -->
-      <div style="background:#FFFFFF;border:1.5px solid #E8E2D8;border-radius:14px;padding:20px;margin-bottom:20px;box-shadow:0 4px 14px rgba(0,0,0,0.03);">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">
+      <div class="streetcash-missions-card" style="background:#FFFFFF;border:1px solid #EAE6DF;border-radius:12px;padding:20px 22px;margin-bottom:18px;box-shadow:0 2px 8px rgba(0,0,0,0.03);">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;gap:12px;flex-wrap:wrap;">
           <div>
-            <div style="display:flex;align-items:center;gap:6px;">
-              <span style="font-size:1rem;">🎁</span>
-              <h4 style="font-family:'Playfair Display',Georgia,serif;font-size:1.1rem;font-weight:700;color:#18181B;margin:0;">VIP Member Missions &amp; Boosts</h4>
-            </div>
-            <p style="font-size:0.75rem;color:#71717A;margin:2px 0 0;">Complete each action to automatically unlock bonus Street Cash. Tasks auto-check upon completion!</p>
+            <h4 style="font-size:1.05rem;font-weight:800;color:#0E0E11;margin:0;">Member Rewards Missions</h4>
+            <p style="font-size:0.75rem;color:#71717A;margin:2px 0 0;">Complete each action to earn bonus Street Cash. Tasks auto-check upon completion!</p>
           </div>
-          <span style="background:rgba(197,168,128,0.18);color:#8A6D44;border:1px solid rgba(197,168,128,0.35);font-size:0.68rem;font-weight:700;padding:3px 8px;border-radius:6px;">+184 TOTAL PTS</span>
+          <span style="background:#F4F4F5;color:#0E0E11;font-size:0.68rem;font-weight:800;padding:3px 8px;border-radius:4px;border:1px solid #E4E4E7;">+184 TOTAL PTS</span>
         </div>
 
         <div style="display:flex;flex-direction:column;gap:10px;" id="streetCashMissionsList">
           
           <!-- Mission 1: New Account Creation (+75) -->
-          <div class="sc-mission-item" id="missionItem_account_creation" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#FAF8F5;border:1px solid #E8E2D8;border-radius:10px;gap:12px;transition:all 0.2s;">
+          <div class="sc-mission-item" id="missionItem_account_creation" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#FAF8F5;border:1px solid #EAE6DF;border-radius:8px;gap:12px;transition:all 0.16s;">
             <div style="display:flex;align-items:center;gap:12px;flex:1;">
-              <div class="sc-mission-checkbox" id="scCheck_account_creation" style="width:22px;height:22px;border-radius:6px;border:2px solid #D4D4D8;display:flex;align-items:center;justify-content:center;background:#FFFFFF;color:transparent;font-weight:800;font-size:0.85rem;flex-shrink:0;transition:all 0.2s;">
+              <div class="sc-mission-checkbox" id="scCheck_account_creation" style="width:22px;height:22px;border-radius:50%;border:1.5px solid #D4D4D8;display:flex;align-items:center;justify-content:center;background:#FFFFFF;color:transparent;font-weight:800;font-size:0.8rem;flex-shrink:0;transition:all 0.16s;">
                 ✓
               </div>
               <div style="flex:1;">
-                <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;">
-                  <span style="font-size:0.85rem;font-weight:700;color:#18181B;">New Account Creation</span>
-                  <span style="background:rgba(197,168,128,0.22);color:#8A6D44;font-size:0.68rem;font-weight:800;padding:2px 7px;border-radius:4px;">+75 The Street Cash</span>
+                <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;">
+                  <span style="font-size:0.85rem;font-weight:700;color:#0E0E11;">New Account Creation</span>
+                  <span style="background:#F4F4F5;color:#0E0E11;border:1px solid #E4E4E7;font-size:0.68rem;font-weight:700;padding:2px 7px;border-radius:4px;">+75 The Street Cash</span>
                 </div>
                 <div style="font-size:0.72rem;color:#71717A;margin-top:1px;" id="scDesc_account_creation">
                   Create your member account to claim 75 The Street Cash.
                 </div>
               </div>
             </div>
-            <button type="button" class="sc-mission-go-btn" id="scGo_account_creation" onclick="if(window.handleMissionGo){window.handleMissionGo('account_creation');}" style="padding:7px 14px;background:#FFFFFF;border:1px solid #D6C2A5;color:#18181B;font-size:0.75rem;font-weight:700;border-radius:6px;cursor:pointer;white-space:nowrap;transition:all 0.2s;" onmouseover="this.style.background='#F4EFE6'" onmouseout="this.style.background='#FFFFFF'">
+            <button type="button" class="sc-mission-go-btn" id="scGo_account_creation" onclick="if(window.handleMissionGo){window.handleMissionGo('account_creation');}" style="padding:6px 14px;background:#0E0E11;border:none;color:#FFFFFF;font-size:0.75rem;font-weight:700;border-radius:6px;cursor:pointer;white-space:nowrap;transition:all 0.16s;" onmouseover="this.style.background='#27272A'" onmouseout="this.style.background='#0E0E11'">
               Go →
             </button>
           </div>
 
           <!-- Mission 2: Name Upload in My Account (+25) -->
-          <div class="sc-mission-item" id="missionItem_profile_name" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#FAF8F5;border:1px solid #E8E2D8;border-radius:10px;gap:12px;transition:all 0.2s;">
+          <div class="sc-mission-item" id="missionItem_profile_name" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#FAF8F5;border:1px solid #EAE6DF;border-radius:8px;gap:12px;transition:all 0.16s;">
             <div style="display:flex;align-items:center;gap:12px;flex:1;">
-              <div class="sc-mission-checkbox" id="scCheck_profile_name" style="width:22px;height:22px;border-radius:6px;border:2px solid #D4D4D8;display:flex;align-items:center;justify-content:center;background:#FFFFFF;color:transparent;font-weight:800;font-size:0.85rem;flex-shrink:0;transition:all 0.2s;">
+              <div class="sc-mission-checkbox" id="scCheck_profile_name" style="width:22px;height:22px;border-radius:50%;border:1.5px solid #D4D4D8;display:flex;align-items:center;justify-content:center;background:#FFFFFF;color:transparent;font-weight:800;font-size:0.8rem;flex-shrink:0;transition:all 0.16s;">
                 ✓
               </div>
               <div style="flex:1;">
-                <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;">
-                  <span style="font-size:0.85rem;font-weight:700;color:#18181B;">Name Upload in My Account</span>
-                  <span style="background:rgba(197,168,128,0.22);color:#8A6D44;font-size:0.68rem;font-weight:800;padding:2px 7px;border-radius:4px;">+25 The Street Cash</span>
+                <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;">
+                  <span style="font-size:0.85rem;font-weight:700;color:#0E0E11;">Name Upload in My Account</span>
+                  <span style="background:#F4F4F5;color:#0E0E11;border:1px solid #E4E4E7;font-size:0.68rem;font-weight:700;padding:2px 7px;border-radius:4px;">+25 The Street Cash</span>
                 </div>
                 <div style="font-size:0.72rem;color:#71717A;margin-top:1px;" id="scDesc_profile_name">
                   Add your full name in your account settings.
                 </div>
               </div>
             </div>
-            <button type="button" class="sc-mission-go-btn" id="scGo_profile_name" onclick="if(window.handleMissionGo){window.handleMissionGo('profile_name');}" style="padding:7px 14px;background:#FFFFFF;border:1px solid #D6C2A5;color:#18181B;font-size:0.75rem;font-weight:700;border-radius:6px;cursor:pointer;white-space:nowrap;transition:all 0.2s;" onmouseover="this.style.background='#F4EFE6'" onmouseout="this.style.background='#FFFFFF'">
+            <button type="button" class="sc-mission-go-btn" id="scGo_profile_name" onclick="if(window.handleMissionGo){window.handleMissionGo('profile_name');}" style="padding:6px 14px;background:#0E0E11;border:none;color:#FFFFFF;font-size:0.75rem;font-weight:700;border-radius:6px;cursor:pointer;white-space:nowrap;transition:all 0.16s;" onmouseover="this.style.background='#27272A'" onmouseout="this.style.background='#0E0E11'">
               Go →
             </button>
           </div>
 
           <!-- Mission 3: Email Added in My Account (+35) -->
-          <div class="sc-mission-item" id="missionItem_profile_email" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#FAF8F5;border:1px solid #E8E2D8;border-radius:10px;gap:12px;transition:all 0.2s;">
+          <div class="sc-mission-item" id="missionItem_profile_email" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#FAF8F5;border:1px solid #EAE6DF;border-radius:8px;gap:12px;transition:all 0.16s;">
             <div style="display:flex;align-items:center;gap:12px;flex:1;">
-              <div class="sc-mission-checkbox" id="scCheck_profile_email" style="width:22px;height:22px;border-radius:6px;border:2px solid #D4D4D8;display:flex;align-items:center;justify-content:center;background:#FFFFFF;color:transparent;font-weight:800;font-size:0.85rem;flex-shrink:0;transition:all 0.2s;">
+              <div class="sc-mission-checkbox" id="scCheck_profile_email" style="width:22px;height:22px;border-radius:50%;border:1.5px solid #D4D4D8;display:flex;align-items:center;justify-content:center;background:#FFFFFF;color:transparent;font-weight:800;font-size:0.8rem;flex-shrink:0;transition:all 0.16s;">
                 ✓
               </div>
               <div style="flex:1;">
-                <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;">
-                  <span style="font-size:0.85rem;font-weight:700;color:#18181B;">Email Address Added</span>
-                  <span style="background:rgba(197,168,128,0.22);color:#8A6D44;font-size:0.68rem;font-weight:800;padding:2px 7px;border-radius:4px;">+35 The Street Cash</span>
+                <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;">
+                  <span style="font-size:0.85rem;font-weight:700;color:#0E0E11;">Email Address Added</span>
+                  <span style="background:#F4F4F5;color:#0E0E11;border:1px solid #E4E4E7;font-size:0.68rem;font-weight:700;padding:2px 7px;border-radius:4px;">+35 The Street Cash</span>
                 </div>
                 <div style="font-size:0.72rem;color:#71717A;margin-top:1px;" id="scDesc_profile_email">
                   Save your verified email in My Account.
                 </div>
               </div>
             </div>
-            <button type="button" class="sc-mission-go-btn" id="scGo_profile_email" onclick="if(window.handleMissionGo){window.handleMissionGo('profile_email');}" style="padding:7px 14px;background:#FFFFFF;border:1px solid #D6C2A5;color:#18181B;font-size:0.75rem;font-weight:700;border-radius:6px;cursor:pointer;white-space:nowrap;transition:all 0.2s;" onmouseover="this.style.background='#F4EFE6'" onmouseout="this.style.background='#FFFFFF'">
+            <button type="button" class="sc-mission-go-btn" id="scGo_profile_email" onclick="if(window.handleMissionGo){window.handleMissionGo('profile_email');}" style="padding:6px 14px;background:#0E0E11;border:none;color:#FFFFFF;font-size:0.75rem;font-weight:700;border-radius:6px;cursor:pointer;white-space:nowrap;transition:all 0.16s;" onmouseover="this.style.background='#27272A'" onmouseout="this.style.background='#0E0E11'">
               Go →
             </button>
           </div>
 
           <!-- Mission 4: 1st Order Reward (+49) -->
-          <div class="sc-mission-item" id="missionItem_first_order" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#FAF8F5;border:1px solid #E8E2D8;border-radius:10px;gap:12px;transition:all 0.2s;">
+          <div class="sc-mission-item" id="missionItem_first_order" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#FAF8F5;border:1px solid #EAE6DF;border-radius:8px;gap:12px;transition:all 0.16s;">
             <div style="display:flex;align-items:center;gap:12px;flex:1;">
-              <div class="sc-mission-checkbox" id="scCheck_first_order" style="width:22px;height:22px;border-radius:6px;border:2px solid #D4D4D8;display:flex;align-items:center;justify-content:center;background:#FFFFFF;color:transparent;font-weight:800;font-size:0.85rem;flex-shrink:0;transition:all 0.2s;">
+              <div class="sc-mission-checkbox" id="scCheck_first_order" style="width:22px;height:22px;border-radius:50%;border:1.5px solid #D4D4D8;display:flex;align-items:center;justify-content:center;background:#FFFFFF;color:transparent;font-weight:800;font-size:0.8rem;flex-shrink:0;transition:all 0.16s;">
                 ✓
               </div>
               <div style="flex:1;">
-                <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;">
-                  <span style="font-size:0.85rem;font-weight:700;color:#18181B;">1st Order Reward</span>
-                  <span style="background:rgba(197,168,128,0.22);color:#8A6D44;font-size:0.68rem;font-weight:800;padding:2px 7px;border-radius:4px;">+49 The Street Cash</span>
+                <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;">
+                  <span style="font-size:0.85rem;font-weight:700;color:#0E0E11;">1st Order Reward</span>
+                  <span style="background:#F4F4F5;color:#0E0E11;border:1px solid #E4E4E7;font-size:0.68rem;font-weight:700;padding:2px 7px;border-radius:4px;">+49 The Street Cash</span>
                 </div>
                 <div style="font-size:0.72rem;color:#71717A;margin-top:1px;" id="scDesc_first_order">
                   Place your 1st order to receive +49 bonus points!
                 </div>
               </div>
             </div>
-            <button type="button" class="sc-mission-go-btn" id="scGo_first_order" onclick="if(window.handleMissionGo){window.handleMissionGo('first_order');}" style="padding:7px 14px;background:linear-gradient(135deg, #C5A880, #A88658);border:1px solid #997D55;color:#FFFFFF;font-size:0.75rem;font-weight:700;border-radius:6px;cursor:pointer;white-space:nowrap;transition:all 0.2s;box-shadow:0 2px 4px rgba(197,168,128,0.25);" onmouseover="this.style.opacity='0.92'" onmouseout="this.style.opacity='1'">
+            <button type="button" class="sc-mission-go-btn" id="scGo_first_order" onclick="if(window.handleMissionGo){window.handleMissionGo('first_order');}" style="padding:6px 14px;background:#0E0E11;border:none;color:#FFFFFF;font-size:0.75rem;font-weight:700;border-radius:6px;cursor:pointer;white-space:nowrap;transition:all 0.16s;" onmouseover="this.style.background='#27272A'" onmouseout="this.style.background='#0E0E11'">
               Go →
             </button>
           </div>
@@ -3799,7 +4027,7 @@
   };
   var renderVipUI = window.renderVipUI;
 </script>
-<script src="main.js?v=20261101_vip_v14"></script>
+<script src="main.js?v=20261103_upi_v3"></script>
 
 <!-- Guaranteed Header & Step Button Sync (Overrides any browser cache) -->
 <script>

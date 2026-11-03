@@ -7,7 +7,9 @@ import {
   createUserWithEmailAndPassword,
   signInAnonymously,
   updateProfile,
-  signOut
+  signOut,
+  GoogleAuthProvider,
+  signInWithPopup
 } from "firebase/auth";
 import {
   getFirestore,
@@ -159,13 +161,74 @@ onAuthStateChanged(auth, () => {
   // Auth state listener active for session persistence
 });
 
+// ──────────────────────────────────────────
+// GOOGLE WORKSPACE OAUTH (GMAIL READONLY)
+// ──────────────────────────────────────────
+let workspaceAuthInstance = null;
+let cachedGmailAccessToken = null;
+
+async function getWorkspaceAuth() {
+  if (workspaceAuthInstance) return workspaceAuthInstance;
+  try {
+    const res = await fetch("/firebase-applet-config.json");
+    if (res.ok) {
+      const cfg = await res.json();
+      const wsApp = initializeApp(cfg, "workspace-gmail-oauth");
+      workspaceAuthInstance = getAuth(wsApp);
+      return workspaceAuthInstance;
+    }
+  } catch (_) {}
+  return auth;
+}
+
+async function connectMerchantGmail() {
+  const targetAuth = await getWorkspaceAuth();
+  const provider = new GoogleAuthProvider();
+  provider.addScope("https://www.googleapis.com/auth/gmail.readonly");
+  provider.setCustomParameters({ prompt: "select_account" });
+
+  const result = await signInWithPopup(targetAuth, provider);
+  const credential = GoogleAuthProvider.credentialFromResult(result);
+  const accessToken = credential?.accessToken;
+
+  if (!accessToken) {
+    throw new Error("Unable to retrieve Gmail access token from Google Sign-In.");
+  }
+
+  cachedGmailAccessToken = accessToken;
+
+  // Post to server so server-side background verification has the token
+  try {
+    await fetch("/api/merchant/set-gmail-token", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        token: accessToken,
+        email: result.user.email
+      })
+    });
+  } catch (_) {}
+
+  return {
+    user: result.user,
+    accessToken,
+    email: result.user.email
+  };
+}
+
+function getCachedGmailToken() {
+  return cachedGmailAccessToken;
+}
+
 window.streetCoFirebaseAuth = {
   app,
   auth,
   db,
   saveUserAuthDetails,
   loadUserAuthDetails,
-  signOutUserAuth
+  signOutUserAuth,
+  connectMerchantGmail,
+  getCachedGmailToken
 };
 
 window.dispatchEvent(new CustomEvent("streetco:firebase-auth-ready"));

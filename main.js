@@ -2052,10 +2052,11 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     goToCheckoutStep(3);
   }
 
-  // ══════════ UPI PAYMENT GATEWAY & 1.2 MIN VERIFICATION CONTROLLER ══════════
-  let upiPaymentTimer = null;
-  const UPI_MERCHANT_VPA = 'thestreetco@okhdfcbank';
-  const UPI_MERCHANT_NAME = 'The Street Co';
+  // ══════════ UPI PAYMENT PAGE (EXACT SCREENSHOT UPIR CONTROLLER) ══════════
+  let upierCountdownTimer = null;
+  let upierPaymentPollInterval = null;
+  const UPI_DEFAULT_VPA = 'aniruddhanag780@fam';
+  const UPI_DEFAULT_PAYEE = 'The Street Co';
 
   function openUpiPaymentGateway() {
     let { totalInr } = getCheckoutTotals();
@@ -2067,52 +2068,42 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       }
       totalInr = Math.max(1, totalInr || 1599);
     }
-    const upiModal = document.getElementById('upiPaymentGatewayModal');
-    const mainCard = document.getElementById('upiGatewayMainCard');
-    const verifyingCard = document.getElementById('upiVerifyingCard');
-    const payableAmountEl = document.getElementById('upiPayableAmount');
-    const orderRefEl = document.getElementById('upiOrderRef');
-    const qrContainer = document.getElementById('upiQrContainer');
-    const timerClock = document.getElementById('upiTimerClock');
-    const timerCircle = document.getElementById('upiTimerCircle');
-    const mobileIntentBtn = document.getElementById('upiMobileIntentBtn');
-    const copyVpaBtn = document.getElementById('upiCopyVpaBtn');
-    const copyVpaTxt = document.getElementById('upiCopyVpaBtnTxt');
 
-    if (!upiModal) return;
+    const overlay = document.getElementById('upiPaymentGatewayModal');
+    const amountEl = document.getElementById('upierAmountDisplay');
+    const orderIdEl = document.getElementById('upierOrderIdDisplay');
+    const timerClockEl = document.getElementById('upierTimerClock');
+    const qrWrapEl = document.getElementById('upierQrWrap');
+    const payBtnEl = document.getElementById('upierPayButton');
+    const utrToggleBtn = document.getElementById('upierUtrToggleBtn');
+    const utrForm = document.getElementById('upierUtrForm');
+    const utrInput = document.getElementById('upierUtrInput');
+    const utrSubmitBtn = document.getElementById('upierUtrSubmitBtn');
+    const closeBtn = document.getElementById('upiGatewayCloseBtn');
+    const pollStatusEl = document.getElementById('upierPollStatus');
+    const pollStatusTextEl = document.getElementById('upierPollStatusText');
 
-    // Generate unique transaction / order reference
+    if (!overlay) return;
+
+    // Generate random 6-digit order reference (ORD-169396 format as in image)
     const refNum = String(Math.floor(100000 + Math.random() * 900000));
-    const refId = `TS-UPI-${refNum}`;
+    const formattedOrderId = `ORD-${refNum}`;
 
-    if (payableAmountEl) payableAmountEl.textContent = `₹${totalInr.toLocaleString('en-IN')}`;
-    if (orderRefEl) orderRefEl.textContent = `#${refNum}`;
+    // Fill amount and order ID exactly matching screenshot
+    if (amountEl) amountEl.textContent = `₹${totalInr.toLocaleString('en-IN')}`;
+    if (orderIdEl) orderIdEl.textContent = `Order ID: ${formattedOrderId}`;
 
-    // Construct NPCI standard UPI URI
-    const upiUri = `upi://pay?pa=${encodeURIComponent(UPI_MERCHANT_VPA)}&pn=${encodeURIComponent(UPI_MERCHANT_NAME)}&am=${totalInr}&cu=INR&tn=${encodeURIComponent('The Street Co Order ' + refNum)}`;
+    // Construct NPCI standard UPI intent URI
+    const upiUri = `upi://pay?pa=${encodeURIComponent(UPI_DEFAULT_VPA)}&pn=${encodeURIComponent(UPI_DEFAULT_PAYEE)}&am=${totalInr}&cu=INR&tn=${encodeURIComponent('The Street Co Order ' + formattedOrderId)}`;
 
     // Set mobile deep link
-    if (mobileIntentBtn) {
-      mobileIntentBtn.href = upiUri;
+    if (payBtnEl) {
+      payBtnEl.href = upiUri;
     }
 
-    // Copy UPI ID button logic
-    if (copyVpaBtn) {
-      copyVpaBtn.onclick = () => {
-        navigator.clipboard.writeText(UPI_MERCHANT_VPA).then(() => {
-          if (copyVpaTxt) copyVpaTxt.textContent = 'COPIED! ✓';
-          setTimeout(() => {
-            if (copyVpaTxt) copyVpaTxt.textContent = 'COPY UPI ID';
-          }, 2000);
-        }).catch(() => {
-          if (copyVpaTxt) copyVpaTxt.textContent = 'COPIED! ✓';
-        });
-      };
-    }
-
-    // Render Dynamic QR Code via server endpoint or client SVG fallback
-    if (qrContainer) {
-      qrContainer.innerHTML = '<div class="upi-qr-skeleton">Generating Dynamic UPI QR Code...</div>';
+    // Render crisp dynamic QR code
+    if (qrWrapEl) {
+      qrWrapEl.innerHTML = '<div class="upier-qr-skeleton">Generating QR...</div>';
       fetch(`/api/upi/qr?format=svg&text=${encodeURIComponent(upiUri)}`)
         .then(res => {
           if (!res.ok) throw new Error('API error');
@@ -2120,141 +2111,297 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
         })
         .then(svgText => {
           if (svgText && svgText.includes('<svg')) {
-            qrContainer.innerHTML = svgText;
+            qrWrapEl.innerHTML = svgText;
           } else {
-            qrContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(upiUri)}" alt="UPI QR Code" style="width:100%;height:100%;object-fit:contain;" />`;
+            qrWrapEl.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(upiUri)}" alt="UPI QR Code" />`;
           }
         })
         .catch(() => {
-          qrContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(upiUri)}" alt="UPI QR Code" style="width:100%;height:100%;object-fit:contain;" />`;
+          qrWrapEl.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(upiUri)}" alt="UPI QR Code" />`;
         });
     }
 
-    // Reset views inside modal
-    if (mainCard) mainCard.style.setProperty('display', 'flex', 'important');
-    if (verifyingCard) verifyingCard.style.setProperty('display', 'none', 'important');
+    // 9:59 Countdown Timer (599 seconds) as given in screenshot
+    if (upierCountdownTimer) clearInterval(upierCountdownTimer);
+    let secondsLeft = 599; // 9 min 59 sec
 
-    // Open modal
-    upiModal.classList.add('open');
-    upiModal.setAttribute('aria-hidden', 'false');
-
-    // 1.2-Minute Countdown Timer (1.2 min = 72 seconds)
-    if (upiPaymentTimer) clearInterval(upiPaymentTimer);
-    let secondsLeft = 72;
-    const totalCircumference = 94.25;
-
-    function updateTimerDisplay() {
-      const mins = Math.floor(secondsLeft / 60);
-      const secs = secondsLeft % 60;
-      if (timerClock) {
-        timerClock.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-      }
-      if (timerCircle) {
-        const offset = totalCircumference * (1 - (secondsLeft / 72));
-        timerCircle.style.strokeDashoffset = offset;
+    function updateTimer() {
+      const m = Math.floor(secondsLeft / 60);
+      const s = secondsLeft % 60;
+      if (timerClockEl) {
+        timerClockEl.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
       }
     }
-    updateTimerDisplay();
+    updateTimer();
 
-    upiPaymentTimer = setInterval(() => {
+    upierCountdownTimer = setInterval(() => {
       secondsLeft--;
       if (secondsLeft <= 0) {
-        clearInterval(upiPaymentTimer);
-        upiPaymentTimer = null;
-        secondsLeft = 0;
-        updateTimerDisplay();
-        startUpiVerification(totalInr, refNum);
+        clearInterval(upierCountdownTimer);
+        upierCountdownTimer = null;
+        if (timerClockEl) timerClockEl.textContent = '00:00';
       } else {
-        updateTimerDisplay();
+        updateTimer();
       }
     }, 1000);
 
-    // Wire "I have completed payment" button for immediate manual test verification
-    const verifyNowBtn = document.getElementById('upiVerifyPaidBtn');
-    if (verifyNowBtn) {
-      verifyNowBtn.onclick = () => {
-        if (upiPaymentTimer) {
-          clearInterval(upiPaymentTimer);
-          upiPaymentTimer = null;
+    // Live Polling Routine for FamPay receipt via Gmail OAuth
+    if (upierPaymentPollInterval) {
+      clearInterval(upierPaymentPollInterval);
+      upierPaymentPollInterval = null;
+    }
+
+    if (pollStatusEl) pollStatusEl.classList.remove('verified');
+    if (pollStatusTextEl) pollStatusTextEl.textContent = 'Listening for FamPay payment confirmation...';
+
+    const qrOpenedEpoch = Math.floor(Date.now() / 1000 - 30);
+
+    async function checkPaymentStatus() {
+      try {
+        const token = window.streetCoFirebaseAuth?.getCachedGmailToken?.();
+        const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+        const verifyUrl = `/api/verify-payment?amount=${totalInr}&orderId=${encodeURIComponent(formattedOrderId)}&since=${qrOpenedEpoch}`;
+        const res = await fetch(verifyUrl, { headers });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.verified) {
+          if (upierPaymentPollInterval) {
+            clearInterval(upierPaymentPollInterval);
+            upierPaymentPollInterval = null;
+          }
+          if (upierCountdownTimer) {
+            clearInterval(upierCountdownTimer);
+            upierCountdownTimer = null;
+          }
+          if (pollStatusEl) pollStatusEl.classList.add('verified');
+          if (pollStatusTextEl) pollStatusTextEl.textContent = `✓ Payment Verified via FamPay! (₹${totalInr.toLocaleString('en-IN')})`;
+
+          setTimeout(() => {
+            completeUpiPayment(totalInr, refNum, `Verified via FamPay Receipt (${data.messageId || 'Auto'})`);
+          }, 1200);
         }
-        startUpiVerification(totalInr, refNum);
+      } catch (_) {}
+    }
+
+    // Run first check after 2.5s, then poll every 4s
+    setTimeout(checkPaymentStatus, 2500);
+    upierPaymentPollInterval = setInterval(checkPaymentStatus, 4000);
+
+    // Ensure UTR form is hidden initially as requested
+    if (utrForm) utrForm.style.display = 'none';
+    if (utrInput) utrInput.value = '';
+
+    // Only show UTR entering box when user clicks "Paid from another app? Enter 12-digit UTR manually"
+    if (utrToggleBtn) {
+      utrToggleBtn.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (utrForm) {
+          const isHidden = utrForm.style.display === 'none' || !utrForm.style.display;
+          utrForm.style.display = isHidden ? 'flex' : 'none';
+          if (isHidden && utrInput) {
+            utrInput.focus();
+          }
+        }
       };
     }
 
-    // Wire Cancel / Close buttons
-    const closeBtn = document.getElementById('upiGatewayCloseBtn');
-    const backBtn = document.getElementById('upiBackToPaymentBtn');
-    const backdrop = document.getElementById('upiGatewayBackdrop');
+    // Wire UTR submit button
+    if (utrSubmitBtn) {
+      utrSubmitBtn.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const utrVal = utrInput ? utrInput.value.trim() : '';
+        const utrText = utrVal.length >= 6 ? `UTR: ${utrVal}` : `UTR Confirmed: ${formattedOrderId}`;
+        completeUpiPayment(totalInr, refNum, utrText);
+      };
+    }
+
+    // Wire back/cancel button
     const cancelFn = () => closeUpiPaymentGateway();
     if (closeBtn) closeBtn.onclick = cancelFn;
-    if (backBtn) backBtn.onclick = cancelFn;
-    if (backdrop) backdrop.onclick = cancelFn;
+
+    // Open overlay
+    overlay.classList.add('open');
+    overlay.setAttribute('aria-hidden', 'false');
+    overlay.scrollTop = 0;
   }
+  window.openUpiPaymentGateway = openUpiPaymentGateway;
+  window.closeUpiPaymentGateway = closeUpiPaymentGateway;
 
   function closeUpiPaymentGateway() {
-    if (upiPaymentTimer) {
-      clearInterval(upiPaymentTimer);
-      upiPaymentTimer = null;
+    if (upierCountdownTimer) {
+      clearInterval(upierCountdownTimer);
+      upierCountdownTimer = null;
     }
-    const upiModal = document.getElementById('upiPaymentGatewayModal');
-    if (upiModal) {
-      upiModal.classList.remove('open');
-      upiModal.setAttribute('aria-hidden', 'true');
+    if (upierPaymentPollInterval) {
+      clearInterval(upierPaymentPollInterval);
+      upierPaymentPollInterval = null;
+    }
+    const overlay = document.getElementById('upiPaymentGatewayModal');
+    if (overlay) {
+      overlay.classList.remove('open');
+      overlay.setAttribute('aria-hidden', 'true');
     }
   }
 
-  function startUpiVerification(totalInr, refNum) {
-    if (upiPaymentTimer) {
-      clearInterval(upiPaymentTimer);
-      upiPaymentTimer = null;
+  function completeUpiPayment(totalInr, refNum, verificationNote) {
+    closeUpiPaymentGateway();
+
+    const note = verificationNote || `UPI Ref: ORD-${refNum}`;
+
+    // Configure session payment state
+    checkoutSession.payment = {
+      method: 'upi',
+      detail: `Paid Online via UPI (aniruddhanag780@fam) · ${note}`,
+      txnId: `ORD-${refNum}`,
+      status: 'PAID'
+    };
+
+    // Place and confirm the order directly -> switches to Step 4 Order Confirmation
+    handleConfirmAndPlaceOrder();
+  }
+  window.completeUpiPayment = completeUpiPayment;
+
+  // ══════════ MERCHANT GMAIL SETUP MODAL CONTROLLER ══════════
+  function initMerchantGmailSetupModal() {
+    const modal = document.getElementById('merchantGmailSetupModal');
+    const triggerBtn = document.getElementById('upierMerchantSetupBtn');
+    const closeBtn = document.getElementById('merchantModalCloseBtn');
+    const backdrop = document.getElementById('merchantModalBackdrop');
+    const connectBtn = document.getElementById('merchantGoogleConnectBtn');
+    const connectBtnText = document.getElementById('merchantGoogleConnectBtnText');
+    const testBtn = document.getElementById('merchantTestVerifyBtn');
+    const disconnectBtn = document.getElementById('merchantDisconnectBtn');
+    const statusBadge = document.getElementById('merchantStatusBadge');
+    const emailDisplay = document.getElementById('merchantEmailDisplay');
+    const feedbackMsg = document.getElementById('merchantFeedbackMsg');
+
+    function updateStatusUi(connected, email) {
+      if (statusBadge) {
+        statusBadge.textContent = connected ? 'Connected' : 'Not Connected';
+        statusBadge.className = `merchant-status-badge ${connected ? 'connected' : ''}`;
+      }
+      if (emailDisplay) {
+        emailDisplay.textContent = email || 'aniruddhanag780@gmail.com';
+      }
+      if (connectBtnText) {
+        connectBtnText.textContent = connected ? 'Reconnect / Switch Google Account' : 'Connect Merchant Gmail via Google OAuth';
+      }
+      if (disconnectBtn) {
+        disconnectBtn.style.display = connected ? 'inline-block' : 'none';
+      }
     }
 
-    const mainCard = document.getElementById('upiGatewayMainCard');
-    const verifyingCard = document.getElementById('upiVerifyingCard');
-    const amountEl = document.getElementById('upiVerifyingAmount');
-    const txnEl = document.getElementById('upiVerifyingTxnId');
-    const statusEl = document.getElementById('upiVerifyingStatus');
-    const progBar = document.getElementById('upiVerifyingProgressBar');
+    async function checkMerchantStatus() {
+      try {
+        const res = await fetch('/api/merchant/gmail-status');
+        if (res.ok) {
+          const data = await res.json();
+          updateStatusUi(data.connected, data.email);
+        }
+      } catch (_) {}
+    }
 
-    if (mainCard) mainCard.style.setProperty('display', 'none', 'important');
-    if (verifyingCard) verifyingCard.style.setProperty('display', 'flex', 'important');
+    function openModal() {
+      if (modal) {
+        modal.classList.add('open');
+        modal.setAttribute('aria-hidden', 'false');
+        checkMerchantStatus();
+      }
+    }
 
-    if (amountEl) amountEl.textContent = `₹${totalInr.toLocaleString('en-IN')} INR`;
-    if (txnEl) txnEl.textContent = `UPI-TXN-${refNum}`;
+    function closeModal() {
+      if (modal) {
+        modal.classList.remove('open');
+        modal.setAttribute('aria-hidden', 'true');
+      }
+    }
 
-    if (progBar) progBar.style.width = '15%';
-    if (statusEl) statusEl.textContent = 'Connecting to NPCI & HDFC Bank UPI settlement gateway...';
+    if (triggerBtn) triggerBtn.onclick = openModal;
+    if (closeBtn) closeBtn.onclick = closeModal;
+    if (backdrop) backdrop.onclick = closeModal;
 
-    setTimeout(() => {
-      if (progBar) progBar.style.width = '55%';
-      if (statusEl) statusEl.textContent = `Verifying ₹${totalInr.toLocaleString('en-IN')} payment transaction with bank servers...`;
-    }, 800);
-
-    setTimeout(() => {
-      if (progBar) progBar.style.width = '90%';
-      if (statusEl) statusEl.textContent = 'Payment authorized by bank! Confirming order...';
-    }, 1600);
-
-    setTimeout(() => {
-      if (progBar) progBar.style.width = '100%';
-      if (statusEl) statusEl.textContent = 'Payment Confirmed! Redirecting to receipt...';
-    }, 2200);
-
-    setTimeout(() => {
-      closeUpiPaymentGateway();
-
-      // Configure session payment state
-      checkoutSession.payment = {
-        method: 'upi',
-        detail: `Paid Online via UPI (Dynamic QR) · Txn: UPI-TXN-${refNum}`,
-        txnId: `UPI-TXN-${refNum}`,
-        status: 'PAID'
+    if (connectBtn) {
+      connectBtn.onclick = async () => {
+        try {
+          if (feedbackMsg) {
+            feedbackMsg.style.display = 'block';
+            feedbackMsg.className = 'merchant-feedback-msg';
+            feedbackMsg.textContent = 'Opening Google Sign-In...';
+          }
+          if (window.streetCoFirebaseAuth?.connectMerchantGmail) {
+            const res = await window.streetCoFirebaseAuth.connectMerchantGmail();
+            updateStatusUi(true, res.email);
+            if (feedbackMsg) {
+              feedbackMsg.className = 'merchant-feedback-msg success';
+              feedbackMsg.textContent = `Successfully connected Gmail for ${res.email}! Upier will now auto-verify FamPay receipts.`;
+            }
+          } else {
+            throw new Error('Google Auth not ready');
+          }
+        } catch (err) {
+          if (feedbackMsg) {
+            feedbackMsg.className = 'merchant-feedback-msg error';
+            feedbackMsg.textContent = err.message || 'Google Sign-In was cancelled or failed.';
+          }
+        }
       };
+    }
 
-      // Place and confirm the order directly -> switches to Step 4 Order Confirmation
-      handleConfirmAndPlaceOrder();
-    }, 2600);
+    if (testBtn) {
+      testBtn.onclick = async () => {
+        try {
+          if (feedbackMsg) {
+            feedbackMsg.style.display = 'block';
+            feedbackMsg.className = 'merchant-feedback-msg';
+            feedbackMsg.textContent = 'Testing connection to Gmail API...';
+          }
+          const token = window.streetCoFirebaseAuth?.getCachedGmailToken?.();
+          const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+          const res = await fetch('/api/verify-payment?amount=0', { headers });
+          const data = await res.json();
+          if (data.reason === 'no_token') {
+            feedbackMsg.className = 'merchant-feedback-msg error';
+            feedbackMsg.textContent = 'No active Gmail connection found. Please connect your Google account first.';
+          } else if (data.reason === 'token_expired') {
+            feedbackMsg.className = 'merchant-feedback-msg error';
+            feedbackMsg.textContent = 'Session token expired. Please click Connect to refresh.';
+          } else {
+            feedbackMsg.className = 'merchant-feedback-msg success';
+            feedbackMsg.textContent = 'Gmail API is connected and ready! Recent messages scanned successfully.';
+          }
+        } catch (err) {
+          if (feedbackMsg) {
+            feedbackMsg.className = 'merchant-feedback-msg error';
+            feedbackMsg.textContent = 'Error testing connection: ' + err.message;
+          }
+        }
+      };
+    }
+
+    if (disconnectBtn) {
+      disconnectBtn.onclick = async () => {
+        try {
+          await fetch('/api/merchant/disconnect-gmail', { method: 'POST' });
+          updateStatusUi(false, 'aniruddhanag780@gmail.com');
+          if (feedbackMsg) {
+            feedbackMsg.className = 'merchant-feedback-msg';
+            feedbackMsg.textContent = 'Disconnected Gmail verification.';
+          }
+        } catch (_) {}
+      };
+    }
+
+    checkMerchantStatus();
   }
+  window.initMerchantGmailSetupModal = initMerchantGmailSetupModal;
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initMerchantGmailSetupModal);
+  } else {
+    initMerchantGmailSetupModal();
+  }
+
 
   // Step 3: Render Order Review & Confirmation
   function renderOrderReviewStep() {
@@ -2856,15 +3003,24 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       opt.classList.add('active');
       if (header) header.setAttribute('aria-expanded', 'true');
       checkoutSession.payment.method = opt.dataset.method;
+
+      // If user clicked on UPI, immediately open the UPI payment page
+      if (opt.dataset.method === 'upi') {
+        openUpiPaymentGateway();
+      }
     });
 
-    // Right-aligned small ivory continue button under each payment option
+    // Right-aligned continue button under each payment option
     const continueBtn = opt.querySelector('.checkout-pay-continue-btn');
     if (continueBtn) {
       continueBtn.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
         const method = continueBtn.dataset.payMethod || opt.dataset.method;
+        if (method === 'upi') {
+          openUpiPaymentGateway();
+          return;
+        }
         handlePaymentStepSubmit(method);
       });
     }

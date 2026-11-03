@@ -3371,6 +3371,198 @@ app.get('/api/upi/qr', async (req, res) => {
 });
 
 // ──────────────────────────────────────────
+// MERCHANT GMAIL OAUTH & FAMPAY VERIFICATION
+// ──────────────────────────────────────────
+let merchantGmailConfig = {
+  accessToken: null,
+  email: 'aniruddhanag780@gmail.com',
+  connectedAt: null,
+  expiresAt: null
+};
+
+// POST /api/merchant/set-gmail-token - Save active OAuth access token
+app.post('/api/merchant/set-gmail-token', express.json(), (req, res) => {
+  const { token, email, expiresIn } = req.body || {};
+  if (!token) {
+    return res.status(400).json({ success: false, error: 'Token is required' });
+  }
+  merchantGmailConfig.accessToken = token;
+  merchantGmailConfig.email = email || merchantGmailConfig.email || 'aniruddhanag780@gmail.com';
+  merchantGmailConfig.connectedAt = new Date().toISOString();
+  if (expiresIn) {
+    merchantGmailConfig.expiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
+  }
+  console.log(`[Merchant Gmail] Token registered for ${merchantGmailConfig.email}`);
+  return res.json({
+    success: true,
+    connected: true,
+    email: merchantGmailConfig.email,
+    connectedAt: merchantGmailConfig.connectedAt
+  });
+});
+
+// GET /api/merchant/gmail-status - Check if token is connected
+app.get('/api/merchant/gmail-status', (req, res) => {
+  res.json({
+    connected: Boolean(merchantGmailConfig.accessToken),
+    email: merchantGmailConfig.email,
+    connectedAt: merchantGmailConfig.connectedAt,
+    expiresAt: merchantGmailConfig.expiresAt
+  });
+});
+
+// POST /api/merchant/disconnect-gmail - Disconnect token
+app.post('/api/merchant/disconnect-gmail', (req, res) => {
+  merchantGmailConfig.accessToken = null;
+  merchantGmailConfig.connectedAt = null;
+  res.json({ success: true, connected: false });
+});
+
+// GET /api/verify-payment - Checks Gmail API for FamPay receipt within 9:59 time window
+app.get('/api/verify-payment', async (req, res) => {
+  try {
+    const rawAuth = req.headers.authorization;
+    const bearerToken = rawAuth ? rawAuth.replace(/^Bearer\s+/i, '').trim() : null;
+    const token = bearerToken || merchantGmailConfig.accessToken;
+
+    const amount = Number(req.query.amount) || 0;
+    const orderId = String(req.query.orderId || '').trim();
+    // Default search window: within the last 10 minutes (600 seconds)
+    const sinceEpoch = Number(req.query.since) || Math.floor((Date.now() - 600000) / 1000);
+
+    if (!token) {
+      return res.json({
+        verified: false,
+        reason: 'no_token',
+        message: 'Merchant Gmail not connected yet. Waiting or use UTR manual submission.'
+      });
+    }
+
+    // Query Gmail API for incoming messages after sinceEpoch
+    const query = `after:${sinceEpoch} (fampay OR upi OR payment OR "money received" OR "amount received" OR credited OR transferred)`;
+    const listUrl = `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=5`;
+
+    const listRes = await fetch(listUrl, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    if (listRes.status === 401) {
+      merchantGmailConfig.accessToken = null;
+      return res.json({
+        verified: false,
+        reason: 'token_expired',
+        message: 'OAuth token has expired. Please reconnect merchant Gmail.'
+      });
+    }
+
+    if (!listRes.ok) {
+      const errText = await listRes.text();
+      console.warn('[Gmail Verify Error]', listRes.status, errText);
+      return res.json({
+        verified: false,
+        reason: 'api_error',
+        message: 'Error communicating with Gmail API.'
+      });
+    }
+
+    const listData = await listRes.json();
+    const messages = listData.messages || [];
+
+    if (messages.length === 0) {
+      return res.json({
+        verified: false,
+        reason: 'no_messages',
+        checkedCount: 0
+      });
+    }
+
+    // Inspect each candidate message
+    const formattedAmount = String(amount);
+    const amountVariants = [
+      formattedAmount,
+      amount.toLocaleString('en-IN'),
+      `${amount}.00`,
+      `${amount.toLocaleString('en-IN')}.00`
+    ];
+
+    for (const msgItem of messages) {
+      try {
+        const msgRes = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${msgItem.id}?format=full`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!msgRes.ok) continue;
+
+        const msgData = await msgRes.json();
+        const snippet = msgData.snippet || '';
+        const headers = msgData.payload?.headers || [];
+        const subject = headers.find(h => h.name.toLowerCase() === 'subject')?.value || '';
+        const from = headers.find(h => h.name.toLowerCase() === 'from')?.value || '';
+        const date = headers.find(h => h.name.toLowerCase() === 'date')?.value || '';
+
+        // Extract raw body text
+        let fullBodyText = snippet;
+        if (msgData.payload?.body?.data) {
+          try {
+            fullBodyText += ' ' + Buffer.from(msgData.payload.body.data, 'base64').toString('utf8');
+          } catch (_) {}
+        }
+        if (msgData.payload?.parts) {
+          for (const part of msgData.payload.parts) {
+            if (part.body?.data) {
+              try {
+                fullBodyText += ' ' + Buffer.from(part.body.data, 'base64').toString('utf8');
+              } catch (_) {}
+            }
+          }
+        }
+
+        const combinedText = `${subject} ${from} ${snippet} ${fullBodyText}`.toLowerCase();
+
+        // Check if amount is present
+        const hasAmount = amount > 0 && amountVariants.some(v => combinedText.includes(v.toLowerCase()));
+
+        // Check for payment receipt keywords
+        const isPaymentReceipt =
+          combinedText.includes('fampay') ||
+          combinedText.includes('received') ||
+          combinedText.includes('credited') ||
+          combinedText.includes('paid you') ||
+          combinedText.includes('successful') ||
+          combinedText.includes('upi transaction');
+
+        // Check for order ID if present in note
+        const hasOrderId = orderId ? combinedText.includes(orderId.toLowerCase()) : false;
+
+        if (hasAmount && isPaymentReceipt) {
+          console.log(`[FamPay Verified] Amount: ₹${amount}, MsgId: ${msgItem.id}, Subject: ${subject}`);
+          return res.json({
+            verified: true,
+            method: 'fampay_gmail_auto',
+            messageId: msgItem.id,
+            subject,
+            snippet: snippet.slice(0, 160),
+            date,
+            matchedAmount: amount,
+            orderId: hasOrderId ? orderId : null
+          });
+        }
+      } catch (innerErr) {
+        console.warn('[Message Inspection Error]', innerErr);
+      }
+    }
+
+    return res.json({
+      verified: false,
+      reason: 'awaiting_receipt',
+      checkedCount: messages.length
+    });
+  } catch (err) {
+    console.error('[Verify Payment Exception]', err);
+    res.status(500).json({ verified: false, error: err.message });
+  }
+});
+
+// ──────────────────────────────────────────
 // COUPONS API ROUTES
 // ──────────────────────────────────────────
 

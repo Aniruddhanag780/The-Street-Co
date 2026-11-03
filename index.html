@@ -2337,45 +2337,36 @@
 
           <div class="checkout-payment-methods" id="checkoutPaymentMethods">
             <!-- Official UPI Instant Payment Option -->
-            <div class="checkout-pay-option" data-method="upi" id="checkoutPayOptionUpi">
-              <div class="checkout-pay-header" role="button" tabindex="0" aria-expanded="false">
+            <!-- Official UPI Instant Payment Option -->
+            <div class="checkout-pay-option" data-method="upi" id="checkoutPayOptionUpi" onclick="openUpiPaymentGateway()" style="cursor: pointer;">
+              <div class="checkout-pay-header" role="button" tabindex="0" aria-expanded="true" onclick="openUpiPaymentGateway()">
                 <div class="checkout-pay-title-group">
                   <span class="checkout-pay-icon checkout-pay-icon--upi" aria-label="UPI Logo">
-                    <svg viewBox="0 0 44 28" width="38" height="24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <rect width="44" height="28" rx="5" fill="#097939" fill-opacity="0.08" stroke="#097939" stroke-width="1"/>
-                      <path d="M12 7L7 21H11.5L13 17.5H18L16.5 21H21L26 7H21.5L20 10.5H15L16.5 7H12Z" fill="#097939"/>
-                      <path d="M28 7L23 21H27.5L32.5 7H28Z" fill="#E86114"/>
-                      <path d="M34 7L29 21H33.5L38.5 7H34Z" fill="#097939"/>
-                    </svg>
+                    <img src="/img/upi.svg" alt="UPI" width="34" height="18" style="object-fit:contain;" />
                   </span>
                   <div class="checkout-pay-info">
                     <div class="checkout-pay-title-row">
-                      <strong>UPI (Google Pay / PhonePe / Paytm / QR)</strong>
+                      <strong>UPI (Google Pay / PhonePe / Paytm / Any UPI App)</strong>
                       <span class="pay-chip pay-chip--green">⚡ INSTANT</span>
                     </div>
-                    <small>Pay instantly via dynamic QR code or any UPI App with 1.2 min auto-verification</small>
+                    <small>Click to open UPI payment page &amp; scan QR</small>
                   </div>
                 </div>
                 <div class="checkout-pay-badges">
-                  <div class="upi-app-mini-logos" title="Supported UPI Apps">
-                    <span class="upi-mini-pill gpay">GPay</span>
-                    <span class="upi-mini-pill phonepe">PhonePe</span>
-                    <span class="upi-mini-pill paytm">Paytm</span>
-                    <span class="upi-mini-pill bhim">BHIM</span>
-                  </div>
+                  <span class="upi-mini-pill" style="background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;font-weight:700;">aniruddhanag780@fam</span>
                 </div>
               </div>
-              <div class="checkout-pay-body" style="display:none;">
-                <div class="checkout-upi-box">
+              <div class="checkout-pay-body" style="display:block;">
+                <div class="checkout-upi-box" onclick="openUpiPaymentGateway()">
                   <div class="checkout-upi-box-header">
-                    <div class="upi-box-badge">⚡ DYNAMIC QR PAYMENT</div>
+                    <div class="upi-box-badge">⚡ SECURE UPI PAYMENT</div>
                     <p class="checkout-upi-info">
-                      We'll generate a single-use dynamic UPI QR code with your exact order amount. Open Google Pay, PhonePe, Paytm, or any UPI app to scan and pay. The system verifies payment with the bank in 1.2 minutes and instantly confirms your order.
+                      Scan the QR code with any UPI app (Google Pay, PhonePe, Paytm, BHIM, CRED) with your order amount auto-entered.
                     </p>
                   </div>
                   <div class="checkout-pay-action-row">
-                    <button type="button" class="checkout-pay-continue-btn checkout-pay-continue-btn--upi" data-pay-method="upi" id="checkoutProceedUpiBtn">
-                      <span>OPEN UPI QR PAYMENT PAGE →</span>
+                    <button type="button" class="checkout-pay-continue-btn checkout-pay-continue-btn--upi" data-pay-method="upi" id="checkoutProceedUpiBtn" onclick="openUpiPaymentGateway()">
+                      <span>PAY VIA UPI →</span>
                     </button>
                   </div>
                 </div>
@@ -2646,183 +2637,132 @@
   </div>
 </div>
 
-<!-- ══════════ UPI PAYMENT GATEWAY MODAL (DYNAMIC QR + 1.2 MIN TIMER) ══════════ -->
-<div class="upi-gateway-modal" id="upiPaymentGatewayModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="upiGatewayTitle">
-  <div class="upi-gateway-backdrop" id="upiGatewayBackdrop"></div>
-  <div class="upi-gateway-dialog" id="upiGatewayDialog">
+<!-- ══════════ UPI PAYMENT PAGE (EXACT SCREENSHOT LAYOUT & STYLING) ══════════ -->
+<div class="upi-page-overlay" id="upiPaymentGatewayModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="upierAmountDisplay">
+  <div class="upi-page-container">
     
-    <!-- Top Bar: Security & Close -->
-    <div class="upi-gateway-topbar">
-      <div class="upi-gateway-secure-tag">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+    <!-- Top return bar -->
+    <div class="upi-page-topbar">
+      <button type="button" class="upi-page-back-btn" id="upiGatewayCloseBtn" aria-label="Return to checkout">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"></polyline>
         </svg>
-        <span>256-BIT ENCRYPTED NPCI UPI GATEWAY</span>
-      </div>
-      <button type="button" class="upi-gateway-close-btn" id="upiGatewayCloseBtn" aria-label="Cancel UPI payment">
-        <span>CANCEL &amp; RETURN</span>
-        ✕
+        <span>Return to Checkout</span>
       </button>
     </div>
 
-    <!-- Main Payment Screen -->
-    <div class="upi-gateway-card" id="upiGatewayMainCard">
-      
-      <!-- Merchant & Amount Header -->
-      <div class="upi-gateway-header">
-        <div class="upi-brand-block">
-          <div class="upi-official-badge">
-            <span class="upi-txt-green">U</span><span class="upi-txt-orange">P</span><span class="upi-txt-green">I</span>
-            <span class="upi-tag-sub">NPCI OFFICIAL</span>
-          </div>
-          <div class="upi-merchant-details">
-            <span class="merchant-label">PAYEE</span>
-            <strong class="merchant-name">THE STREET CO APPAREL</strong>
-            <span class="merchant-vpa" id="upiDisplayVpa">thestreetco@okhdfcbank</span>
-          </div>
-        </div>
+    <!-- Center White Card matching screenshot exactly -->
+    <div class="upier-card" id="upierMainCard">
+      <!-- Big bold amount at top -->
+      <div class="upier-amount" id="upierAmountDisplay">₹200</div>
 
-        <div class="upi-amount-block">
-          <span class="amount-label">AMOUNT PAYABLE</span>
-          <div class="amount-val" id="upiPayableAmount">₹0</div>
-          <span class="amount-note">Order Reference: <strong id="upiOrderRef">#---</strong></span>
-        </div>
-      </div>
+      <!-- Order ID -->
+      <div class="upier-order-id" id="upierOrderIdDisplay">Order ID: ORD-169396</div>
 
-      <!-- Live 1.2-Minute Countdown Timer Banner -->
-      <div class="upi-timer-strip" id="upiTimerStrip">
-        <div class="upi-timer-icon-wrap">
-          <svg class="upi-timer-svg" viewBox="0 0 36 36" width="36" height="36">
-            <circle class="timer-bg" cx="18" cy="18" r="15" fill="none" stroke="#E5E0D8" stroke-width="3" />
-            <circle class="timer-bar" id="upiTimerCircle" cx="18" cy="18" r="15" fill="none" stroke="#097939" stroke-width="3" stroke-dasharray="94.25" stroke-dashoffset="0" transform="rotate(-90 18 18)" />
-          </svg>
-        </div>
-        <div class="upi-timer-info">
-          <span class="upi-timer-label">PAYMENT SESSION TIME REMAINING</span>
-          <strong class="upi-timer-clock" id="upiTimerClock">01:12</strong>
-        </div>
-        <div class="upi-timer-badge">
-          <span>Auto-verifying on 1.2 min timeout</span>
-        </div>
-      </div>
-
-      <!-- QR Code Scanning Section -->
-      <div class="upi-qr-section">
-        <div class="upi-qr-frame">
-          <div class="upi-qr-image-wrap" id="upiQrContainer">
-            <!-- Dynamic QR code rendered here -->
-            <div class="upi-qr-skeleton">Generating Dynamic UPI QR...</div>
-          </div>
-          <div class="upi-qr-scan-hint">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M3 7V5a2 2 0 0 1 2-2h2"></path>
-              <path d="M17 3h2a2 2 0 0 1 2 2v2"></path>
-              <path d="M21 17v2a2 2 0 0 1-2 2h-2"></path>
-              <path d="M7 21H5a2 2 0 0 1-2-2v-2"></path>
-            </svg>
-            <span>Scan with any UPI App</span>
-          </div>
-        </div>
-
-        <!-- Supported UPI Apps Badges -->
-        <div class="upi-supported-apps">
-          <span class="apps-heading">SCAN &amp; PAY USING ANY APP</span>
-          <div class="apps-icons-grid">
-            <div class="app-chip" title="Google Pay"><span class="app-chip-dot gpay-dot"></span><strong>Google Pay</strong></div>
-            <div class="app-chip" title="PhonePe"><span class="app-chip-dot phonepe-dot"></span><strong>PhonePe</strong></div>
-            <div class="app-chip" title="Paytm"><span class="app-chip-dot paytm-dot"></span><strong>Paytm</strong></div>
-            <div class="app-chip" title="BHIM UPI"><span class="app-chip-dot bhim-dot"></span><strong>BHIM</strong></div>
-            <div class="app-chip" title="CRED"><span class="app-chip-dot cred-dot"></span><strong>CRED</strong></div>
-            <div class="app-chip" title="Any Banking App"><span class="app-chip-dot bank-dot"></span><strong>Any UPI App</strong></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Copy UPI ID / Mobile Intent Deep-link -->
-      <div class="upi-quick-actions">
-        <div class="upi-vpa-copy-card">
-          <div class="upi-vpa-info">
-            <span class="vpa-tag">OFFICIAL VPA / UPI ID:</span>
-            <code class="vpa-code" id="upiVpaCodeText">thestreetco@okhdfcbank</code>
-          </div>
-          <button type="button" class="upi-copy-vpa-btn" id="upiCopyVpaBtn" title="Copy UPI ID">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-            </svg>
-            <span id="upiCopyVpaBtnTxt">COPY UPI ID</span>
-          </button>
-        </div>
-
-        <!-- Mobile Quick Intent Button (direct opens installed UPI apps) -->
-        <a href="#" class="upi-mobile-intent-btn" id="upiMobileIntentBtn" rel="noopener noreferrer">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
-            <line x1="12" y1="18" x2="12.01" y2="18"></line>
-          </svg>
-          <span>TAP TO PAY VIA INSTALLED UPI APP (MOBILE)</span>
-        </a>
-      </div>
-
-      <!-- Action Verification Buttons -->
-      <div class="upi-actions-row">
-        <button type="button" class="upi-verify-paid-btn" id="upiVerifyPaidBtn">
-          <span>✓ I HAVE COMPLETED PAYMENT (VERIFY NOW)</span>
-        </button>
-        <button type="button" class="upi-back-method-btn" id="upiBackToPaymentBtn">
-          <span>Cancel &amp; Select Different Payment Method</span>
-        </button>
-      </div>
-
-      <div class="upi-footer-note">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#097939" stroke-width="2">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+      <!-- Valid for 09:59 timer pill -->
+      <div class="upier-timer-pill">
+        <svg class="upier-clock-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
         </svg>
-        <span>Instant UPI settlements protected by National Payments Corporation of India (NPCI) &amp; RBI banking guidelines.</span>
+        <span>Valid for <strong id="upierTimerClock">09:59</strong></span>
       </div>
 
-    </div>
-
-    <!-- Verification Loading Screen (Shows during 1.2 min or on manual verify) -->
-    <div class="upi-verifying-card" id="upiVerifyingCard" style="display:none;">
-      <div class="upi-verifying-spinner-wrap">
-        <div class="upi-spinner-ring"></div>
-        <div class="upi-spinner-icon">
-          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#097939" stroke-width="2.5">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-          </svg>
-        </div>
+      <!-- QR Code with rounded border -->
+      <div class="upier-qr-wrap" id="upierQrWrap">
+        <div class="upier-qr-skeleton">Generating QR...</div>
       </div>
 
-      <h3 class="upi-verifying-title">Verifying Payment With Bank...</h3>
-      <p class="upi-verifying-status" id="upiVerifyingStatus">Connecting to NPCI &amp; Bank UPI settlement server...</p>
+      <!-- Solid Black Button: PAY VIA ANY UPI APP -->
+      <a href="#" class="upier-pay-button" id="upierPayButton" rel="noopener noreferrer">
+        PAY VIA ANY UPI APP
+      </a>
 
-      <div class="upi-verifying-progress-track">
-        <div class="upi-verifying-progress-bar" id="upiVerifyingProgressBar"></div>
+      <!-- Live Checking / Polling Status Indicator -->
+      <div class="upier-poll-status" id="upierPollStatus">
+        <span class="upier-poll-dot" id="upierPollDot"></span>
+        <span class="upier-poll-text" id="upierPollStatusText">Listening for FamPay payment confirmation...</span>
       </div>
 
-      <div class="upi-verifying-details">
-        <div class="verifying-row">
-          <span>Amount:</span>
-          <strong id="upiVerifyingAmount">₹0 INR</strong>
-        </div>
-        <div class="verifying-row">
-          <span>Payee:</span>
-          <strong>The Street Co Apparel</strong>
-        </div>
-        <div class="verifying-row">
-          <span>Transaction Ref:</span>
-          <strong id="upiVerifyingTxnId">UPI-TXN-PENDING</strong>
-        </div>
-      </div>
+      <!-- Text Link: Paid from another app? Enter 12-digit UTR manually -->
+      <button type="button" class="upier-utr-toggle-btn" id="upierUtrToggleBtn">
+        Paid from another app? Enter 12-digit UTR manually
+      </button>
 
-      <div class="upi-verifying-safe-note">
-        <span class="safe-lock">🔒</span>
-        <span>Payment confirmed! Redirecting to your Order Confirmation receipt...</span>
+      <!-- Inline UTR Input Drawer (Shown only when user clicks UTR link) -->
+      <div class="upier-utr-form" id="upierUtrForm" style="display: none;">
+        <input type="text" id="upierUtrInput" maxlength="12" placeholder="Enter 12-digit UPI Ref / UTR" class="upier-utr-input" />
+        <button type="button" id="upierUtrSubmitBtn" class="upier-utr-submit">Submit UTR</button>
       </div>
     </div>
 
+    <!-- Below Card: Merchant setup, T&C, UPI logo -->
+    <div class="upier-footer-section">
+      <div class="upier-footer-links">
+        <button type="button" class="upier-link-btn" id="upierMerchantSetupBtn">Merchant Gmail &amp; Integration Setup</button>
+        <span class="upier-dot">·</span>
+        <a href="#tos" class="upier-link-a" id="upierTcLink">T&amp;C</a>
+      </div>
+
+      <div class="upier-logo-row">
+        <img src="/img/upi.svg" alt="UPI" width="56" height="28" class="upier-upi-img" />
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════ MERCHANT GMAIL & INTEGRATION SETUP MODAL ══════════ -->
+<div class="merchant-modal-overlay" id="merchantGmailSetupModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="merchantModalTitle">
+  <div class="merchant-modal-backdrop" id="merchantModalBackdrop"></div>
+  <div class="merchant-modal-card">
+    <div class="merchant-modal-header">
+      <div class="merchant-badge">⚡ AUTOMATED UPI RECEIPT VERIFICATION</div>
+      <button type="button" class="merchant-modal-close-btn" id="merchantModalCloseBtn" aria-label="Close setup modal">✕</button>
+    </div>
+    
+    <h3 class="merchant-modal-title" id="merchantModalTitle">Merchant Gmail &amp; Integration Setup</h3>
+    
+    <p class="merchant-modal-desc">
+      Connect your Google Account once with <strong>read-only Gmail access</strong> so Upier can automatically confirm incoming FamPay payment receipts and credit orders immediately.
+    </p>
+
+    <div class="merchant-security-notice">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      </svg>
+      <span>No passwords required. Powered securely by Google Workspace OAuth.</span>
+    </div>
+
+    <div class="merchant-status-card" id="merchantStatusCard">
+      <div class="merchant-status-row">
+        <span class="merchant-status-label">Current Connection:</span>
+        <span class="merchant-status-badge" id="merchantStatusBadge">Checking...</span>
+      </div>
+      <div class="merchant-email-display" id="merchantEmailDisplay">aniruddhanag780@gmail.com</div>
+    </div>
+
+    <!-- Official Google Sign-In Button -->
+    <button type="button" class="merchant-google-connect-btn" id="merchantGoogleConnectBtn">
+      <svg viewBox="0 0 24 24" width="20" height="20">
+        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+      </svg>
+      <span id="merchantGoogleConnectBtnText">Connect Merchant Gmail via Google OAuth</span>
+    </button>
+
+    <div class="merchant-modal-actions">
+      <button type="button" class="merchant-test-btn" id="merchantTestVerifyBtn">
+        Test Connection
+      </button>
+      <button type="button" class="merchant-disconnect-btn" id="merchantDisconnectBtn" style="display: none;">
+        Disconnect
+      </button>
+    </div>
+
+    <div class="merchant-feedback-msg" id="merchantFeedbackMsg" style="display: none;"></div>
   </div>
 </div>
 

@@ -1,12 +1,11 @@
 {
-  "projectId": "the-street-co-780",
-  "appId": "1:463701933718:web:030b0fe589ddf3256d0cb7",
-  "apiKey": "AIzaSyCYBwxhnKg62a08876TMo1Edd45OY5-o40",
-  "authDomain": "the-street-co-780.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-thestreetco-0e2c783d-7cbc-4f92-8cbb-2ec9883cbcca",
-  "storageBucket": "the-street-co-780.firebasestorage.app",
-  "messagingSenderId": "463701933718",
+  "projectId": "gen-lang-client-0792884063",
+  "appId": "1:477046895412:web:a3e14896245cb713aaeb61",
+  "apiKey": "AIzaSyA24OV3CaiKGOVH2XYH-l2YBvSMkiLrsyQ",
+  "authDomain": "gen-lang-client-0792884063.firebaseapp.com",
+  "storageBucket": "gen-lang-client-0792884063.firebasestorage.app",
+  "messagingSenderId": "477046895412",
   "measurementId": "",
-  "oAuthClientId": "463701933718-4jh0i27hghpurbqhernmg1epqvqj74cs.apps.googleusercontent.com",
+  "oAuthClientId": "477046895412-meproil8aiqceekm6u4il0duf4dhtlbe.apps.googleusercontent.com",
   "recaptchaSiteKey": ""
 }

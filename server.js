@@ -3373,12 +3373,40 @@ app.get('/api/upi/qr', async (req, res) => {
 // ──────────────────────────────────────────
 // MERCHANT GMAIL OAUTH & FAMPAY VERIFICATION
 // ──────────────────────────────────────────
-let merchantGmailConfig = {
-  accessToken: null,
-  email: 'aniruddhanag780@gmail.com',
-  connectedAt: null,
-  expiresAt: null
-};
+const MERCHANT_GMAIL_TOKEN_FILE = path.join(__dirname, 'merchant-gmail-token.json');
+
+function loadMerchantGmailConfig() {
+  try {
+    if (fs.existsSync(MERCHANT_GMAIL_TOKEN_FILE)) {
+      const raw = fs.readFileSync(MERCHANT_GMAIL_TOKEN_FILE, 'utf8');
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        return parsed;
+      }
+    }
+  } catch (_) {}
+  return {
+    accessToken: null,
+    email: 'aniruddhanag780@gmail.com',
+    connectedAt: null,
+    expiresAt: null
+  };
+}
+
+let merchantGmailConfig = loadMerchantGmailConfig();
+
+function saveMerchantGmailConfig(cfg) {
+  try {
+    fs.writeFileSync(MERCHANT_GMAIL_TOKEN_FILE, JSON.stringify(cfg, null, 2), 'utf8');
+  } catch (err) {
+    console.warn('[Merchant Token Save Error]', err.message);
+  }
+}
+
+// Dedicated Merchant Setup Page Routes
+app.get(['/setup-gmail', '/setup-gmail/', '/admin-gmail', '/admin-gmail/'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'setup-gmail.html'));
+});
 
 // POST /api/merchant/set-gmail-token - Save active OAuth access token
 app.post('/api/merchant/set-gmail-token', express.json(), (req, res) => {
@@ -3392,7 +3420,8 @@ app.post('/api/merchant/set-gmail-token', express.json(), (req, res) => {
   if (expiresIn) {
     merchantGmailConfig.expiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
   }
-  console.log(`[Merchant Gmail] Token registered for ${merchantGmailConfig.email}`);
+  saveMerchantGmailConfig(merchantGmailConfig);
+  console.log(`[Merchant Gmail] Token registered and saved for ${merchantGmailConfig.email}`);
   return res.json({
     success: true,
     connected: true,
@@ -3415,6 +3444,7 @@ app.get('/api/merchant/gmail-status', (req, res) => {
 app.post('/api/merchant/disconnect-gmail', (req, res) => {
   merchantGmailConfig.accessToken = null;
   merchantGmailConfig.connectedAt = null;
+  saveMerchantGmailConfig(merchantGmailConfig);
   res.json({ success: true, connected: false });
 });
 

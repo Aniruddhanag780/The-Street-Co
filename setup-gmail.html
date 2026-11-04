@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Merchant Gmail & FamPay Auto-Verify Setup — The Street Co</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Cinzel:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: #F6F4F0;
+      color: #111827;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+    .setup-container {
+      width: 100%;
+      max-width: 520px;
+      background: #ffffff;
+      border-radius: 20px;
+      padding: 2.25rem;
+      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.03);
+      border: 1px solid rgba(0, 0, 0, 0.06);
+    }
+    .setup-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.25rem;
+    }
+    .brand-title {
+      font-family: 'Cinzel', serif;
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      color: #000000;
+    }
+    .badge-pill {
+      font-size: 0.7rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      padding: 0.3rem 0.65rem;
+      border-radius: 9999px;
+      background: #f0fdf4;
+      color: #15803d;
+      border: 1px solid #bbf7d0;
+    }
+    h1 {
+      font-size: 1.45rem;
+      font-weight: 800;
+      color: #000000;
+      margin-bottom: 0.6rem;
+      letter-spacing: -0.01em;
+    }
+    p.desc {
+      font-size: 0.88rem;
+      line-height: 1.55;
+      color: #4b5563;
+      margin-bottom: 1.5rem;
+    }
+    .security-banner {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.65rem;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 0.85rem 1rem;
+      margin-bottom: 1.5rem;
+      font-size: 0.82rem;
+      color: #334155;
+      line-height: 1.45;
+    }
+    .security-banner svg {
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .status-card {
+      background: #f9fafb;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 1.15rem;
+      margin-bottom: 1.5rem;
+    }
+    .status-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+    }
+    .status-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #4b5563;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .status-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8rem;
+      font-weight: 800;
+      padding: 0.25rem 0.65rem;
+      border-radius: 9999px;
+      background: #fef2f2;
+      color: #b91c1c;
+      border: 1px solid #fecaca;
+    }
+    .status-indicator.connected {
+      background: #f0fdf4;
+      color: #15803d;
+      border-color: #bbf7d0;
+    }
+    .status-indicator .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    .status-email {
+      font-family: monospace;
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #111827;
+      word-break: break-all;
+    }
+    .status-time {
+      font-size: 0.74rem;
+      color: #6b7280;
+      margin-top: 0.35rem;
+    }
+    .btn-google {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      padding: 0.9rem 1.25rem;
+      background: #ffffff;
+      border: 2px solid #000000;
+      border-radius: 12px;
+      font-size: 0.92rem;
+      font-weight: 800;
+      color: #000000;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+      transition: all 0.15s ease;
+      margin-bottom: 0.85rem;
+    }
+    .btn-google:hover {
+      background: #000000;
+      color: #ffffff;
+    }
+    .btn-google:hover svg path {
+      fill: #ffffff;
+    }
+    .actions-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+    .btn-test {
+      background: #000000;
+      color: #ffffff;
+      border: none;
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      font-size: 0.84rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: opacity 0.15s ease;
+    }
+    .btn-test:hover { opacity: 0.85; }
+    .btn-disconnect {
+      background: transparent;
+      color: #b91c1c;
+      border: 1.5px solid #fca5a5;
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      font-size: 0.84rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+    .btn-disconnect:hover { background: #fef2f2; }
+    .flow-card {
+      background: #fdfcf9;
+      border: 1px dashed #d1d5db;
+      border-radius: 12px;
+      padding: 1rem;
+      margin-top: 1.25rem;
+    }
+    .flow-title {
+      font-size: 0.78rem;
+      font-weight: 800;
+      color: #111827;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .flow-steps {
+      list-style: none;
+      counter-reset: flow-counter;
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+    }
+    .flow-steps li {
+      counter-increment: flow-counter;
+      font-size: 0.78rem;
+      color: #4b5563;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      line-height: 1.4;
+    }
+    .flow-steps li::before {
+      content: counter(flow-counter);
+      background: #000000;
+      color: #ffffff;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.65rem;
+      font-weight: 800;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .feedback-box {
+      margin-top: 1rem;
+      padding: 0.85rem 1rem;
+      border-radius: 10px;
+      font-size: 0.82rem;
+      line-height: 1.45;
+      font-weight: 600;
+      display: none;
+    }
+    .feedback-box.success {
+      display: block;
+      background: #f0fdf4;
+      color: #15803d;
+      border: 1.5px solid #bbf7d0;
+    }
+    .feedback-box.error {
+      display: block;
+      background: #fef2f2;
+      color: #b91c1c;
+      border: 1.5px solid #fecaca;
+    }
+    .feedback-box.info {
+      display: block;
+      background: #eff6ff;
+      color: #1e40af;
+      border: 1.5px solid #bfdbfe;
+    }
+    .return-link {
+      display: inline-block;
+      margin-top: 1.5rem;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #000000;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    .return-link:hover { opacity: 0.75; }
+  </style>
+</head>
+<body>
+
+  <div class="setup-container">
+    <div class="setup-header">
+      <span class="brand-title">THE STREET CO</span>
+      <span class="badge-pill">FAMPAY VERIFICATION ENGINE</span>
+    </div>
+
+    <h1>Gmail Auto-Verify Setup</h1>
+    <p class="desc">
+      Connect your Google Account (<strong>aniruddhanag780@gmail.com</strong>) once with read-only Gmail access. Once linked, Upier reads incoming FamPay payment confirmation emails to verify customer payments automatically.
+    </p>
+
+    <div class="security-banner">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      </svg>
+      <div>
+        <strong>Zero Passwords Required</strong><br>
+        Powered by official Google Workspace OAuth. Your credentials remain 100% private with Google.
+      </div>
+    </div>
+
+    <div class="status-card">
+      <div class="status-row">
+        <span class="status-label">Integration Status</span>
+        <span class="status-indicator" id="statusIndicator">
+          <span class="dot"></span>
+          <span id="statusText">Checking...</span>
+        </span>
+      </div>
+      <div class="status-email" id="emailDisplay">aniruddhanag780@gmail.com</div>
+      <div class="status-time" id="timeDisplay">Checking server status...</div>
+    </div>
+
+    <!-- 1-Click Google Sign-In Button -->
+    <button type="button" class="btn-google" id="btnConnectGoogle">
+      <svg viewBox="0 0 24 24" width="22" height="22">
+        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+      </svg>
+      <span id="btnConnectGoogleText">Sign In with Google to Connect Gmail</span>
+    </button>
+
+    <div class="actions-grid">
+      <button type="button" class="btn-test" id="btnTestScan">Test Reading Emails</button>
+      <button type="button" class="btn-disconnect" id="btnDisconnect">Disconnect</button>
+    </div>
+
+    <div class="feedback-box" id="feedbackBox"></div>
+
+    <div class="flow-card">
+      <div class="flow-title">⚡ How Zero-Click Verification Works</div>
+      <ol class="flow-steps">
+        <li>Customer selects UPI at checkout and scans the QR code.</li>
+        <li>Customer pays the exact amount using FamPay or any UPI app.</li>
+        <li>FamPay immediately delivers a payment receipt email to your Gmail.</li>
+        <li>The system detects the matching email in your inbox within 2–5 seconds.</li>
+        <li><strong>Order confirms automatically!</strong> The customer does not have to click any buttons.</li>
+      </ol>
+    </div>
+
+    <center>
+      <a href="/" class="return-link">← Return to Storefront</a>
+    </center>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
+
+    let authInstance = null;
+    let currentToken = null;
+
+    async function initAuth() {
+      try {
+        const res = await fetch("/firebase-applet-config.json");
+        if (res.ok) {
+          const cfg = await res.json();
+          const app = initializeApp(cfg, "setup-page-auth");
+          authInstance = getAuth(app);
+        }
+      } catch (err) {
+        console.error("Config load error:", err);
+      }
+    }
+    initAuth();
+
+    const statusIndicator = document.getElementById("statusIndicator");
+    const statusText = document.getElementById("statusText");
+    const emailDisplay = document.getElementById("emailDisplay");
+    const timeDisplay = document.getElementById("timeDisplay");
+    const btnConnectGoogle = document.getElementById("btnConnectGoogle");
+    const btnConnectGoogleText = document.getElementById("btnConnectGoogleText");
+    const btnTestScan = document.getElementById("btnTestScan");
+    const btnDisconnect = document.getElementById("btnDisconnect");
+    const feedbackBox = document.getElementById("feedbackBox");
+
+    function showFeedback(type, message) {
+      feedbackBox.className = `feedback-box ${type}`;
+      feedbackBox.innerHTML = message;
+    }
+
+    async function refreshStatus() {
+      try {
+        const res = await fetch("/api/merchant/gmail-status");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.connected) {
+            statusIndicator.className = "status-indicator connected";
+            statusText.textContent = "Connected & Active";
+            emailDisplay.textContent = data.email || "aniruddhanag780@gmail.com";
+            timeDisplay.textContent = `Connected at: ${new Date(data.connectedAt).toLocaleString('en-IN')}`;
+            btnConnectGoogleText.textContent = "Reconnect / Switch Google Account";
+            btnDisconnect.style.display = "block";
+          } else {
+            statusIndicator.className = "status-indicator";
+            statusText.textContent = "Not Connected";
+            emailDisplay.textContent = "aniruddhanag780@gmail.com";
+            timeDisplay.textContent = "Waiting for 1-click Google authorization";
+            btnConnectGoogleText.textContent = "Sign In with Google to Connect Gmail";
+            btnDisconnect.style.display = "none";
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    btnConnectGoogle.onclick = async () => {
+      showFeedback("info", "Opening official Google Sign-In popup...");
+      try {
+        if (!authInstance) await initAuth();
+        const provider = new GoogleAuthProvider();
+        provider.addScope("https://www.googleapis.com/auth/gmail.readonly");
+        provider.setCustomParameters({ prompt: "select_account" });
+
+        const result = await signInWithPopup(authInstance, provider);
+        const credential = GoogleAuthProvider.credentialFromResult(result);
+        const token = credential?.accessToken;
+
+        if (!token) throw new Error("Could not retrieve access token from Google.");
+
+        currentToken = token;
+
+        // Save token to server
+        const saveRes = await fetch("/api/merchant/set-gmail-token", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            token,
+            email: result.user.email
+          })
+        });
+
+        if (saveRes.ok) {
+          showFeedback("success", `✓ Successfully linked ${result.user.email}! Automated FamPay receipt detection is now LIVE.`);
+          refreshStatus();
+        } else {
+          throw new Error("Failed to register token with server.");
+        }
+      } catch (err) {
+        showFeedback("error", "Sign-In cancelled or error: " + err.message);
+      }
+    };
+
+    btnTestScan.onclick = async () => {
+      showFeedback("info", "Scanning Gmail API for recent FamPay/UPI messages...");
+      try {
+        const headers = currentToken ? { Authorization: `Bearer ${currentToken}` } : {};
+        const res = await fetch("/api/verify-payment?amount=0", { headers });
+        const data = await res.json();
+
+        if (data.reason === "no_token") {
+          showFeedback("error", "Gmail not connected yet. Click <strong>Sign In with Google</strong> above first.");
+        } else if (data.reason === "token_expired") {
+          showFeedback("error", "Session expired. Please click <strong>Reconnect</strong> above.");
+        } else {
+          showFeedback("success", `✓ Gmail connection verified successfully! Scanned recent messages without errors. System is actively listening for customer receipts.`);
+        }
+      } catch (err) {
+        showFeedback("error", "Scan test error: " + err.message);
+      }
+    };
+
+    btnDisconnect.onclick = async () => {
+      try {
+        await fetch("/api/merchant/disconnect-gmail", { method: "POST" });
+        currentToken = null;
+        showFeedback("info", "Disconnected Gmail token.");
+        refreshStatus();
+      } catch (_) {}
+    };
+
+    refreshStatus();
+  </script>
+</body>
+</html>

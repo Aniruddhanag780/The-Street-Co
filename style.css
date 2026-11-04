@@ -11213,10 +11213,13 @@ input#checkoutPhone:focus {
 
 .upier-utr-form {
   width: 100% !important;
-  display: flex !important;
+  display: none !important;
   gap: 0.5rem !important;
   margin-top: 0.85rem !important;
   animation: upierUtrFadeIn 0.2s ease !important;
+}
+.upier-utr-form.open {
+  display: flex !important;
 }
 @keyframes upierUtrFadeIn {
   from { opacity: 0; transform: translateY(-4px); }
@@ -11248,9 +11251,9 @@ input#checkoutPhone:focus {
   opacity: 0.85 !important;
 }
 
-/* Live Checking / Polling Status Indicator */
+/* Live Checking / Polling Status Indicator - Hidden during listening as requested */
 .upier-poll-status {
-  display: flex !important;
+  display: none !important;
   align-items: center !important;
   justify-content: center !important;
   gap: 0.5rem !important;
@@ -11278,6 +11281,7 @@ input#checkoutPhone:focus {
   100% { transform: scale(0.9); opacity: 0.7; }
 }
 .upier-poll-status.verified {
+  display: flex !important;
   background: #dcfce7 !important;
   border-color: #86efac !important;
   color: #14532d !important;

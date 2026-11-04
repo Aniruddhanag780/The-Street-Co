@@ -1590,25 +1590,6 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
   function openCheckoutModal(items, source = 'cart') {
     if (!items || items.length === 0) return;
 
-    // Require user Login / Sign Up before allowing access to Checkout Page
-    if (typeof window.streetCoIsUserLoggedIn === 'function' && !window.streetCoIsUserLoggedIn()) {
-      if (typeof window.openCheckoutAuthGate === 'function') {
-        window.openCheckoutAuthGate({
-          type: source === 'cart' ? 'cart' : 'product',
-          wasPdpOpen: Boolean(relicGalleryModal && relicGalleryModal.classList.contains('open')),
-          pdpItem: activeGalleryItem,
-          pdpSource: typeof pdpPreviousSource !== 'undefined' ? pdpPreviousSource : 'shop',
-          pdpQty: typeof currentPdpQty !== 'undefined' ? currentPdpQty : 1,
-          pdpSize: typeof currentSelectedSize !== 'undefined' ? currentSelectedSize : 'M',
-          pdpFinish: typeof currentSelectedFinish !== 'undefined' ? currentSelectedFinish : 'Obsidian Shadow',
-          wasCollectionsOpen: Boolean(collectionsPage && collectionsPage.classList.contains('open')),
-          scrollY: window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0,
-          collecScrollTop: collectionsPage ? collectionsPage.scrollTop : 0
-        });
-      }
-      return;
-    }
-
     // Save previous context before opening checkout
     let prevView = 'shop';
     if (relicGalleryModal && relicGalleryModal.classList.contains('open')) {
@@ -2036,7 +2017,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
 
   // Step 2 Validation & Proceed (Supports UPI Dynamic QR and COD)
   function handlePaymentStepSubmit(chosenMethod) {
-    let activeMethod = chosenMethod || checkoutSession.payment.method || 'upi';
+    let activeMethod = (typeof chosenMethod === 'string' && chosenMethod) ? chosenMethod : (checkoutSession.payment?.method || 'upi');
     if (activeMethod === 'upi') {
       openUpiPaymentGateway();
       return;
@@ -2151,8 +2132,11 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       upierPaymentPollInterval = null;
     }
 
-    if (pollStatusEl) pollStatusEl.classList.remove('verified');
-    if (pollStatusTextEl) pollStatusTextEl.textContent = 'Listening for FamPay payment confirmation...';
+    if (pollStatusEl) {
+      pollStatusEl.classList.remove('verified');
+      pollStatusEl.style.setProperty('display', 'none', 'important');
+    }
+    if (pollStatusTextEl) pollStatusTextEl.textContent = '';
 
     const qrOpenedEpoch = Math.floor(Date.now() / 1000 - 30);
 
@@ -2173,7 +2157,10 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
             clearInterval(upierCountdownTimer);
             upierCountdownTimer = null;
           }
-          if (pollStatusEl) pollStatusEl.classList.add('verified');
+          if (pollStatusEl) {
+            pollStatusEl.style.setProperty('display', 'flex', 'important');
+            pollStatusEl.classList.add('verified');
+          }
           if (pollStatusTextEl) pollStatusTextEl.textContent = `✓ Payment Verified via FamPay! (₹${totalInr.toLocaleString('en-IN')})`;
 
           setTimeout(() => {
@@ -2187,20 +2174,29 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     setTimeout(checkPaymentStatus, 2500);
     upierPaymentPollInterval = setInterval(checkPaymentStatus, 4000);
 
-    // Ensure UTR form is hidden initially as requested
-    if (utrForm) utrForm.style.display = 'none';
+    // Ensure UTR form is strictly hidden initially as requested
+    if (utrForm) {
+      utrForm.classList.remove('open');
+      utrForm.style.setProperty('display', 'none', 'important');
+    }
     if (utrInput) utrInput.value = '';
 
-    // Only show UTR entering box when user clicks "Paid from another app? Enter 12-digit UTR manually"
+    // Only open UTR entering box when user clicks "Paid from another app? Enter 12-digit UTR manually"
     if (utrToggleBtn) {
       utrToggleBtn.onclick = (e) => {
         e.preventDefault();
         e.stopPropagation();
         if (utrForm) {
-          const isHidden = utrForm.style.display === 'none' || !utrForm.style.display;
-          utrForm.style.display = isHidden ? 'flex' : 'none';
-          if (isHidden && utrInput) {
-            utrInput.focus();
+          const isOpen = utrForm.classList.contains('open');
+          if (isOpen) {
+            utrForm.classList.remove('open');
+            utrForm.style.setProperty('display', 'none', 'important');
+          } else {
+            utrForm.classList.add('open');
+            utrForm.style.setProperty('display', 'flex', 'important');
+            if (utrInput) {
+              setTimeout(() => utrInput.focus(), 50);
+            }
           }
         }
       };
@@ -2686,7 +2682,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
           const scInfo = result.order.streetCashAwarded;
           const extraTxt = scInfo?.isFirstOrder ? ' (+49 pts First Order Milestone included!)' : '';
           if (window.notifyStreetCashReceived) {
-            window.notifyStreetCashReceived(earnedPts, `Order #${orderCode}${extraTxt}`, scInfo?.newBalance);
+            window.notifyStreetCashReceived(earnedPts, `Order #${generatedId}${extraTxt}`, scInfo?.newBalance);
           }
           if (window.syncStreetCashFromBackend) {
             window.syncStreetCashFromBackend();
@@ -3843,19 +3839,13 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
   // Hook Cart Drawer "PROCEED TO CHECKOUT" button to multi-step checkout
   if (checkoutBtn) {
     checkoutBtn.addEventListener('click', () => {
-      if (!cart || cart.length === 0) return;
-      if (typeof window.streetCoIsUserLoggedIn === 'function' && !window.streetCoIsUserLoggedIn()) {
-        if (typeof window.openCheckoutAuthGate === 'function') {
-          window.openCheckoutAuthGate({
-            type: 'cart',
-            wasCollectionsOpen: Boolean(collectionsPage && collectionsPage.classList.contains('open')),
-            scrollY: window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0,
-            collecScrollTop: collectionsPage ? collectionsPage.scrollTop : 0
-          });
+      if (!cart || cart.length === 0) {
+        if (typeof showToast === 'function') {
+          showToast('CART IS EMPTY', 'Please add an item to your bag before proceeding to checkout', 'cart');
         }
         return;
       }
-      closeCart();
+      closeCart(true);
       checkoutSession.promoCode = appliedCartCoupon.code || '';
       checkoutSession.discount = appliedCartCoupon.discount || 0;
       openCheckoutModal([...cart], 'cart');
@@ -7379,25 +7369,6 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       e.preventDefault();
       e.stopPropagation();
       if (!activeGalleryItem) return;
-
-      // If user is not logged in / signed up, show popup notification and keep/restore product page after login
-      if (typeof window.streetCoIsUserLoggedIn === 'function' && !window.streetCoIsUserLoggedIn()) {
-        if (typeof window.openCheckoutAuthGate === 'function') {
-          window.openCheckoutAuthGate({
-            type: 'product',
-            wasPdpOpen: true,
-            pdpItem: activeGalleryItem,
-            pdpSource: pdpPreviousSource || 'shop',
-            pdpQty: currentPdpQty || 1,
-            pdpSize: currentSelectedSize || 'M',
-            pdpFinish: currentSelectedFinish || 'Obsidian Shadow',
-            wasCollectionsOpen: Boolean(collectionsPage && collectionsPage.classList.contains('open')),
-            scrollY: window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0,
-            collecScrollTop: collectionsPage ? collectionsPage.scrollTop : 0
-          });
-        }
-        return;
-      }
 
       const safeImage = (activeGalleryImages && activeGalleryImages[activeGalleryImageIndex])
         || activeGalleryItem.image
@@ -11004,10 +10975,15 @@ window.openDelhiveryTracker = openDelhiveryTracker;
 
     grid.innerHTML = cardsHtml + createCardHtml;
 
-    // Show the Cards View by default on Checkout Step 1
+    // Show the Cards View if saved addresses exist; otherwise show Address Form directly
     if (cardsView && formWrap) {
-      cardsView.style.display = 'block';
-      formWrap.style.display = 'none';
+      if (addresses.length > 0) {
+        cardsView.style.display = 'block';
+        formWrap.style.display = 'none';
+      } else {
+        cardsView.style.display = 'none';
+        formWrap.style.display = 'block';
+      }
     }
 
     const createBtn = document.getElementById('checkoutCreateAddressCardBtn');
@@ -11083,9 +11059,11 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     checkoutCardsContinueBtn.addEventListener('click', () => {
       const addresses = Array.isArray(accountState.addresses) ? accountState.addresses : [];
       if (addresses.length === 0) {
-        // No address created yet -> open the address entering form
-        openCheckoutAddressEntryForm();
-        showFlowFeedback('checkoutAddressFormFeedback', 'Please enter your delivery address below and click "Add Address" to continue.', false);
+        if (typeof window.streetCoProceedToPaymentStep === 'function') {
+          window.streetCoProceedToPaymentStep();
+        } else {
+          handleAddressStepSubmit();
+        }
         return;
       }
       const chosen = addresses.find(a => a.id === selectedCheckoutAddressId) || addresses.find(a => a.isDefault) || addresses[0];
@@ -11094,6 +11072,8 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       }
       if (typeof window.streetCoProceedToPaymentStep === 'function') {
         window.streetCoProceedToPaymentStep();
+      } else {
+        handleAddressStepSubmit();
       }
     });
   }

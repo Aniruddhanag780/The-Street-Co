@@ -496,7 +496,26 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
   });
 
   // Cart & Wishlist state
+  const CART_STORAGE_KEY = 'the_street_co_cart_v1';
   let cart = [];
+  try {
+    const rawCart = localStorage.getItem(CART_STORAGE_KEY) || localStorage.getItem('itachi_cart_backup');
+    if (rawCart) {
+      cart = JSON.parse(rawCart);
+      if (!Array.isArray(cart)) cart = [];
+    }
+  } catch (e) {
+    cart = [];
+  }
+
+  function saveCart() {
+    try {
+      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
+    } catch (e) {
+      console.warn('Failed to save cart to localStorage', e);
+    }
+  }
+
   const WISHLIST_STORAGE_KEY = 'the_street_co_wishlist';
   let wishlist = [];
   try {
@@ -1006,6 +1025,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
   }
 
   function updateCartUI() {
+    saveCart();
     const totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
     if (cartCountEl) {
       cartCountEl.textContent = String(totalQty);
@@ -1636,8 +1656,22 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     checkoutSession.promoCode = appliedCartCoupon.code || '';
     checkoutSession.discount = appliedCartCoupon.discount || 0;
 
-    // Refresh all Address & Delivery inputs to fresh blank state each time opened
-    resetAddressAndDeliveryFields({ clearStorage: false });
+    // Prefill from saved address or last entered address if available
+    let hasPrefilled = false;
+    try {
+      const savedAddrRaw = localStorage.getItem('the_street_co_last_addr');
+      if (savedAddrRaw) {
+        const lastSavedAddr = JSON.parse(savedAddrRaw);
+        if (lastSavedAddr && (lastSavedAddr.name || lastSavedAddr.fullName) && (lastSavedAddr.address1 || lastSavedAddr.houseFlat)) {
+          applyAddressToCheckoutInputs(lastSavedAddr);
+          hasPrefilled = true;
+        }
+      }
+    } catch (_) {}
+
+    if (!hasPrefilled) {
+      resetAddressAndDeliveryFields({ clearStorage: false });
+    }
 
     renderCheckoutSidebar();
     const stepperEl = document.getElementById('checkoutStepper');
@@ -1933,6 +1967,8 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
 
     renderCheckoutSidebar();
   }
+  window.goToCheckoutStep = goToCheckoutStep;
+  window.checkoutSession = checkoutSession;
 
   // Step 1 Validation & Proceed
   function handleAddressStepSubmit() {
@@ -1963,12 +1999,28 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     validateField(checkoutNameInput, document.getElementById('checkoutNameError'), 'Please enter recipient full name');
     validateField(checkoutPhoneInput, document.getElementById('checkoutPhoneError'), 'Please enter a valid 10-digit mobile number', v => /^\d{10}$/.test(v.replace(/\s+/g, '')));
     validateField(checkoutAddress1Input, document.getElementById('checkoutAddress1Error'), 'Please enter house address / flat / building');
-    validateField(checkoutAddress2Input, document.getElementById('checkoutAddress2Error'), 'Please enter street, road or area');
+    // Address Line 2 is optional
+    if (checkoutAddress2Input && checkoutAddress2Input.value.trim().length > 0) {
+      const errEl = document.getElementById('checkoutAddress2Error');
+      if (errEl) { errEl.textContent = ''; errEl.classList.remove('show'); }
+    }
     validateField(checkoutCityInput, document.getElementById('checkoutCityError'), 'Town / city required');
     validateField(checkoutStateInput, document.getElementById('checkoutStateError'), 'Please select state');
     validateField(checkoutPincodeInput, document.getElementById('checkoutPincodeError'), 'Please enter a valid 6-digit postal PIN', v => /^\d{6}$/.test(v.trim()));
 
-    if (!isValid) return;
+    if (!isValid) {
+      if (typeof showToast === 'function') {
+        showToast('INCOMPLETE ADDRESS', 'Please fill in all required delivery fields (Name, Phone, House/Flat, City, State, PIN).', 'info');
+      }
+      return;
+    }
+
+    // Ensure checkoutSession items are populated from cart if empty
+    if (!checkoutSession.items || checkoutSession.items.length === 0) {
+      if (typeof cart !== 'undefined' && cart.length > 0) {
+        checkoutSession.items = cart.map(it => ({ ...it, qty: it.qty || 1 }));
+      }
+    }
 
     // Read address values
     const activeTypePill = checkoutTypePills ? checkoutTypePills.querySelector('.checkout-type-pill.active') : null;
@@ -11069,6 +11121,49 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       const chosen = addresses.find(a => a.id === selectedCheckoutAddressId) || addresses.find(a => a.isDefault) || addresses[0];
       if (chosen) {
         applyAddressToCheckoutInputs(chosen);
+
+        // Ensure delivery speed is populated
+        let selectedSpeed = 'free';
+        if (deliveryRadios) {
+          deliveryRadios.forEach(r => {
+            if (r.checked) selectedSpeed = r.value;
+          });
+        }
+        checkoutSession.delivery = {
+          speed: selectedSpeed,
+          cost: selectedSpeed === 'express' ? 149 : 0,
+          title: selectedSpeed === 'express' ? '⚡ Express Delivery' : 'Standard Delivery'
+        };
+
+        const activeTypePill = checkoutTypePills ? checkoutTypePills.querySelector('.checkout-type-pill.active') : null;
+        checkoutSession.address = {
+          name: chosen.name || chosen.fullName || '',
+          phone: String(chosen.phone || '').replace(/\D/g, '').slice(-10),
+          email: chosen.email || (accountState && accountState.email) || '',
+          pincode: chosen.pincode || '',
+          address1: chosen.address1 || chosen.houseFlat || '',
+          address2: chosen.address2 || chosen.streetRoad || '',
+          landmark: chosen.landmark || '',
+          city: chosen.city || '',
+          state: chosen.state || '',
+          type: chosen.type || (activeTypePill ? activeTypePill.dataset.type : 'Home'),
+          isB2B: Boolean(document.getElementById('checkoutIsB2B')?.checked),
+          gstin: (document.getElementById('checkoutGstin')?.value || '').trim().toUpperCase()
+        };
+
+        // Ensure checkoutSession items are populated from cart
+        if (!checkoutSession.items || checkoutSession.items.length === 0) {
+          if (typeof cart !== 'undefined' && cart.length > 0) {
+            checkoutSession.items = cart.map(it => ({ ...it, qty: it.qty || 1 }));
+          }
+        }
+
+        try {
+          localStorage.setItem('the_street_co_last_addr', JSON.stringify(checkoutSession.address));
+        } catch (_) {}
+
+        goToCheckoutStep(2);
+        return;
       }
       if (typeof window.streetCoProceedToPaymentStep === 'function') {
         window.streetCoProceedToPaymentStep();

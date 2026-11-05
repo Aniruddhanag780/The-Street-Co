@@ -35,6 +35,13 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app, FIRESTORE_DATABASE_ID);
 
+function withTimeout(promise, ms = 1500) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), ms))
+  ]);
+}
+
 // Ensure a deterministic Firebase Auth session for the OTP-verified phone/email user
 async function ensureFirebaseAuthSession(cleanPhone, firstName, lastName, verifiedEmail) {
   if (!cleanPhone || cleanPhone.length !== 10) return null;
@@ -47,7 +54,7 @@ async function ensureFirebaseAuthSession(cleanPhone, firstName, lastName, verifi
     let user = auth.currentUser;
     if (!user) {
       try {
-        const cred = await signInWithEmailAndPassword(auth, syntheticEmail, syntheticPass);
+        const cred = await withTimeout(signInWithEmailAndPassword(auth, syntheticEmail, syntheticPass), 1500);
         user = cred.user;
       } catch (signInErr) {
         if (
@@ -56,16 +63,18 @@ async function ensureFirebaseAuthSession(cleanPhone, firstName, lastName, verifi
           signInErr.code === "auth/invalid-login-credentials"
         ) {
           try {
-            const created = await createUserWithEmailAndPassword(auth, syntheticEmail, syntheticPass);
+            const created = await withTimeout(createUserWithEmailAndPassword(auth, syntheticEmail, syntheticPass), 1500);
             user = created.user;
           } catch (_) {
             // Fallback to anonymous auth if Email/Password provider is not enabled in console
-            const anon = await signInAnonymously(auth);
-            user = anon.user;
+            try {
+              const anon = await withTimeout(signInAnonymously(auth), 1200);
+              user = anon.user;
+            } catch (_) {}
           }
         } else {
           try {
-            const anon = await signInAnonymously(auth);
+            const anon = await withTimeout(signInAnonymously(auth), 1200);
             user = anon.user;
           } catch (_) {}
         }
@@ -74,7 +83,7 @@ async function ensureFirebaseAuthSession(cleanPhone, firstName, lastName, verifi
 
     if (user) {
       try {
-        await updateProfile(user, { displayName: displayLabel });
+        await withTimeout(updateProfile(user, { displayName: displayLabel }), 1000);
       } catch (_) {}
     }
     return user;
@@ -98,14 +107,17 @@ async function saveUserAuthDetails(details = {}) {
   const phoneVerified = details.phoneVerified !== undefined ? Boolean(details.phoneVerified) : true;
   const nowIso = new Date().toISOString();
 
-  const authUser = await ensureFirebaseAuthSession(cleanPhone, firstName, lastName, emailVerified ? email : "");
+  let authUser = null;
+  try {
+    authUser = await ensureFirebaseAuthSession(cleanPhone, firstName, lastName, emailVerified ? email : "");
+  } catch (_) {}
 
   // Fetch existing record first so we preserve fields when doing partial updates (e.g. phone login vs profile save)
   let existingData = {};
   try {
     const userDocRef = doc(db, "users", cleanPhone);
-    const snap = await getDoc(userDocRef);
-    if (snap.exists()) {
+    const snap = await withTimeout(getDoc(userDocRef), 1200);
+    if (snap && snap.exists()) {
       existingData = snap.data() || {};
     }
   } catch (_) {}
@@ -132,8 +144,10 @@ async function saveUserAuthDetails(details = {}) {
     updatedAt: nowIso
   };
 
-  const userDocRef = doc(db, "users", cleanPhone);
-  await setDoc(userDocRef, payload, { merge: true });
+  try {
+    const userDocRef = doc(db, "users", cleanPhone);
+    await withTimeout(setDoc(userDocRef, payload, { merge: true }), 1500);
+  } catch (_) {}
 
   return payload;
 }

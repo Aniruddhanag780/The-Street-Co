@@ -1659,9 +1659,9 @@
             <div class="pdp-image-zoom-container" id="pdpZoomContainer" title="Click to enlarge picture">
               <img id="relicGalleryMainImg" class="relic-gallery__main-img" src="" alt="Artifact view" />
               <div class="pdp-zoom-lens" id="pdpZoomLens"></div>
-              <div class="pdp-zoom-click-hint" id="pdpZoomClickHint">
-                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
-                <span>CLICK TO ENLARGE</span>
+              <div class="pdp-zoom-click-hint" id="pdpZoomClickHint" style="color:#ffffff !important;">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#ffffff" stroke-width="2.2" style="color:#ffffff !important; stroke:#ffffff !important;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                <span style="color:#ffffff !important;">CLICK TO ENLARGE</span>
               </div>
             </div>
             <div id="relicGallerySvgFallback" class="relic-gallery__svg-fallback" style="display:none"></div>
@@ -1740,7 +1740,7 @@
               <span class="pdp-price-drop-badge" id="pdpPriceDropBadge">GET ALERT</span>
             </button>
 
-            <!-- Inline Email Input / Confirmation Form (Pill styled, smooth toggle) -->
+            <!-- Inline Email Input / Confirmation Form (Pill styled, smooth toggle appear below GET ALERT) -->
             <form class="pdp-price-drop-form" id="pdpPriceDropForm" style="display:none;" novalidate>
               <div class="pdp-price-drop-input-wrap">
                 <svg class="pdp-price-drop-mail-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -1749,32 +1749,15 @@
                 </svg>
                 <input type="email" id="pdpPriceDropEmailInput" class="pdp-price-drop-email-input" placeholder="Enter your email address..." required spellcheck="false" autocomplete="email" aria-label="Email address for price drop alerts" />
                 <button type="submit" class="pdp-price-drop-submit-btn" id="pdpPriceDropSubmitBtn">
-                  <span>SET ALERT</span>
+                  <span>GET ALERT</span>
                 </button>
               </div>
               <div class="pdp-price-drop-form-hint">
-                <span>Instant dispatch when price drops below <strong id="pdpPriceDropTargetDisplay">current price</strong>. Saved to local storage.</span>
+                <span>Instant dispatch when price drops below <strong id="pdpPriceDropTargetDisplay">current price</strong>.</span>
                 <button type="button" class="pdp-price-drop-cancel-btn" id="pdpPriceDropCancelBtn">Cancel</button>
               </div>
+              <div id="pdpPriceDropSuccessMsg" style="display:none; color:#10b981; font-size:0.75rem; font-weight:700; padding:0.25rem 0.35rem; font-family:var(--mono); line-height:1.4;"></div>
             </form>
-
-            <!-- Alert Active Status Banner & Controls (When alert is saved) -->
-            <div class="pdp-price-drop-active" id="pdpPriceDropActive" style="display:none;">
-              <div class="pdp-price-drop-active-info">
-                <span class="pdp-price-drop-active-dot" aria-hidden="true"></span>
-                <div class="pdp-price-drop-active-text">
-                  <strong>PRICE DROP ALERT ACTIVE 🔔</strong>
-                  <span id="pdpPriceDropActiveEmail">Watching for price decreases</span>
-                </div>
-              </div>
-              <div class="pdp-price-drop-active-actions">
-                <button type="button" class="pdp-price-drop-test-btn" id="pdpPriceDropTestBtn" title="Simulate a price decrease to test toast notification">
-                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-                  <span>TEST PRICE DROP (-15%)</span>
-                </button>
-                <button type="button" class="pdp-price-drop-remove-btn" id="pdpPriceDropRemoveBtn" title="Remove price drop alert" aria-label="Remove price alert">✕</button>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -1849,9 +1832,7 @@
             <input type="text" class="pdp-pincode-input" id="pdpPincodeInput" placeholder="Enter 6-digit delivery PIN (e.g. 110001, 400001)" maxlength="6" />
             <button class="pdp-pincode-check-btn" id="pdpPincodeCheckBtn" type="button">CHECK</button>
           </div>
-          <div class="pdp-delivery-result" id="pdpDeliveryResult">
-            ⚡ <strong>FREE Delivery:</strong> Dispatches within 24 hours. Express insured delivery to your doorstep.
-          </div>
+          <div class="pdp-delivery-result" id="pdpDeliveryResult" style="display:none;"></div>
         </div>
 
         <!-- 4 Core Service Trust Pillars (Amazon & Flipkart 4-Pill Carousel - No Square Box) -->
@@ -3037,19 +3018,19 @@
 <!-- ══════════ MODAL 2: THE STREET CASH — MEMBER REWARDS & STORE CREDIT ══════════ -->
 <div class="suite-modal streetcash-modal" id="suiteVipLoyaltyModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="vipLoyaltyModalTitle">
   <div class="suite-modal__backdrop" onclick="window.closeVipLoyaltyModal()"></div>
-  <div class="suite-modal__dialog streetcash-dialog" style="max-width:680px;background:#FAF8F5;border-radius:14px;border:1px solid #E5E5E5;box-shadow:0 20px 50px rgba(0,0,0,0.12);padding:0;overflow:hidden;">
+  <div class="suite-modal__dialog streetcash-dialog" style="max-width:440px;width:94%;margin:0 auto;background:#FAF8F5;border-radius:14px;border:1px solid #E5E5E5;box-shadow:0 20px 50px rgba(0,0,0,0.12);padding:0;overflow:hidden;">
     
     <!-- Clean E-Commerce Header -->
-    <div class="streetcash-header" style="background:#FFFFFF;color:#0E0E11;padding:20px 24px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #EAE6DF;">
+    <div class="streetcash-header" style="background:#FFFFFF;color:#0E0E11;padding:15px 18px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #EAE6DF;">
       <div>
-        <div style="font-size:0.68rem;letter-spacing:0.18em;color:#71717A;font-weight:700;text-transform:uppercase;">THE STREET CO. · MEMBER REWARDS</div>
-        <h3 id="vipLoyaltyModalTitle" style="font-size:1.5rem;font-weight:800;letter-spacing:-0.02em;margin:3px 0 0;color:#0E0E11;">The Street Cash</h3>
-        <p style="font-size:0.78rem;color:#71717A;margin:2px 0 0;font-weight:400;">Your store reward points and discount vouchers for your orders.</p>
+        <div style="font-size:0.65rem;letter-spacing:0.18em;color:#71717A;font-weight:700;text-transform:uppercase;">THE STREET CO. · MEMBER REWARDS</div>
+        <h3 id="vipLoyaltyModalTitle" style="font-size:1.25rem;font-weight:800;letter-spacing:-0.02em;margin:2px 0 0;color:#0E0E11;">The Street Cash</h3>
+        <p style="font-size:0.74rem;color:#71717A;margin:2px 0 0;font-weight:400;line-height:1.35;">Your store reward points and discount vouchers for your orders.</p>
       </div>
-      <button type="button" class="suite-modal__close" onclick="window.closeVipLoyaltyModal()" aria-label="Close Rewards Hub" style="color:#71717A;font-size:1rem;background:#F4F4F5;border:1px solid #E4E4E7;cursor:pointer;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:all 0.16s;" onmouseover="this.style.color='#0E0E11';this.style.background='#E4E4E7'" onmouseout="this.style.color='#71717A';this.style.background='#F4F4F5'">✕</button>
+      <button type="button" class="suite-modal__close" onclick="window.closeVipLoyaltyModal()" aria-label="Close Rewards Hub" style="color:#71717A;font-size:1rem;background:#F4F4F5;border:1px solid #E4E4E7;cursor:pointer;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:all 0.16s;flex-shrink:0;" onmouseover="this.style.color='#0E0E11';this.style.background='#E4E4E7'" onmouseout="this.style.color='#71717A';this.style.background='#F4F4F5'">✕</button>
     </div>
 
-    <div class="streetcash-body" style="padding:22px 24px;max-height:calc(85vh - 120px);overflow-y:auto;">
+    <div class="streetcash-body" style="padding:16px 18px;max-height:calc(85vh - 90px);overflow-y:auto;">
 
       <!-- OFFICIAL EARN RATE BANNER -->
       <div class="streetcash-earn-banner" style="background:#FFFFFF;border:1px solid #EAE6DF;border-radius:10px;padding:14px 18px;margin-bottom:18px;display:flex;align-items:center;gap:14px;">
@@ -3803,7 +3784,7 @@
                   </div>
 
                   <p class="account-logout-guidance">
-                    Ready to leave? Logging out will securely close your active session on this device. All your saved addresses, verified email, and order history will remain securely backed up in MongoDB Atlas for your next visit.
+                    Ready to leave? Logging out will sign you out on this device. All your saved addresses, verified email, and order history will remain securely backed up in MongoDB Atlas for your next visit.
                   </p>
 
                   <div class="account-logout-cta-wrap">

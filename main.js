@@ -6396,34 +6396,29 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       pdpPriceDropTargetDisplay.textContent = `₹${priceInr.toLocaleString('en-IN')} INR`;
     }
 
-    if (alert) {
-      // Alert already active for this product
-      if (pdpPriceDropBtn) pdpPriceDropBtn.style.display = 'none';
-      if (pdpPriceDropForm) pdpPriceDropForm.style.display = 'none';
-      if (pdpPriceDropActive) {
-        pdpPriceDropActive.style.display = 'flex';
-        if (pdpPriceDropActiveEmail) {
-          pdpPriceDropActiveEmail.textContent = `Tracking alert for: ${alert.email} · Base: ₹${alert.basePrice.toLocaleString('en-IN')}`;
-        }
+    // Always keep trigger button visible as clean pill
+    if (pdpPriceDropBtn) {
+      pdpPriceDropBtn.style.display = 'flex';
+      if (pdpPriceDropBtnText) pdpPriceDropBtnText.textContent = 'Notify Me on Price Drop';
+      if (pdpPriceDropBadge) {
+        pdpPriceDropBadge.textContent = alert ? 'ALERT ACTIVE ✓' : 'GET ALERT';
       }
+    }
+    // Form remains hidden until user clicks GET ALERT
+    if (pdpPriceDropForm) pdpPriceDropForm.style.display = 'none';
+    const successMsg = document.getElementById('pdpPriceDropSuccessMsg');
+    if (successMsg) successMsg.style.display = 'none';
 
-      // Check if price has decreased compared to base price
-      if (priceInr < alert.basePrice && !alert.triggered) {
-        triggerPriceDropToast(item, alert.basePrice, priceInr, alert.email);
-        alert.triggered = true;
-        alert.lastNotifiedPrice = priceInr;
-        alerts[sku] = alert;
-        savePriceAlerts(alerts);
-      }
-    } else {
-      // No active alert for this product
-      if (pdpPriceDropBtn) {
-        pdpPriceDropBtn.style.display = 'flex';
-        if (pdpPriceDropBtnText) pdpPriceDropBtnText.textContent = 'Notify Me on Price Drop';
-        if (pdpPriceDropBadge) pdpPriceDropBadge.textContent = 'GET ALERT';
-      }
-      if (pdpPriceDropForm) pdpPriceDropForm.style.display = 'none';
-      if (pdpPriceDropActive) pdpPriceDropActive.style.display = 'none';
+    // Suppress active test banner
+    if (pdpPriceDropActive) pdpPriceDropActive.style.display = 'none';
+
+    // Check if price has decreased compared to base price
+    if (alert && priceInr < alert.basePrice && !alert.triggered) {
+      triggerPriceDropToast(item, alert.basePrice, priceInr, alert.email);
+      alert.triggered = true;
+      alert.lastNotifiedPrice = priceInr;
+      alerts[sku] = alert;
+      savePriceAlerts(alerts);
     }
   }
 
@@ -7306,17 +7301,20 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     if (!pdpPincodeInput || !pdpDeliveryResult) return;
     const pin = pdpPincodeInput.value.trim();
     if (/^\d{6}$/.test(pin)) {
-      const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-      const deliveryDate = new Date();
-      deliveryDate.setDate(deliveryDate.getDate() + 2);
-      const dayName = days[deliveryDate.getDay()];
+      pdpDeliveryResult.style.display = 'block';
       pdpDeliveryResult.innerHTML = `
-        <span style="color:#10b981; font-weight:700;">✓ COURIER AVAILABLE TO PIN ${pin}:</span><br>
-        ⚡ Express guaranteed delivery by <strong>${dayName}, 5:00 PM</strong>. Insured Raven courier dispatched within 24h.
+        <div style="display:flex; align-items:flex-start; gap:0.45rem; color:#10b981; font-weight:600; font-size:0.82rem; line-height:1.45; padding-top:0.25rem;">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0; margin-top:2px;"><polyline points="20 6 9 17 4 12"/></svg>
+          <div>
+            <span style="font-weight:700;">Delivery location is available for PIN ${pin}.</span><br>
+            <span style="color:#d1d5db; font-weight:500;">Your order will be shipped within 3 days via express insured delivery.</span>
+          </div>
+        </div>
       `;
     } else {
+      pdpDeliveryResult.style.display = 'block';
       pdpDeliveryResult.innerHTML = `
-        <span style="color:#f59e0b;">ⓘ Please enter a valid 6-digit Indian PIN code (e.g. 110001 or 400001).</span>
+        <span style="color:#f59e0b; font-size:0.8rem; font-weight:600;">ⓘ Please enter a valid 6-digit Indian PIN code (e.g. 110001 or 400001).</span>
       `;
     }
   }
@@ -9756,7 +9754,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     streetCashSpentTotal: 0,
     streetCashHistory: [],
     streetCashCoupons: [],
-    tier: { name: 'VIP Street Insider', level: 1, badge: 'INITIATE', perk: 'Earn 199 The Street Cash per ₹1,000 spent' },
+    tier: { name: 'VIP Street Insider', level: 1, badge: 'VIP', perk: 'Earn 199 The Street Cash per ₹1,000 spent' },
     canRedeem: false,
     minRedemptionPoints: 499,
     minRedemptionInr: 499,
@@ -9779,7 +9777,16 @@ window.openDelhiveryTracker = openDelhiveryTracker;
 
   function getActiveUserPhone() {
     let p = '';
-    if (typeof accountState !== 'undefined' && accountState && accountState.phone) {
+    if (typeof window.streetCoGetAccountPhone === 'function') {
+      p = window.streetCoGetAccountPhone();
+    }
+    if (!p && typeof window.getAccountState === 'function') {
+      try {
+        const acc = window.getAccountState();
+        if (acc && acc.phone) p = acc.phone;
+      } catch (_) {}
+    }
+    if (!p && typeof accountState !== 'undefined' && accountState && accountState.phone) {
       p = accountState.phone;
     }
     if (!p) {
@@ -9787,7 +9794,36 @@ window.openDelhiveryTracker = openDelhiveryTracker;
         p = localStorage.getItem('the_street_co_user_phone') || '';
       } catch (_) {}
     }
+    if (!p) {
+      try {
+        const acc = JSON.parse(localStorage.getItem('the_street_co_account_v2') || 'null');
+        if (acc && acc.phone) p = acc.phone;
+      } catch (_) {}
+    }
+    if (!p) {
+      try {
+        const addr = JSON.parse(localStorage.getItem('the_street_co_last_addr') || 'null');
+        if (addr && addr.phone) p = addr.phone;
+      } catch (_) {}
+    }
     return String(p || '').replace(/\D/g, '').slice(-10);
+  }
+
+  function getActiveUserAccount() {
+    if (typeof window.getAccountState === 'function') {
+      try {
+        const acc = window.getAccountState();
+        if (acc && (acc.phone || acc.firstName || acc.email)) return acc;
+      } catch (_) {}
+    }
+    if (typeof accountState !== 'undefined' && accountState && (accountState.phone || accountState.firstName)) {
+      return accountState;
+    }
+    try {
+      const saved = JSON.parse(localStorage.getItem('the_street_co_account_v2') || 'null');
+      if (saved && typeof saved === 'object') return saved;
+    } catch (_) {}
+    return {};
   }
 
   window.notifyStreetCashReceived = function(points, reason, newBalance) {
@@ -9842,6 +9878,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     const item = document.getElementById(`missionItem_${key}`);
     const check = document.getElementById(`scCheck_${key}`);
     const goBtn = document.getElementById(`scGo_${key}`);
+    const desc = document.getElementById(`scDesc_${key}`);
     if (!item) return;
 
     if (isDone) {
@@ -9858,6 +9895,12 @@ window.openDelhiveryTracker = openDelhiveryTracker;
         goBtn.style.cursor = 'default';
         goBtn.innerHTML = `<span>Claimed ✓</span>`;
         goBtn.onclick = null;
+      }
+      if (desc) {
+        if (key === 'account_creation') desc.textContent = 'Member account created & verified. +75 The Street Cash claimed!';
+        if (key === 'profile_name') desc.textContent = 'Name saved to your account. +25 The Street Cash claimed!';
+        if (key === 'profile_email') desc.textContent = 'Email saved & verified. +35 The Street Cash claimed!';
+        if (key === 'first_order') desc.textContent = '1st order completed. +49 The Street Cash claimed!';
       }
       item.style.borderColor = '#E2DBD0';
       item.style.background = '#FAF9F6';
@@ -9878,20 +9921,106 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           if (window.handleMissionGo) window.handleMissionGo(key);
         };
       }
+      if (desc) {
+        if (key === 'account_creation') desc.textContent = 'Create your member account to claim 75 The Street Cash.';
+        if (key === 'profile_name') desc.textContent = 'Add your full name in your account settings.';
+        if (key === 'profile_email') desc.textContent = 'Save your verified email in My Account.';
+        if (key === 'first_order') desc.textContent = 'Place your 1st order to receive +49 bonus points!';
+      }
       item.style.borderColor = '#EBE4D8';
       item.style.background = '#FAF8F5';
     }
   }
 
+  window.claimMissionPoints = async function(missionKey, explicitData = null) {
+    let activePhone = getActiveUserPhone();
+    const localUser = getActiveUserAccount();
+    if (!activePhone && localUser && localUser.phone) {
+      activePhone = String(localUser.phone).replace(/\D/g, '').slice(-10);
+    }
+    if (!activePhone || activePhone.length !== 10) {
+      try {
+        const lastAddr = JSON.parse(localStorage.getItem('the_street_co_last_addr') || '{}');
+        if (lastAddr && lastAddr.phone) {
+          activePhone = String(lastAddr.phone).replace(/\D/g, '').slice(-10);
+        }
+      } catch (_) {}
+    }
+
+    if (!activePhone || activePhone.length !== 10) {
+      if (localUser && (localUser.email || localUser.firstName)) {
+        if (!streetCashState.streetCashBonuses) streetCashState.streetCashBonuses = {};
+        streetCashState.streetCashBonuses[missionKey] = true;
+        const ptsMap = { account_creation: 75, profile_name: 25, profile_email: 35, first_order: 49 };
+        const pts = ptsMap[missionKey] || 0;
+        streetCashState.streetCashBalance = (streetCashState.streetCashBalance || 0) + pts;
+        saveStreetCashCache();
+        renderStreetCashUI();
+        if (window.notifyStreetCashReceived) {
+          window.notifyStreetCashReceived(pts, `Completing mission: ${missionKey}`, streetCashState.streetCashBalance);
+        }
+        return;
+      }
+      if (typeof window.openCheckoutAuthGate === 'function') {
+        window.openCheckoutAuthGate(function() {
+          window.claimMissionPoints(missionKey, explicitData);
+        });
+      } else if (typeof window.openAccountPage === 'function') {
+        window.openAccountPage();
+      }
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/loyalty/claim-mission', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: activePhone, missionKey, data: explicitData })
+      });
+      const data = await res.json();
+      if (data && data.success) {
+        if (!streetCashState.streetCashBonuses) streetCashState.streetCashBonuses = {};
+        streetCashState.streetCashBonuses[missionKey] = true;
+        if (data.awarded && data.points) {
+          streetCashState.streetCashBalance = Number(data.streetCashBalance) || (streetCashState.streetCashBalance + data.points);
+          saveStreetCashCache();
+          renderStreetCashUI();
+          if (window.notifyStreetCashReceived) {
+            window.notifyStreetCashReceived(data.points, `Completing mission: ${missionKey}`, streetCashState.streetCashBalance);
+          }
+        } else {
+          if (data.streetCashBalance !== undefined) {
+            streetCashState.streetCashBalance = Number(data.streetCashBalance);
+          }
+          saveStreetCashCache();
+          renderStreetCashUI();
+        }
+      }
+    } catch (e) {
+      console.warn('[Claim mission error]:', e.message);
+    }
+  };
+
   window.handleMissionGo = function(key) {
     const activePhone = getActiveUserPhone();
+    const localUser = getActiveUserAccount();
+    const hasLoggedIn = Boolean(
+      (activePhone && activePhone.length === 10) || 
+      (localUser && (localUser.phone || localUser.email || (localUser.firstName && localUser.firstName.trim())))
+    );
     if (key === 'account_creation') {
-      if (activePhone && activePhone.length === 10) {
-        if (window.streetCoShowToast) window.streetCoShowToast('Account Verified', 'You are already logged in! 75 The Street Cash has been credited.');
+      if (hasLoggedIn) {
+        window.claimMissionPoints('account_creation');
+        if (window.streetCoShowToast) {
+          window.streetCoShowToast('Account Verified ✓', '+75 The Street Cash credited to your vault!');
+        }
       } else {
         window.closeVipLoyaltyModal();
         if (typeof window.openCheckoutAuthGate === 'function') {
-          window.openCheckoutAuthGate();
+          window.openCheckoutAuthGate(function() {
+            window.claimMissionPoints('account_creation');
+            window.openVipLoyaltyModal();
+          });
         } else if (typeof window.openAccountPage === 'function') {
           window.openAccountPage();
         }
@@ -9901,7 +10030,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       if (typeof window.openAccountPage === 'function') {
         window.openAccountPage();
         setTimeout(() => {
-          const nameInput = document.getElementById('accFirstName') || document.getElementById('accountFirstName');
+          const nameInput = document.getElementById('accountFirstName');
           if (nameInput) {
             nameInput.focus();
             nameInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -9909,16 +10038,24 @@ window.openDelhiveryTracker = openDelhiveryTracker;
         }, 300);
       }
     } else if (key === 'profile_email') {
-      window.closeVipLoyaltyModal();
-      if (typeof window.openAccountPage === 'function') {
-        window.openAccountPage();
-        setTimeout(() => {
-          const emailInput = document.getElementById('accEmail') || document.getElementById('accountEmail');
-          if (emailInput) {
-            emailInput.focus();
-            emailInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }
-        }, 300);
+      const hasEmail = Boolean(localUser.email && String(localUser.email).includes('@'));
+      if (hasEmail) {
+        window.claimMissionPoints('profile_email');
+        if (window.streetCoShowToast) {
+          window.streetCoShowToast('Email Verified ✓', '+35 The Street Cash credited to your vault!');
+        }
+      } else {
+        window.closeVipLoyaltyModal();
+        if (typeof window.openAccountPage === 'function') {
+          window.openAccountPage();
+          setTimeout(() => {
+            const emailInput = document.getElementById('accountEmailInput');
+            if (emailInput) {
+              emailInput.focus();
+              emailInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          }, 300);
+        }
       }
     } else if (key === 'first_order') {
       window.closeVipLoyaltyModal();
@@ -9962,19 +10099,24 @@ window.openDelhiveryTracker = openDelhiveryTracker;
 
     // 2. User phone on wallet card
     const phoneEl = document.getElementById('streetCashUserPhoneDisplay');
-    const activePhone = streetCashState.phone || getActiveUserPhone();
+    const localUser = getActiveUserAccount();
+    const activePhone = streetCashState.phone || getActiveUserPhone() || (localUser && localUser.phone ? String(localUser.phone).replace(/\D/g, '').slice(-10) : '');
     if (phoneEl) {
       if (activePhone && activePhone.length === 10) {
         phoneEl.textContent = `+91 ${activePhone.slice(0, 5)} ${activePhone.slice(5)}`;
+      } else if (localUser && localUser.email) {
+        phoneEl.textContent = localUser.email;
+      } else if (localUser && (localUser.firstName || localUser.lastName)) {
+        phoneEl.textContent = [localUser.firstName, localUser.lastName].filter(Boolean).join(' ');
       } else {
         phoneEl.textContent = 'Guest VIP Pass';
       }
     }
 
-    // 3. Tier badge
+    // 3. Tier badge - NEVER displays "Initiate Club"
     const tierBadge = document.getElementById('streetCashTierBadge');
     if (tierBadge) {
-      tierBadge.textContent = streetCashState.tier?.name || (balance >= 499 ? 'VIP Street Insider' : 'Initiate Club');
+      tierBadge.textContent = balance >= 499 ? 'VIP Street Insider' : 'Street Member';
     }
 
     // 4. Milestone Progress toward 499 The Street Cash (or next multiple)
@@ -10028,20 +10170,39 @@ window.openDelhiveryTracker = openDelhiveryTracker;
 
     // 7. Automatically Update VIP Member Missions & Boosts (Checkboxes & Status)
     const bonuses = streetCashState.streetCashBonuses || {};
-    const hasLoggedIn = activePhone && activePhone.length === 10;
-    const localUser = (typeof accountState !== 'undefined' && accountState) ? accountState : {};
+    const hasLoggedIn = Boolean(
+      (activePhone && activePhone.length === 10) || 
+      (localUser && (localUser.phone || localUser.email || (localUser.firstName && localUser.firstName.trim())))
+    );
 
     // Mission 1: Account Creation (+75 pts)
     const isAccDone = Boolean(bonuses.account_creation || hasLoggedIn);
     updateMissionUI('account_creation', isAccDone);
 
-    // Mission 2: Name Upload (+25 pts)
-    const hasName = Boolean(bonuses.profile_name || (localUser.firstName && localUser.firstName.trim()) || (localUser.lastName && localUser.lastName.trim()));
-    updateMissionUI('profile_name', hasName);
+    // Auto-award account_creation points if user already created account but points not yet synced
+    if (hasLoggedIn && !bonuses.account_creation) {
+      bonuses.account_creation = true;
+      streetCashState.streetCashBonuses = bonuses;
+      if (typeof window.claimMissionPoints === 'function') {
+        window.claimMissionPoints('account_creation');
+      }
+    }
+
+    // Mission 2: Name Upload (+25 pts) - awarded ONLY after saving account name in My Account
+    const isNameClaimed = Boolean(bonuses.profile_name);
+    updateMissionUI('profile_name', isNameClaimed);
 
     // Mission 3: Email Added (+35 pts)
-    const hasEmail = Boolean(bonuses.profile_email || (localUser.email && localUser.email.includes('@')));
+    const hasEmail = Boolean(bonuses.profile_email || (localUser && localUser.email && String(localUser.email).includes('@')));
     updateMissionUI('profile_email', hasEmail);
+
+    if (hasEmail && !bonuses.profile_email && hasLoggedIn) {
+      bonuses.profile_email = true;
+      streetCashState.streetCashBonuses = bonuses;
+      if (typeof window.claimMissionPoints === 'function') {
+        window.claimMissionPoints('profile_email');
+      }
+    }
 
     // Mission 4: 1st Order (+49 pts)
     const isOrderDone = Boolean(bonuses.first_order);
@@ -10548,6 +10709,10 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     lastName: ''
   };
 
+  window.getAccountState = function() {
+    return accountState;
+  };
+
   window.streetCoGetAccountPhone = function() {
     const clean = String(accountState.phone || '').replace(/\D/g, '').slice(-10);
     return clean.length === 10 ? clean : '';
@@ -10579,6 +10744,9 @@ window.openDelhiveryTracker = openDelhiveryTracker;
 
     try {
       localStorage.setItem(ACCOUNT_STORAGE_KEY, JSON.stringify(accountState));
+      if (accountState.phone) {
+        localStorage.setItem('the_street_co_user_phone', accountState.phone);
+      }
       if (accountState.email && accountState.emailVerified) {
         localStorage.setItem('the_street_co_user_email', accountState.email);
       }
@@ -10593,6 +10761,9 @@ window.openDelhiveryTracker = openDelhiveryTracker;
         if (accountState.phone) lastAddr.phone = accountState.phone;
         if (accountState.email && accountState.emailVerified) lastAddr.email = accountState.email;
         localStorage.setItem('the_street_co_last_addr', JSON.stringify(lastAddr));
+      }
+      if (typeof window.renderVipUI === 'function') {
+        window.renderVipUI();
       }
     } catch (_) {}
   }
@@ -11123,46 +11294,56 @@ window.openDelhiveryTracker = openDelhiveryTracker;
         applyAddressToCheckoutInputs(chosen);
 
         // Ensure delivery speed is populated
+        const deliverySpeedInputs = document.querySelectorAll('input[name="checkoutDeliverySpeed"]');
         let selectedSpeed = 'free';
-        if (deliveryRadios) {
-          deliveryRadios.forEach(r => {
+        if (deliverySpeedInputs && deliverySpeedInputs.length > 0) {
+          deliverySpeedInputs.forEach(r => {
             if (r.checked) selectedSpeed = r.value;
           });
         }
-        checkoutSession.delivery = {
-          speed: selectedSpeed,
-          cost: selectedSpeed === 'express' ? 149 : 0,
-          title: selectedSpeed === 'express' ? '⚡ Express Delivery' : 'Standard Delivery'
-        };
+        const cs = (typeof checkoutSession !== 'undefined' && checkoutSession) ? checkoutSession : window.checkoutSession;
+        if (cs) {
+          cs.delivery = {
+            speed: selectedSpeed,
+            cost: selectedSpeed === 'express' ? 149 : 0,
+            title: selectedSpeed === 'express' ? '⚡ Express Delivery' : 'Standard Delivery'
+          };
 
-        const activeTypePill = checkoutTypePills ? checkoutTypePills.querySelector('.checkout-type-pill.active') : null;
-        checkoutSession.address = {
-          name: chosen.name || chosen.fullName || '',
-          phone: String(chosen.phone || '').replace(/\D/g, '').slice(-10),
-          email: chosen.email || (accountState && accountState.email) || '',
-          pincode: chosen.pincode || '',
-          address1: chosen.address1 || chosen.houseFlat || '',
-          address2: chosen.address2 || chosen.streetRoad || '',
-          landmark: chosen.landmark || '',
-          city: chosen.city || '',
-          state: chosen.state || '',
-          type: chosen.type || (activeTypePill ? activeTypePill.dataset.type : 'Home'),
-          isB2B: Boolean(document.getElementById('checkoutIsB2B')?.checked),
-          gstin: (document.getElementById('checkoutGstin')?.value || '').trim().toUpperCase()
-        };
+          const typePillsEl = document.getElementById('checkoutTypePills');
+          const activeTypePill = typePillsEl ? typePillsEl.querySelector('.checkout-type-pill.active') : null;
+          cs.address = {
+            name: chosen.name || chosen.fullName || '',
+            phone: String(chosen.phone || '').replace(/\D/g, '').slice(-10),
+            email: chosen.email || (accountState && accountState.email) || '',
+            pincode: chosen.pincode || '',
+            address1: chosen.address1 || chosen.houseFlat || '',
+            address2: chosen.address2 || chosen.streetRoad || '',
+            landmark: chosen.landmark || '',
+            city: chosen.city || '',
+            state: chosen.state || '',
+            type: chosen.type || (activeTypePill ? activeTypePill.dataset.type : 'Home'),
+            isB2B: Boolean(document.getElementById('checkoutIsB2B')?.checked),
+            gstin: (document.getElementById('checkoutGstin')?.value || '').trim().toUpperCase()
+          };
 
-        // Ensure checkoutSession items are populated from cart
-        if (!checkoutSession.items || checkoutSession.items.length === 0) {
-          if (typeof cart !== 'undefined' && cart.length > 0) {
-            checkoutSession.items = cart.map(it => ({ ...it, qty: it.qty || 1 }));
+          // Ensure checkoutSession items are populated from cart
+          if (!cs.items || cs.items.length === 0) {
+            const activeCart = (typeof cart !== 'undefined' && cart.length > 0) ? cart : (window.cart || []);
+            if (activeCart.length > 0) {
+              cs.items = activeCart.map(it => ({ ...it, qty: it.qty || 1 }));
+            }
           }
+
+          try {
+            localStorage.setItem('the_street_co_last_addr', JSON.stringify(cs.address));
+          } catch (_) {}
         }
 
-        try {
-          localStorage.setItem('the_street_co_last_addr', JSON.stringify(checkoutSession.address));
-        } catch (_) {}
-
-        goToCheckoutStep(2);
+        if (typeof goToCheckoutStep === 'function') {
+          goToCheckoutStep(2);
+        } else if (typeof window.goToCheckoutStep === 'function') {
+          window.goToCheckoutStep(2);
+        }
         return;
       }
       if (typeof window.streetCoProceedToPaymentStep === 'function') {
@@ -12959,6 +13140,17 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       return;
     }
 
+    const loginModal = document.getElementById('phoneLoginPopupModal');
+    if (loginModal) {
+      loginModal.classList.remove('open');
+      loginModal.setAttribute('aria-hidden', 'true');
+    }
+    const otpModal = document.getElementById('unifiedOtpModal');
+    if (otpModal) {
+      otpModal.classList.remove('open');
+      otpModal.setAttribute('aria-hidden', 'true');
+    }
+
     const modal = document.getElementById('accountPageModal');
     if (!modal) return;
     showAccountFeedback('');
@@ -13665,15 +13857,128 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     sendOtpBtn.addEventListener('click', requestEmailOtpPopup);
   }
 
-  // ── 8. Save Account Profile Form Submit (Saves User Details to Firebase Auth & MongoDB Atlas) ──
+  // ── 8. Real-Time & Fast Account Profile Saving (Saves to Local, Firebase & MongoDB in Real-Time) ──
+  let profileSaveDebounceTimer = null;
+
+  async function executeProfileSaveRealTime(isExplicitSave = false) {
+    const fName = firstNameEl ? firstNameEl.value.trim() : (accountState.firstName || '');
+    const lName = lastNameEl ? lastNameEl.value.trim() : (accountState.lastName || '');
+    const emailInput = document.getElementById('accountEmailInput');
+    const typedEmail = String(emailInput ? emailInput.value : (accountState.email || '')).trim().toLowerCase();
+    const phoneToSave = accountState.phone || getActiveUserPhone();
+
+    // Instant local optimistic save - 0ms latency
+    const isEmailVerifiedMatch = Boolean(
+      typedEmail &&
+      accountState.emailVerified &&
+      accountState.email &&
+      typedEmail === String(accountState.email).trim().toLowerCase()
+    );
+
+    accountState.firstName = fName;
+    accountState.lastName = lName;
+    if (typedEmail) {
+      accountState.email = typedEmail;
+    }
+
+    saveLocalAccount({
+      firstName: fName,
+      lastName: lName,
+      email: typedEmail || accountState.email || '',
+      emailVerified: isEmailVerifiedMatch || Boolean(accountState.emailVerified)
+    });
+    renderAccountPageUI();
+
+    // "Don't show this after saving account details": Keep feedback box hidden
+    const feedbackBox = document.getElementById('accountSaveFeedbackBox');
+    if (feedbackBox) {
+      feedbackBox.style.display = 'none';
+      feedbackBox.textContent = '';
+    }
+
+    // Award VIP Member Mission for Name Upload (+25 pts) ONLY after user explicitly saves account details
+    if (isExplicitSave && (fName || lName)) {
+      if (typeof window.claimMissionPoints === 'function') {
+        window.claimMissionPoints('profile_name', { firstName: fName, lastName: lName });
+      }
+    }
+
+    // Background asynchronous network sync without blocking UI
+    try {
+      let firebaseUid = '';
+      if (window.streetCoFirebaseAuth && typeof window.streetCoFirebaseAuth.saveUserAuthDetails === 'function') {
+        window.streetCoFirebaseAuth.saveUserAuthDetails({
+          phone: phoneToSave,
+          phoneVerified: true,
+          firstName: fName,
+          lastName: lName,
+          email: typedEmail || accountState.email || '',
+          emailVerified: isEmailVerifiedMatch || Boolean(accountState.emailVerified)
+        }).then(res => {
+          if (res && res.firebaseUid) firebaseUid = res.firebaseUid;
+        }).catch(() => {});
+      }
+
+      if (phoneToSave) {
+        fetch('/api/account/profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phone: phoneToSave,
+            firstName: fName,
+            lastName: lName,
+            email: typedEmail || accountState.email || '',
+            emailVerified: isEmailVerifiedMatch || Boolean(accountState.emailVerified),
+            firebaseUid,
+            addresses: accountState.addresses || [],
+            defaultAddressId: accountState.defaultAddressId || '',
+            isExplicitSave: Boolean(isExplicitSave)
+          })
+        }).then(async (res) => {
+          if (res.ok) {
+            const data = await res.json().catch(() => ({}));
+            if (isExplicitSave && data && Array.isArray(data.newlyAwardedBonuses) && data.newlyAwardedBonuses.length > 0) {
+              data.newlyAwardedBonuses.forEach(b => {
+                if (window.notifyStreetCashReceived) {
+                  window.notifyStreetCashReceived(b.points, b.reason || b.label, b.newBalance);
+                }
+              });
+              if (window.syncStreetCashFromBackend) {
+                window.syncStreetCashFromBackend(phoneToSave);
+              }
+            }
+          }
+        }).catch(() => {});
+      }
+    } catch (_) {}
+  }
+
+  // On typing into inputs, update local state silently without debounced save or premature points
+  [firstNameEl, lastNameEl].forEach(inputEl => {
+    if (inputEl) {
+      inputEl.addEventListener('input', () => {
+        showAccountFeedback('');
+        accountState.firstName = firstNameEl ? firstNameEl.value.trim() : '';
+        accountState.lastName = lastNameEl ? lastNameEl.value.trim() : '';
+      });
+    }
+  });
+
+  const emailFieldEl = document.getElementById('accountEmailInput');
+  if (emailFieldEl) {
+    emailFieldEl.addEventListener('input', () => {
+      showAccountFeedback('');
+      const val = emailFieldEl.value.trim();
+      accountState.email = val;
+    });
+  }
+
   const mainForm = document.getElementById('accountProfileMainForm');
   if (mainForm) {
     mainForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const fName = firstNameEl ? firstNameEl.value.trim() : '';
       const lName = lastNameEl ? lastNameEl.value.trim() : '';
-      const emailInput = document.getElementById('accountEmailInput');
-      const typedEmail = String(emailInput ? emailInput.value : '').trim().toLowerCase();
 
       if (!fName) {
         showAccountFeedback('Please enter your First Name.', true);
@@ -13686,95 +13991,27 @@ window.openDelhiveryTracker = openDelhiveryTracker;
         return;
       }
 
-      const isEmailVerifiedMatch = Boolean(
-        typedEmail &&
-        accountState.emailVerified &&
-        accountState.email &&
-        typedEmail === String(accountState.email).trim().toLowerCase()
-      );
-
-      // If user typed an unverified email, automatically launch the 6-Digit Email OTP Popup/Page
-      if (typedEmail && !isEmailVerifiedMatch) {
-        await requestEmailOtpPopup();
-        return;
-      }
+      // Hide any previous feedback box
+      showAccountFeedback('');
 
       const saveBtn = document.getElementById('accountSaveProfileBtn');
       if (saveBtn) {
         saveBtn.disabled = true;
-        saveBtn.textContent = 'Saving Profile...';
+        saveBtn.textContent = 'Saving...';
       }
 
-      try {
-        const verifiedEmailToSave = isEmailVerifiedMatch
-          ? typedEmail
-          : (accountState.emailVerified ? accountState.email : '');
-        const isVerifiedBool = isEmailVerifiedMatch || Boolean(accountState.emailVerified);
+      // Explicit save: saves profile and claims the points for account name
+      await executeProfileSaveRealTime(true);
 
-        let firebaseUid = '';
-        if (window.streetCoFirebaseAuth && typeof window.streetCoFirebaseAuth.saveUserAuthDetails === 'function') {
-          try {
-            const fbSaved = await window.streetCoFirebaseAuth.saveUserAuthDetails({
-              phone: accountState.phone,
-              phoneVerified: true,
-              firstName: fName,
-              lastName: lName,
-              email: verifiedEmailToSave,
-              emailVerified: isVerifiedBool
-            });
-            if (fbSaved && fbSaved.firebaseUid) firebaseUid = fbSaved.firebaseUid;
-          } catch (_) {}
-        }
-
-        // Save user account profile + addresses to MongoDB Atlas
-        const profRes = await fetch('/api/account/profile', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            phone: accountState.phone,
-            firstName: fName,
-            lastName: lName,
-            email: verifiedEmailToSave,
-            emailVerified: isVerifiedBool,
-            firebaseUid,
-            addresses: accountState.addresses || [],
-            defaultAddressId: accountState.defaultAddressId || ''
-          })
-        }).catch(() => null);
-
-        if (profRes && profRes.ok) {
-          const profData = await profRes.json().catch(() => ({}));
-          if (profData && Array.isArray(profData.newlyAwardedBonuses) && profData.newlyAwardedBonuses.length > 0) {
-            profData.newlyAwardedBonuses.forEach(b => {
-              if (window.notifyStreetCashReceived) {
-                window.notifyStreetCashReceived(b.points, b.reason || b.label, b.newBalance);
-              }
-            });
-            if (window.syncStreetCashFromBackend) {
-              window.syncStreetCashFromBackend(accountState.phone);
-            }
-          }
-        }
-
-        saveLocalAccount({
-          firstName: fName,
-          lastName: lName,
-          email: verifiedEmailToSave,
-          emailVerified: isVerifiedBool
-        });
-        renderAccountPageUI();
-        showAccountFeedback('✓ Your Account Profile has been saved to your account.', false);
-        if (window.streetCoShowToast) {
-          window.streetCoShowToast('Account profile saved!');
-        }
-      } catch (err) {
-        showAccountFeedback(err.message || 'Failed to save account profile.', true);
-      } finally {
-        if (saveBtn) {
-          saveBtn.disabled = false;
-          saveBtn.textContent = 'Save Account Profile';
-        }
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Saved ✓';
+        setTimeout(() => {
+          if (saveBtn) saveBtn.textContent = 'Save Account Profile';
+        }, 1200);
       }
+      // "Don't show this after saving account details": Keep feedback banner hidden
+      showAccountFeedback('');
     });
   }
 

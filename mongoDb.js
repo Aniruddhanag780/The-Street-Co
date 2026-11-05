@@ -660,8 +660,8 @@ export async function syncUserOnboardingBonuses(phone) {
     const bonuses = { ...(user.streetCashBonuses || {}) };
     const awardedList = [];
 
-    // 1. Account creation bonus (75 pts)
-    if (!bonuses.account_creation && (user.phoneVerified || user.phone)) {
+    // 1. Account creation bonus (75 pts) - Automatically awarded if user has created an account / logged in
+    if (!bonuses.account_creation && cleanPhone.length === 10) {
       const res = await awardStreetCashBonus(cleanPhone, 'account_creation');
       if (res && res.awarded) {
         awardedList.push(res);
@@ -680,7 +680,7 @@ export async function syncUserOnboardingBonuses(phone) {
     }
 
     // 3. Email added in My Account (35 pts)
-    const hasEmail = Boolean(user.email && user.email.includes('@'));
+    const hasEmail = Boolean(user.email && String(user.email).includes('@'));
     if (!bonuses.profile_email && hasEmail) {
       const res = await awardStreetCashBonus(cleanPhone, 'profile_email');
       if (res && res.awarded) {

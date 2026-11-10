@@ -238,48 +238,7 @@ the-street-co/
 
 ---
 
-## How to Make this Repository Public on GitHub
 
-To publish this repository and make it public for the world to see:
-
-### Method 1: Using GitHub CLI (`gh`)
-If you have the [GitHub CLI](https://cli.github.com/) installed on your machine:
-```bash
-# 1. Initialize git and commit files
-git init
-git add .
-git commit -m "feat: complete The Street Co platform with comprehensive README and UI showcase"
-
-# 2. Create a new public repository and push
-gh repo create the-street-co --public --source=. --remote=origin --push
-```
-
-### Method 2: Using the GitHub Web Interface
-1. Go to [GitHub.com/new](https://github.com/new).
-2. Set the repository name to `the-street-co`.
-3. Choose **Public** under the visibility options.
-4. Leave *"Initialize this repository with a README"* unchecked (we already have a complete one).
-5. Click **Create repository**.
-6. In your terminal, run:
-   ```bash
-   git init
-   git add .
-   git commit -m "feat: complete The Street Co platform with comprehensive README and UI showcase"
-   git branch -M main
-   git remote add origin https://github.com/YOUR_USERNAME/the-street-co.git
-   git push -u origin main
-   ```
-
-### Method 3: Change an Existing Private Repository to Public
-If your repository already exists on GitHub as **Private**:
-1. Open your repository on GitHub (`https://github.com/YOUR_USERNAME/the-street-co`).
-2. Click the **Settings** tab at the top right.
-3. Scroll down to the **Danger Zone** section at the bottom.
-4. Under **Change repository visibility**, click **Change visibility**.
-5. Select **Make public**.
-6. Type the repository confirmation name and confirm. Your repository is now public!
-
----
 
 ## License
 

@@ -1103,6 +1103,26 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
             </svg>
           </span>
           <p>Your shopping cart is empty.<br>Select items from the catalog above.</p>
+          <div class="cart-empty-store-offers" style="margin-top:1.25rem;background:rgba(255,255,255,0.03);border:1px dashed rgba(255,255,255,0.14);border-radius:10px;padding:12px;text-align:left;width:100%;max-width:320px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <span style="font-size:0.68rem;font-weight:700;letter-spacing:0.06em;color:#9ca3af;text-transform:uppercase;">🏷️ Exclusive Store Offers</span>
+              <span style="font-size:0.6rem;font-weight:700;color:#10b981;background:rgba(16,185,129,0.12);padding:2px 6px;border-radius:4px;">ACTIVE</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,0.3);padding:6px 10px;border-radius:6px;font-size:0.75rem;">
+                <div><strong style="color:#f59e0b;font-family:'JetBrains Mono',monospace;">STREET10</strong> <span style="color:#d1d5db;margin-left:4px;font-size:0.7rem;">10% Off Orders ₹1,500+</span></div>
+                <span style="color:#10b981;font-weight:700;font-size:0.7rem;">10% OFF</span>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,0.3);padding:6px 10px;border-radius:6px;font-size:0.75rem;">
+                <div><strong style="color:#f59e0b;font-family:'JetBrains Mono',monospace;">UCHIHA200</strong> <span style="color:#d1d5db;margin-left:4px;font-size:0.7rem;">Flat ₹200 Off ₹1,000+</span></div>
+                <span style="color:#10b981;font-weight:700;font-size:0.7rem;">FLAT ₹200</span>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,0.3);padding:6px 10px;border-radius:6px;font-size:0.75rem;">
+                <div><strong style="color:#f59e0b;font-family:'JetBrains Mono',monospace;">ITACHI500</strong> <span style="color:#d1d5db;margin-left:4px;font-size:0.7rem;">Flat ₹500 Off ₹3,000+</span></div>
+                <span style="color:#10b981;font-weight:700;font-size:0.7rem;">FLAT ₹500</span>
+              </div>
+            </div>
+          </div>
         </div>
       `;
       if (wishlist.length > 0) {
@@ -1309,6 +1329,9 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       switchDrawerTab(tab);
       if (typeof renderSuggestedCoupons === 'function') {
         renderSuggestedCoupons();
+      }
+      if (typeof loadCouponsCatalog === 'function') {
+        loadCouponsCatalog();
       }
       autoApplyStreetCashCouponIfAvailable();
 
@@ -3144,8 +3167,12 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     // ── GROUP 1: PERCENTAGE DISCOUNTS (%) ──
     {
       code: 'STREET10',
+      couponName: '10% Off Entire Order',
+      couponText: 'Enjoy 10% instant discount across entire streetwear catalog.',
+      couponSubText: 'Valid on orders between ₹1,500 and ₹8,000',
       title: '10% Off Entire Order',
-      desc: 'Enjoy 10% instant discount on orders from ₹1,500 to ₹8,000.',
+      desc: 'Enjoy 10% instant discount across entire streetwear catalog.',
+      subText: 'Valid on orders between ₹1,500 and ₹8,000',
       group: 'percentage',
       type: 'percentage',
       value: 10,
@@ -3158,8 +3185,12 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     },
     {
       code: 'SHARINGAN15',
+      couponName: '15% Off Shinobi Relics',
+      couponText: 'Receive 15% instant discount on shinobi graphic hoodies & tees.',
+      couponSubText: 'Valid on orders between ₹2,500 and ₹12,000',
       title: '15% Off Shinobi Relics',
-      desc: 'Receive 15% instant discount on orders from ₹2,500 to ₹12,000.',
+      desc: 'Receive 15% instant discount on shinobi graphic hoodies & tees.',
+      subText: 'Valid on orders between ₹2,500 and ₹12,000',
       group: 'percentage',
       type: 'percentage',
       value: 15,
@@ -3172,8 +3203,12 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     },
     {
       code: 'AMATERASU20',
+      couponName: '20% Off Black Flame Hoard',
+      couponText: 'Unlock 20% discount on high-tier streetwear apparel.',
+      couponSubText: 'Valid on orders between ₹5,000 and ₹25,000',
       title: '20% Off Black Flame Hoard',
-      desc: 'Unlock 20% discount on high-tier orders between ₹5,000 and ₹25,000.',
+      desc: 'Unlock 20% discount on high-tier streetwear apparel.',
+      subText: 'Valid on orders between ₹5,000 and ₹25,000',
       group: 'percentage',
       type: 'percentage',
       value: 20,
@@ -3186,8 +3221,12 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     },
     {
       code: 'TSUKUYOMI25',
+      couponName: '25% Off Grand Archive Master Collection',
+      couponText: 'Exclusive 25% discount for major streetwear collectors.',
+      couponSubText: 'Valid on orders above ₹8,000',
       title: '25% Off Grand Archive Master Collection',
-      desc: 'Exclusive 25% discount for major collectors on orders above ₹8,000.',
+      desc: 'Exclusive 25% discount for major streetwear collectors.',
+      subText: 'Valid on orders above ₹8,000',
       group: 'percentage',
       type: 'percentage',
       value: 25,
@@ -3198,12 +3237,52 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       badge: '25% OFF',
       status: 'active'
     },
+    {
+      code: 'FITBUNDLE10',
+      couponName: '10% Off Complete Lookbook Outfit Bundle',
+      couponText: 'Instant 10% bundle savings when shopping a complete curated lookbook fit.',
+      couponSubText: 'Valid on orders above ₹1,500',
+      title: '10% Off Complete Lookbook Outfit Bundle',
+      desc: 'Instant 10% bundle savings when shopping a complete curated lookbook fit.',
+      subText: 'Valid on orders above ₹1,500',
+      group: 'percentage',
+      type: 'percentage',
+      value: 10,
+      minOrderValue: 1500,
+      maxOrderValue: null,
+      maxDiscount: 3500,
+      isPublic: true,
+      badge: '10% BUNDLE',
+      status: 'active'
+    },
+    {
+      code: 'ANBU30',
+      couponName: 'Private ANBU 30% Pass',
+      couponText: 'Confidential pass (inactive & private until released to public).',
+      couponSubText: 'Valid on orders above ₹4,000',
+      title: 'Private ANBU 30% Pass',
+      desc: 'Confidential pass (inactive & private until released to public).',
+      subText: 'Valid on orders above ₹4,000',
+      group: 'percentage',
+      type: 'percentage',
+      value: 30,
+      minOrderValue: 4000,
+      maxOrderValue: null,
+      maxDiscount: 3000,
+      isPublic: false,
+      badge: 'INACTIVE',
+      status: 'inactive'
+    },
 
     // ── GROUP 2: FLAT DISCOUNTS (₹) ──
     {
       code: 'UCHIHA200',
+      couponName: 'Flat ₹200 Welcome Offer',
+      couponText: 'Flat ₹200 off instant discount on your streetwear order.',
+      couponSubText: 'Valid on orders between ₹1,000 and ₹6,000',
       title: 'Flat ₹200 Welcome Offer',
-      desc: 'Flat ₹200 off on shopping cart from ₹1,000 to ₹6,000.',
+      desc: 'Flat ₹200 off instant discount on your streetwear order.',
+      subText: 'Valid on orders between ₹1,000 and ₹6,000',
       group: 'flat',
       type: 'flat',
       value: 200,
@@ -3216,8 +3295,12 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     },
     {
       code: 'ITACHI500',
+      couponName: 'Flat ₹500 First Order Discount',
+      couponText: 'Flat ₹500 instant discount on oversized drop-shoulder fits.',
+      couponSubText: 'Valid on orders between ₹3,000 and ₹20,000',
       title: 'Flat ₹500 First Order Discount',
       desc: 'Flat ₹500 instant discount on orders from ₹3,000 to ₹20,000.',
+      subText: 'Valid on orders between ₹3,000 and ₹20,000',
       group: 'flat',
       type: 'flat',
       value: 500,
@@ -3230,8 +3313,12 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     },
     {
       code: 'AKATSUKI1000',
+      couponName: 'Flat ₹1,000 Rogue Ninja Vault',
+      couponText: 'Flat ₹1,000 deduction on premium streetwear orders.',
+      couponSubText: 'Valid on orders above ₹6,000',
       title: 'Flat ₹1,000 Rogue Ninja Vault',
-      desc: 'Flat ₹1,000 deduction on premium orders above ₹6,000.',
+      desc: 'Flat ₹1,000 deduction on premium streetwear orders.',
+      subText: 'Valid on orders above ₹6,000',
       group: 'flat',
       type: 'flat',
       value: 1000,
@@ -3244,8 +3331,12 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     },
     {
       code: 'SUSANOO1500',
+      couponName: 'Flat ₹1,500 Divine Armor Requisition',
+      couponText: 'Save flat ₹1,500 on all orders above ₹10,000.',
+      couponSubText: 'Valid on orders above ₹10,000',
       title: 'Flat ₹1,500 Divine Armor Requisition',
       desc: 'Save flat ₹1,500 on all orders above ₹10,000.',
+      subText: 'Valid on orders above ₹10,000',
       group: 'flat',
       type: 'flat',
       value: 1500,
@@ -3256,54 +3347,14 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       badge: 'FLAT ₹1,500',
       status: 'active'
     },
-
-    // ── INACTIVE / PRIVATE COUPONS ──
-    {
-      code: 'SECRET300',
-      title: 'Classified ANBU Operative Seal',
-      desc: 'Covert seal (inactive & private until released to public).',
-      group: 'flat',
-      type: 'flat',
-      value: 300,
-      minOrderValue: 1800,
-      maxOrderValue: null,
-      maxDiscount: 300,
-      isPublic: false,
-      badge: 'INACTIVE',
-      status: 'inactive'
-    },
-    {
-      code: 'ANBU30',
-      title: 'Private ANBU 30% Pass',
-      desc: 'Confidential pass (inactive & private until released to public).',
-      group: 'percentage',
-      type: 'percentage',
-      value: 30,
-      minOrderValue: 4000,
-      maxOrderValue: null,
-      maxDiscount: 3000,
-      isPublic: false,
-      badge: 'INACTIVE',
-      status: 'inactive'
-    },
-    {
-      code: 'FITBUNDLE10',
-      title: '10% Off Complete Lookbook Outfit Bundle',
-      desc: 'Instant 10% bundle savings when shopping a complete curated lookbook fit.',
-      group: 'percentage',
-      type: 'percentage',
-      value: 10,
-      minOrderValue: 1500,
-      maxOrderValue: null,
-      maxDiscount: 3500,
-      isPublic: true,
-      badge: '10% BUNDLE',
-      status: 'active'
-    },
     {
       code: 'VIP100',
+      couponName: 'VIP Street Cred ₹100 Reward Voucher',
+      couponText: 'Redeemed via Street Cred Loyalty Club (200 Points).',
+      couponSubText: 'Valid on orders above ₹999',
       title: 'VIP Street Cred ₹100 Reward Voucher',
       desc: 'Redeemed via Street Cred Loyalty Club (200 Points).',
+      subText: 'Valid on orders above ₹999',
       group: 'flat',
       type: 'flat',
       value: 100,
@@ -3316,8 +3367,12 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     },
     {
       code: 'VIP250',
+      couponName: 'VIP Street Cred ₹250 Reward Voucher',
+      couponText: 'Redeemed via Street Cred Loyalty Club (450 Points).',
+      couponSubText: 'Valid on orders above ₹1,499',
       title: 'VIP Street Cred ₹250 Reward Voucher',
       desc: 'Redeemed via Street Cred Loyalty Club (450 Points).',
+      subText: 'Valid on orders above ₹1,499',
       group: 'flat',
       type: 'flat',
       value: 250,
@@ -3330,8 +3385,12 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     },
     {
       code: 'VIP500',
+      couponName: 'VIP Street Cred ₹500 Reward Voucher',
+      couponText: 'Redeemed via Street Cred Loyalty Club (850 Points).',
+      couponSubText: 'Valid on orders above ₹2,499',
       title: 'VIP Street Cred ₹500 Reward Voucher',
       desc: 'Redeemed via Street Cred Loyalty Club (850 Points).',
+      subText: 'Valid on orders above ₹2,499',
       group: 'flat',
       type: 'flat',
       value: 500,
@@ -3344,8 +3403,12 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     },
     {
       code: 'VIP1000',
+      couponName: 'VIP Street Cred ₹1,000 Obsidian Voucher',
+      couponText: 'Redeemed via Street Cred Loyalty Club (1,500 Points).',
+      couponSubText: 'Valid on orders above ₹4,999',
       title: 'VIP Street Cred ₹1,000 Obsidian Voucher',
       desc: 'Redeemed via Street Cred Loyalty Club (1,500 Points).',
+      subText: 'Valid on orders above ₹4,999',
       group: 'flat',
       type: 'flat',
       value: 1000,
@@ -3355,6 +3418,24 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       isPublic: true,
       badge: 'VIP ₹1,000',
       status: 'active'
+    },
+    {
+      code: 'SECRET300',
+      couponName: 'Classified ANBU Operative Seal',
+      couponText: 'Covert seal (inactive & private until released to public).',
+      couponSubText: 'Valid on orders above ₹1,800',
+      title: 'Classified ANBU Operative Seal',
+      desc: 'Covert seal (inactive & private until released to public).',
+      subText: 'Valid on orders above ₹1,800',
+      group: 'flat',
+      type: 'flat',
+      value: 300,
+      minOrderValue: 1800,
+      maxOrderValue: null,
+      maxDiscount: 300,
+      isPublic: false,
+      badge: 'INACTIVE',
+      status: 'inactive'
     }
   ];
 
@@ -3368,8 +3449,9 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
 
   let cachedCouponsList = [...CLIENT_FALLBACK_COUPONS];
   let activeCouponGroupFilter = 'all'; // 'all', 'percentage', 'flat'
+  let isCouponsExpanded = false;
 
-  // Fetch coupons from API asynchronously
+  // Fetch coupons from API asynchronously (backed by MongoDB Atlas)
   async function loadCouponsCatalog() {
     try {
       const res = await fetch('/api/coupons');
@@ -3425,10 +3507,17 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
 
     // Filter by strictly public and active coupons only
     const activeCode = (appliedCartCoupon.code || checkoutSession.promoCode || '').trim().toUpperCase();
-    const publicCoupons = cachedCouponsList.filter(c =>
+    let publicCoupons = cachedCouponsList.filter(c =>
       c.isPublic === true &&
       c.status === 'active'
     );
+
+    // Apply active group filter if selected
+    if (activeCouponGroupFilter === 'percentage') {
+      publicCoupons = publicCoupons.filter(c => c.group === 'percentage' || c.type === 'percentage');
+    } else if (activeCouponGroupFilter === 'flat') {
+      publicCoupons = publicCoupons.filter(c => c.group === 'flat' || c.type === 'flat');
+    }
 
     // 1. Find coupons where the cart matches the price range condition
     const eligible = publicCoupons.filter(c => {
@@ -3451,17 +3540,36 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       .sort((a, b) => Number(a.minOrderValue) - Number(b.minOrderValue));
 
     // Combine and prioritize the currently applied coupon at the top if present
-    let displayList = [];
+    let allMatches = [];
     const activeCoupon = activeCode ? publicCoupons.find(c => c.code.toUpperCase() === activeCode) : null;
     if (activeCoupon) {
-      displayList.push(activeCoupon);
+      allMatches.push(activeCoupon);
     }
     const otherEligible = eligible.filter(c => !activeCode || c.code.toUpperCase() !== activeCode);
     const otherUpcoming = upcoming.filter(c => !activeCode || c.code.toUpperCase() !== activeCode);
-    displayList = [...displayList, ...otherEligible, ...otherUpcoming].slice(0, 3);
+    allMatches = [...allMatches, ...otherEligible, ...otherUpcoming];
+
+    // Show 3 by default or up to 20 when expanded
+    const displayList = isCouponsExpanded ? allMatches.slice(0, 20) : allMatches.slice(0, 3);
+
+    const expandBtn = document.getElementById('checkoutCouponsExpandBtn');
+    if (expandBtn) {
+      if (allMatches.length > 3) {
+        expandBtn.style.display = 'block';
+        expandBtn.textContent = isCouponsExpanded
+          ? 'SHOW LESS ↑'
+          : `VIEW MORE OFFERS (${allMatches.length}) ↓`;
+      } else {
+        expandBtn.style.display = 'none';
+      }
+    }
 
     if (displayList.length === 0) {
-      checkoutCouponsList.innerHTML = '';
+      checkoutCouponsList.innerHTML = `
+        <div style="padding:0.75rem;text-align:center;color:#6b7280;font-size:0.68rem;font-family:var(--sans,sans-serif);">
+          No ${activeCouponGroupFilter !== 'all' ? activeCouponGroupFilter : ''} offers available for this cart.
+        </div>
+      `;
       return;
     }
 
@@ -3478,7 +3586,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       } else if (isEligible) {
         btnHtml = `<button type="button" class="coupon-card-apply-btn" data-code="${c.code}">APPLY</button>`;
       } else {
-        btnHtml = `<button type="button" class="coupon-card-apply-btn locked" data-code="${c.code}" title="Requires higher shopping total">LOCKED 🔒</button>`;
+        btnHtml = `<button type="button" class="coupon-card-apply-btn locked" data-code="${c.code}" title="Requires cart of ₹${min.toLocaleString('en-IN')}">LOCKED 🔒</button>`;
       }
 
       const cardClass = isApplied
@@ -3501,15 +3609,18 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
             </div>
           </div>
           <div class="checkout-coupon-card__body">
-            <h5 class="coupon-card-title">${c.title}</h5>
-            <p class="coupon-card-desc">${c.desc}</p>
+            <h5 class="coupon-card-title">${c.couponName || c.title}</h5>
+            <p class="coupon-card-desc">${c.couponText || c.desc}</p>
+            <div class="coupon-card-subtext">
+              <span class="subtext-icon">⚡</span>
+              <span>${c.couponSubText || c.subText || (c.minOrderValue ? `Min order: ₹${Number(c.minOrderValue).toLocaleString('en-IN')}` : 'Applicable on all orders')}</span>
+            </div>
           </div>
         </div>
       `;
     }).join('');
 
     // Attach event listeners to card Apply buttons:
-    // If the user clicks that button: paste coupon in the coupon text bar and use it
     checkoutCouponsList.querySelectorAll('.coupon-card-apply-btn:not([disabled])').forEach(btn => {
       btn.addEventListener('click', () => {
         const code = btn.dataset.code;
@@ -3537,6 +3648,27 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     });
   }
 
+  // Hook filter tabs and expand button once
+  const filterTabsContainer = document.getElementById('checkoutCouponFilterTabs');
+  if (filterTabsContainer) {
+    filterTabsContainer.querySelectorAll('.checkout-coupon-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        filterTabsContainer.querySelectorAll('.checkout-coupon-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        activeCouponGroupFilter = tab.dataset.filter || 'all';
+        renderSuggestedCoupons();
+      });
+    });
+  }
+
+  const expandBtnEl = document.getElementById('checkoutCouponsExpandBtn');
+  if (expandBtnEl) {
+    expandBtnEl.addEventListener('click', () => {
+      isCouponsExpanded = !isCouponsExpanded;
+      renderSuggestedCoupons();
+    });
+  }
+
   const pageBottomCouponsCards = document.getElementById('pageBottomCouponsCards');
 
   function renderPageBottomCoupons() {
@@ -3549,6 +3681,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       const discountTag = isPercent ? `${c.value}% OFF` : `FLAT ₹${c.value}`;
       const minText = c.minOrderValue ? `Min order: ₹${Number(c.minOrderValue).toLocaleString('en-IN')}` : 'No minimum order';
       const maxText = c.maxOrderValue ? ` · Max order: ₹${Number(c.maxOrderValue).toLocaleString('en-IN')}` : '';
+      const subTextStr = c.couponSubText || c.subText || `${minText}${maxText}`;
       const isApplied = Boolean(activeCode && c.code.toUpperCase() === activeCode);
 
       return `
@@ -3563,9 +3696,9 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
             </div>
           </div>
           <div class="page-coupon-card__content">
-            <h4 class="page-coupon-card__title">${c.title}</h4>
-            <p class="page-coupon-card__desc">${c.desc}</p>
-            <span class="page-coupon-card__terms">${minText}${maxText}</span>
+            <h4 class="page-coupon-card__title">${c.couponName || c.title}</h4>
+            <p class="page-coupon-card__desc">${c.couponText || c.desc}</p>
+            <span class="page-coupon-card__terms">${subTextStr}</span>
           </div>
           <div class="page-coupon-card__actions">
             <button type="button" class="page-coupon-btn-apply" data-code="${c.code}">

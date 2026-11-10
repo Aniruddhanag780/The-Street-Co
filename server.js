@@ -3009,12 +3009,32 @@ function normalizeProduct(p) {
 // Products & Orders are managed via Zoho Inventory
 // Coupons & Newsletter Subscribers are stored in local persistent cache
 
+// Helper function to format coupon sub text with minimum and maximum order values
+function formatCouponSubText(minOrderValue, maxOrderValue) {
+  const min = Number(minOrderValue) || 0;
+  const max = maxOrderValue ? Number(maxOrderValue) : null;
+  if (min > 0 && max && max > min) {
+    return `Valid on orders between ₹${min.toLocaleString('en-IN')} and ₹${max.toLocaleString('en-IN')}`;
+  }
+  if (min > 0) {
+    return `Valid on orders above ₹${min.toLocaleString('en-IN')}`;
+  }
+  if (max) {
+    return `Valid on orders up to ₹${max.toLocaleString('en-IN')}`;
+  }
+  return 'Applicable on all orders (No minimum order value)';
+}
+
 const DEFAULT_COUPONS = [
   // ── GROUP 1: PERCENTAGE DISCOUNTS (%) ──
   {
     code: 'STREET10',
+    couponName: '10% Off Entire Order',
+    couponText: 'Enjoy 10% instant discount across entire streetwear catalog.',
+    couponSubText: 'Valid on orders between ₹1,500 and ₹8,000',
     title: '10% Off Entire Order',
-    desc: 'Enjoy 10% instant discount on orders from ₹1,500 to ₹8,000.',
+    desc: 'Enjoy 10% instant discount across entire streetwear catalog.',
+    subText: 'Valid on orders between ₹1,500 and ₹8,000',
     group: 'percentage',
     type: 'percentage',
     value: 10, // 10%
@@ -3027,8 +3047,12 @@ const DEFAULT_COUPONS = [
   },
   {
     code: 'SHARINGAN15',
+    couponName: '15% Off Shinobi Relics',
+    couponText: 'Receive 15% instant discount on shinobi graphic hoodies & tees.',
+    couponSubText: 'Valid on orders between ₹2,500 and ₹12,000',
     title: '15% Off Shinobi Relics',
-    desc: 'Receive 15% instant discount on orders from ₹2,500 to ₹12,000.',
+    desc: 'Receive 15% instant discount on shinobi graphic hoodies & tees.',
+    subText: 'Valid on orders between ₹2,500 and ₹12,000',
     group: 'percentage',
     type: 'percentage',
     value: 15, // 15%
@@ -3041,8 +3065,12 @@ const DEFAULT_COUPONS = [
   },
   {
     code: 'AMATERASU20',
+    couponName: '20% Off Black Flame Hoard',
+    couponText: 'Unlock 20% discount on high-tier streetwear apparel.',
+    couponSubText: 'Valid on orders between ₹5,000 and ₹25,000',
     title: '20% Off Black Flame Hoard',
-    desc: 'Unlock 20% discount on high-tier orders between ₹5,000 and ₹25,000.',
+    desc: 'Unlock 20% discount on high-tier streetwear apparel.',
+    subText: 'Valid on orders between ₹5,000 and ₹25,000',
     group: 'percentage',
     type: 'percentage',
     value: 20, // 20%
@@ -3055,8 +3083,12 @@ const DEFAULT_COUPONS = [
   },
   {
     code: 'TSUKUYOMI25',
+    couponName: '25% Off Grand Archive Master Collection',
+    couponText: 'Exclusive 25% discount for major streetwear collectors.',
+    couponSubText: 'Valid on orders above ₹8,000',
     title: '25% Off Grand Archive Master Collection',
-    desc: 'Exclusive 25% discount for major collectors on orders above ₹8,000.',
+    desc: 'Exclusive 25% discount for major streetwear collectors.',
+    subText: 'Valid on orders above ₹8,000',
     group: 'percentage',
     type: 'percentage',
     value: 25, // 25%
@@ -3067,12 +3099,52 @@ const DEFAULT_COUPONS = [
     badge: '25% OFF',
     status: 'active'
   },
+  {
+    code: 'FITBUNDLE10',
+    couponName: '10% Off Complete Lookbook Outfit Bundle',
+    couponText: 'Instant 10% bundle savings when shopping a complete curated lookbook fit.',
+    couponSubText: 'Valid on orders above ₹1,500',
+    title: '10% Off Complete Lookbook Outfit Bundle',
+    desc: 'Instant 10% bundle savings when shopping a complete curated lookbook fit.',
+    subText: 'Valid on orders above ₹1,500',
+    group: 'percentage',
+    type: 'percentage',
+    value: 10,
+    minOrderValue: 1500,
+    maxOrderValue: null,
+    maxDiscount: 3500,
+    isPublic: true,
+    badge: '10% BUNDLE',
+    status: 'active'
+  },
+  {
+    code: 'ANBU30',
+    couponName: 'Private ANBU 30% Pass',
+    couponText: 'Confidential pass (inactive & private until released to public).',
+    couponSubText: 'Valid on orders above ₹4,000',
+    title: 'Private ANBU 30% Pass',
+    desc: 'Confidential pass (inactive & private until released to public).',
+    subText: 'Valid on orders above ₹4,000',
+    group: 'percentage',
+    type: 'percentage',
+    value: 30,
+    minOrderValue: 4000,
+    maxOrderValue: null,
+    maxDiscount: 3000,
+    isPublic: false,
+    badge: 'INACTIVE',
+    status: 'inactive'
+  },
 
   // ── GROUP 2: FLAT DISCOUNTS (₹) ──
   {
     code: 'UCHIHA200',
+    couponName: 'Flat ₹200 Welcome Offer',
+    couponText: 'Flat ₹200 off instant discount on your streetwear order.',
+    couponSubText: 'Valid on orders between ₹1,000 and ₹6,000',
     title: 'Flat ₹200 Welcome Offer',
-    desc: 'Flat ₹200 off on shopping cart from ₹1,000 to ₹6,000.',
+    desc: 'Flat ₹200 off instant discount on your streetwear order.',
+    subText: 'Valid on orders between ₹1,000 and ₹6,000',
     group: 'flat',
     type: 'flat',
     value: 200, // ₹200
@@ -3085,8 +3157,12 @@ const DEFAULT_COUPONS = [
   },
   {
     code: 'ITACHI500',
+    couponName: 'Flat ₹500 First Order Discount',
+    couponText: 'Flat ₹500 instant discount on oversized drop-shoulder fits.',
+    couponSubText: 'Valid on orders between ₹3,000 and ₹20,000',
     title: 'Flat ₹500 First Order Discount',
     desc: 'Flat ₹500 instant discount on orders from ₹3,000 to ₹20,000.',
+    subText: 'Valid on orders between ₹3,000 and ₹20,000',
     group: 'flat',
     type: 'flat',
     value: 500, // ₹500
@@ -3099,8 +3175,12 @@ const DEFAULT_COUPONS = [
   },
   {
     code: 'AKATSUKI1000',
+    couponName: 'Flat ₹1,000 Rogue Ninja Vault',
+    couponText: 'Flat ₹1,000 deduction on premium streetwear orders.',
+    couponSubText: 'Valid on orders above ₹6,000',
     title: 'Flat ₹1,000 Rogue Ninja Vault',
-    desc: 'Flat ₹1,000 deduction on premium orders above ₹6,000.',
+    desc: 'Flat ₹1,000 deduction on premium streetwear orders.',
+    subText: 'Valid on orders above ₹6,000',
     group: 'flat',
     type: 'flat',
     value: 1000, // ₹1,000
@@ -3113,8 +3193,12 @@ const DEFAULT_COUPONS = [
   },
   {
     code: 'SUSANOO1500',
+    couponName: 'Flat ₹1,500 Divine Armor Requisition',
+    couponText: 'Save flat ₹1,500 on all orders above ₹10,000.',
+    couponSubText: 'Valid on orders above ₹10,000',
     title: 'Flat ₹1,500 Divine Armor Requisition',
     desc: 'Save flat ₹1,500 on all orders above ₹10,000.',
+    subText: 'Valid on orders above ₹10,000',
     group: 'flat',
     type: 'flat',
     value: 1500, // ₹1,500
@@ -3125,33 +3209,92 @@ const DEFAULT_COUPONS = [
     badge: 'FLAT ₹1,500',
     status: 'active'
   },
-
-  // ── INACTIVE / PRIVATE COUPONS ──
-  // If inactive or not marked as public: cannot be used and never suggested!
+  {
+    code: 'VIP100',
+    couponName: 'VIP Street Cred ₹100 Reward Voucher',
+    couponText: 'Redeemed via Street Cred Loyalty Club (200 Points).',
+    couponSubText: 'Valid on orders above ₹999',
+    title: 'VIP Street Cred ₹100 Reward Voucher',
+    desc: 'Redeemed via Street Cred Loyalty Club (200 Points).',
+    subText: 'Valid on orders above ₹999',
+    group: 'flat',
+    type: 'flat',
+    value: 100,
+    minOrderValue: 999,
+    maxOrderValue: null,
+    maxDiscount: 100,
+    isPublic: true,
+    badge: 'VIP ₹100',
+    status: 'active'
+  },
+  {
+    code: 'VIP250',
+    couponName: 'VIP Street Cred ₹250 Reward Voucher',
+    couponText: 'Redeemed via Street Cred Loyalty Club (450 Points).',
+    couponSubText: 'Valid on orders above ₹1,499',
+    title: 'VIP Street Cred ₹250 Reward Voucher',
+    desc: 'Redeemed via Street Cred Loyalty Club (450 Points).',
+    subText: 'Valid on orders above ₹1,499',
+    group: 'flat',
+    type: 'flat',
+    value: 250,
+    minOrderValue: 1499,
+    maxOrderValue: null,
+    maxDiscount: 250,
+    isPublic: true,
+    badge: 'VIP ₹250',
+    status: 'active'
+  },
+  {
+    code: 'VIP500',
+    couponName: 'VIP Street Cred ₹500 Reward Voucher',
+    couponText: 'Redeemed via Street Cred Loyalty Club (850 Points).',
+    couponSubText: 'Valid on orders above ₹2,499',
+    title: 'VIP Street Cred ₹500 Reward Voucher',
+    desc: 'Redeemed via Street Cred Loyalty Club (850 Points).',
+    subText: 'Valid on orders above ₹2,499',
+    group: 'flat',
+    type: 'flat',
+    value: 500,
+    minOrderValue: 2499,
+    maxOrderValue: null,
+    maxDiscount: 500,
+    isPublic: true,
+    badge: 'VIP ₹500',
+    status: 'active'
+  },
+  {
+    code: 'VIP1000',
+    couponName: 'VIP Street Cred ₹1,000 Obsidian Voucher',
+    couponText: 'Redeemed via Street Cred Loyalty Club (1,500 Points).',
+    couponSubText: 'Valid on orders above ₹4,999',
+    title: 'VIP Street Cred ₹1,000 Obsidian Voucher',
+    desc: 'Redeemed via Street Cred Loyalty Club (1,500 Points).',
+    subText: 'Valid on orders above ₹4,999',
+    group: 'flat',
+    type: 'flat',
+    value: 1000,
+    minOrderValue: 4999,
+    maxOrderValue: null,
+    maxDiscount: 1000,
+    isPublic: true,
+    badge: 'VIP ₹1,000',
+    status: 'active'
+  },
   {
     code: 'SECRET300',
+    couponName: 'Classified ANBU Operative Seal',
+    couponText: 'Covert seal (inactive & private until released to public).',
+    couponSubText: 'Valid on orders above ₹1,800',
     title: 'Classified ANBU Operative Seal',
     desc: 'Covert seal (inactive & private until released to public).',
+    subText: 'Valid on orders above ₹1,800',
     group: 'flat',
     type: 'flat',
     value: 300,
     minOrderValue: 1800,
     maxOrderValue: null,
     maxDiscount: 300,
-    isPublic: false,
-    badge: 'INACTIVE',
-    status: 'inactive'
-  },
-  {
-    code: 'ANBU30',
-    title: 'Private ANBU 30% Pass',
-    desc: 'Confidential pass (inactive & private until released to public).',
-    group: 'percentage',
-    type: 'percentage',
-    value: 30,
-    minOrderValue: 4000,
-    maxOrderValue: null,
-    maxDiscount: 3000,
     isPublic: false,
     badge: 'INACTIVE',
     status: 'inactive'
@@ -3231,10 +3374,19 @@ function validateCouponLogic(coupon, subtotalInr) {
   }
   discount = Math.min(discount, subtotal);
 
+  const cName = coupon.couponName || coupon.title || (coupon.group === 'percentage' ? `${coupon.value}% Off` : `Flat ₹${coupon.value} Off`);
+  const cText = coupon.couponText || coupon.desc || `Discount on orders matching price range`;
+  const cSubText = coupon.couponSubText || coupon.subText || formatCouponSubText(coupon.minOrderValue, coupon.maxOrderValue);
+
   return {
     valid: true,
     code: coupon.code,
-    title: coupon.title,
+    couponName: cName,
+    couponText: cText,
+    couponSubText: cSubText,
+    title: cName,
+    desc: cText,
+    subText: cSubText,
     group: coupon.group || 'flat',
     type: coupon.type || 'flat',
     value: coupon.value,
@@ -3631,10 +3783,18 @@ app.get('/api/coupons', (req, res) => {
       calculatedDiscount = Math.min(calculatedDiscount, subtotal);
     }
 
+    const cName = c.couponName || c.title || (c.group === 'percentage' ? `${c.value}% Off` : `Flat ₹${c.value} Off`);
+    const cText = c.couponText || c.desc || (c.group === 'percentage' ? `${c.value}% discount on order` : `Flat ₹${c.value} discount`);
+    const cSubText = c.couponSubText || c.subText || formatCouponSubText(min, max);
+
     return {
       code: c.code,
-      title: c.title,
-      desc: c.desc,
+      couponName: cName,
+      couponText: cText,
+      couponSubText: cSubText,
+      title: cName,
+      desc: cText,
+      subText: cSubText,
       group: c.group || (c.type === 'percentage' ? 'percentage' : 'flat'),
       type: c.type || c.group || 'flat',
       value: c.value,
@@ -3644,6 +3804,8 @@ app.get('/api/coupons', (req, res) => {
       isPublic: c.isPublic !== false,
       badge: c.badge || (c.group === 'percentage' ? `${c.value}% OFF` : `FLAT ₹${c.value}`),
       status: c.status || 'active',
+      isOneTimeUse: Boolean(c.isOneTimeUse),
+      isRedeemed: Boolean(c.isRedeemed),
       matchesPriceRange,
       missingAmount,
       calculatedDiscount
@@ -3655,7 +3817,7 @@ app.get('/api/coupons', (req, res) => {
 
   res.json({
     success: true,
-    source: 'memory_cache',
+    source: 'mongodb',
     subtotal: subtotal !== null ? subtotal : undefined,
     count: enhanced.length,
     groups: {
@@ -3667,7 +3829,7 @@ app.get('/api/coupons', (req, res) => {
 });
 
 // POST /api/coupons/validate
-// Validates a typed or selected coupon code against user subtotal
+// Validates a typed or selected coupon code against user subtotal via MongoDB Atlas & fast cache
 app.post('/api/coupons/validate', async (req, res) => {
   const { code, subtotal } = req.body || {};
   const rawCode = (code || '').trim().toUpperCase();
@@ -3688,13 +3850,14 @@ app.post('/api/coupons/validate', async (req, res) => {
     try {
       const dbCoupon = await findCouponInMongo(rawCode);
       if (dbCoupon) {
-        matchedCoupon = dbCoupon;
+        matchedCoupon = { ...dbCoupon, source: 'mongodb' };
         const idx = inMemoryCoupons.findIndex(c => c.code.toUpperCase() === rawCode);
         if (idx >= 0) {
-          inMemoryCoupons[idx] = { ...inMemoryCoupons[idx], ...dbCoupon };
+          inMemoryCoupons[idx] = { ...inMemoryCoupons[idx], ...matchedCoupon };
         } else {
-          inMemoryCoupons.push(dbCoupon);
+          inMemoryCoupons.push(matchedCoupon);
         }
+        saveJsonCache(COUPONS_CACHE_FILE, inMemoryCoupons);
       }
     } catch (_) {}
   }
@@ -3708,10 +3871,11 @@ app.post('/api/coupons/validate', async (req, res) => {
   }
 
   const result = validateCouponLogic(matchedCoupon, subtotalInr);
+  result.source = 'mongodb';
   return res.json(result);
 });
 
-// POST /api/coupons (Admin add / update coupon)
+// POST /api/coupons (Admin add / update coupon in MongoDB Atlas)
 app.post('/api/coupons', (req, res) => {
   const adminKey = req.headers['x-admin-key'];
   const expectedKey = process.env.ADMIN_SECRET || 'itachi-admin-secret-2026';
@@ -3730,19 +3894,30 @@ app.post('/api/coupons', (req, res) => {
       return res.status(400).json({ error: 'Valid discount value is required.' });
     }
 
+    const minVal = Number(data.minOrderValue) || 0;
+    const maxVal = data.maxOrderValue ? Number(data.maxOrderValue) : null;
+    const cName = data.couponName || data.title || (group === 'percentage' ? `${value}% Off` : `Flat ₹${value} Off`);
+    const cText = data.couponText || data.desc || `Discount on orders matching price range`;
+    const cSubText = data.couponSubText || data.subText || formatCouponSubText(minVal, maxVal);
+
     const doc = {
       code: rawCode,
-      title: data.title || (group === 'percentage' ? `${value}% Off` : `Flat ₹${value} Off`),
-      desc: data.desc || `Discount on orders matching price range`,
+      couponName: cName,
+      couponText: cText,
+      couponSubText: cSubText,
+      title: cName,
+      desc: cText,
+      subText: cSubText,
       group,
       type: group,
       value,
-      minOrderValue: Number(data.minOrderValue) || 0,
-      maxOrderValue: data.maxOrderValue ? Number(data.maxOrderValue) : null,
+      minOrderValue: minVal,
+      maxOrderValue: maxVal,
       maxDiscount: data.maxDiscount ? Number(data.maxDiscount) : null,
       isPublic: data.isPublic !== false,
       badge: data.badge || (group === 'percentage' ? `${value}% OFF` : `FLAT ₹${value}`),
       status: data.status || 'active',
+      source: 'mongodb',
       updatedAt: new Date()
     };
 
@@ -3754,17 +3929,18 @@ app.post('/api/coupons', (req, res) => {
     }
     saveJsonCache(COUPONS_CACHE_FILE, inMemoryCoupons);
 
+    // Persist to MongoDB Atlas 'coupons' collection
     getCollection('coupons').then(col => {
       if (col) col.updateOne({ code: rawCode }, { $set: doc }, { upsert: true }).catch(() => {});
     });
 
-    res.json({ success: true, message: `Coupon "${rawCode}" saved successfully.`, coupon: doc });
+    res.json({ success: true, message: `Coupon "${rawCode}" saved to MongoDB Atlas successfully.`, coupon: doc, source: 'mongodb' });
   } catch (err) {
     res.status(500).json({ error: 'Failed to save coupon', message: err.message });
   }
 });
 
-// DELETE /api/coupons/:code (Admin delete coupon)
+// DELETE /api/coupons/:code (Admin delete coupon from MongoDB Atlas)
 app.delete('/api/coupons/:code', (req, res) => {
   const adminKey = req.headers['x-admin-key'];
   const expectedKey = process.env.ADMIN_SECRET || 'itachi-admin-secret-2026';
@@ -3777,11 +3953,12 @@ app.delete('/api/coupons/:code', (req, res) => {
     inMemoryCoupons = inMemoryCoupons.filter(c => c.code.toUpperCase() !== rawCode);
     saveJsonCache(COUPONS_CACHE_FILE, inMemoryCoupons);
 
+    // Delete from MongoDB Atlas 'coupons' collection
     getCollection('coupons').then(col => {
       if (col) col.deleteOne({ code: rawCode }).catch(() => {});
     });
 
-    res.json({ success: true, message: `Coupon "${rawCode}" deleted.` });
+    res.json({ success: true, message: `Coupon "${rawCode}" deleted from MongoDB Atlas.` });
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete coupon', message: err.message });
   }
@@ -5653,7 +5830,7 @@ app.post('/api/drop-waitlist', async (req, res) => {
 // 2. Strict UI display constraint: NEVER show "0.199 points".
 //    MUST strictly display: "Per 1,000 Rs spent will give you 199 The Street Cash"
 // 3. Minimum redemption: 499 The Street Cash = ₹499 OFF coupon (strictly one-time use)
-// 4. Coupons saved in MongoDB Atlas 'coupons' collection
+// 4. Coupons saved and managed in MongoDB Atlas 'coupons' collection
 // 5. AI Concierge Stylist integration to pair outfits with the redeemed voucher
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -7330,24 +7507,31 @@ async function hydrateFromMongoDb() {
       }
     }
 
-    // 2. Hydrate Coupons from MongoDB Atlas
+    // 2. Hydrate & Seed Coupons from MongoDB Atlas
     const couponsCol = db.collection('coupons');
     const mongoCoupons = await couponsCol.find({}, { projection: { _id: 0 } }).toArray();
     if (Array.isArray(mongoCoupons) && mongoCoupons.length > 0) {
-      const codeMap = new Map();
-      for (const c of inMemoryCoupons) codeMap.set(c.code.toUpperCase(), c);
+      let mergedCount = 0;
       for (const mc of mongoCoupons) {
-        if (mc && mc.code) codeMap.set(mc.code.toUpperCase(), mc);
-      }
-      inMemoryCoupons = Array.from(codeMap.values());
-    } else if (inMemoryCoupons.length > 0) {
-      for (const c of inMemoryCoupons) {
-        if (c && c.code) {
-          const cleanCoupon = { ...c };
-          delete cleanCoupon._id;
-          await couponsCol.updateOne({ code: cleanCoupon.code.toUpperCase() }, { $set: cleanCoupon }, { upsert: true }).catch(() => {});
+        if (mc && mc.code) {
+          const idx = inMemoryCoupons.findIndex(c => c.code.toUpperCase() === mc.code.toUpperCase());
+          if (idx >= 0) {
+            inMemoryCoupons[idx] = { ...inMemoryCoupons[idx], ...mc, source: 'mongodb' };
+          } else {
+            inMemoryCoupons.push({ ...mc, source: 'mongodb' });
+          }
+          mergedCount++;
         }
       }
+      saveJsonCache(COUPONS_CACHE_FILE, inMemoryCoupons);
+      console.log(`[MongoDB Atlas] Hydrated ${mergedCount} coupons from MongoDB Atlas.`);
+    } else if (inMemoryCoupons.length > 0) {
+      for (const c of inMemoryCoupons) {
+        const cleanCoupon = { ...c, source: 'mongodb', updatedAt: new Date() };
+        delete cleanCoupon._id;
+        await couponsCol.updateOne({ code: cleanCoupon.code }, { $set: cleanCoupon }, { upsert: true }).catch(() => {});
+      }
+      console.log(`[MongoDB Atlas] Seeded ${inMemoryCoupons.length} coupons into MongoDB Atlas.`);
     }
 
     // 3. Hydrate Newsletter Subscribers from MongoDB Atlas

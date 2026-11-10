@@ -1526,7 +1526,7 @@
 
         <div class="checkout-promo-input-row">
           <div class="checkout-promo-input-wrap">
-            <input type="text" id="checkoutPromoInput" class="checkout-input" placeholder="Enter Coupon Code (e.g. STREET200, SAVE10)" autocomplete="off" spellcheck="false">
+            <input type="text" id="checkoutPromoInput" class="checkout-input" placeholder="Enter Coupon Code (e.g. STREET10, UCHIHA200)" autocomplete="off" spellcheck="false">
             <button type="button" class="checkout-promo-clear-btn" id="checkoutPromoClearBtn" title="Cancel coupon" aria-label="Cancel coupon" style="display:none;">✕</button>
           </div>
           <button type="button" class="checkout-promo-apply-btn" id="checkoutPromoApplyBtn">APPLY</button>
@@ -1537,14 +1537,22 @@
         <div class="checkout-coupons-showcase" id="checkoutCouponsShowcase">
           <div class="checkout-coupons-header">
             <div class="checkout-coupons-heading">
-              <span class="coupons-subhead">AVAILABLE OFFERS FOR YOU</span>
+              <span class="coupons-subhead">AVAILABLE OFFERS</span>
+            </div>
+            <div class="checkout-coupon-filter-tabs" id="checkoutCouponFilterTabs">
+              <button type="button" class="checkout-coupon-tab active" data-filter="all">ALL</button>
+              <button type="button" class="checkout-coupon-tab" data-filter="percentage">% OFF</button>
+              <button type="button" class="checkout-coupon-tab" data-filter="flat">FLAT ₹</button>
             </div>
           </div>
 
-          <!-- List of Top 2-3 Coupons Cards -->
+          <!-- List of Best Matching Coupon Cards -->
           <div class="checkout-coupons-list" id="checkoutCouponsList">
-            <!-- Dynamically populated with top 2-3 best matching coupons via JavaScript -->
+            <!-- Dynamically populated via JavaScript -->
           </div>
+          <button type="button" class="checkout-coupons-expand-btn" id="checkoutCouponsExpandBtn" style="display:none;">
+            VIEW MORE OFFERS ↓
+          </button>
         </div>
       </div>
     </div>

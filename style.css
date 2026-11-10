@@ -6056,8 +6056,31 @@ input#checkoutPhone:focus{
   font-family:var(--sans, sans-serif) !important;font-size:.64rem !important;letter-spacing:.08em;
   color:#374151 !important;font-weight:800;text-transform:uppercase;
 }
+.checkout-coupon-filter-tabs{
+  display:inline-flex;align-items:center;gap:4px;
+}
+.checkout-coupon-tab{
+  background:#f3f4f6 !important;border:1px solid #e5e7eb !important;color:#4b5563 !important;
+  font-family:var(--sans, sans-serif) !important;font-size:.56rem !important;font-weight:800;
+  padding:3px 8px;border-radius:4px;cursor:pointer;transition:all .15s ease;letter-spacing:.03em;
+}
+.checkout-coupon-tab:hover{
+  background:#e5e7eb !important;color:#111827 !important;
+}
+.checkout-coupon-tab.active{
+  background:#111827 !important;border-color:#111827 !important;color:#ffffff !important;
+}
+.checkout-coupons-expand-btn{
+  width:100%;background:#f9fafb !important;border:1px dashed #d1d5db !important;color:#111827 !important;
+  font-family:var(--sans, sans-serif) !important;font-size:.62rem !important;font-weight:800;letter-spacing:.06em;
+  padding:7px 10px;border-radius:6px;cursor:pointer;margin-top:.6rem;text-align:center;
+  transition:all .15s ease;
+}
+.checkout-coupons-expand-btn:hover{
+  background:#f3f4f6 !important;border-color:#111827 !important;
+}
 
-/* Coupon Cards List (Top 2-3 focused recommendations) */
+/* Coupon Cards List */
 .checkout-coupons-list{
   display:grid;grid-template-columns:1fr;gap:.65rem;
 }
@@ -6148,6 +6171,15 @@ input#checkoutPhone:focus{
 .coupon-card-desc{
   font-family:var(--sans, sans-serif) !important;font-size:.66rem !important;color:#4b5563 !important;
   letter-spacing:.01em;margin:0;line-height:1.4;
+}
+.coupon-card-subtext{
+  display:inline-flex;align-items:center;gap:.35rem;
+  font-family:var(--mono, monospace);font-size:.60rem;font-weight:700;
+  color:#374151 !important;background:#f3f4f6 !important;border:1px solid #e5e7eb !important;
+  padding:3px 7px;border-radius:5px;letter-spacing:.02em;margin-top:2px;width:fit-content;
+}
+.coupon-card-subtext .subtext-icon{
+  color:#d97706 !important;font-size:.68rem;
 }
 
 .checkout-coupon-card__footer{

@@ -503,7 +503,7 @@ export async function getUserStreetCash(phone) {
       });
     }
 
-    // Also look up any coupons minted for this phone directly from the 'coupons' collection
+    // Look up any coupons minted for this phone from MongoDB 'coupons' collection
     const couponsCol = await getCollection('coupons');
     let dbCoupons = [];
     if (couponsCol) {
@@ -513,7 +513,6 @@ export async function getUserStreetCash(phone) {
         .toArray();
     }
 
-    // Merge coupons
     const userCoupons = Array.isArray(user?.streetCashCoupons) ? user.streetCashCoupons : [];
     const couponMap = new Map();
     for (const c of [...dbCoupons, ...userCoupons]) {
@@ -840,10 +839,18 @@ export async function redeemStreetCashCoupon(phone, requestedPoints = 499) {
     const couponCode = `STREETCASH-${discountInr}-${uniqueSuffix}`;
     const nowIso = new Date().toISOString();
 
+    const voucherName = `₹${discountInr} The Street Cash VIP Voucher`;
+    const voucherText = `Exclusive VIP Loyalty Reward: ₹${discountInr} Flat Discount. One-time use only.`;
+    const voucherSubText = 'Applicable on all orders (No minimum order value)';
+
     const couponDocument = {
       code: couponCode,
-      title: `₹${discountInr} The Street Cash VIP Voucher`,
-      desc: `Exclusive VIP Loyalty Reward: ₹${discountInr} Flat Discount. One-time use only.`,
+      couponName: voucherName,
+      couponText: voucherText,
+      couponSubText: voucherSubText,
+      title: voucherName,
+      desc: voucherText,
+      subText: voucherSubText,
       group: 'flat',
       type: 'flat',
       value: discountInr,
@@ -918,14 +925,14 @@ export async function redeemStreetCashCoupon(phone, requestedPoints = 499) {
 }
 
 export async function findCouponInMongo(code) {
-  const cleanCode = String(code || '').trim().toUpperCase();
-  if (!cleanCode) return null;
+  const raw = String(code || '').trim().toUpperCase();
+  if (!raw) return null;
   try {
     const col = await getCollection('coupons');
     if (!col) return null;
-    return await col.findOne({ code: cleanCode }, { projection: { _id: 0 } });
+    return await col.findOne({ code: raw }, { projection: { _id: 0 } });
   } catch (err) {
-    console.warn('[MongoDB findCouponInMongo]:', err.message);
+    console.warn('[MongoDB findCouponInMongo error]:', err.message);
     return null;
   }
 }
@@ -934,23 +941,20 @@ export async function burnOneTimeCoupon(code, orderCode) {
   const cleanCode = String(code || '').trim().toUpperCase();
   if (!cleanCode) return false;
   try {
-    const col = await getCollection('coupons');
-    const nowIso = new Date().toISOString();
-    if (col) {
-      await col.updateOne(
+    const couponsCol = await getCollection('coupons');
+    if (couponsCol) {
+      await couponsCol.updateOne(
         { code: cleanCode },
         {
           $set: {
             isRedeemed: true,
             status: 'used',
-            redeemedAt: nowIso,
+            redeemedAt: new Date().toISOString(),
             redeemedByOrder: orderCode || ''
           }
         }
-      );
+      ).catch(() => {});
     }
-
-    // Also update any user who owns this coupon
     const userCol = await getCollection('users');
     if (userCol) {
       await userCol.updateMany(
@@ -959,18 +963,17 @@ export async function burnOneTimeCoupon(code, orderCode) {
           $set: {
             'streetCashCoupons.$.isRedeemed': true,
             'streetCashCoupons.$.status': 'used',
-            'streetCashCoupons.$.redeemedAt': nowIso,
+            'streetCashCoupons.$.redeemedAt': new Date().toISOString(),
             'streetCashCoupons.$.redeemedByOrder': orderCode || ''
           }
         }
       ).catch(() => {});
     }
-
-    console.log(`[The Street Cash] Burned one-time coupon ${cleanCode} for order #${orderCode}`);
     return true;
   } catch (err) {
-    console.warn('[MongoDB burnOneTimeCoupon error]:', err.message);
+    console.warn('[burnOneTimeCoupon notice]:', err.message);
     return false;
   }
 }
+
 

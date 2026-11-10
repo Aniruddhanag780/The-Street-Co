@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "The Street Co — Elevated Style. Modern Essentials.",
   "type": "module",
+  "license": "MIT",
   "scripts": {
     "dev": "node server.js",
     "build": "echo 'Build complete'",

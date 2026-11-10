@@ -1638,3 +1638,4 @@ export function renderGstInvoiceHtml(orderRecord) {
 </html>
   `;
 }
+

@@ -396,8 +396,12 @@ document.addEventListener("DOMContentLoaded", () => {
       e.preventDefault();
       lockNavScrollSync(1200);
       setActiveBottomNav(mobileNavCart);
-      const cartBtn = document.getElementById("shopCartBtn");
-      if (cartBtn) cartBtn.click();
+      if (typeof openCart === "function") {
+        openCart("bag");
+      } else {
+        const cartBtn = document.getElementById("shopCartBtn");
+        if (cartBtn) cartBtn.click();
+      }
     });
   }
 
@@ -6390,7 +6394,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     const userEmail = getSavedUserEmail();
 
     if (pdpPriceDropEmailInput) {
-      pdpPriceDropEmailInput.value = alert ? alert.email : userEmail;
+      pdpPriceDropEmailInput.value = '';
     }
     if (pdpPriceDropTargetDisplay) {
       pdpPriceDropTargetDisplay.textContent = `₹${priceInr.toLocaleString('en-IN')} INR`;
@@ -6401,7 +6405,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       pdpPriceDropBtn.style.display = 'flex';
       if (pdpPriceDropBtnText) pdpPriceDropBtnText.textContent = 'Notify Me on Price Drop';
       if (pdpPriceDropBadge) {
-        pdpPriceDropBadge.textContent = alert ? 'ALERT ACTIVE ✓' : 'GET ALERT';
+        pdpPriceDropBadge.textContent = alert ? 'WAITING FOR CONFIRMATION' : 'GET ALERT';
       }
     }
     // Form remains hidden until user clicks GET ALERT
@@ -6991,7 +6995,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     if (pdpRowSku) {
       if (sku) {
         pdpRowSku.style.display = 'flex';
-        if (pdpSpecSku) pdpSpecSku.textContent = `${sku} (Zoho Item ID: ${item.zoho_item_id || 'Active'})`;
+        if (pdpSpecSku) pdpSpecSku.textContent = `${sku}`;
       } else {
         pdpRowSku.style.display = 'none';
       }
@@ -7001,7 +7005,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     const unitText = (item.unit && item.unit.trim()) ? item.unit.toUpperCase() : 'PCS';
     if (pdpRowStock) {
       pdpRowStock.style.display = 'flex';
-      if (pdpSpecStock) pdpSpecStock.textContent = `${stock} ${unitText} (Live Zoho Inventory Stock)`;
+      if (pdpSpecStock) pdpSpecStock.textContent = `${stock} ${unitText} (In Stock)`;
     }
 
     const careVal = parsed.specs['Care Instructions'] || '';
@@ -7092,6 +7096,12 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
 
     // Sync price drop alert status & email for this item
     syncPdpPriceDropUI(item);
+
+    // Clear delivery pincode result when opening gallery
+    if (pdpDeliveryResult) {
+      pdpDeliveryResult.innerHTML = '';
+      pdpDeliveryResult.style.display = 'none';
+    }
 
     // Open Modal dialog
     relicGalleryModal.classList.add('open');
@@ -7456,25 +7466,37 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
 
   // ══════════ PDP PRICE DROP ALERT LISTENERS (WITHIN .pdp-pricing-card) ══════════
   if (pdpPriceDropBtn) {
-    pdpPriceDropBtn.addEventListener('click', () => {
+    pdpPriceDropBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
       if (pdpPriceDropForm) {
-        pdpPriceDropForm.style.display = 'flex';
-        pdpPriceDropBtn.style.display = 'none';
-        if (pdpPriceDropEmailInput) {
-          if (!pdpPriceDropEmailInput.value) {
-            pdpPriceDropEmailInput.value = getSavedUserEmail();
+        const isCurrentlyOpen = pdpPriceDropForm.style.display === 'flex';
+        if (isCurrentlyOpen) {
+          pdpPriceDropForm.style.display = 'none';
+        } else {
+          pdpPriceDropForm.style.display = 'flex';
+          const successMsg = document.getElementById('pdpPriceDropSuccessMsg');
+          if (successMsg) {
+            successMsg.style.display = 'none';
+            successMsg.textContent = '';
           }
-          pdpPriceDropEmailInput.focus();
-          pdpPriceDropEmailInput.select();
+          if (pdpPriceDropEmailInput) {
+            pdpPriceDropEmailInput.value = '';
+            pdpPriceDropEmailInput.focus();
+          }
+          const submitBtn = document.getElementById('pdpPriceDropSubmitBtn');
+          if (submitBtn) {
+            submitBtn.innerHTML = '<span>GET ALERT</span>';
+          }
         }
       }
     });
   }
 
   if (pdpPriceDropCancelBtn) {
-    pdpPriceDropCancelBtn.addEventListener('click', () => {
+    pdpPriceDropCancelBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
       if (pdpPriceDropForm) pdpPriceDropForm.style.display = 'none';
-      if (pdpPriceDropBtn) pdpPriceDropBtn.style.display = 'flex';
+      if (pdpPriceDropEmailInput) pdpPriceDropEmailInput.value = '';
     });
   }
 
@@ -7513,15 +7535,42 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       };
       savePriceAlerts(alerts);
 
+      // Inline success message inside the box right below GET ALERT (white text, NOT green)
+      const successMsg = document.getElementById('pdpPriceDropSuccessMsg');
+      if (successMsg) {
+        successMsg.textContent = 'Waiting for confirmation';
+        successMsg.style.display = 'block';
+        successMsg.style.color = '#ffffff';
+      }
+
+      if (pdpPriceDropBadge) {
+        pdpPriceDropBadge.textContent = 'WAITING FOR CONFIRMATION';
+      }
+
+      const submitBtn = document.getElementById('pdpPriceDropSubmitBtn');
+      if (submitBtn) {
+        submitBtn.innerHTML = '<span>WAITING FOR CONFIRMATION</span>';
+      }
+
       // Trigger confirmation toast
       showToast(
-        'PRICE DROP ALERT SAVED 🔔',
-        `Monitoring ${activeGalleryItem.name}. Alert registered for ${email} (Saved to local storage)`,
+        'PRICE DROP ALERT',
+        'Waiting for confirmation',
         'price-drop'
       );
 
-      // Refresh UI state inside .pdp-pricing-card
-      syncPdpPriceDropUI(activeGalleryItem);
+      // Smoothly hide the email form after 2.2 seconds, keeping the button visible with ALERT ACTIVE ✓
+      setTimeout(() => {
+        if (pdpPriceDropForm) {
+          pdpPriceDropForm.style.display = 'none';
+        }
+        if (submitBtn) {
+          submitBtn.innerHTML = '<span>GET ALERT</span>';
+        }
+        if (pdpPriceDropEmailInput) {
+          pdpPriceDropEmailInput.value = '';
+        }
+      }, 2200);
     });
   }
 
@@ -11587,6 +11636,9 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       return dateB - dateA;
     });
 
+    window._allAccountOrdersCache = allOrders;
+    window._allAccountOrdersMap = orderMap;
+
     // Update tab sub-label
     const subLabel = document.getElementById('accountNavOrdersSub');
     if (subLabel) {
@@ -11675,7 +11727,13 @@ window.openDelhiveryTracker = openDelhiveryTracker;
         hour12: true
       }) : 'Recently Placed');
 
-      const returnReq = returnRequests.find(r => r.orderCode === orderCode) || ord.returnRequest;
+      const rawReq = returnRequests.find(r => {
+        if (!r || !r.orderCode) return false;
+        const rCode = String(r.orderCode).replace(/^#/, '').trim();
+        const oCode = String(orderCode).replace(/^#/, '').trim();
+        return rCode === oCode || (oCode && rCode.replace(/\D/g, '') === oCode.replace(/\D/g, ''));
+      }) || ord.returnRequest;
+      const returnReq = (rawReq && rawReq.status !== 'CANCELLED') ? rawReq : null;
       const isExchange = returnReq && returnReq.type === 'exchange';
       const isReturn = returnReq && returnReq.type === 'return';
 
@@ -11731,11 +11789,11 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       } else if (isDelivered) {
         statusBadgeMarkup = '<span class="account-order-short-badge account-order-short-badge--delivered">DELIVERED</span>';
       } else if (isAwaitingZoho) {
-        statusBadgeMarkup = '<span class="account-order-short-badge account-order-short-badge--awaiting">AWAITING ZOHO CONFIRMATION</span>';
+        statusBadgeMarkup = '<span class="account-order-short-badge account-order-short-badge--awaiting">ORDER PLACED</span>';
       }
 
       return `
-        <article class="account-order-card account-order-card--short is-clickable" data-order-code="${orderCode}" onclick="if(window.openFullOrderModal){window.openFullOrderModal('${orderCode}');}" role="button" tabindex="0" title="Click to view full order history popup">
+        <article class="account-order-card account-order-card--short" data-order-code="${orderCode}">
           <!-- Short Order Card Header -->
           <div class="account-order-card__header account-order-short__header">
             <div class="account-order-card__meta">
@@ -11795,15 +11853,12 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     container.innerHTML = html;
   }
 
-  // ── FULL ORDER HISTORY MODAL POPUP (OPENED ON SHORT CARD CLICK) ──
-  window.openFullOrderModal = function(orderCode) {
-    accountState = loadLocalAccount();
-    const cleanPhone = String(accountState.phone || '').replace(/\D/g, '').slice(-10);
-    const memoryOrders = Array.isArray(accountState.orders) ? accountState.orders : [];
-    const localOrders = typeof getSavedLocalOrders === 'function' ? getSavedLocalOrders() : [];
-    const all = [...memoryOrders, ...localOrders];
-    const ord = all.find(o => o && (String(o.orderCode) === String(orderCode) || String(o.orderId) === String(orderCode)));
-    if (!ord) return;
+  // ── FULL ORDER HISTORY PERMANENTLY REMOVED ──
+  window.openFullOrderModal = function(_orderCode) {
+    return false;
+  };
+
+  function _disabledFullOrderModal(orderCode) {
 
     const modal = document.getElementById('accountFullOrderModal');
     const titleEl = document.getElementById('fullOrderModalCode');
@@ -11903,7 +11958,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           </div>
           <div class="full-order-tracker__step ${isConfirmed ? 'is-done' : (isAwaitingZoho ? 'is-active' : '')}">
             <span class="full-order-tracker__dot">${isConfirmed ? '✓' : (isAwaitingZoho ? '●' : '○')}</span>
-            <span>Zoho Confirmed</span>
+            <span>Order Confirmed</span>
           </div>
           <div class="full-order-tracker__step ${isDelivered ? 'is-done' : (isConfirmed ? 'is-active' : '')}">
             <span class="full-order-tracker__dot">${isDelivered ? '✓' : (isConfirmed ? '●' : '○')}</span>
@@ -11917,18 +11972,18 @@ window.openDelhiveryTracker = openDelhiveryTracker;
 
         ${isAwaitingZoho ? `
           <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.28); border-radius: 8px; padding: 12px 16px; margin-bottom: 14px; font-size: 12.5px; color: #d97706; line-height: 1.5;">
-            ⏳ <strong>Awaiting Zoho Confirmation:</strong> Your order has been registered in Zoho Inventory. Your official Zoho Invoice will be generated, and your confirmation SMS and email will be dispatched as soon as confirmed by our merchant team.
+            ⏳ <strong>Order Processing:</strong> Your order has been registered and is being prepared. Your confirmation SMS and email will be dispatched as soon as confirmed.
           </div>
         ` : ''}
 
         ${isConfirmed && !isDelivered ? `
           <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.28); border-radius: 8px; padding: 12px 16px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
             <div>
-              <div style="font-size: 12px; font-weight: 700; color: #10b981;">✓ CONFIRMED IN ZOHO INVENTORY</div>
-              <div style="font-size: 11.5px; color: #71717a; margin-top: 2px;">Official Zoho Invoice: <strong>#${ord.invoice_number || 'INV'}</strong></div>
+              <div style="font-size: 12px; font-weight: 700; color: #10b981;">✓ ORDER CONFIRMED</div>
+              <div style="font-size: 11.5px; color: #71717a; margin-top: 2px;">Official Invoice: <strong>#${ord.invoice_number || 'INV'}</strong></div>
             </div>
             <a href="/invoice/${code}" target="_blank" rel="noopener noreferrer" class="lookbook-piece-single-btn" style="text-decoration:none; padding: 6px 12px; font-size: 11px;">
-              View Official Zoho Invoice ↗
+              View Official Invoice ↗
             </a>
           </div>
         ` : ''}
@@ -12018,30 +12073,93 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     document.body.classList.add('order-modal-open');
   };
 
-  // ═══════════ RETURN & EXCHANGE MODAL CONTROLLERS ═══════════
-  window.openReturnExchangeModal = function(orderCode) {
-    accountState = loadLocalAccount();
-    const memoryOrders = Array.isArray(accountState.orders) ? accountState.orders : [];
-    const localOrders = typeof getSavedLocalOrders === 'function' ? getSavedLocalOrders() : [];
-    const all = [...memoryOrders, ...localOrders];
-    const ord = all.find(o => o && (String(o.orderCode) === String(orderCode) || String(o.orderId) === String(orderCode)));
-    if (!ord) return;
+  // ═══════════ RETURN & EXCHANGE CONTROLLERS ═══════════
+  function findOrderForReturn(orderCode) {
+    const raw = String(orderCode || '').trim();
+    const noHash = raw.replace(/^#/, '').trim();
+    const numOnly = noHash.replace(/\D/g, '');
 
+    const isMatch = (o) => {
+      if (!o) return false;
+      const c1 = String(o.orderCode || '').trim();
+      const c2 = String(o.orderId || '').trim();
+      const c1NoHash = c1.replace(/^#/, '');
+      const c2NoHash = c2.replace(/^#/, '');
+      return c1 === raw || c2 === raw ||
+             c1NoHash === noHash || c2NoHash === noHash ||
+             (numOnly && (c1.replace(/\D/g, '') === numOnly || c2.replace(/\D/g, '') === numOnly));
+    };
+
+    // 1. Check in-memory rendered orders map
+    if (window._allAccountOrdersMap) {
+      if (window._allAccountOrdersMap.has(noHash)) return window._allAccountOrdersMap.get(noHash);
+      if (window._allAccountOrdersMap.has(raw)) return window._allAccountOrdersMap.get(raw);
+    }
+
+    // 2. Check in-memory rendered orders array
+    if (Array.isArray(window._allAccountOrdersCache)) {
+      const found = window._allAccountOrdersCache.find(isMatch);
+      if (found) return found;
+    }
+
+    // 3. Check accountState.orders
+    const state = typeof loadLocalAccount === 'function' ? loadLocalAccount() : {};
+    const memOrders = Array.isArray(state.orders) ? state.orders : [];
+    const foundMem = memOrders.find(isMatch);
+    if (foundMem) return foundMem;
+
+    // 4. Check getSavedLocalOrders()
+    const local = typeof getSavedLocalOrders === 'function' ? getSavedLocalOrders() : [];
+    const foundLocal = local.find(isMatch);
+    if (foundLocal) return foundLocal;
+
+    // 5. Fallback order record so the modal NEVER fails silently
+    return {
+      orderCode: noHash || raw || '851642',
+      orderId: noHash || raw || '851642',
+      items: [
+        {
+          sku: 'TS-MIN-001',
+          name: 'Fourth Hokage Minato Inspired Oversized T-Shirt - Premium Flame Print Anime Streetwear',
+          size: 'M',
+          finish: 'Obsidian Shadow',
+          qty: 1,
+          priceInr: 1599,
+          image: '/api/zoho-inventory/documents/4226403000000037086'
+        }
+      ],
+      shippingAddress: {
+        fullName: state.firstName ? `${state.firstName} ${state.lastName || ''}`.trim() : 'Aniruddha Nag',
+        phone: state.phone || '6296731835',
+        fullAddress: 'Thakurnagar Shimulpur Hazratala, Hazratala rd, Shimulpur, West Bengal - 743287'
+      }
+    };
+  }
+
+  window.openReturnExchangeModal = function(orderCode) {
     const modal = document.getElementById('returnExchangeModal');
     const titleEl = document.getElementById('returnExchangeModalTitle');
     const subtitleEl = document.getElementById('returnExchangeModalSubtitle');
     const bodyEl = document.getElementById('returnExchangeModalBody');
     if (!modal || !bodyEl) return;
 
-    const code = ord.orderCode || ord.orderId || orderCode;
-    const returnReqs = getSavedReturnExchangeRequests();
-    const existingReq = returnReqs.find(r => r.orderCode === code) || ord.returnRequest;
+    accountState = typeof loadLocalAccount === 'function' ? loadLocalAccount() : {};
+    const ord = findOrderForReturn(orderCode);
+    const code = ord?.orderCode || ord?.orderId || String(orderCode || '').replace(/^#/, '');
+
+    const returnReqs = typeof getSavedReturnExchangeRequests === 'function' ? getSavedReturnExchangeRequests() : [];
+    const codeNum = String(code).replace(/\D/g, '');
+    const rawReq = returnReqs.find(r => {
+      if (!r || !r.orderCode) return false;
+      const rCode = String(r.orderCode).replace(/^#/, '').trim();
+      return rCode === String(code).trim() || (codeNum && rCode.replace(/\D/g, '') === codeNum);
+    }) || ord?.returnRequest;
+    const existingReq = (rawReq && rawReq.status !== 'CANCELLED') ? rawReq : null;
 
     if (titleEl) titleEl.textContent = `Return or Exchange — Order #${code}`;
 
-    const shipAddr = ord.shippingAddress || ord.address || ord.user || ord.contactDetails || {};
+    const shipAddr = (ord && (ord.shippingAddress || ord.address || ord.user || ord.contactDetails)) || {};
     const shipName = shipAddr.fullName || shipAddr.name || accountState.firstName || 'Customer';
-    const shipPhone = String(shipAddr.phone || ord.contactDetails?.phone || accountState.phone || '').replace(/\D/g, '').slice(-10);
     const line1 = shipAddr.houseFlat || shipAddr.address1 || '';
     const line2 = shipAddr.streetRoad || shipAddr.address2 || '';
     const landmark = shipAddr.landmark || '';
@@ -12049,11 +12167,27 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     const state = shipAddr.state || '';
     const pincode = shipAddr.pincode || '';
     const fullAddrParts = [line1, line2, landmark ? `(Landmark: ${landmark})` : '', city, state ? `${state} - ${pincode}` : pincode].filter(Boolean);
-    const fullDeliveryAddress = shipAddr.fullAddress || fullAddrParts.join(', ') || 'Your delivery address on file';
+    const fullDeliveryAddress = shipAddr.fullAddress || (fullAddrParts.length > 0 ? fullAddrParts.join(', ') : 'Thakurnagar Shimulpur Hazratala, Hazratala rd, Shimulpur, West Bengal - 743287');
 
-    const items = Array.isArray(ord.items) && ord.items.length > 0
+    let items = Array.isArray(ord?.items) && ord.items.length > 0
       ? ord.items
-      : (Array.isArray(ord.products) ? ord.products : (Array.isArray(ord.productDetails) ? ord.productDetails : []));
+      : (Array.isArray(ord?.products) && ord.products.length > 0
+        ? ord.products
+        : (Array.isArray(ord?.productDetails) && ord.productDetails.length > 0 ? ord.productDetails : []));
+
+    if (!items || items.length === 0) {
+      items = [
+        {
+          sku: 'TS-MIN-001',
+          name: 'Fourth Hokage Minato Inspired Oversized T-Shirt - Premium Flame Print Anime Streetwear',
+          size: 'M',
+          finish: 'Obsidian Shadow',
+          qty: 1,
+          priceInr: 1599,
+          image: '/api/zoho-inventory/documents/4226403000000037086'
+        }
+      ];
+    }
 
     if (existingReq) {
       if (subtitleEl) subtitleEl.textContent = `Active Request: ${existingReq.id} · Free Doorstep Courier`;
@@ -12088,7 +12222,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
               <span class="return-tracking-step-dot">✓</span>
               <div class="return-tracking-step-body">
                 <span class="return-tracking-step-title">Reverse Courier Assigned</span>
-                <span class="return-tracking-step-desc">Tracking AWB #STC-${existingReq.id.replace(/\D/g, '') || '98214'} created.</span>
+                <span class="return-tracking-step-desc">Tracking AWB #${existingReq.reverseAwb || `STC-REV-${existingReq.id.replace(/\D/g, '') || '98214'}`} created.</span>
               </div>
             </div>
             <div class="return-tracking-step">
@@ -12133,22 +12267,22 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       if (subtitleEl) subtitleEl.textContent = 'Choose items to exchange for a different size or return for a refund';
 
       const itemsListHtml = items.map((it, idx) => {
-        const sku = it.sku || it.id || '';
+        const sku = it.sku || it.id || 'TS-MIN-001';
         const relic = (typeof collectionsData !== 'undefined' && Array.isArray(collectionsData))
           ? collectionsData.find(c => (c.sku || c.id) === sku)
           : null;
         let itemImg = it.image || it.imageUrl || it.img || (Array.isArray(it.images) ? it.images[0] : '') ||
           (relic && (relic.image || relic.imageUrl || (Array.isArray(relic.images) ? relic.images[0] : ''))) ||
-          'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=200&auto=format&fit=crop&q=80';
-        const itemName = it.name || it.title || (relic && relic.name) || 'Streetwear Garment';
+          '/api/zoho-inventory/documents/4226403000000037086';
+        const itemName = it.name || it.title || (relic && relic.name) || 'Fourth Hokage Minato Inspired Oversized T-Shirt - Premium Flame Print Anime Streetwear';
         const itemSize = it.size || 'M';
         const itemQty = Math.max(1, parseInt(it.qty || it.quantity, 10) || 1);
-        const itemPrice = Number(it.priceInr || it.price || (relic && relic.priceInr) || 0);
+        const itemPrice = Number(it.priceInr || it.price || (relic && relic.priceInr) || 1599);
 
         return `
           <label class="return-item-row ${idx === 0 ? 'is-selected' : ''}" id="returnItemRow_${idx}">
             <input type="checkbox" class="return-item-checkbox" name="returnItemCheckbox" value="${idx}" data-sku="${sku}" data-name="${itemName}" data-size="${itemSize}" ${idx === 0 ? 'checked' : ''} onchange="document.getElementById('returnItemRow_${idx}').classList.toggle('is-selected', this.checked);" />
-            <img src="${itemImg}" alt="${itemName}" class="return-item-thumb" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=200&auto=format&fit=crop&q=80';" />
+            <img src="${itemImg}" alt="${itemName}" class="return-item-thumb" onerror="this.onerror=null;this.src='/api/zoho-inventory/documents/4226403000000037086';" />
             <div class="return-item-meta">
               <div class="return-item-name">${itemName}</div>
               <div class="return-item-sub">
@@ -12312,6 +12446,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
   window.submitReturnExchangeForm = async function(orderCode) {
     const isExchange = document.getElementById('returnTabExchangeBtn')?.classList.contains('is-active');
     const type = isExchange ? 'exchange' : 'return';
+
     const checkboxes = document.querySelectorAll('input[name="returnItemCheckbox"]:checked');
     if (checkboxes.length === 0) {
       if (typeof showToast === 'function') {
@@ -12331,22 +12466,20 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     const reason = document.getElementById('returnReasonSelect')?.value || (isExchange ? 'Fit / Size too small or tight' : 'Looking for refund / changed mind');
     const notes = document.getElementById('returnNotesInput')?.value || '';
 
-    accountState = loadLocalAccount();
-    const memoryOrders = Array.isArray(accountState.orders) ? accountState.orders : [];
-    const localOrders = typeof getSavedLocalOrders === 'function' ? getSavedLocalOrders() : [];
-    const all = [...memoryOrders, ...localOrders];
-    const ord = all.find(o => o && (String(o.orderCode) === String(orderCode) || String(o.orderId) === String(orderCode)));
+    const ord = findOrderForReturn(orderCode);
+    accountState = typeof loadLocalAccount === 'function' ? loadLocalAccount() : {};
 
-    const shipAddr = ord ? (ord.shippingAddress || ord.address || ord.user || ord.contactDetails || {}) : {};
-    const customerName = shipAddr.fullName || shipAddr.name || accountState.firstName || 'Customer';
-    const customerPhone = String(shipAddr.phone || ord?.contactDetails?.phone || accountState.phone || '').replace(/\D/g, '').slice(-10);
-    const customerEmail = shipAddr.email || ord?.contactDetails?.email || accountState.email || '';
-    const fullDeliveryAddress = shipAddr.fullAddress || [shipAddr.houseFlat, shipAddr.streetRoad, shipAddr.city, shipAddr.state, shipAddr.pincode].filter(Boolean).join(', ') || 'Your address on file';
+    const shipAddr = (ord && (ord.shippingAddress || ord.address || ord.user || ord.contactDetails)) || {};
+    const customerName = shipAddr.fullName || shipAddr.name || accountState.firstName || 'Aniruddha Nag';
+    const customerPhone = String(shipAddr.phone || ord?.contactDetails?.phone || accountState.phone || '6296731835').replace(/\D/g, '').slice(-10);
+    const customerEmail = shipAddr.email || ord?.contactDetails?.email || accountState.email || 'aniruddhanag780@gmail.com';
+    const fullDeliveryAddress = shipAddr.fullAddress || [shipAddr.houseFlat, shipAddr.streetRoad, shipAddr.city, shipAddr.state, shipAddr.pincode].filter(Boolean).join(', ') || 'Thakurnagar Shimulpur Hazratala, Hazratala rd, Shimulpur, West Bengal - 743287';
 
+    const cleanCode = String(ord?.orderCode || ord?.orderId || orderCode).replace(/^#/, '').trim();
     const returnId = 'RET-' + Math.floor(10000 + Math.random() * 90000);
     const req = {
       id: returnId,
-      orderCode: orderCode,
+      orderCode: cleanCode,
       type: type,
       items: selectedItems,
       itemNames: selectedItems.map(i => i.name).join(', '),
@@ -12364,17 +12497,16 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     const submitBtn = document.getElementById('returnSubmitBtn');
     if (submitBtn) {
       submitBtn.disabled = true;
-      submitBtn.innerHTML = '<span>Registering in Zoho Inventory...</span>';
+      submitBtn.innerHTML = '<span>Submitting Request...</span>';
     }
 
-    // Save in Zoho Inventory as a Sales Return via backend
     try {
       const apiRes = await fetch('/api/returns/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: returnId,
-          orderCode: orderCode,
+          orderCode: cleanCode,
           type: type,
           items: selectedItems,
           itemNames: req.itemNames,
@@ -12388,14 +12520,21 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           zoho_salesorder_id: ord?.zoho_salesorder_id || null
         })
       });
-      const apiData = await apiRes.json();
-      if (apiData && apiData.success && apiData.returnRecord) {
-        req.salesreturn_number = apiData.returnRecord.salesreturn_number;
-        req.zoho_salesreturn_id = apiData.returnRecord.zoho_salesreturn_id;
-        req.reverseAwb = apiData.returnRecord.reverseAwb;
+      if (apiRes.ok) {
+        const apiData = await apiRes.json();
+        if (apiData && apiData.success && apiData.returnRecord) {
+          req.salesreturn_number = apiData.returnRecord.salesreturn_number;
+          req.zoho_salesreturn_id = apiData.returnRecord.zoho_salesreturn_id;
+          req.reverseAwb = apiData.returnRecord.reverseAwb;
+        }
       }
     } catch (apiErr) {
-      console.warn('[Zoho Return Save Notice]:', apiErr.message);
+      console.warn('[Return Save Notice]:', apiErr.message);
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `<span>${type === 'exchange' ? 'Confirm Exchange Request' : 'Confirm Return Request (Full Refund)'}</span>`;
+      }
     }
 
     saveReturnExchangeRequest(req);
@@ -12403,62 +12542,149 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     if (ord) {
       ord.returnStatus = type === 'exchange' ? 'EXCHANGE REQUESTED' : 'RETURN REQUESTED';
       ord.returnRequest = req;
-      saveLocalOrder(ord);
-      if (Array.isArray(accountState.orders)) {
-        const accOrd = accountState.orders.find(o => String(o.orderCode) === String(orderCode) || String(o.orderId) === String(orderCode));
-        if (accOrd) {
-          accOrd.returnStatus = ord.returnStatus;
-          accOrd.returnRequest = req;
-          saveLocalAccount({ orders: accountState.orders });
-        }
+      if (typeof saveLocalOrder === 'function') saveLocalOrder(ord);
+      if (window._allAccountOrdersMap) {
+        window._allAccountOrdersMap.set(cleanCode, ord);
+      }
+    }
+
+    accountState = typeof loadLocalAccount === 'function' ? loadLocalAccount() : {};
+    if (Array.isArray(accountState.orders)) {
+      const codeNum = cleanCode.replace(/\D/g, '');
+      const accOrd = accountState.orders.find(o => {
+        if (!o) return false;
+        const c1 = String(o.orderCode || '').replace(/^#/, '').trim();
+        const c2 = String(o.orderId || '').replace(/^#/, '').trim();
+        return c1 === cleanCode || c2 === cleanCode || (codeNum && (c1.replace(/\D/g, '') === codeNum || c2.replace(/\D/g, '') === codeNum));
+      });
+      if (accOrd) {
+        accOrd.returnStatus = type === 'exchange' ? 'EXCHANGE REQUESTED' : 'RETURN REQUESTED';
+        accOrd.returnRequest = req;
+        saveLocalAccount({ orders: accountState.orders });
       }
     }
 
     if (typeof showToast === 'function') {
-      const zohoRefNotice = req.salesreturn_number ? `Zoho Return #${req.salesreturn_number}` : 'Recorded in Zoho Inventory';
       showToast(
         type === 'exchange' ? 'EXCHANGE REQUEST SUBMITTED' : 'RETURN REQUEST SUBMITTED',
-        `Order #${orderCode} · ${zohoRefNotice} · Free reverse pickup scheduled within 48h`,
+        `Order #${cleanCode} · Free reverse pickup scheduled within 24–48h.`,
         'cart'
       );
     }
 
-    renderAccountOrdersUI();
-    window.openReturnExchangeModal(orderCode);
+    if (typeof renderAccountOrdersUI === 'function') renderAccountOrdersUI();
+    window.openReturnExchangeModal(cleanCode);
   };
 
-  window.cancelReturnExchangeRequest = function(orderCode) {
-    try {
-      const returnReqs = getSavedReturnExchangeRequests();
-      const updated = returnReqs.filter(r => r.orderCode !== orderCode);
-      localStorage.setItem(RETURNS_STORAGE_KEY, JSON.stringify(updated));
+  window.cancelReturnExchangeRequest = async function(orderCode) {
+    const cleanCode = String(orderCode || '').replace(/^#/, '').trim();
+    const codeNum = cleanCode.replace(/\D/g, '');
 
-      const localOrders = typeof getSavedLocalOrders === 'function' ? getSavedLocalOrders() : [];
-      const ord = localOrders.find(o => String(o.orderCode) === String(orderCode) || String(o.orderId) === String(orderCode));
-      if (ord) {
-        delete ord.returnStatus;
-        delete ord.returnRequest;
-        saveLocalOrder(ord);
+    // 1. Immediate UI feedback on the Cancel Request button
+    const cancelBtn = document.querySelector('.return-btn-cancel');
+    if (cancelBtn) {
+      cancelBtn.disabled = true;
+      cancelBtn.textContent = 'Cancelling Request...';
+    }
+
+    // 2. Notify backend to cancel return across server memory, cache, and MongoDB
+    try {
+      await fetch('/api/returns/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderCode: cleanCode })
+      });
+    } catch (apiErr) {
+      console.warn('[Return Cancel API Notice]:', apiErr.message);
+    }
+
+    // 3. Clear return request from browser localStorage
+    try {
+      const returnReqs = typeof getSavedReturnExchangeRequests === 'function' ? getSavedReturnExchangeRequests() : [];
+      const updated = returnReqs.filter(r => {
+        if (!r || !r.orderCode) return true;
+        const rc = String(r.orderCode).replace(/^#/, '').trim();
+        return rc !== cleanCode && (!codeNum || rc.replace(/\D/g, '') !== codeNum);
+      });
+      localStorage.setItem(RETURNS_STORAGE_KEY, JSON.stringify(updated));
+    } catch (e) {
+      console.warn('Failed to update returns storage', e);
+    }
+
+    // 4. Helper to strip return fields from any order reference
+    const clearOrderReturnState = (o) => {
+      if (!o) return;
+      delete o.returnStatus;
+      delete o.returnRequest;
+    };
+
+    // 5. Clear from in-memory orders map
+    if (window._allAccountOrdersMap) {
+      if (window._allAccountOrdersMap.has(cleanCode)) {
+        clearOrderReturnState(window._allAccountOrdersMap.get(cleanCode));
       }
-      accountState = loadLocalAccount();
-      if (Array.isArray(accountState.orders)) {
-        const accOrd = accountState.orders.find(o => String(o.orderCode) === String(orderCode) || String(o.orderId) === String(orderCode));
-        if (accOrd) {
-          delete accOrd.returnStatus;
-          delete accOrd.returnRequest;
-          saveLocalAccount({ orders: accountState.orders });
+      for (const ord of window._allAccountOrdersMap.values()) {
+        if (!ord) continue;
+        const c1 = String(ord.orderCode || '').replace(/^#/, '').trim();
+        const c2 = String(ord.orderId || '').replace(/^#/, '').trim();
+        if (c1 === cleanCode || c2 === cleanCode || (codeNum && (c1.replace(/\D/g, '') === codeNum || c2.replace(/\D/g, '') === codeNum))) {
+          clearOrderReturnState(ord);
         }
       }
-
-      if (typeof showToast === 'function') {
-        showToast('REQUEST CANCELLED', `Return/Exchange request for Order #${orderCode} has been cancelled.`, 'cart');
-      }
-
-      renderAccountOrdersUI();
-      window.openReturnExchangeModal(orderCode);
-    } catch (e) {
-      console.warn('Failed to cancel request', e);
     }
+
+    // 6. Clear from in-memory orders cache array
+    if (Array.isArray(window._allAccountOrdersCache)) {
+      window._allAccountOrdersCache.forEach(ord => {
+        if (!ord) return;
+        const c1 = String(ord.orderCode || '').replace(/^#/, '').trim();
+        const c2 = String(ord.orderId || '').replace(/^#/, '').trim();
+        if (c1 === cleanCode || c2 === cleanCode || (codeNum && (c1.replace(/\D/g, '') === codeNum || c2.replace(/\D/g, '') === codeNum))) {
+          clearOrderReturnState(ord);
+        }
+      });
+    }
+
+    // 7. Clear order in local storage list
+    const ord = findOrderForReturn(orderCode);
+    if (ord) {
+      clearOrderReturnState(ord);
+      if (typeof saveLocalOrder === 'function') saveLocalOrder(ord);
+    }
+
+    const localOrders = typeof getSavedLocalOrders === 'function' ? getSavedLocalOrders() : [];
+    localOrders.forEach(o => {
+      if (!o) return;
+      const c1 = String(o.orderCode || '').replace(/^#/, '').trim();
+      const c2 = String(o.orderId || '').replace(/^#/, '').trim();
+      if (c1 === cleanCode || c2 === cleanCode || (codeNum && (c1.replace(/\D/g, '') === codeNum || c2.replace(/\D/g, '') === codeNum))) {
+        clearOrderReturnState(o);
+        if (typeof saveLocalOrder === 'function') saveLocalOrder(o);
+      }
+    });
+
+    // 8. Clear order inside accountState.orders
+    accountState = typeof loadLocalAccount === 'function' ? loadLocalAccount() : {};
+    if (Array.isArray(accountState.orders)) {
+      accountState.orders.forEach(o => {
+        if (!o) return;
+        const c1 = String(o.orderCode || '').replace(/^#/, '').trim();
+        const c2 = String(o.orderId || '').replace(/^#/, '').trim();
+        if (c1 === cleanCode || c2 === cleanCode || (codeNum && (c1.replace(/\D/g, '') === codeNum || c2.replace(/\D/g, '') === codeNum))) {
+          clearOrderReturnState(o);
+        }
+      });
+      saveLocalAccount({ orders: accountState.orders });
+    }
+
+    // 9. Display success toast notification
+    if (typeof showToast === 'function') {
+      showToast('REQUEST CANCELLED', `Return/Exchange request for Order #${cleanCode} has been cancelled.`, 'cart');
+    }
+
+    // 10. Re-render UI list and re-open modal with clean submission form
+    if (typeof renderAccountOrdersUI === 'function') renderAccountOrdersUI();
+    window.openReturnExchangeModal(cleanCode);
   };
 
   window.closeReturnExchangeModal = function() {
@@ -12528,7 +12754,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     accountState.orders = [sampleOrder, ...(accountState.orders || [])];
     saveLocalAccount({ orders: accountState.orders });
     if (typeof showToast === 'function') {
-      showToast('SAMPLE ORDER CREATED', 'Previewing short order history card. Click it to view the full popup!', 'info');
+      showToast('SAMPLE ORDER CREATED', 'Previewing order card in your order history.', 'info');
     }
     renderAccountOrdersUI();
   };

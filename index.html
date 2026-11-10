@@ -32,7 +32,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Cinzel:wght@400;700&family=Space+Grotesk:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20261104_cart_upi_v1" />
+<link rel="stylesheet" href="style.css?v=20261108_order_v7" />
 <link rel="manifest" href="/manifest.json" />
 <meta name="theme-color" content="#ffffff" />
 <meta name="mobile-web-app-capable" content="yes" />
@@ -1756,7 +1756,7 @@
                 <span>Instant dispatch when price drops below <strong id="pdpPriceDropTargetDisplay">current price</strong>.</span>
                 <button type="button" class="pdp-price-drop-cancel-btn" id="pdpPriceDropCancelBtn">Cancel</button>
               </div>
-              <div id="pdpPriceDropSuccessMsg" style="display:none; color:#10b981; font-size:0.75rem; font-weight:700; padding:0.25rem 0.35rem; font-family:var(--mono); line-height:1.4;"></div>
+              <div id="pdpPriceDropSuccessMsg" style="display:none; color:#ffffff !important; font-size:0.75rem; font-weight:700; padding:0.35rem 0.45rem; font-family:var(--mono); line-height:1.4; border-radius:6px; background:rgba(255,255,255,0.08); margin-top:0.25rem;">Waiting for confirmation</div>
             </form>
           </div>
         </div>
@@ -1885,7 +1885,7 @@
 
         <!-- Seller Information (Amazon / Flipkart Style) -->
         <div class="pdp-seller-strip">
-          <span>Sold by <strong>The Street Co Studio</strong> (4.9 ★) · Fulfilled via <strong>Zoho Inventory</strong>.</span>
+          <span>Sold by <strong>The Street Co Studio</strong> (4.9 ★) · Express Insured Delivery.</span>
         </div>
 
       </div>
@@ -3736,7 +3736,7 @@
               </section>
             </div>
 
-            <!-- PAGE 3: ORDER HISTORY (MONGODB SYNCED) -->
+            <!-- PAGE 3: ORDER HISTORY (PURCHASES & DELIVERY DETAILS) -->
             <div class="account-tab-pane" id="accountOrderHistoryPage" data-account-pane="orders" style="display:none;">
               <section class="account-card account-card--orders">
                 <div class="account-card__head">
@@ -3746,7 +3746,7 @@
                 </div>
 
                 <p class="account-address-intro" style="margin-bottom:1.15rem;">
-                  Click on any order card below to view full order history details, item pictures, full delivery address, and price breakdown.
+                  Review your past orders, delivery status, and tracking details below.
                 </p>
 
                 <!-- Order History Content Container -->
@@ -3784,7 +3784,7 @@
                   </div>
 
                   <p class="account-logout-guidance">
-                    Ready to leave? Logging out will sign you out on this device. All your saved addresses, verified email, and order history will remain securely backed up in MongoDB Atlas for your next visit.
+                    Ready to leave? Logging out will sign you out on this device. All your saved addresses, verified email, and orders will remain securely backed up in MongoDB Atlas for your next visit.
                   </p>
 
                   <div class="account-logout-cta-wrap">
@@ -3829,7 +3829,7 @@
     <h3 class="logout-confirm-modal__title">Log Out of Your Account?</h3>
     
     <p class="logout-confirm-modal__message" id="accountLogoutConfirmMessage">
-      Are you sure you want to log out? You will be signed out of your account on this device. Your cart, saved addresses, and order history are securely backed up in MongoDB and will be ready when you return.
+      Are you sure you want to log out? You will be signed out of your account on this device. Your cart, saved addresses, and orders are securely backed up in MongoDB and will be ready when you return.
     </p>
 
     <div class="logout-confirm-modal__user-card" id="accountLogoutConfirmUserCard">
@@ -3895,13 +3895,13 @@
   </div>
 </div>
 
-<!-- ══════════ 5. FULL ORDER HISTORY POPUP MODAL ══════════ -->
-<div class="order-details-modal" id="accountFullOrderModal" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Full Order Details">
+<!-- ══════════ 5. ORDER DETAILS POPUP MODAL ══════════ -->
+<div class="order-details-modal" id="accountFullOrderModal" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Order Details">
   <div class="order-details-modal__backdrop" onclick="if(window.closeFullOrderModal){window.closeFullOrderModal();}"></div>
   <div class="order-details-modal__dialog">
     <header class="order-details-modal__header">
       <div class="order-details-modal__meta">
-        <span class="order-details-modal__kicker">FULL ORDER HISTORY</span>
+        <span class="order-details-modal__kicker">ORDER DETAILS</span>
         <h3 class="order-details-modal__title" id="fullOrderModalCode">Order #...</h3>
         <span class="order-details-modal__date" id="fullOrderModalDate">...</span>
       </div>
@@ -3942,7 +3942,7 @@
   };
   var renderVipUI = window.renderVipUI;
 </script>
-<script src="main.js?v=20261104_cart_upi_v1"></script>
+<script src="main.js?v=20261108_order_v7"></script>
 
 <!-- Guaranteed Header & Step Button Sync (Overrides any browser cache) -->
 <script>

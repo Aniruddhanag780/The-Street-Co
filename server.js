@@ -4827,7 +4827,19 @@ app.post('/api/returns/create', async (req, res) => {
     const type = raw.type === 'exchange' ? 'exchange' : 'return';
 
     // Find corresponding order if available
-    const order = inMemoryOrders.get(orderCode) || inMemoryOrders.get(`UCHIHA-${orderCode}`) || null;
+    let order = inMemoryOrders.get(orderCode) || inMemoryOrders.get(`UCHIHA-${orderCode}`) || null;
+    if (!order) {
+      const codeDigits = orderCode.replace(/\D/g, '');
+      for (const ord of inMemoryOrders.values()) {
+        if (!ord) continue;
+        const c1 = String(ord.orderCode || '').trim().toUpperCase().replace(/^#/, '');
+        const c2 = String(ord.orderId || '').trim().toUpperCase().replace(/^#/, '');
+        if (c1 === orderCode || c2 === orderCode || (codeDigits && (c1.replace(/\D/g, '') === codeDigits || c2.replace(/\D/g, '') === codeDigits))) {
+          order = ord;
+          break;
+        }
+      }
+    }
 
     const returnId = raw.id || `RET-${Math.floor(10000 + Math.random() * 90000)}`;
     const customerName = raw.customerName || order?.shippingAddress?.fullName || order?.contactDetails?.fullName || 'Customer';
@@ -4904,6 +4916,102 @@ app.post('/api/returns/create', async (req, res) => {
     });
   } catch (err) {
     console.error('[Server] Return create error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Returns: Cancel return or exchange request endpoint
+app.post('/api/returns/cancel', async (req, res) => {
+  try {
+    const raw = req.body || {};
+    const orderCode = String(raw.orderCode || '').trim().toUpperCase().replace(/^#/, '');
+    const returnId = String(raw.returnId || '').trim().toUpperCase();
+
+    // 1. Remove from inMemoryReturns map
+    if (returnId) inMemoryReturns.delete(returnId);
+    if (orderCode) {
+      inMemoryReturns.delete(`ORD_${orderCode}`);
+      for (const [key, val] of inMemoryReturns.entries()) {
+        if (!val) continue;
+        const c = String(val.orderCode || '').trim().toUpperCase().replace(/^#/, '');
+        const rid = String(val.id || '').trim().toUpperCase();
+        if (c === orderCode || (returnId && rid === returnId)) {
+          inMemoryReturns.delete(key);
+        }
+      }
+    }
+    saveJsonCache(RETURNS_CACHE_FILE, Array.from(new Set(inMemoryReturns.values())));
+
+    // 2. Clear returnRequest and returnStatus from inMemoryOrders & orders_cache.json
+    const codeDigits = orderCode.replace(/\D/g, '');
+    let matchedOrder = inMemoryOrders.get(orderCode) || inMemoryOrders.get(`UCHIHA-${orderCode}`) || null;
+    if (!matchedOrder) {
+      for (const ord of inMemoryOrders.values()) {
+        if (!ord) continue;
+        const c1 = String(ord.orderCode || '').trim().toUpperCase().replace(/^#/, '');
+        const c2 = String(ord.orderId || '').trim().toUpperCase().replace(/^#/, '');
+        if (c1 === orderCode || c2 === orderCode || (codeDigits && (c1.replace(/\D/g, '') === codeDigits || c2.replace(/\D/g, '') === codeDigits))) {
+          matchedOrder = ord;
+          break;
+        }
+      }
+    }
+
+    if (matchedOrder) {
+      delete matchedOrder.returnStatus;
+      delete matchedOrder.returnRequest;
+      persistOrders(matchedOrder);
+    } else {
+      // Also check all inMemoryOrders to be completely thorough
+      for (const ord of inMemoryOrders.values()) {
+        if (!ord) continue;
+        const c1 = String(ord.orderCode || '').trim().toUpperCase().replace(/^#/, '');
+        const c2 = String(ord.orderId || '').trim().toUpperCase().replace(/^#/, '');
+        if (c1 === orderCode || c2 === orderCode || (codeDigits && (c1.replace(/\D/g, '') === codeDigits || c2.replace(/\D/g, '') === codeDigits))) {
+          delete ord.returnStatus;
+          delete ord.returnRequest;
+        }
+      }
+      saveJsonCache(ORDERS_CACHE_FILE, Array.from(new Set(inMemoryOrders.values())));
+    }
+
+    // 3. Clear from MongoDB Atlas ('orders' collection, 'users' collection, and 'returns' collection)
+    getCollection('orders').then(col => {
+      if (col && orderCode) {
+        col.updateMany(
+          { $or: [{ orderCode }, { orderId: orderCode }] },
+          { $unset: { returnRequest: '', returnStatus: '' } }
+        ).catch(() => {});
+      }
+    });
+
+    getCollection('users').then(userCol => {
+      if (userCol && orderCode) {
+        userCol.updateMany(
+          { 'orders.orderCode': orderCode },
+          { $unset: { 'orders.$.returnRequest': '', 'orders.$.returnStatus': '' } }
+        ).catch(() => {});
+      }
+    });
+
+    getCollection('returns').then(retCol => {
+      if (retCol) {
+        retCol.deleteMany({
+          $or: [
+            ...(orderCode ? [{ orderCode }] : []),
+            ...(returnId ? [{ id: returnId }] : [])
+          ]
+        }).catch(() => {});
+      }
+    });
+
+    res.json({
+      success: true,
+      orderCode,
+      message: `Return / exchange request for order #${orderCode} cancelled successfully.`
+    });
+  } catch (err) {
+    console.error('[Server] Return cancel error:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });

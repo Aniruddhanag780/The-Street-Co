@@ -1424,15 +1424,8 @@
     "zoho_status": "pending_confirmation"
   },
   {
-    "orderId": "913496",
     "orderCode": "913496",
     "accountPhone": "9876543210",
-    "status": "CONFIRMED",
-    "zoho_status": "pending_confirmation",
-    "orderDate": "2026-11-04T10:32:22.947Z",
-    "orderDateFormatted": "04 Nov 2026, 04:02:22 pm IST",
-    "createdAt": "2026-11-04T10:32:22.947Z",
-    "source": "cart",
     "contactDetails": {
       "fullName": "Rahul Sharma",
       "phone": "9876543210",
@@ -1441,23 +1434,8 @@
       "isB2B": false,
       "gstin": ""
     },
-    "shippingAddress": {
-      "fullName": "Rahul Sharma",
-      "phone": "9876543210",
-      "email": "rahul@example.com",
-      "houseFlat": "Flat 402, Lotus Tower",
-      "streetRoad": "MG Road",
-      "landmark": "",
-      "city": "Mumbai",
-      "state": "Maharashtra",
-      "pincode": "400001",
-      "addressType": "Home",
-      "isB2B": false,
-      "gstin": "",
-      "fullAddress": "Flat 402, Lotus Tower, MG Road, Mumbai, Maharashtra - 400001"
-    },
-    "isB2B": false,
-    "gstin": "",
+    "createdAt": "2026-11-04T10:32:22.947Z",
+    "currency": "INR",
     "deliveryDetails": {
       "speed": "free",
       "courierService": "Standard Delivery",
@@ -1468,32 +1446,11 @@
       "dispatchStatus": "QUEUED_FOR_DISPATCH",
       "trackingCode": "ANBU-501375"
     },
-    "paymentMethod": "COD",
-    "paymentStatus": "PENDING_ON_DELIVERY",
-    "transactionId": "TXN_1793788342948",
-    "products": [
-      {
-        "sku": "shadow-holster",
-        "id": "shadow-holster",
-        "name": "Shadow Leather Kunai Leg Holster",
-        "title": "Shadow Leather Kunai Leg Holster",
-        "category": "Accessories & Jewelry",
-        "collection": "akatsuki shadows",
-        "collectionName": "Akatsuki Shadows",
-        "seal": "RELIC",
-        "specs": "Officially Certified Authentic Item",
-        "desc": "",
-        "size": "M",
-        "finish": "Obsidian Shadow",
-        "qty": 1,
-        "quantity": 1,
-        "priceInr": 4499,
-        "price": 4499,
-        "totalItemPriceInr": 4499,
-        "image": "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=800&q=80",
-        "imageUrl": "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=800&q=80"
-      }
-    ],
+    "deliveryFeeInr": 0,
+    "discountInr": 0,
+    "grandTotalInr": 4499,
+    "gstin": "",
+    "isB2B": false,
     "items": [
       {
         "sku": "shadow-holster",
@@ -1517,6 +1474,11 @@
         "imageUrl": "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=800&q=80"
       }
     ],
+    "orderDate": "2026-11-04T10:32:22.947Z",
+    "orderDateFormatted": "04 Nov 2026, 04:02:22 pm IST",
+    "orderId": "913496",
+    "paymentMethod": "COD",
+    "paymentStatus": "PENDING_ON_DELIVERY",
     "productDetails": [
       {
         "sku": "shadow-holster",
@@ -1540,10 +1502,48 @@
         "imageUrl": "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=800&q=80"
       }
     ],
+    "products": [
+      {
+        "sku": "shadow-holster",
+        "id": "shadow-holster",
+        "name": "Shadow Leather Kunai Leg Holster",
+        "title": "Shadow Leather Kunai Leg Holster",
+        "category": "Accessories & Jewelry",
+        "collection": "akatsuki shadows",
+        "collectionName": "Akatsuki Shadows",
+        "seal": "RELIC",
+        "specs": "Officially Certified Authentic Item",
+        "desc": "",
+        "size": "M",
+        "finish": "Obsidian Shadow",
+        "qty": 1,
+        "quantity": 1,
+        "priceInr": 4499,
+        "price": 4499,
+        "totalItemPriceInr": 4499,
+        "image": "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=800&q=80",
+        "imageUrl": "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=800&q=80"
+      }
+    ],
+    "shippingAddress": {
+      "fullName": "Rahul Sharma",
+      "phone": "9876543210",
+      "email": "rahul@example.com",
+      "houseFlat": "Flat 402, Lotus Tower",
+      "streetRoad": "MG Road",
+      "landmark": "",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "pincode": "400001",
+      "addressType": "Home",
+      "isB2B": false,
+      "gstin": "",
+      "fullAddress": "Flat 402, Lotus Tower, MG Road, Mumbai, Maharashtra - 400001"
+    },
+    "source": "cart",
+    "status": "CONFIRMED",
     "subtotalInr": 4499,
-    "deliveryFeeInr": 0,
-    "discountInr": 0,
-    "grandTotalInr": 4499,
-    "currency": "INR"
+    "transactionId": "TXN_1793788342948",
+    "zoho_status": "pending_confirmation"
   }
 ]

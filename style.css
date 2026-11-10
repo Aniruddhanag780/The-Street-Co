@@ -3849,6 +3849,10 @@ div#relicGalleryThumbs > div.active > span:nth-of-type(1) {
   text-decoration:underline;padding:0;
 }
 .pdp-price-drop-cancel-btn:hover{color:#fff;}
+#pdpPriceDropSuccessMsg {
+  color: #ffffff !important;
+  font-family: var(--mono) !important;
+}
 
 /* Active State Banner (Hidden as requested: Do not show debug / active banner on PDP) */
 .pdp-price-drop-active{
@@ -12551,12 +12555,13 @@ header#topChrome .store-logo__mark {
     flex-shrink: 0 !important;
   }
   .store-header__action-btn,
-  .store-header__cart-btn,
   #headerPushNotifBtn,
   #headerStreetCashBtn,
   #headerSearchBtn,
   #shopWishlistBtn,
-  #shopCartBtn {
+  #headerAccountBtn,
+  #collecWishlistBtn,
+  #collecHeaderAccountBtn {
     padding: 0 !important;
     width: 34px !important;
     height: 34px !important;
@@ -12564,13 +12569,36 @@ header#topChrome .store-logo__mark {
     min-height: 34px !important;
   }
   .store-header__action-btn svg,
-  .store-header__cart-btn svg,
   #headerPushNotifBtn svg,
   .chrome__header-icon-svg {
     width: 17px !important;
     height: 17px !important;
     min-width: 17px !important;
     min-height: 17px !important;
+  }
+
+  /* In mobile view don't show the cart icon in the top bar */
+  .store-header__cart-btn,
+  #shopCartBtn,
+  #collecCartBtn,
+  header#topChrome #shopCartBtn,
+  header#topChrome .store-header__cart-btn,
+  header.store-header #shopCartBtn,
+  header.store-header .store-header__cart-btn,
+  #collecStoreHeader #collecCartBtn,
+  #collecStoreHeader .store-header__cart-btn {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    overflow: hidden !important;
   }
 }
 
@@ -17383,7 +17411,7 @@ textarea::placeholder,
   color: #0E0E11 !important;
 }
 
-/* ══════════ ACCOUNT ORDER HISTORY (MONGODB ATLAS SYNCED) ══════════ */
+/* ══════════ ACCOUNT ORDER DETAILS MODAL ══════════ */
 .account-card--orders {
   padding: 1.5rem !important;
 }
@@ -18267,7 +18295,7 @@ header#topChrome #shopWishlistBtn {
 
 .account-order-card--short:hover {
   transform: translateY(-2px) !important;
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.07) !important;
   border-color: #0E0E11 !important;
 }
 
@@ -19217,5 +19245,32 @@ header#topChrome #shopWishlistBtn {
   /* Mission Go button */
   .sc-mission-go-btn {
     box-shadow: none !important;
+  }
+}
+
+/* ── MOBILE VIEW: HIDE CART ICON IN TOP BAR ── */
+@media (max-width: 860px) {
+  .store-header__cart-btn,
+  #shopCartBtn,
+  #collecCartBtn,
+  .chrome__cart-btn,
+  header#topChrome #shopCartBtn,
+  header#topChrome .store-header__cart-btn,
+  header.store-header #shopCartBtn,
+  header.store-header .store-header__cart-btn,
+  #collecStoreHeader #collecCartBtn,
+  #collecStoreHeader .store-header__cart-btn {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    overflow: hidden !important;
   }
 }

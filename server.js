@@ -3748,12 +3748,23 @@ app.get('/api/verify-payment', async (req, res) => {
 // COUPONS API ROUTES
 // ──────────────────────────────────────────
 
-// GET /api/coupons
-app.get('/api/coupons', (req, res) => {
+// GET /api/coupons (strictly from MongoDB database)
+app.get('/api/coupons', async (req, res) => {
   const subtotal = req.query.subtotal ? Math.max(0, Number(req.query.subtotal) || 0) : null;
   const showAll = req.query.all === 'true';
 
-  const list = showAll ? inMemoryCoupons : inMemoryCoupons.filter(c => c.isPublic && c.status === 'active');
+  let list = [];
+  try {
+    const col = await getCollection('coupons');
+    const query = showAll
+      ? {}
+      : { isPublic: { $ne: false }, status: 'active', isOneTimeUse: { $ne: true }, code: { $not: { $regex: '^STREETCASH' } } };
+    list = await col.find(query, { projection: { _id: 0 } }).toArray();
+  } catch (err) {
+    list = showAll
+      ? inMemoryCoupons
+      : inMemoryCoupons.filter(c => c.isPublic && c.status === 'active' && !c.isOneTimeUse && !c.code.startsWith('STREETCASH-'));
+  }
 
   // Normalize and enhance each coupon with user subtotal matching details
   const enhanced = list.map(c => {
@@ -3866,7 +3877,7 @@ app.post('/api/coupons/validate', async (req, res) => {
     return res.json({
       valid: false,
       reason: 'not_found',
-      message: `❌ Coupon "${rawCode}" does not exist. Please check your spelling and try again.`
+      message: `❌ Coupon code "${rawCode}" is invalid. Please check the code and enter an exact match.`
     });
   }
 

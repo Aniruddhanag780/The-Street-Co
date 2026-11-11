@@ -924,17 +924,17 @@ html.bag-open, body.bag-open {
   padding:0;background:transparent;border:none;border-radius:0;
 }
 .cart-drawer__discount-label{
-  font-family:var(--mono);font-size:.56rem;letter-spacing:.14em;color:var(--smoke);
+  font-family:var(--mono);font-size:.58rem;letter-spacing:.12em;color:#18181b !important;font-weight:700;
   flex:1;min-width:0;text-align:left;
   display:inline-flex;align-items:center;gap:.35rem;
 }
 #cartDiscountCodeBadge{
-  font-family:var(--mono);font-size:.50rem;font-weight:700;letter-spacing:.04em;
-  color:#ffffff;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);
-  padding:1px 4px;border-radius:3px;vertical-align:middle;
+  font-family:var(--mono) !important;font-size:.56rem !important;font-weight:800 !important;letter-spacing:.06em !important;
+  color:#000000 !important;background:#f4f4f5 !important;border:1px solid #d4d4d8 !important;
+  padding:1px 6px !important;border-radius:4px !important;vertical-align:middle !important;display:inline-block !important;
 }
 .cart-drawer__discount-val{
-  font-family:var(--mono);font-size:.76rem;font-weight:600;letter-spacing:.04em;color:var(--bone);
+  font-family:var(--mono);font-size:.76rem;font-weight:700;letter-spacing:.04em;color:#16a34a !important;
   flex-shrink:0;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;
 }
 
@@ -6013,32 +6013,30 @@ input#checkoutPhone:focus{
   display:none !important;
 }
 .checkout-promo-message{
-  font-family:var(--sans, sans-serif) !important;font-size:clamp(0.70rem, 2.4vw, 0.78rem) !important;letter-spacing:.01em;
-  margin-top:.7rem;line-height:1.4;display:none;
-  padding:.65rem .95rem;border-radius:8px;
-  text-align:center;font-weight:700 !important;
-  animation:none !important;transition:none !important;
-  box-sizing:border-box;
+  display:none !important;
 }
-.checkout-promo-message.show{display:block !important;}
-.checkout-promo-message.success{
-  color:#111827 !important;
-  background:#f4f4f5 !important;
-  border:1.5px solid #111827 !important;
-  font-weight:700 !important;
-  font-size:0.78rem !important;
-  box-shadow:0 1px 4px rgba(0,0,0,.05) !important;
-  display:block !important;
+
+.shop-toast.coupon-toast,
+.shop-toast.error-toast,
+.shop-toast.warning-toast{
+  max-width:min(94vw, 520px) !important;
 }
-.checkout-promo-message.error{
-  color:#b91c1c !important;background:#fef2f2 !important;border:1.5px solid #fca5a5 !important;
-  font-weight:700 !important;font-size:0.76rem !important;
-  display:block !important;
+.shop-toast.coupon-toast .shop-toast__name,
+.shop-toast.error-toast .shop-toast__name,
+.shop-toast.warning-toast .shop-toast__name{
+  max-width:min(72vw, 340px) !important;
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
 }
-.checkout-promo-message.warning{
-  color:#b45309 !important;background:#fffbeb !important;border:1.5px solid #fcd34d !important;
-  font-weight:700 !important;font-size:0.76rem !important;
-  display:block !important;
+.shop-toast__icon.coupon-toast-icon{
+  background:#dcfce7 !important;
+}
+.shop-toast__icon.error-toast-icon{
+  background:#fee2e2 !important;
+}
+.shop-toast__icon.warning-toast-icon{
+  background:#fef3c7 !important;
 }
 
 /* Suggested Coupons Showcase */
@@ -9159,6 +9157,18 @@ aside#shopFilterSidebar * {
 .cart-drawer__subtotal-val,
 .cart-drawer__total-val {
   color: #000000 !important;
+}
+.cart-drawer__discount-label {
+  color: #18181b !important;
+}
+#cartDiscountCodeBadge {
+  color: #000000 !important;
+  font-weight: 800 !important;
+  background: #f4f4f5 !important;
+  border: 1px solid #d4d4d8 !important;
+}
+.cart-drawer__discount-val {
+  color: #16a34a !important;
 }
 .cart-drawer__checkout {
   background: #000000 !important;
@@ -19305,4 +19315,41 @@ header#topChrome #shopWishlistBtn {
     border: none !important;
     overflow: hidden !important;
   }
+}
+
+/* Hide removed cart elements */
+#cartStreetCashAppliedCard,
+#cartDiscountCodeBadge {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+/* Remove 3 selected elements in checkout coupon cards: group badge, savings badge, and subtext div */
+.checkout-coupon-card__badges > span:nth-of-type(2),
+.checkout-coupon-card__badges > span:nth-of-type(3),
+.checkout-coupon-card .coupon-type-badge,
+.checkout-coupon-card-savings,
+.checkout-coupon-card__body > div.coupon-card-subtext,
+.checkout-coupon-card__body > div:nth-of-type(1) {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+.checkout-coupon-card__body .coupon-card-title {
+  display: block !important;
+  font-family: var(--mono, monospace);
+  font-size: 0.78rem !important;
+  font-weight: 800 !important;
+  color: #18181b !important;
+  margin: 0.35rem 0 0.2rem 0 !important;
+  letter-spacing: 0.02em;
+}
+
+.checkout-coupon-card__body .coupon-card-desc {
+  display: block !important;
+  font-family: var(--sans, sans-serif);
+  font-size: 0.72rem !important;
+  line-height: 1.4 !important;
+  color: #52525b !important;
+  margin: 0 !important;
 }

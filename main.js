@@ -634,23 +634,70 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
 
     const isRemoved = title.toLowerCase().includes('removed');
 
+    const isCouponToast = type === 'coupon' || titleLower.includes('coupon');
+    const isErrorToast = type === 'error' || titleLower.includes('invalid') || titleLower.includes('error');
+    const isWarningToast = type === 'warning' || titleLower.includes('alert') || titleLower.includes('locked');
+
+    let iconHtml = '';
+    let iconClass = '';
+
+    if (isWishlistToast) {
+      iconClass = 'wishlist-toast-icon';
+      iconHtml = `
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="${isRemoved ? 'none' : '#dc2626'}" stroke="#dc2626" stroke-width="2">
+          <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
+        </svg>
+      `;
+    } else if (isErrorToast) {
+      iconClass = 'error-toast-icon';
+      iconHtml = `
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#dc2626" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+      `;
+    } else if (isWarningToast) {
+      iconClass = 'warning-toast-icon';
+      iconHtml = `
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+      `;
+    } else if (isCouponToast) {
+      iconClass = 'coupon-toast-icon';
+      iconHtml = `
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+          <line x1="7" y1="7" x2="7.01" y2="7"/>
+        </svg>
+      `;
+    } else {
+      iconClass = isCartToast ? 'cart-toast-icon' : '';
+      iconHtml = `
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      `;
+    }
+
+    const toastClasses = ['shop-toast', 'show'];
+    if (isCouponToast) toastClasses.push('coupon-toast');
+    if (isErrorToast) toastClasses.push('error-toast');
+    if (isWarningToast) toastClasses.push('warning-toast');
+    shopToast.className = toastClasses.join(' ');
+
     shopToast.innerHTML = `
       <div class="shop-toast__inner">
-        <div class="shop-toast__icon ${isWishlistToast ? 'wishlist-toast-icon' : (isCartToast ? 'cart-toast-icon' : '')}" aria-hidden="true">
-          ${isWishlistToast ? `
-            <svg viewBox="0 0 24 24" width="12" height="12" fill="${isRemoved ? 'none' : '#dc2626'}" stroke="#dc2626" stroke-width="2">
-              <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
-            </svg>
-          ` : `
-            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="20 6 9 17 4 12"/>
-            </svg>
-          `}
+        <div class="shop-toast__icon ${iconClass}" aria-hidden="true">
+          ${iconHtml}
         </div>
         <div class="shop-toast__body">
           <span class="shop-toast__title">${title}</span>
           ${itemText && itemText !== title ? `
-            <span style="color:#d4d4d8;font-size:.65rem;user-select:none;">·</span>
+            ${isCouponToast ? '' : '<span style="color:#d4d4d8;font-size:.65rem;user-select:none;">·</span>'}
             <span class="shop-toast__name" title="${itemText}">${itemText}</span>
           ` : ''}
         </div>
@@ -658,7 +705,6 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
         ${(isWishlistToast && !isRemoved) ? `<button type="button" class="shop-toast__btn" id="toastOpenWishlistBtn">View</button>` : ''}
       </div>
     `;
-    shopToast.classList.add('show');
 
     const openBagBtn = document.getElementById('toastOpenBagBtn');
     if (openBagBtn) {
@@ -954,10 +1000,10 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
         checkoutSession.discount = 0;
         resetCouponUI();
         if (checkoutPromoMsg) {
-          checkoutPromoMsg.textContent = `⚠️ Cart subtotal fell below required ₹${c.minOrderValue.toLocaleString('en-IN')} for coupon "${c.code}". Coupon removed.`;
-          checkoutPromoMsg.className = 'checkout-promo-message warning show';
-          checkoutPromoMsg.style.display = 'block';
+          checkoutPromoMsg.textContent = '';
+          checkoutPromoMsg.style.display = 'none';
         }
+        showToast('Coupon Alert', `Subtotal fell below ₹${c.minOrderValue.toLocaleString('en-IN')}. Coupon removed.`, 'warning');
       } else {
         if (c.group === 'percentage' || c.type === 'percentage') {
           discount = Math.round((subtotalInr * c.value) / 100);
@@ -981,15 +1027,17 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
 
     if (discount > 0 && appliedCartCoupon.code) {
       if (cartDiscountRow) cartDiscountRow.style.display = 'flex';
-      if (cartDiscountCodeBadge) cartDiscountCodeBadge.textContent = appliedCartCoupon.code;
+      if (cartDiscountCodeBadge) {
+        cartDiscountCodeBadge.textContent = appliedCartCoupon.code;
+        cartDiscountCodeBadge.style.setProperty('color', '#000000', 'important');
+      }
       if (cartDiscountVal) cartDiscountVal.textContent = `-₹${discount.toLocaleString('en-IN')} INR`;
       if (cartTotalRow) cartTotalRow.style.display = 'flex';
       if (cartTotalVal) cartTotalVal.textContent = `₹${totalInr.toLocaleString('en-IN')} INR`;
       if (checkoutBtnText) checkoutBtnText.textContent = `PROCEED TO CHECKOUT · ₹${totalInr.toLocaleString('en-IN')}`;
-      if (checkoutPromoMsg && !checkoutPromoMsg.classList.contains('error') && !checkoutPromoMsg.classList.contains('warning')) {
-        checkoutPromoMsg.textContent = `You have saved ₹${discount.toLocaleString('en-IN')} on this order.`;
-        checkoutPromoMsg.className = 'checkout-promo-message success show';
-        checkoutPromoMsg.style.display = 'block';
+      if (checkoutPromoMsg) {
+        checkoutPromoMsg.textContent = '';
+        checkoutPromoMsg.style.display = 'none';
       }
     } else {
       if (cartDiscountRow) cartDiscountRow.style.display = 'none';
@@ -3448,8 +3496,6 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
   window.streetCoShowToast = showToast;
 
   let cachedCouponsList = [...CLIENT_FALLBACK_COUPONS];
-  let activeCouponGroupFilter = 'all'; // 'all', 'percentage', 'flat'
-  let isCouponsExpanded = false;
 
   // Fetch coupons from API asynchronously (backed by MongoDB Atlas)
   async function loadCouponsCatalog() {
@@ -3458,7 +3504,12 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       if (res.ok) {
         const data = await res.json();
         if (data && Array.isArray(data.coupons) && data.coupons.length > 0) {
-          cachedCouponsList = data.coupons;
+          cachedCouponsList = data.coupons.filter(c =>
+            c.status === 'active' &&
+            !c.isOneTimeUse &&
+            !c.code.startsWith('STREETCASH-') &&
+            !c.code.startsWith('VIP')
+          );
           renderSuggestedCoupons();
           renderPageBottomCoupons();
         }
@@ -3492,82 +3543,92 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
 
     const { subtotalInr } = getBagTotals();
 
-    // Helper to calculate exact savings in INR
+    // Helper to calculate exact current savings in INR for subtotal
     function getCouponSavings(c, subtotal) {
       if (!c) return 0;
       let savings = 0;
       if (c.group === 'percentage' || c.type === 'percentage') {
-        savings = Math.round((subtotal * c.value) / 100);
-        if (c.maxDiscount && savings > c.maxDiscount) savings = c.maxDiscount;
+        savings = Math.round((subtotal * (Number(c.value) || 0)) / 100);
+        if (c.maxDiscount && savings > Number(c.maxDiscount)) {
+          savings = Number(c.maxDiscount);
+        }
       } else {
         savings = Number(c.value) || 0;
       }
       return Math.min(savings, subtotal);
     }
 
-    // Filter by strictly public and active coupons only
+    // Helper to calculate potential maximum savings in INR (for ranking upcoming unlockable coupons)
+    function getPotentialSavings(c) {
+      if (!c) return 0;
+      if (c.group === 'percentage' || c.type === 'percentage') {
+        const testBase = Math.max(subtotalInr, Number(c.minOrderValue) || 0, 1000);
+        let pot = Math.round((testBase * (Number(c.value) || 0)) / 100);
+        if (c.maxDiscount && pot > Number(c.maxDiscount)) pot = Number(c.maxDiscount);
+        return pot;
+      }
+      return Number(c.value) || 0;
+    }
+
+    // Strictly public and active store coupons from MongoDB database
     const activeCode = (appliedCartCoupon.code || checkoutSession.promoCode || '').trim().toUpperCase();
-    let publicCoupons = cachedCouponsList.filter(c =>
+    const publicCoupons = cachedCouponsList.filter(c =>
       c.isPublic === true &&
-      c.status === 'active'
+      c.status === 'active' &&
+      !c.isOneTimeUse &&
+      !c.code.startsWith('STREETCASH-') &&
+      !c.code.startsWith('VIP')
     );
 
-    // Apply active group filter if selected
-    if (activeCouponGroupFilter === 'percentage') {
-      publicCoupons = publicCoupons.filter(c => c.group === 'percentage' || c.type === 'percentage');
-    } else if (activeCouponGroupFilter === 'flat') {
-      publicCoupons = publicCoupons.filter(c => c.group === 'flat' || c.type === 'flat');
-    }
+    // 1. Separate into currently eligible coupons and upcoming unlockable coupons
+    const eligible = [];
+    const upcoming = [];
 
-    // 1. Find coupons where the cart matches the price range condition
-    const eligible = publicCoupons.filter(c => {
+    publicCoupons.forEach(c => {
       const min = Number(c.minOrderValue) || 0;
       const max = c.maxOrderValue ? Number(c.maxOrderValue) : Infinity;
-      return subtotalInr >= min && subtotalInr <= max;
+      if (subtotalInr >= min && subtotalInr <= max) {
+        eligible.push(c);
+      } else if (subtotalInr < min) {
+        upcoming.push(c);
+      }
     });
 
-    // Sort eligible coupons: highest savings first, then by closest threshold
+    // 2. Sort eligible coupons in DESCENDING order of discount savings (highest discount at the top!)
     eligible.sort((a, b) => {
-      const aSavings = getCouponSavings(a, subtotalInr);
       const bSavings = getCouponSavings(b, subtotalInr);
+      const aSavings = getCouponSavings(a, subtotalInr);
       if (bSavings !== aSavings) return bSavings - aSavings;
-      return (Number(b.minOrderValue) || 0) - (Number(a.minOrderValue) || 0);
+      return (Number(b.value) || 0) - (Number(a.value) || 0);
     });
 
-    // 2. Find coupons that are closest to the user's shopping price
-    const upcoming = publicCoupons
-      .filter(c => Number(c.minOrderValue) > subtotalInr)
-      .sort((a, b) => Number(a.minOrderValue) - Number(b.minOrderValue));
+    // 3. Sort upcoming coupons in descending order of potential discount
+    upcoming.sort((a, b) => {
+      const bPot = getPotentialSavings(b);
+      const aPot = getPotentialSavings(a);
+      if (bPot !== aPot) return bPot - aPot;
+      return (Number(a.minOrderValue) || 0) - (Number(b.minOrderValue) || 0);
+    });
 
-    // Combine and prioritize the currently applied coupon at the top if present
-    let allMatches = [];
-    const activeCoupon = activeCode ? publicCoupons.find(c => c.code.toUpperCase() === activeCode) : null;
-    if (activeCoupon) {
-      allMatches.push(activeCoupon);
-    }
-    const otherEligible = eligible.filter(c => !activeCode || c.code.toUpperCase() !== activeCode);
-    const otherUpcoming = upcoming.filter(c => !activeCode || c.code.toUpperCase() !== activeCode);
-    allMatches = [...allMatches, ...otherEligible, ...otherUpcoming];
+    // 4. Combine: prioritize eligible highest-discount coupons first, then upcoming if needed
+    let rankedCoupons = [...eligible, ...upcoming];
 
-    // Show 3 by default or up to 20 when expanded
-    const displayList = isCouponsExpanded ? allMatches.slice(0, 20) : allMatches.slice(0, 3);
-
-    const expandBtn = document.getElementById('checkoutCouponsExpandBtn');
-    if (expandBtn) {
-      if (allMatches.length > 3) {
-        expandBtn.style.display = 'block';
-        expandBtn.textContent = isCouponsExpanded
-          ? 'SHOW LESS ↑'
-          : `VIEW MORE OFFERS (${allMatches.length}) ↓`;
-      } else {
-        expandBtn.style.display = 'none';
+    // If a coupon is currently applied, ensure it is kept visible among the 3 cards
+    if (activeCode) {
+      const appliedIdx = rankedCoupons.findIndex(c => c.code.toUpperCase() === activeCode);
+      if (appliedIdx > 2) {
+        const [appliedItem] = rankedCoupons.splice(appliedIdx, 1);
+        rankedCoupons.splice(0, 0, appliedItem);
       }
     }
+
+    // STRICTLY DISPLAY ONLY 3 COUPONS IN THE BAG
+    const displayList = rankedCoupons.slice(0, 3);
 
     if (displayList.length === 0) {
       checkoutCouponsList.innerHTML = `
         <div style="padding:0.75rem;text-align:center;color:#6b7280;font-size:0.68rem;font-family:var(--sans,sans-serif);">
-          No ${activeCouponGroupFilter !== 'all' ? activeCouponGroupFilter : ''} offers available for this cart.
+          No coupons available currently.
         </div>
       `;
       return;
@@ -3586,35 +3647,30 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       } else if (isEligible) {
         btnHtml = `<button type="button" class="coupon-card-apply-btn" data-code="${c.code}">APPLY</button>`;
       } else {
-        btnHtml = `<button type="button" class="coupon-card-apply-btn locked" data-code="${c.code}" title="Requires cart of ₹${min.toLocaleString('en-IN')}">LOCKED 🔒</button>`;
+        const diff = min - subtotalInr;
+        btnHtml = `<button type="button" class="coupon-card-apply-btn locked" data-code="${c.code}" title="Add ₹${diff.toLocaleString('en-IN')} more to unlock">LOCKED 🔒</button>`;
       }
 
       const cardClass = isApplied
         ? 'checkout-coupon-card unlocked is-applied'
         : (isEligible ? 'checkout-coupon-card unlocked' : 'checkout-coupon-card locked');
-      const isPercentGroup = (c.group === 'percentage' || c.type === 'percentage');
-      const groupBadge = isPercentGroup
-        ? `<span class="coupon-type-badge percentage">${c.value}% OFF</span>`
-        : `<span class="coupon-type-badge flat">FLAT ₹${c.value}</span>`;
+
+      const couponName = c.couponName || c.title || c.code;
+      const couponDesc = c.couponText || c.desc || '';
 
       return `
         <div class="${cardClass}" data-card-code="${c.code}">
           <div class="checkout-coupon-card__top">
-            <div class="checkout-coupon-card__badges">
+            <div class="checkout-coupon-card__badges" style="display:flex;align-items:center;gap:6px;">
               <span class="coupon-code-pill" data-code="${c.code}" title="Click to paste into coupon box">${c.code}</span>
-              ${groupBadge}
             </div>
             <div class="checkout-coupon-card__action">
               ${btnHtml}
             </div>
           </div>
           <div class="checkout-coupon-card__body">
-            <h5 class="coupon-card-title">${c.couponName || c.title}</h5>
-            <p class="coupon-card-desc">${c.couponText || c.desc}</p>
-            <div class="coupon-card-subtext">
-              <span class="subtext-icon">⚡</span>
-              <span>${c.couponSubText || c.subText || (c.minOrderValue ? `Min order: ₹${Number(c.minOrderValue).toLocaleString('en-IN')}` : 'Applicable on all orders')}</span>
-            </div>
+            <h5 class="coupon-card-title">${couponName}</h5>
+            <p class="coupon-card-desc">${couponDesc}</p>
           </div>
         </div>
       `;
@@ -3645,27 +3701,6 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
         }
         applyCouponCode(code);
       });
-    });
-  }
-
-  // Hook filter tabs and expand button once
-  const filterTabsContainer = document.getElementById('checkoutCouponFilterTabs');
-  if (filterTabsContainer) {
-    filterTabsContainer.querySelectorAll('.checkout-coupon-tab').forEach(tab => {
-      tab.addEventListener('click', () => {
-        filterTabsContainer.querySelectorAll('.checkout-coupon-tab').forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
-        activeCouponGroupFilter = tab.dataset.filter || 'all';
-        renderSuggestedCoupons();
-      });
-    });
-  }
-
-  const expandBtnEl = document.getElementById('checkoutCouponsExpandBtn');
-  if (expandBtnEl) {
-    expandBtnEl.addEventListener('click', () => {
-      isCouponsExpanded = !isCouponsExpanded;
-      renderSuggestedCoupons();
     });
   }
 
@@ -3794,7 +3829,8 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     });
   }
 
-  function removeAppliedCoupon() {
+  function removeAppliedCoupon(notify = true) {
+    const oldCode = appliedCartCoupon.code;
     appliedCartCoupon.code = '';
     appliedCartCoupon.discount = 0;
     appliedCartCoupon.details = null;
@@ -3805,6 +3841,9 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     renderCheckoutSidebar();
     renderSuggestedCoupons();
     renderPageBottomCoupons();
+    if (notify && oldCode) {
+      showToast('Coupon Removed', `Coupon "${oldCode}" has been removed.`, 'coupon');
+    }
   }
 
   async function applyCouponCode(codeOverride) {
@@ -3813,10 +3852,10 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
 
     if (!rawCode) {
       if (checkoutPromoMsg) {
-        checkoutPromoMsg.textContent = '❌ Please enter a coupon code.';
-        checkoutPromoMsg.className = 'checkout-promo-message error show';
-        checkoutPromoMsg.style.display = 'block';
+        checkoutPromoMsg.textContent = '';
+        checkoutPromoMsg.style.display = 'none';
       }
+      showToast('Notice', 'Please enter a coupon code.', 'error');
       return;
     }
 
@@ -3842,32 +3881,32 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
         result = {
           valid: false,
           reason: 'not_found',
-          message: `❌ Coupon "${rawCode}" does not exist. Please check your spelling and try again.`
+          message: `Coupon code "${rawCode}" is invalid. Please check the code and enter an exact match.`
         };
       } else if (matched.status !== 'active') {
         result = {
           valid: false,
           reason: 'inactive',
-          message: `❌ Coupon "${matched.code}" is currently inactive and cannot be used.`
+          message: `Coupon "${matched.code}" is currently inactive and cannot be used.`
         };
       } else if (matched.isPublic !== true) {
         result = {
           valid: false,
           reason: 'not_public',
-          message: `❌ Coupon "${matched.code}" cannot be used until it is marked as public.`
+          message: `Coupon "${matched.code}" cannot be used until it is marked as public.`
         };
       } else if (matched.minOrderValue && subtotalInr < matched.minOrderValue) {
         const diff = matched.minOrderValue - subtotalInr;
         result = {
           valid: false,
           reason: 'min_order_unmet',
-          message: `⚠️ Coupon "${matched.code}" requires a minimum order of ₹${matched.minOrderValue.toLocaleString('en-IN')}. Your cart is ₹${subtotalInr.toLocaleString('en-IN')}. Add ₹${diff.toLocaleString('en-IN')} more to unlock!`
+          message: `Coupon "${matched.code}" requires min order of ₹${matched.minOrderValue.toLocaleString('en-IN')}. Add ₹${diff.toLocaleString('en-IN')} more to unlock!`
         };
       } else if (matched.maxOrderValue && subtotalInr > matched.maxOrderValue) {
         result = {
           valid: false,
           reason: 'max_order_exceeded',
-          message: `⚠️ Coupon "${matched.code}" is only applicable for orders up to ₹${matched.maxOrderValue.toLocaleString('en-IN')}. Your current cart is ₹${subtotalInr.toLocaleString('en-IN')}.`
+          message: `Coupon "${matched.code}" is only applicable for orders up to ₹${matched.maxOrderValue.toLocaleString('en-IN')}. Your cart is ₹${subtotalInr.toLocaleString('en-IN')}.`
         };
       } else {
         let discount = 0;
@@ -3895,13 +3934,13 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       checkoutSession.promoCode = result.code;
       checkoutSession.discount = result.discount;
 
-      const savedMessage = `✓ Coupon "${result.code}" applied! You have saved ₹${result.discount.toLocaleString('en-IN')} on this order.`;
-
       if (checkoutPromoMsg) {
-        checkoutPromoMsg.textContent = savedMessage;
-        checkoutPromoMsg.className = 'checkout-promo-message success show';
-        checkoutPromoMsg.style.display = 'block';
+        checkoutPromoMsg.textContent = '';
+        checkoutPromoMsg.style.display = 'none';
       }
+
+      showToast('Coupon Applied', `Code ${result.code}; saved ₹${result.discount.toLocaleString('en-IN')}`, 'coupon');
+
       if (checkoutPromoBox) checkoutPromoBox.classList.add('applied');
       if (checkoutPromoAppliedBadge) checkoutPromoAppliedBadge.style.display = 'inline-block';
       if (checkoutPromoClearBtn) checkoutPromoClearBtn.style.display = 'grid';
@@ -3925,12 +3964,16 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       renderPageBottomCoupons();
 
       if (checkoutPromoMsg) {
-        checkoutPromoMsg.textContent = (result && result.message) || 'Invalid coupon code. Please try again.';
-        checkoutPromoMsg.className = (result && result.reason === 'min_order_unmet')
-          ? 'checkout-promo-message warning show'
-          : 'checkout-promo-message error show';
-        checkoutPromoMsg.style.display = 'block';
+        checkoutPromoMsg.textContent = '';
+        checkoutPromoMsg.style.display = 'none';
       }
+
+      const rawMsg = (result && result.message) || `Coupon code "${rawCode}" is invalid. Please check the code and enter an exact match.`;
+      const cleanMsg = rawMsg.replace(/^[❌⚠️✓]\s*/, '');
+      const toastType = (result && result.reason === 'min_order_unmet') ? 'warning' : 'error';
+      const toastTitle = (result && result.reason === 'min_order_unmet') ? 'Min Order Alert' : 'Invalid Coupon';
+      showToast(toastTitle, cleanMsg, toastType);
+
       if (checkoutPromoBox) checkoutPromoBox.classList.remove('applied');
       if (checkoutPromoAppliedBadge) checkoutPromoAppliedBadge.style.display = 'none';
       if (checkoutPromoClearBtn) checkoutPromoClearBtn.style.display = checkoutPromoInput && checkoutPromoInput.value.length > 0 ? 'grid' : 'none';

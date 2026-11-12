@@ -6839,10 +6839,7 @@ app.post('/api/account/change-phone/send-otp', async (req, res) => {
       emailDispatched,
       otpCode,
       maskedPhone,
-      maskedEmail,
-      message: hasEmail
-        ? `A 6-digit authorization code has been sent to your current phone (${maskedPhone}) and email (${maskedEmail}).`
-        : `A 6-digit authorization code has been sent to your current phone (${maskedPhone}).`
+      message: `A 6-digit authorization code has been sent to your old registered mobile number (${maskedPhone}).`
     });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message || 'Failed to dispatch authorization code.' });
@@ -7000,8 +6997,8 @@ app.post('/api/account/change-email/send-otp', async (req, res) => {
       maskedPhone,
       maskedEmail,
       message: hasEmail
-        ? `A 6-digit authorization code has been sent to your current phone (${maskedPhone}) and current email (${maskedEmail}).`
-        : `A 6-digit authorization code has been sent to your current phone (${maskedPhone}).`
+        ? `A 6-digit authorization code has been sent to your old registered email (${maskedEmail}).`
+        : `A 6-digit authorization code has been sent to your old registered mobile number (${maskedPhone}).`
     });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message || 'Failed to dispatch authorization code.' });

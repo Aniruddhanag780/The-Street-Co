@@ -697,7 +697,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
         <div class="shop-toast__body">
           <span class="shop-toast__title">${title}</span>
           ${itemText && itemText !== title ? `
-            ${isCouponToast ? '' : '<span style="color:#d4d4d8;font-size:.65rem;user-select:none;">·</span>'}
+            <span style="color:#d4d4d8;font-size:.65rem;user-select:none;">·</span>
             <span class="shop-toast__name" title="${itemText}">${itemText}</span>
           ` : ''}
         </div>
@@ -1194,9 +1194,6 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       const itemInr = Number(item.priceInr) || (item.priceUsd ? Math.round(item.priceUsd * 83) : 4999);
       return `
         <div class="cart-item">
-          <div class="cart-item__thumb">
-            ${(Array.isArray(item.images) && item.images[0]) || item.imageUrl || item.image ? `<img src="${(Array.isArray(item.images) && item.images[0]) || item.imageUrl || item.image}" alt="${item.name}" loading="lazy" onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='/product-minato.jpg';}else{this.style.display='none';}" />` : '<div class="cart-item__thumb-ph"></div>'}
-          </div>
           <div class="cart-item__info">
             <h5>${item.name}</h5>
             <div class="cart-item__price">₹${(itemInr * item.qty).toLocaleString('en-IN')} INR</div>
@@ -2163,7 +2160,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
   // ══════════ UPI PAYMENT PAGE (EXACT SCREENSHOT UPIR CONTROLLER) ══════════
   let upierCountdownTimer = null;
   let upierPaymentPollInterval = null;
-  const UPI_DEFAULT_VPA = 'aniruddhanag780@fam';
+  const UPI_DEFAULT_VPA = '6296731835@fam';
   const UPI_DEFAULT_PAYEE = 'The Street Co';
 
   function openUpiPaymentGateway() {
@@ -2193,16 +2190,16 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
 
     if (!overlay) return;
 
-    // Generate random 6-digit order reference (ORD-169396 format as in image)
+    // Generate random 6-digit order reference without ORD- prefix
     const refNum = String(Math.floor(100000 + Math.random() * 900000));
-    const formattedOrderId = `ORD-${refNum}`;
+    const formattedOrderId = refNum;
 
-    // Fill amount and order ID exactly matching screenshot
+    // Fill amount and order ID without ORD- on UPI payment page as requested
     if (amountEl) amountEl.textContent = `₹${totalInr.toLocaleString('en-IN')}`;
-    if (orderIdEl) orderIdEl.textContent = `Order ID: ${formattedOrderId}`;
+    if (orderIdEl) orderIdEl.textContent = `Order ID: ${refNum}`;
 
     // Construct NPCI standard UPI intent URI
-    const upiUri = `upi://pay?pa=${encodeURIComponent(UPI_DEFAULT_VPA)}&pn=${encodeURIComponent(UPI_DEFAULT_PAYEE)}&am=${totalInr}&cu=INR&tn=${encodeURIComponent('The Street Co Order ' + formattedOrderId)}`;
+    const upiUri = `upi://pay?pa=${encodeURIComponent(UPI_DEFAULT_VPA)}&pn=${encodeURIComponent(UPI_DEFAULT_PAYEE)}&am=${totalInr}&cu=INR&tn=${encodeURIComponent('The Street Co Order ' + refNum)}`;
 
     // Set mobile deep link
     if (payBtnEl) {
@@ -2335,14 +2332,19 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
         e.preventDefault();
         e.stopPropagation();
         const utrVal = utrInput ? utrInput.value.trim() : '';
-        const utrText = utrVal.length >= 6 ? `UTR: ${utrVal}` : `UTR Confirmed: ${formattedOrderId}`;
+        const utrText = utrVal.length >= 6 ? `UTR: ${utrVal}` : `UTR Confirmed: ${refNum}`;
         completeUpiPayment(totalInr, refNum, utrText);
       };
     }
 
-    // Wire back/cancel button
+    // Wire back/cancel button and overlay backdrop click
     const cancelFn = () => closeUpiPaymentGateway();
     if (closeBtn) closeBtn.onclick = cancelFn;
+    overlay.onclick = (e) => {
+      if (e.target === overlay || e.target.classList.contains('upi-page-container')) {
+        closeUpiPaymentGateway();
+      }
+    };
 
     // Open overlay
     overlay.classList.add('open');
@@ -2371,13 +2373,13 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
   function completeUpiPayment(totalInr, refNum, verificationNote) {
     closeUpiPaymentGateway();
 
-    const note = verificationNote || `UPI Ref: ORD-${refNum}`;
+    const note = verificationNote || `UPI Ref: ${refNum}`;
 
     // Configure session payment state
     checkoutSession.payment = {
       method: 'upi',
-      detail: `Paid Online via UPI (aniruddhanag780@fam) · ${note}`,
-      txnId: `ORD-${refNum}`,
+      detail: `Paid Online via UPI (6296731835@fam) · ${note}`,
+      txnId: `${refNum}`,
       status: 'PAID'
     };
 
@@ -3683,7 +3685,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
         if (!code) return;
         if (checkoutPromoInput) {
           checkoutPromoInput.value = code;
-          if (checkoutPromoClearBtn) checkoutPromoClearBtn.style.display = 'grid';
+          if (checkoutPromoClearBtn) checkoutPromoClearBtn.style.display = 'none';
         }
         applyCouponCode(code);
       });
@@ -3696,7 +3698,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
         if (!code) return;
         if (checkoutPromoInput) {
           checkoutPromoInput.value = code;
-          if (checkoutPromoClearBtn) checkoutPromoClearBtn.style.display = 'grid';
+          if (checkoutPromoClearBtn) checkoutPromoClearBtn.style.display = 'none';
           checkoutPromoInput.focus();
         }
         applyCouponCode(code);
@@ -3754,7 +3756,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
         openCart('bag');
         if (checkoutPromoInput) {
           checkoutPromoInput.value = code;
-          if (checkoutPromoClearBtn) checkoutPromoClearBtn.style.display = 'grid';
+          if (checkoutPromoClearBtn) checkoutPromoClearBtn.style.display = 'none';
         }
         applyCouponCode(code);
       });
@@ -3817,7 +3819,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
         renderSuggestedCoupons();
       }
       if (checkoutPromoClearBtn) {
-        checkoutPromoClearBtn.style.display = checkoutPromoInput.value.length > 0 ? 'grid' : 'none';
+        checkoutPromoClearBtn.style.display = (checkoutPromoInput.value.length > 0 && !appliedCartCoupon.code) ? 'grid' : 'none';
       }
     });
 
@@ -3939,11 +3941,11 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
         checkoutPromoMsg.style.display = 'none';
       }
 
-      showToast('Coupon Applied', `Code ${result.code}; saved ₹${result.discount.toLocaleString('en-IN')}`, 'coupon');
+      showToast('Coupon Applied', `Code ${result.code}: saved ₹${result.discount.toLocaleString('en-IN')}`, 'coupon');
 
       if (checkoutPromoBox) checkoutPromoBox.classList.add('applied');
-      if (checkoutPromoAppliedBadge) checkoutPromoAppliedBadge.style.display = 'inline-block';
-      if (checkoutPromoClearBtn) checkoutPromoClearBtn.style.display = 'grid';
+      if (checkoutPromoAppliedBadge) checkoutPromoAppliedBadge.style.display = 'none';
+      if (checkoutPromoClearBtn) checkoutPromoClearBtn.style.display = 'none';
       if (checkoutPromoApplyBtn) {
         checkoutPromoApplyBtn.style.display = 'flex';
         checkoutPromoApplyBtn.disabled = true;
@@ -6038,7 +6040,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
         <div class="shop-empty-filtered-card">
           <div style="font-size: 2.2rem; margin-bottom: 0.8rem;">🔍</div>
           <h4>NO PRODUCTS FOUND</h4>
-          <p>We couldn't find any products matching the selected combination of filters.</p>
+          <p style="color: #000000 !important; font-weight: 600;">We couldn't find any products matching the selected combination of filters.</p>
           <button type="button" class="shop-reset-filters-btn" id="shopEmptyResetBtn">CLEAR ALL FILTERS</button>
         </div>
       `;
@@ -6581,7 +6583,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       pdpPriceDropBtn.style.display = 'flex';
       if (pdpPriceDropBtnText) pdpPriceDropBtnText.textContent = 'Notify Me on Price Drop';
       if (pdpPriceDropBadge) {
-        pdpPriceDropBadge.textContent = alert ? 'WAITING FOR CONFIRMATION' : 'GET ALERT';
+        pdpPriceDropBadge.textContent = alert ? 'ALERT ACTIVE ✓' : 'GET ALERT';
       }
     }
     // Form remains hidden until user clicks GET ALERT
@@ -7714,24 +7716,24 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       // Inline success message inside the box right below GET ALERT (white text, NOT green)
       const successMsg = document.getElementById('pdpPriceDropSuccessMsg');
       if (successMsg) {
-        successMsg.textContent = 'Waiting for confirmation';
+        successMsg.textContent = 'Alert active for this product';
         successMsg.style.display = 'block';
         successMsg.style.color = '#ffffff';
       }
 
       if (pdpPriceDropBadge) {
-        pdpPriceDropBadge.textContent = 'WAITING FOR CONFIRMATION';
+        pdpPriceDropBadge.textContent = 'ALERT ACTIVE ✓';
       }
 
       const submitBtn = document.getElementById('pdpPriceDropSubmitBtn');
       if (submitBtn) {
-        submitBtn.innerHTML = '<span>WAITING FOR CONFIRMATION</span>';
+        submitBtn.innerHTML = '<span>ALERT SET ✓</span>';
       }
 
       // Trigger confirmation toast
       showToast(
         'PRICE DROP ALERT',
-        'Waiting for confirmation',
+        'Alert active for when price drops',
         'price-drop'
       );
 
@@ -8141,10 +8143,11 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
   function clearRecentlyViewed() {
     try {
       localStorage.removeItem(RECENTLY_VIEWED_STORAGE_KEY);
+      localStorage.removeItem('the_street_co_search_history_v1');
     } catch (_) {}
     renderRecentlyViewedSection();
     renderSearchRecentlyViewedDropdowns();
-    showToast('RECENT VIEWS CLEARED', 'Archive inspection history wiped', 'info');
+    showToast('SEARCH HISTORY CLEARED', 'Your search history has been wiped', 'info');
   }
 
   function renderRecentlyViewedSection() {
@@ -8282,6 +8285,14 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
   // Bind clear handlers
   if (recentlyViewedClearBtn) {
     recentlyViewedClearBtn.addEventListener('click', clearRecentlyViewed);
+  }
+  const cleanSearchHistoryBtn = document.getElementById('cleanSearchHistoryBtn');
+  if (cleanSearchHistoryBtn) {
+    cleanSearchHistoryBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      clearRecentlyViewed();
+    });
   }
   document.querySelectorAll('[data-action="clear-recently-viewed"]').forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -10338,10 +10349,11 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       }
     }
 
-    // 3. Tier badge - NEVER displays "Initiate Club"
+    // 3. Tier badge - removed as requested
     const tierBadge = document.getElementById('streetCashTierBadge');
     if (tierBadge) {
-      tierBadge.textContent = balance >= 499 ? 'VIP Street Insider' : 'Street Member';
+      tierBadge.style.display = 'none';
+      tierBadge.textContent = '';
     }
 
     // 4. Milestone Progress toward 499 The Street Cash (or next multiple)
@@ -13143,21 +13155,24 @@ window.openDelhiveryTracker = openDelhiveryTracker;
 
   function showFlowFeedback(elId, message, isError = false) {
     const el = document.getElementById(elId);
-    if (!el) return;
-    if (!message) {
+    if (el) {
       el.style.display = 'none';
       el.textContent = '';
-      return;
     }
-    el.style.display = 'block';
-    el.style.background = isError ? '#fef2f2' : '#dcfce7';
-    el.style.color = isError ? '#991b1b' : '#166534';
-    el.style.border = isError ? '1px solid #fecaca' : '1px solid #bbf7d0';
-    el.textContent = message;
+    if (!message) return;
+    const cleanMsg = String(message).replace(/^[❌⚠️✓ℹ️]\s*/, '').trim();
+    showToast(isError ? 'Notice' : 'Success', cleanMsg, isError ? 'error' : 'success');
   }
 
   function showAccountFeedback(message, isError = false) {
-    showFlowFeedback('accountSaveFeedbackBox', message, isError);
+    const el = document.getElementById('accountSaveFeedbackBox');
+    if (el) {
+      el.style.display = 'none';
+      el.textContent = '';
+    }
+    if (!message) return;
+    const cleanMsg = String(message).replace(/^[❌⚠️✓ℹ️]\s*/, '').trim();
+    showToast(isError ? 'Notice' : 'Changes Saved', cleanMsg, isError ? 'error' : 'success');
   }
 
   function updateEmailBadgeUI() {
@@ -13481,11 +13496,11 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     if (activeOtpContext.mode === 'change_phone') {
       if (kickerEl) kickerEl.textContent = 'SECURITY AUTHORIZATION';
       if (titleEl) titleEl.textContent = 'Authorize Phone Change';
-      if (subEl) subEl.textContent = options.subTitle || `Enter the 6-digit authorization OTP sent to your current phone and email.`;
+      if (subEl) subEl.textContent = options.subTitle || 'Enter the 6-digit authorization OTP sent to your old registered mobile number.';
     } else if (activeOtpContext.mode === 'change_email') {
       if (kickerEl) kickerEl.textContent = 'SECURITY AUTHORIZATION';
       if (titleEl) titleEl.textContent = 'Authorize Email Change';
-      if (subEl) subEl.textContent = options.subTitle || `Enter the 6-digit authorization OTP sent to your current phone and email.`;
+      if (subEl) subEl.textContent = options.subTitle || 'Enter the 6-digit authorization OTP sent to your old registered email address.';
     } else if (activeOtpContext.mode === 'phone') {
       if (kickerEl) kickerEl.textContent = 'MOBILE OTP VERIFICATION';
       if (titleEl) titleEl.textContent = 'Verify Mobile OTP';
@@ -14021,12 +14036,16 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       if (kickerEl) kickerEl.textContent = 'SECURITY AUTHORIZATION';
       if (titleEl) titleEl.textContent = 'Change Mobile Number';
       if (subEl) {
-        subEl.textContent = hasEmail
-          ? `Enter your new 10-digit mobile number below. A 6-digit authorization OTP will be sent to your current phone (${maskedPhone}) and email (${maskedEmail}).`
-          : `Enter your new 10-digit mobile number below. A 6-digit authorization OTP will be sent to your current phone (${maskedPhone}).`;
+        subEl.textContent = `Enter your new 10-digit mobile number below. A 6-digit authorization OTP will be sent to your old registered mobile number (${maskedPhone}).`;
       }
-      if (phoneWrap) phoneWrap.style.display = 'flex';
-      if (emailWrap) emailWrap.style.display = 'none';
+      if (phoneWrap) {
+        phoneWrap.style.setProperty('display', 'flex', 'important');
+        phoneWrap.classList.remove('is-hidden');
+      }
+      if (emailWrap) {
+        emailWrap.style.setProperty('display', 'none', 'important');
+        emailWrap.classList.add('is-hidden');
+      }
       if (phoneInput) {
         phoneInput.value = '';
         setTimeout(() => phoneInput.focus(), 60);
@@ -14036,10 +14055,16 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       if (kickerEl) kickerEl.textContent = 'SECURITY AUTHORIZATION';
       if (titleEl) titleEl.textContent = 'Change Email Address';
       if (subEl) {
-        subEl.textContent = `Enter your new email address below. A 6-digit authorization OTP will be sent to your current phone (${maskedPhone}) and current email (${maskedEmail || 'registered email'}).`;
+        subEl.textContent = `Enter your new email address below. A 6-digit authorization OTP will be sent to your old registered email address (${maskedEmail || 'registered email'}).`;
       }
-      if (phoneWrap) phoneWrap.style.display = 'none';
-      if (emailWrap) emailWrap.style.display = 'flex';
+      if (phoneWrap) {
+        phoneWrap.style.setProperty('display', 'none', 'important');
+        phoneWrap.classList.add('is-hidden');
+      }
+      if (emailWrap) {
+        emailWrap.style.setProperty('display', 'flex', 'important');
+        emailWrap.classList.remove('is-hidden');
+      }
       if (emailInput) {
         emailInput.value = '';
         setTimeout(() => emailInput.focus(), 60);
@@ -14412,8 +14437,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           if (saveBtn) saveBtn.textContent = 'Save Account Profile';
         }, 1200);
       }
-      // "Don't show this after saving account details": Keep feedback banner hidden
-      showAccountFeedback('');
+      showToast('Changes Saved', 'Your account profile has been saved.', 'success');
     });
   }
 

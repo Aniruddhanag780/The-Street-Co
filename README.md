@@ -12,66 +12,6 @@
 
 ---
 
-## Visual Showcase & UI Gallery
-
-### 1. Desktop Hero Experience
-*Clean, typography-driven luxury streetwear aesthetic featuring curated collections, active drop banners, and category navigation.*
-
-![Desktop Hero Showcase](docs/screenshots/01-hero-desktop.png)
-
----
-
-### 2. Mobile Progressive Web App (PWA)
-*Engineered mobile-first with native-feel bottom navigation bar, touch-optimized swiping, and installable offline support.*
-
-<p align="center">
-  <img src="docs/screenshots/08-mobile-pwa.png" alt="The Street Co Mobile PWA" width="420" />
-</p>
-
----
-
-### 3. Slide-Out Shopping Bag & Live Subtotal Drawer
-*Instant slide-over bag featuring live subtotal calculation, free shipping threshold indicator, VIP Street Cash earn calculator, and 1-click checkout gate.*
-
-![Cart Drawer](docs/screenshots/02-cart-drawer.png)
-
----
-
-### 4. "The Street Cash" VIP Member Rewards Modal
-*Gamified loyalty program rewarding ₹199 Street Cash points per ₹1,000 spent, milestone discount voucher unlocks (₹499 Flat OFF), and bonus reward missions.*
-
-![The Street Cash Member Rewards](docs/screenshots/03-rewards-street-cash.png)
-
----
-
-### 5. Customer Account & OTP Verification Portal
-*Comprehensive account management featuring Firebase phone number OTP verification, email OTP verification, order history, and saved delivery address book.*
-
-![Customer Account Profile](docs/screenshots/04-account-profile-otp.png)
-
----
-
-### 6. Editorial Brand Narrative & Archive Collection
-*Luxury editorial manifesto celebrating heavyweight fabric tailoring, authentic craftsmanship, and urban anime-inspired apparel.*
-
-![Editorial Manifesto](docs/screenshots/05-editorial-manifesto.png)
-
----
-
-### 7. VIP Drop Access & 4-Pillar Trust Guarantees
-*Limited drop early-access email subscription with service commitments: Express 24h shipping, 100% authentic garments, 7-day easy returns, and multi-rail payment security.*
-
-![Newsletter and Guarantees](docs/screenshots/06-newsletter-guarantees.png)
-
----
-
-### 8. Reverse Logistics & Enterprise Footer
-*Complete operational footer providing live courier tracking, returns and exchanges portal, sizing guides, and Zoho Inventory sync monitor.*
-
-![Footer and Logistics](docs/screenshots/07-footer-logistics.png)
-
----
-
 ## Key Features
 
 ### 🛒 D2C Storefront & Product Engine
@@ -123,18 +63,8 @@
 
 ```
 the-street-co/
-├── docs/
-│   └── screenshots/              # High-resolution README UI showcase images
-│       ├── 01-hero-desktop.png
-│       ├── 02-cart-drawer.png
-│       ├── 03-rewards-street-cash.png
-│       ├── 04-account-profile-otp.png
-│       ├── 05-editorial-manifesto.png
-│       ├── 06-newsletter-guarantees.png
-│       ├── 07-footer-logistics.png
-│       └── 08-mobile-pwa.png
 ├── public/                       # Static public assets, favicons, PWA icons
-│   └── assets/aistudio/          # Uploaded media assets
+│   └── img/                      # Brand, product, and partner icons
 ├── admin-og.html                 # Social preview & OpenGraph banner generator
 ├── admin-zoho.html               # Zoho Inventory synchronization dashboard
 ├── email-preview.html            # Transactional email template previewer

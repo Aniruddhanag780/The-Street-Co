@@ -311,10 +311,10 @@
           <div class="search-recent-dropdown" id="shopSearchRecentDropdown" style="display:none;">
             <div class="search-recent__header">
               <span class="search-recent__label">
-                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                RECENT SEARCH &amp; BROWSING HISTORY
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                SEARCH HISTORY
               </span>
-              <button type="button" class="search-recent__clear" data-action="clear-recently-viewed">CLEAR ALL</button>
+              <button type="button" class="search-recent__clear search-history-clean-btn" id="cleanSearchHistoryBtn" data-action="clear-recently-viewed">Clean search history</button>
             </div>
             <div class="search-recent__list" id="shopSearchRecentList"></div>
           </div>
@@ -702,7 +702,7 @@
       <div class="pillar-card__icon">🚚</div>
       <div class="pillar-card__info">
         <strong>EXPRESS SHIPPING</strong>
-        <small>Dispatches within 24h across India</small>
+        <small>Dispatches within 36h (2-3 business days) across India</small>
       </div>
     </div>
     <div class="pillar-card">
@@ -1519,9 +1519,8 @@
         <div class="checkout-promo-box__header">
           <div class="checkout-promo-box__title">
             <span class="promo-seal-icon">🏷️</span>
-            <strong>PROMO CODES &amp; OFFERS</strong>
+            <strong>COUPON CODES &amp; OFFERS</strong>
           </div>
-          <span class="checkout-promo-applied-badge" id="checkoutPromoAppliedBadge" style="display:none;">COUPON APPLIED</span>
         </div>
 
         <div class="checkout-promo-input-row">
@@ -1621,7 +1620,7 @@
           </svg>
           <span>SHARE</span>
         </button>
-        <button class="relic-modal__close-btn" id="relicGalleryCloseBtn" type="button" aria-label="Close Product View" title="Close and return" style="display: none !important;">✕</button>
+        <button class="relic-modal__close-btn" id="relicGalleryCloseBtn" type="button" aria-label="Close Product View" title="Close and return">✕</button>
       </div>
     </div>
 
@@ -1734,7 +1733,7 @@
                 <span>Instant dispatch when price drops below <strong id="pdpPriceDropTargetDisplay">current price</strong>.</span>
                 <button type="button" class="pdp-price-drop-cancel-btn" id="pdpPriceDropCancelBtn">Cancel</button>
               </div>
-              <div id="pdpPriceDropSuccessMsg" style="display:none; color:#ffffff !important; font-size:0.75rem; font-weight:700; padding:0.35rem 0.45rem; font-family:var(--mono); line-height:1.4; border-radius:6px; background:rgba(255,255,255,0.08); margin-top:0.25rem;">Waiting for confirmation</div>
+              <div id="pdpPriceDropSuccessMsg" style="display:none; color:#ffffff !important; font-size:0.75rem; font-weight:700; padding:0.35rem 0.45rem; font-family:var(--mono); line-height:1.4; border-radius:6px; background:rgba(255,255,255,0.08); margin-top:0.25rem;">Alert active for this product</div>
             </form>
           </div>
         </div>
@@ -1826,7 +1825,7 @@
             <span class="pdp-trust-icon">🚚</span>
             <div>
               <strong>FREE DELIVERY</strong>
-              <small>Insured tracked courier</small>
+              <small>Tracking Courier Dispatch</small>
             </div>
           </div>
           <div class="pdp-trust-item">
@@ -1857,13 +1856,13 @@
           </div>
           <div class="pdp-assurance-item">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-            <span>DISPATCHES WITHIN 24 HOURS</span>
+            <span>DISPATCHES WITHIN 36 HOURS (2-3 BUSINESS DAYS)</span>
           </div>
         </div>
 
         <!-- Seller Information (Amazon / Flipkart Style) -->
         <div class="pdp-seller-strip">
-          <span>Sold by <strong>The Street Co Studio</strong> (4.9 ★) · Express Insured Delivery.</span>
+          <span>Sold by <strong>The Street Co Studio</strong> (4.9 ★)</span>
         </div>
 
       </div>
@@ -2313,7 +2312,7 @@
                   </div>
                 </div>
                 <div class="checkout-pay-badges">
-                  <span class="upi-mini-pill" style="background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;font-weight:700;">aniruddhanag780@fam</span>
+                  <span class="upi-mini-pill" style="background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;font-weight:700;">6296731835@fam</span>
                 </div>
               </div>
               <div class="checkout-pay-body" style="display:block;">
@@ -2323,11 +2322,6 @@
                     <p class="checkout-upi-info">
                       Scan the QR code with any UPI app (Google Pay, PhonePe, Paytm, BHIM, CRED) with your order amount auto-entered.
                     </p>
-                  </div>
-                  <div class="checkout-pay-action-row">
-                    <button type="button" class="checkout-pay-continue-btn checkout-pay-continue-btn--upi" data-pay-method="upi" id="checkoutProceedUpiBtn" onclick="openUpiPaymentGateway()">
-                      <span>PAY VIA UPI →</span>
-                    </button>
                   </div>
                 </div>
               </div>
@@ -2349,12 +2343,6 @@
               </div>
               <div class="checkout-pay-body" style="display:block;">
                 <p class="checkout-cod-info">Pay conveniently at your doorstep via Cash or Google Pay / PhonePe / Paytm / UPI QR upon arrival.</p>
-
-                <div class="checkout-pay-action-row">
-                  <button type="button" class="checkout-pay-continue-btn" data-pay-method="cod">
-                    <span>CONTINUE TO REVIEW ORDER →</span>
-                  </button>
-                </div>
               </div>
             </div>
           </div>
@@ -2601,23 +2589,13 @@
 <div class="upi-page-overlay" id="upiPaymentGatewayModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="upierAmountDisplay">
   <div class="upi-page-container">
     
-    <!-- Top return bar -->
-    <div class="upi-page-topbar">
-      <button type="button" class="upi-page-back-btn" id="upiGatewayCloseBtn" aria-label="Return to checkout">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="15 18 9 12 15 6"></polyline>
-        </svg>
-        <span>Return to Checkout</span>
-      </button>
-    </div>
-
     <!-- Center White Card matching screenshot exactly -->
     <div class="upier-card" id="upierMainCard">
       <!-- Big bold amount at top -->
       <div class="upier-amount" id="upierAmountDisplay">₹200</div>
 
       <!-- Order ID -->
-      <div class="upier-order-id" id="upierOrderIdDisplay">Order ID: ORD-169396</div>
+      <div class="upier-order-id" id="upierOrderIdDisplay">Order ID: 169396</div>
 
       <!-- Valid for 09:59 timer pill -->
       <div class="upier-timer-pill">
@@ -2656,14 +2634,8 @@
       </div>
     </div>
 
-    <!-- Below Card: Merchant setup, T&C, UPI logo -->
+    <!-- Below Card: UPI logo -->
     <div class="upier-footer-section">
-      <div class="upier-footer-links">
-        <button type="button" class="upier-link-btn" id="upierMerchantSetupBtn">Merchant Gmail &amp; Integration Setup</button>
-        <span class="upier-dot">·</span>
-        <a href="#tos" class="upier-link-a" id="upierTcLink">T&amp;C</a>
-      </div>
-
       <div class="upier-logo-row">
         <img src="/img/upi.svg" alt="UPI" width="56" height="28" class="upier-upi-img" />
       </div>
@@ -3010,26 +2982,12 @@
 
     <div class="streetcash-body" style="padding:16px 18px;max-height:calc(85vh - 90px);overflow-y:auto;">
 
-      <!-- OFFICIAL EARN RATE BANNER -->
-      <div class="streetcash-earn-banner" style="background:#FFFFFF;border:1px solid #EAE6DF;border-radius:10px;padding:14px 18px;margin-bottom:18px;display:flex;align-items:center;gap:14px;">
-        <div style="width:38px;height:38px;border-radius:8px;background:#0E0E11;color:#FFFFFF;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:800;flex-shrink:0;">
-          ₹
-        </div>
-        <div style="flex:1;">
-          <div style="font-size:0.68rem;font-weight:700;letter-spacing:0.12em;color:#71717A;text-transform:uppercase;">OFFICIAL EARN RATE</div>
-          <div style="font-size:0.95rem;font-weight:700;color:#0E0E11;margin-top:1px;">Per 1,000 Rs spent will give you 199 The Street Cash</div>
-          <div style="font-size:0.74rem;color:#71717A;margin-top:2px;">Points are automatically credited on all confirmed orders. Minimum 499 points gives ₹499 OFF!</div>
-        </div>
-      </div>
 
       <!-- STORE REWARDS & CREDITS BALANCE CARD -->
       <div class="streetcash-wallet-card" style="background:#FFFFFF;border:1px solid #EAE6DF;border-radius:12px;padding:20px 22px;color:#0E0E11;margin-bottom:18px;box-shadow:0 2px 8px rgba(0,0,0,0.03);">
         <!-- Card top row -->
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
           <span style="font-size:0.68rem;letter-spacing:0.14em;color:#71717A;text-transform:uppercase;font-weight:700;">STORE REWARDS BALANCE</span>
-          <div style="background:#F4F4F5;color:#0E0E11;font-size:0.7rem;padding:3px 10px;border-radius:6px;font-weight:700;border:1px solid #E4E4E7;" id="streetCashTierBadge">
-            Street Member
-          </div>
         </div>
 
         <!-- Card balance row -->
@@ -3341,12 +3299,6 @@
   <div class="auth-flow__backdrop" onclick="if(window.closeUnifiedOtpModal){window.closeUnifiedOtpModal();}"></div>
   <div class="auth-flow__card">
     <div class="auth-flow__topbar">
-      <button type="button" class="auth-flow__back-btn" id="unifiedOtpBackBtn" onclick="if(window.handleUnifiedOtpBack){window.handleUnifiedOtpBack();}">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="15 18 9 12 15 6"></polyline>
-        </svg>
-        <span>Back</span>
-      </button>
       <span class="auth-flow__brand">THE STREET CO</span>
       <button type="button" class="auth-flow__close" onclick="if(window.closeUnifiedOtpModal){window.closeUnifiedOtpModal();}" aria-label="Close OTP Verification">✕</button>
     </div>
@@ -3389,12 +3341,6 @@
   <div class="auth-flow__backdrop" onclick="if(window.closeChangeCredentialModal){window.closeChangeCredentialModal();}"></div>
   <div class="auth-flow__card">
     <div class="auth-flow__topbar">
-      <button type="button" class="auth-flow__back-btn" onclick="if(window.closeChangeCredentialModal){window.closeChangeCredentialModal();}">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="15 18 9 12 15 6"></polyline>
-        </svg>
-        <span>Back</span>
-      </button>
       <span class="auth-flow__brand">THE STREET CO</span>
       <button type="button" class="auth-flow__close" onclick="if(window.closeChangeCredentialModal){window.closeChangeCredentialModal();}" aria-label="Close">✕</button>
     </div>

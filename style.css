@@ -1180,12 +1180,14 @@ div#shopToast > div,
   color:#71717a !important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   max-width:150px;
 }
-.shop-toast__btn {
-  background:#18181b !important;border:none !important;
+.shop-toast__btn,
+#toastOpenWishlistBtn,
+button#toastOpenWishlistBtn {
+  background:#18181b !important;border:1px solid rgba(255,255,255,0.15) !important;
   border-radius:9999px !important;
   color:#ffffff !important;padding:.32rem .75rem !important;
   font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-  font-size:.68rem !important;letter-spacing:normal !important;font-weight:500 !important;
+  font-size:.68rem !important;letter-spacing:normal !important;font-weight:600 !important;
   cursor:pointer;white-space:nowrap;flex-shrink:0;
   box-shadow:none !important;
   transition:background .18s ease, transform .12s ease !important;
@@ -1193,13 +1195,21 @@ div#shopToast > div,
 .shop-toast__btn::after {
   display:none !important;
 }
-.shop-toast__btn:hover {
-  background:#dc2626 !important;
+.shop-toast__btn:hover,
+#toastOpenWishlistBtn:hover,
+button#toastOpenWishlistBtn:hover {
+  background:#27272a !important;
+  border-color:rgba(255,255,255,0.3) !important;
+  color:#ffffff !important;
   box-shadow:none !important;
   transform:none !important;
 }
-.shop-toast__btn:active {
+.shop-toast__btn:active,
+#toastOpenWishlistBtn:active,
+button#toastOpenWishlistBtn:active {
   transform:scale(0.96) !important;
+  background:#3f3f46 !important;
+  color:#ffffff !important;
 }
 .shop-toast__btn span {position:relative;z-index:2;color:#ffffff !important;}
 .shop-toast__progress {
@@ -3251,20 +3261,24 @@ main footer#end form#footerNewsletterForm > span:nth-of-type(1){
 .amazon-zoom-header-right{
   display:flex;align-items:center;
 }
-.amazon-zoom-close-btn{
-  width:40px;height:40px;border-radius:50%;
-  background:rgba(232,228,220,.08);border:1px solid rgba(232,228,220,.2);
-  color:var(--bone);font-size:1.15rem;cursor:pointer;
-  display:grid;place-items:center;transition:all .2s;
+.amazon-zoom-close-btn,
+#amazonZoomCloseBtn{
+  width:42px !important;height:42px !important;border-radius:50% !important;
+  background:#ffffff !important;border:1px solid rgba(0,0,0,.15) !important;
+  color:#000000 !important;font-size:1.2rem !important;font-weight:700 !important;cursor:pointer !important;
+  display:grid !important;place-items:center !important;transition:all .18s ease !important;
+  box-shadow:0 4px 14px rgba(0,0,0,.35) !important;line-height:1 !important;
 }
-.amazon-zoom-close-btn:hover{
-  background:#ffffff;border-color:#ffffff;color:#0b0a0e;
-  transform:rotate(90deg) scale(1.08);
-  box-shadow:0 0 16px rgba(255,255,255,.3);
+.amazon-zoom-close-btn:hover,
+#amazonZoomCloseBtn:hover{
+  background:#f4f4f5 !important;border-color:rgba(0,0,0,.25) !important;color:#000000 !important;
+  transform:rotate(90deg) scale(1.08) !important;
+  box-shadow:0 6px 18px rgba(0,0,0,.45) !important;
 }
-.amazon-zoom-close-btn:active{
-  transform:rotate(90deg) scale(0.95);
-  background:#e4e4e7;
+.amazon-zoom-close-btn:active,
+#amazonZoomCloseBtn:active{
+  transform:rotate(90deg) scale(0.95) !important;
+  background:#e4e4e7 !important;
 }
 
 /* Stage & Image Pan Viewport */
@@ -7416,22 +7430,23 @@ input#checkoutPhone:focus{
   grid-column:1 / -1;
   text-align:center;
   padding:4rem 1.5rem;
-  background:rgba(14,14,20,0.7);
-  border:1px dashed rgba(232,228,220,0.15);
+  background:#FAF8F5;
+  border:1px dashed #d4d4d8;
   border-radius:10px;
 }
 .shop-empty-filtered-card h4{
   font-family:var(--mono);
   font-size:1.05rem;
   letter-spacing:.12em;
-  color:var(--bone);
+  color:#09090b;
   margin:.4rem 0 .5rem;
   font-weight:800;
 }
 .shop-empty-filtered-card p{
   font-family:var(--mono);
-  font-size:.7rem;
-  color:var(--smoke);
+  font-size:.78rem;
+  color:#000000 !important;
+  font-weight:600;
   margin:0 auto 1.4rem;
   max-width:440px;
   line-height:1.6;
@@ -11192,7 +11207,7 @@ input#checkoutPhone:focus {
   font-family: inherit !important;
 }
 
-/* Order ID: ORD-169396 */
+/* Order ID: 169396 */
 .upier-order-id {
   font-size: 0.82rem !important;
   color: #64748b !important;
@@ -11380,11 +11395,11 @@ input#checkoutPhone:focus {
 /* Below Card: Links, UPI Logo */
 .upier-footer-section {
   text-align: center !important;
-  margin-top: 1.35rem !important;
+  margin-top: 0.45rem !important;
   display: flex !important;
   flex-direction: column !important;
   align-items: center !important;
-  gap: 0.85rem !important;
+  gap: 0.35rem !important;
   width: 100% !important;
   max-width: 400px !important;
 }
@@ -13610,9 +13625,6 @@ img, video, canvas, svg {
 }
 
 /* ── REMOVED ELEMENTS TARGETED BY USER ── */
-button#relicGalleryCloseBtn,
-.relic-modal__close-btn,
-div#relicGalleryModal > div#relicModalDialog > div:nth-of-type(1) > div:nth-of-type(2) > button#relicGalleryCloseBtn:nth-of-type(2),
 .pdp-qty-row,
 #pdpQtyStepper,
 header#topChrome nav a[data-nav-category="collections"],
@@ -16001,7 +16013,7 @@ body:has(#cartDrawer.open) .mobile-bottom-bar,
 .auth-curved-box-wrap {
   width: 100% !important;
   height: 54px !important;
-  display: flex !important;
+  display: flex;
   align-items: center !important;
   border: 2px solid #18181b !important;
   border-radius: 16px !important;
@@ -16011,6 +16023,11 @@ body:has(#cartDrawer.open) .mobile-bottom-bar,
   outline: none !important;
   box-shadow: none !important;
   transition: background 0.16s ease !important;
+}
+.auth-curved-box-wrap[style*="display: none"],
+.auth-curved-box-wrap[style*="display:none"],
+.auth-curved-box-wrap.is-hidden {
+  display: none !important;
 }
 .auth-curved-box-wrap:focus,
 .auth-curved-box-wrap:focus-within,
@@ -19353,3 +19370,205 @@ header#topChrome #shopWishlistBtn {
   color: #52525b !important;
   margin: 0 !important;
 }
+
+/* Remove cart item thumbnail */
+.cart-item__thumb,
+#cartItemsContainer > div > div:nth-of-type(1):not(.cart-item__info) {
+  display: none !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+}
+
+.cart-item {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 1rem !important;
+}
+
+/* Remove OFFICIAL EARN RATE banner */
+.streetcash-earn-banner {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+/* Remove PAY VIA UPI and CONTINUE TO REVIEW ORDER inline buttons */
+.checkout-pay-continue-btn,
+#checkoutProceedUpiBtn,
+.checkout-pay-action-row {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+/* Do not show COUPON APPLIED text badge */
+#checkoutPromoAppliedBadge,
+.checkout-promo-applied-badge {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+/* After applying coupon, do not show x button in coupon entering box */
+.checkout-promo-box.applied #checkoutPromoClearBtn,
+#checkoutPromoBox.applied #checkoutPromoClearBtn {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+/* User requests: Remove Return to Checkout and Merchant Gmail Setup & T&C links */
+.upi-page-topbar,
+.upi-page-back-btn,
+#upiGatewayCloseBtn,
+.upier-footer-links,
+#upierMerchantSetupBtn,
+.upier-dot,
+#upierTcLink {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+/* User requests: Remove Street Member badge */
+#streetCashTierBadge,
+.streetcash-tier-badge {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+/* Text link to clean search history at the right top of search history */
+.search-recent__header {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  border-bottom: 1px solid #f4f4f5 !important;
+  padding-bottom: 0.65rem !important;
+  margin-bottom: 0.75rem !important;
+}
+.search-recent__label {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.45rem !important;
+  color: #18181b !important;
+  font-size: 0.72rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+}
+.search-recent__clear,
+#cleanSearchHistoryBtn,
+.search-history-clean-btn {
+  background: transparent !important;
+  border: none !important;
+  color: #09090b !important;
+  font-size: 0.76rem !important;
+  font-weight: 600 !important;
+  text-decoration: underline !important;
+  text-underline-offset: 3px !important;
+  cursor: pointer !important;
+  padding: 0.2rem 0.45rem !important;
+  border-radius: 4px !important;
+  transition: all 0.15s ease !important;
+  font-family: inherit !important;
+  letter-spacing: 0.01em !important;
+}
+.search-recent__clear:hover,
+#cleanSearchHistoryBtn:hover,
+.search-history-clean-btn:hover {
+  color: #71717a !important;
+  background: rgba(0, 0, 0, 0.04) !important;
+  text-decoration: underline !important;
+}
+
+/* ── PRODUCT ENLARGE / VIEW CLOSE BUTTON (WHITE CIRCLE, BLACK X IN PROPER PLACE) ── */
+.amazon-zoom-close-btn,
+#amazonZoomCloseBtn,
+.relic-modal__close-btn,
+#relicGalleryCloseBtn {
+  width: 42px !important;
+  height: 42px !important;
+  min-width: 42px !important;
+  min-height: 42px !important;
+  border-radius: 50% !important;
+  background: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.16) !important;
+  color: #000000 !important;
+  font-size: 1.25rem !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28) !important;
+  line-height: 1 !important;
+  transition: all 0.18s ease !important;
+  z-index: 99999 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+.amazon-zoom-close-btn:hover,
+#amazonZoomCloseBtn:hover,
+.relic-modal__close-btn:hover,
+#relicGalleryCloseBtn:hover {
+  background: #f4f4f5 !important;
+  border-color: rgba(0, 0, 0, 0.3) !important;
+  color: #000000 !important;
+  transform: rotate(90deg) scale(1.06) !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.36) !important;
+}
+.amazon-zoom-close-btn:active,
+#amazonZoomCloseBtn:active,
+.relic-modal__close-btn:active,
+#relicGalleryCloseBtn:active {
+  transform: rotate(90deg) scale(0.95) !important;
+  background: #e4e4e7 !important;
+  color: #000000 !important;
+}
+
+/* ── REMOVE ALL BACK BUTTONS IN CREDENTIAL CHANGE & OTP VERIFICATION ── */
+.auth-flow__back-btn,
+#unifiedOtpBackBtn,
+button.auth-flow__back-btn {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* ── SUPPRESS INLINE CARD ERROR BOXES GLOBALLY (MESSAGE TOASTS USED INSTEAD) ── */
+.auth-flow__feedback,
+#changeCredentialFeedbackMsg,
+#phoneLoginFeedbackMsg,
+#unifiedOtpStatusMsg,
+#accountSaveFeedbackBox,
+.account-save-feedback,
+#merchantFeedbackMsg,
+.address-form-feedback {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+/* ── ENSURE WISHLIST TOAST VIEW BUTTON IS NEVER RED ── */
+.shop-toast__btn,
+#toastOpenWishlistBtn,
+button#toastOpenWishlistBtn {
+  background: #18181b !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 9999px !important;
+}
+.shop-toast__btn:hover,
+#toastOpenWishlistBtn:hover,
+button#toastOpenWishlistBtn:hover {
+  background: #27272a !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+/* ── EMPTY FILTERED CATALOG MESSAGE (BLACK TEXT) ── */
+.shop-empty-filtered-card p {
+  color: #000000 !important;
+  font-weight: 600 !important;
+}
+
+

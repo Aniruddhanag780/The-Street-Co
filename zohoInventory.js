@@ -652,7 +652,7 @@ export async function createSalesOrder(orderRecord) {
     }
 
     // 3. Construct Sales Order Payload (omit salesorder_number so Zoho auto-generates sequential number)
-    const cleanCode = (orderRecord.orderCode || orderRecord.orderId || `ORD-${Date.now()}`).replace(/^#/, '');
+    const cleanCode = (orderRecord.orderCode || orderRecord.orderId || `${Date.now()}`).replace(/^#/, '');
     const salesOrderPayload = {
       customer_id: contactId,
       reference_number: cleanCode,
@@ -807,7 +807,7 @@ export async function createGstInvoice(orderRecord) {
   });
 
   // Make Invoice ID / Invoice Number identical to the Order ID
-  const orderIdNumber = orderRecord.orderCode || orderRecord.orderId || `ORD-${Date.now()}`;
+  const orderIdNumber = orderRecord.orderCode || orderRecord.orderId || `${Date.now()}`;
   const invoiceNumber = orderIdNumber;
   const invoiceDate = new Date().toISOString().slice(0, 10);
 
@@ -1001,7 +1001,7 @@ export async function convertSalesOrderToInvoice(salesOrderId, orderRecord = {})
           template_id: zohoInv.template_id || config.invoiceTemplateId,
           template_name: zohoInv.template_name || 'The Street Co',
           date: invoiceDate,
-          orderCode: orderRecord.orderCode || `ORD-${Date.now()}`,
+          orderCode: orderRecord.orderCode || `${Date.now()}`,
           customerName: orderRecord.contactDetails?.fullName || orderRecord.shippingAddress?.fullName || 'Storefront Customer',
           grandTotalInr: zohoInv.total || orderRecord.grandTotalInr,
           status: 'issued'

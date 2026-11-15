@@ -290,7 +290,7 @@
 
     <h1>Gmail Auto-Verify Setup</h1>
     <p class="desc">
-      Connect your Google Account (<strong>aniruddhanag780@gmail.com</strong>) once with read-only Gmail access. Once linked, Upier reads incoming FamPay payment confirmation emails to verify customer payments automatically.
+      Link your store Google Account (<strong>thestreetco.official@gmail.com</strong>) with read-only Gmail IMAP or Google OAuth access. Once linked, Upier reads incoming FamPay payment confirmation emails to verify customer payments automatically.
     </p>
 
     <div class="security-banner">
@@ -298,8 +298,8 @@
         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
       </svg>
       <div>
-        <strong>Zero Passwords Required</strong><br>
-        Powered by official Google Workspace OAuth. Your credentials remain 100% private with Google.
+        <strong>Direct Gmail IMAP &amp; OAuth Ready</strong><br>
+        Reads only incoming FamPay/UPI payment receipt emails via encrypted TLS IMAP (`BODY.PEEK[]`) or Google OAuth without marking messages as read.
       </div>
     </div>
 
@@ -311,7 +311,7 @@
           <span id="statusText">Checking...</span>
         </span>
       </div>
-      <div class="status-email" id="emailDisplay">aniruddhanag780@gmail.com</div>
+      <div class="status-email" id="emailDisplay">thestreetco.official@gmail.com</div>
       <div class="status-time" id="timeDisplay">Checking server status...</div>
     </div>
 
@@ -392,16 +392,18 @@
           const data = await res.json();
           if (data.connected) {
             statusIndicator.className = "status-indicator connected";
-            statusText.textContent = "Connected & Active";
-            emailDisplay.textContent = data.email || "aniruddhanag780@gmail.com";
-            timeDisplay.textContent = `Connected at: ${new Date(data.connectedAt).toLocaleString('en-IN')}`;
+            statusText.textContent = data.mode === "gmail_imap" ? "Connected via Gmail IMAP (Active)" : "Connected & Active";
+            emailDisplay.textContent = data.email || "thestreetco.official@gmail.com";
+            timeDisplay.textContent = data.mode === "gmail_imap"
+              ? "Auto-verifying incoming FamPay/UPI receipts over TLS IMAP (imap.gmail.com:993)"
+              : `Connected at: ${new Date(data.connectedAt).toLocaleString('en-IN')}`;
             btnConnectGoogleText.textContent = "Reconnect / Switch Google Account";
             btnDisconnect.style.display = "block";
           } else {
             statusIndicator.className = "status-indicator";
             statusText.textContent = "Not Connected";
-            emailDisplay.textContent = "aniruddhanag780@gmail.com";
-            timeDisplay.textContent = "Waiting for 1-click Google authorization";
+            emailDisplay.textContent = data.email || "thestreetco.official@gmail.com";
+            timeDisplay.textContent = "Waiting for Gmail IMAP or Google authorization";
             btnConnectGoogleText.textContent = "Sign In with Google to Connect Gmail";
             btnDisconnect.style.display = "none";
           }
@@ -449,18 +451,22 @@
     };
 
     btnTestScan.onclick = async () => {
-      showFeedback("info", "Scanning Gmail API for recent FamPay/UPI messages...");
+      showFeedback("info", "Scanning Gmail inbox for recent FamPay/UPI messages...");
       try {
         const headers = currentToken ? { Authorization: `Bearer ${currentToken}` } : {};
         const res = await fetch("/api/verify-payment?amount=0", { headers });
         const data = await res.json();
 
         if (data.reason === "no_token") {
-          showFeedback("error", "Gmail not connected yet. Click <strong>Sign In with Google</strong> above first.");
+          showFeedback("error", "Gmail not connected yet. Click <strong>Sign In with Google</strong> above or configure IMAP.");
         } else if (data.reason === "token_expired") {
           showFeedback("error", "Session expired. Please click <strong>Reconnect</strong> above.");
+        } else if (data.reason === "imap_error") {
+          showFeedback("error", data.message || "Gmail IMAP connection failed.");
         } else {
-          showFeedback("success", `✓ Gmail connection verified successfully! Scanned recent messages without errors. System is actively listening for customer receipts.`);
+          showFeedback("success", data.imapConnected
+            ? `✓ Gmail IMAP verified for <strong>${data.email || "thestreetco.official@gmail.com"}</strong>! Scanned ${data.checkedCount ?? 0} recent message(s) cleanly without errors.`
+            : "✓ Gmail connection verified successfully! Scanned recent messages without errors. System is actively listening for customer receipts.");
         }
       } catch (err) {
         showFeedback("error", "Scan test error: " + err.message);

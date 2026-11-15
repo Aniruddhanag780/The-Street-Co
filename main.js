@@ -47,6 +47,13 @@ window.setActiveBottomNav = setActiveBottomNav;
 
   if (!loaderEl) return;
 
+  if (window.location.search.includes('upi_return=1') || window.location.hash === '#upi-confirmed') {
+    loaderEl.classList.add('done');
+    loaderEl.style.display = 'none';
+    document.body.classList.add('ready');
+    return;
+  }
+
   let current = 0;
   const startTime = performance.now();
   const totalDuration = 1250; // Smooth ~1.25s luxury brand reveal
@@ -1151,26 +1158,6 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
             </svg>
           </span>
           <p>Your shopping cart is empty.<br>Select items from the catalog above.</p>
-          <div class="cart-empty-store-offers" style="margin-top:1.25rem;background:rgba(255,255,255,0.03);border:1px dashed rgba(255,255,255,0.14);border-radius:10px;padding:12px;text-align:left;width:100%;max-width:320px;">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-              <span style="font-size:0.68rem;font-weight:700;letter-spacing:0.06em;color:#9ca3af;text-transform:uppercase;">🏷️ Exclusive Store Offers</span>
-              <span style="font-size:0.6rem;font-weight:700;color:#10b981;background:rgba(16,185,129,0.12);padding:2px 6px;border-radius:4px;">ACTIVE</span>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:6px;">
-              <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,0.3);padding:6px 10px;border-radius:6px;font-size:0.75rem;">
-                <div><strong style="color:#f59e0b;font-family:'JetBrains Mono',monospace;">STREET10</strong> <span style="color:#d1d5db;margin-left:4px;font-size:0.7rem;">10% Off Orders ₹1,500+</span></div>
-                <span style="color:#10b981;font-weight:700;font-size:0.7rem;">10% OFF</span>
-              </div>
-              <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,0.3);padding:6px 10px;border-radius:6px;font-size:0.75rem;">
-                <div><strong style="color:#f59e0b;font-family:'JetBrains Mono',monospace;">UCHIHA200</strong> <span style="color:#d1d5db;margin-left:4px;font-size:0.7rem;">Flat ₹200 Off ₹1,000+</span></div>
-                <span style="color:#10b981;font-weight:700;font-size:0.7rem;">FLAT ₹200</span>
-              </div>
-              <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,0.3);padding:6px 10px;border-radius:6px;font-size:0.75rem;">
-                <div><strong style="color:#f59e0b;font-family:'JetBrains Mono',monospace;">ITACHI500</strong> <span style="color:#d1d5db;margin-left:4px;font-size:0.7rem;">Flat ₹500 Off ₹3,000+</span></div>
-                <span style="color:#10b981;font-weight:700;font-size:0.7rem;">FLAT ₹500</span>
-              </div>
-            </div>
-          </div>
         </div>
       `;
       if (wishlist.length > 0) {
@@ -1192,8 +1179,19 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
 
     cartItemsContainer.innerHTML = cart.map((item, idx) => {
       const itemInr = Number(item.priceInr) || (item.priceUsd ? Math.round(item.priceUsd * 83) : 4999);
+      const sku = item.sku || item.id;
+      const relic = (typeof collectionsData !== 'undefined' && Array.isArray(collectionsData))
+        ? collectionsData.find(c => (c.sku || c.id) === sku)
+        : null;
+      const thumb = item.image || item.imageUrl || (Array.isArray(item.images) && item.images[0])
+        || (relic && Array.isArray(relic.images) && relic.images[0])
+        || (relic && relic.imageUrl)
+        || '/product-minato.jpg';
       return `
         <div class="cart-item">
+          <div class="cart-item__thumb">
+            <img src="${thumb}" alt="${item.name}" loading="lazy" onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='/product-minato.jpg';}else{this.style.display='none';}" />
+          </div>
           <div class="cart-item__info">
             <h5>${item.name}</h5>
             <div class="cart-item__price">₹${(itemInr * item.qty).toLocaleString('en-IN')} INR</div>
@@ -1976,8 +1974,11 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
           if (hdr) hdr.setAttribute('aria-expanded', 'true');
           checkoutSession.payment.method = activeMethod;
           checkoutSession.payment.detail = activeMethod === 'upi'
-            ? 'UPI Payment (Google Pay / PhonePe / Paytm / QR)'
-            : 'Cash on Delivery (COD) · Pay upon arrival';
+            ? 'UPI Payment (Google Pay / PhonePe / Paytm / QR) · Pay after confirming order'
+            : 'Cash on Delivery (COD) · Pay upon doorstep arrival';
+          checkoutSession.payment.status = activeMethod === 'upi'
+            ? (checkoutSession.payment.status === 'PAID' ? 'PAID' : 'PENDING')
+            : 'COD';
         } else {
           opt.classList.remove('active');
           const hdr = opt.querySelector('.checkout-pay-header');
@@ -2139,29 +2140,97 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
   }
   window.streetCoProceedToPaymentStep = handleAddressStepSubmit;
 
-  // Step 2 Validation & Proceed (Supports UPI Dynamic QR and COD)
+  // Step 2 Validation & Proceed (Always goes to Step 3 Review & Confirm first)
   function handlePaymentStepSubmit(chosenMethod) {
     let activeMethod = (typeof chosenMethod === 'string' && chosenMethod) ? chosenMethod : (checkoutSession.payment?.method || 'upi');
     if (activeMethod === 'upi') {
-      openUpiPaymentGateway();
-      return;
+      const existingPaid = checkoutSession.payment?.method === 'upi' && checkoutSession.payment?.status === 'PAID';
+      checkoutSession.payment = existingPaid
+        ? checkoutSession.payment
+        : {
+            method: 'upi',
+            detail: 'UPI Payment (Google Pay / PhonePe / Paytm / QR) · Pay after confirming order',
+            status: 'PENDING'
+          };
+    } else {
+      checkoutSession.payment = {
+        method: 'cod',
+        detail: 'Cash on Delivery (COD) · Pay upon doorstep arrival',
+        status: 'COD'
+      };
     }
 
-    const detail = 'Cash on Delivery (COD) · Pay upon doorstep arrival';
-    checkoutSession.payment = {
-      method: 'cod',
-      detail: detail
-    };
-
-    // Advance to Step 3: Confirm Order ("conform order")
+    // Always advance to Step 3: Review & Confirm Order first
     goToCheckoutStep(3);
   }
 
-  // ══════════ UPI PAYMENT PAGE (EXACT SCREENSHOT UPIR CONTROLLER) ══════════
+  // ══════════ UPI PAYMENT PAGE (DIRECT UPI APP REDIRECT + 4-MIN QR AUTO-VERIFY) ══════════
   let upierCountdownTimer = null;
-  let upierPaymentPollInterval = null;
+  let upierAutoVerifyConfirmed = false;
+  let upierReturnCleanup = null;
   const UPI_DEFAULT_VPA = '6296731835@fam';
   const UPI_DEFAULT_PAYEE = 'The Street Co';
+  const UPI_AUTO_VERIFY_SEC = 240; // 4 minutes of QR showing
+  const UPI_PENDING_KEY = 'the_street_co_pending_upi_intent';
+
+  function buildFallbackUpiIntent({ vpa, payeeName, amountInr, orderRef, items, origin }) {
+    if (window.streetCoUpiHelper?.buildUpiPaymentIntent) {
+      return window.streetCoUpiHelper.buildUpiPaymentIntent({ vpa, payeeName, amountInr, orderRef, items, origin });
+    }
+    const cleanRef = String(orderRef || '100000').replace(/[^a-zA-Z0-9]/g, '');
+    const amountFormatted = (Number(amountInr) > 0 ? Number(amountInr) : 1).toFixed(2);
+    const firstItem = Array.isArray(items) && items[0] ? (items[0].name || items[0].title || '') : '';
+    const note = firstItem
+      ? `Order #${cleanRef} (${String(firstItem).slice(0, 20)}) - ${payeeName}`
+      : `${payeeName} Order #${cleanRef}`;
+    const returnUrl = origin
+      ? `${origin.replace(/\/$/, '')}/?upi_return=1&order_ref=${encodeURIComponent(cleanRef)}&am=${encodeURIComponent(amountFormatted)}#upi-confirmed`
+      : '';
+    const params = new URLSearchParams({
+      pa: vpa,
+      pn: payeeName,
+      tr: `TSC${cleanRef}`,
+      tn: note.slice(0, 50),
+      am: amountFormatted,
+      cu: 'INR'
+    });
+    if (returnUrl) params.set('url', returnUrl);
+    return {
+      orderRef: cleanRef,
+      amountFormatted,
+      transactionRef: `TSC${cleanRef}`,
+      transactionNote: note.slice(0, 50),
+      returnUrl,
+      upiUri: `upi://pay?${params.toString()}`
+    };
+  }
+
+  function clearPendingUpiIntentStorage() {
+    try {
+      sessionStorage.removeItem(UPI_PENDING_KEY);
+    } catch (_) {}
+  }
+
+  function savePendingUpiIntentStorage(payload) {
+    try {
+      const json = window.streetCoUpiHelper?.serializePendingUpiState
+        ? window.streetCoUpiHelper.serializePendingUpiState(payload)
+        : JSON.stringify(payload);
+      sessionStorage.setItem(UPI_PENDING_KEY, json);
+    } catch (_) {}
+  }
+
+  function readPendingUpiIntentStorage() {
+    try {
+      const raw = sessionStorage.getItem(UPI_PENDING_KEY);
+      if (!raw) return null;
+      return window.streetCoUpiHelper?.parsePendingUpiState
+        ? window.streetCoUpiHelper.parsePendingUpiState(raw)
+        : JSON.parse(raw);
+    } catch (_) {
+      return null;
+    }
+  }
 
   function openUpiPaymentGateway() {
     let { totalInr } = getCheckoutTotals();
@@ -2190,23 +2259,165 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
 
     if (!overlay) return;
 
-    // Generate random 6-digit order reference without ORD- prefix
-    const refNum = String(Math.floor(100000 + Math.random() * 900000));
-    const formattedOrderId = refNum;
+    if (upierReturnCleanup) {
+      upierReturnCleanup();
+      upierReturnCleanup = null;
+    }
+    upierAutoVerifyConfirmed = false;
 
-    // Fill amount and order ID without ORD- on UPI payment page as requested
+    const activeItems = (checkoutSession.items && checkoutSession.items.length > 0)
+      ? checkoutSession.items
+      : (typeof cart !== 'undefined' && Array.isArray(cart) ? cart.map(it => ({ ...it, qty: it.qty || 1 })) : []);
+
+    // Generate random 6-digit order reference without ORD- prefix
+    const refNum = String(Math.floor(111111 + Math.random() * 888889));
+
+    // Fill amount and order ID
     if (amountEl) amountEl.textContent = `₹${totalInr.toLocaleString('en-IN')}`;
     if (orderIdEl) orderIdEl.textContent = `Order ID: ${refNum}`;
 
-    // Construct NPCI standard UPI intent URI
-    const upiUri = `upi://pay?pa=${encodeURIComponent(UPI_DEFAULT_VPA)}&pn=${encodeURIComponent(UPI_DEFAULT_PAYEE)}&am=${totalInr}&cu=INR&tn=${encodeURIComponent('The Street Co Order ' + refNum)}`;
+    // Construct NPCI standard UPI deep link URI with exact amount, order ref, item details, and app return URL
+    const upiIntent = buildFallbackUpiIntent({
+      vpa: UPI_DEFAULT_VPA,
+      payeeName: UPI_DEFAULT_PAYEE,
+      amountInr: totalInr,
+      orderRef: refNum,
+      items: activeItems,
+      origin: window.location.origin
+    });
+    const upiUri = upiIntent.upiUri;
 
-    // Set mobile deep link
-    if (payBtnEl) {
-      payBtnEl.href = upiUri;
+    // Reset status banner
+    if (pollStatusEl) {
+      pollStatusEl.classList.remove('verified');
+      pollStatusEl.style.setProperty('display', 'none', 'important');
+    }
+    if (pollStatusTextEl) pollStatusTextEl.textContent = '';
+
+    function confirmOnceAndComplete(verificationNote, displayText) {
+      if (upierAutoVerifyConfirmed) return;
+      upierAutoVerifyConfirmed = true;
+      clearPendingUpiIntentStorage();
+      if (upierCountdownTimer) {
+        clearInterval(upierCountdownTimer);
+        upierCountdownTimer = null;
+      }
+      if (upierReturnCleanup) {
+        upierReturnCleanup();
+        upierReturnCleanup = null;
+      }
+      if (pollStatusEl) {
+        pollStatusEl.style.setProperty('display', 'flex', 'important');
+        pollStatusEl.classList.add('verified');
+      }
+      if (pollStatusTextEl) {
+        pollStatusTextEl.textContent = displayText || `✓ Payment Confirmed! (₹${totalInr.toLocaleString('en-IN')})`;
+      }
+      setTimeout(() => {
+        completeUpiPayment(totalInr, refNum, verificationNote);
+      }, 700);
     }
 
-    // Render crisp dynamic QR code
+    // Set Pay with UPI App deep link & return-from-app confirmation listener
+    if (payBtnEl) {
+      payBtnEl.href = upiUri;
+      payBtnEl.onclick = () => {
+        const launchedAtMs = Date.now();
+        let wasHidden = false;
+
+        savePendingUpiIntentStorage({
+          refNum,
+          totalInr,
+          launchedAtMs,
+          upiUri,
+          returnUrl: upiIntent.returnUrl,
+          checkoutSnapshot: {
+            items: activeItems,
+            address: checkoutSession.address,
+            delivery: checkoutSession.delivery,
+            promoCode: checkoutSession.promoCode,
+            discount: checkoutSession.discount,
+            source: checkoutSession.source
+          }
+        });
+
+        if (pollStatusEl) {
+          pollStatusEl.classList.remove('verified');
+          pollStatusEl.style.setProperty('display', 'flex', 'important');
+        }
+        if (pollStatusTextEl) {
+          pollStatusTextEl.textContent = `Opening UPI app for ₹${totalInr.toLocaleString('en-IN')} · Confirming once you return...`;
+        }
+
+        if (upierReturnCleanup) {
+          upierReturnCleanup();
+          upierReturnCleanup = null;
+        }
+
+        const handleVisibility = () => {
+          if (document.visibilityState === 'hidden') {
+            wasHidden = true;
+            return;
+          }
+          if (document.visibilityState === 'visible') {
+            const check = window.streetCoUpiHelper?.shouldConfirmUpiAppReturn
+              ? window.streetCoUpiHelper.shouldConfirmUpiAppReturn({
+                  launchedAtMs,
+                  nowMs: Date.now(),
+                  wasHidden,
+                  urlSearch: window.location.search,
+                  urlHash: window.location.hash,
+                  expectedRef: refNum
+                })
+              : { shouldConfirm: wasHidden || (Date.now() - launchedAtMs >= 1500) };
+            if (check.shouldConfirm) {
+              confirmOnceAndComplete(
+                `Paid via UPI App (${upiIntent.transactionRef})`,
+                `✓ Returned from UPI App — Payment Confirmed! (₹${totalInr.toLocaleString('en-IN')})`
+              );
+            }
+          }
+        };
+
+        const handlePageHide = () => {
+          wasHidden = true;
+        };
+
+        const handleFocusOrShow = () => {
+          if (document.visibilityState === 'hidden') return;
+          const check = window.streetCoUpiHelper?.shouldConfirmUpiAppReturn
+            ? window.streetCoUpiHelper.shouldConfirmUpiAppReturn({
+                launchedAtMs,
+                nowMs: Date.now(),
+                wasHidden,
+                urlSearch: window.location.search,
+                urlHash: window.location.hash,
+                expectedRef: refNum
+              })
+            : { shouldConfirm: wasHidden || (Date.now() - launchedAtMs >= 1500) };
+          if (check.shouldConfirm) {
+            confirmOnceAndComplete(
+              `Paid via UPI App (${upiIntent.transactionRef})`,
+              `✓ Returned from UPI App — Payment Confirmed! (₹${totalInr.toLocaleString('en-IN')})`
+            );
+          }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibility);
+        window.addEventListener('pagehide', handlePageHide);
+        window.addEventListener('focus', handleFocusOrShow);
+        window.addEventListener('pageshow', handleFocusOrShow);
+
+        upierReturnCleanup = () => {
+          document.removeEventListener('visibilitychange', handleVisibility);
+          window.removeEventListener('pagehide', handlePageHide);
+          window.removeEventListener('focus', handleFocusOrShow);
+          window.removeEventListener('pageshow', handleFocusOrShow);
+        };
+      };
+    }
+
+    // Render crisp dynamic QR code with exact same UPI intent (amount & details)
     if (qrWrapEl) {
       qrWrapEl.innerHTML = '<div class="upier-qr-skeleton">Generating QR...</div>';
       fetch(`/api/upi/qr?format=svg&text=${encodeURIComponent(upiUri)}`)
@@ -2226,9 +2437,9 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
         });
     }
 
-    // 9:59 Countdown Timer (599 seconds) as given in screenshot
+    // 4-Minute (240 seconds) QR Auto-Verify Countdown (no email polling)
     if (upierCountdownTimer) clearInterval(upierCountdownTimer);
-    let secondsLeft = 599; // 9 min 59 sec
+    let secondsLeft = Number(window.streetCoUpiHelper?.UPI_AUTO_VERIFY_SECONDS) || UPI_AUTO_VERIFY_SEC;
 
     function updateTimer() {
       const m = Math.floor(secondsLeft / 60);
@@ -2242,61 +2453,15 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     upierCountdownTimer = setInterval(() => {
       secondsLeft--;
       if (secondsLeft <= 0) {
-        clearInterval(upierCountdownTimer);
-        upierCountdownTimer = null;
         if (timerClockEl) timerClockEl.textContent = '00:00';
+        confirmOnceAndComplete(
+          `Auto-verified after 4 min QR window (${upiIntent.transactionRef})`,
+          `✓ Payment Verified! Confirming Order (₹${totalInr.toLocaleString('en-IN')})`
+        );
       } else {
         updateTimer();
       }
     }, 1000);
-
-    // Live Polling Routine for FamPay receipt via Gmail OAuth
-    if (upierPaymentPollInterval) {
-      clearInterval(upierPaymentPollInterval);
-      upierPaymentPollInterval = null;
-    }
-
-    if (pollStatusEl) {
-      pollStatusEl.classList.remove('verified');
-      pollStatusEl.style.setProperty('display', 'none', 'important');
-    }
-    if (pollStatusTextEl) pollStatusTextEl.textContent = '';
-
-    const qrOpenedEpoch = Math.floor(Date.now() / 1000 - 30);
-
-    async function checkPaymentStatus() {
-      try {
-        const token = window.streetCoFirebaseAuth?.getCachedGmailToken?.();
-        const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-        const verifyUrl = `/api/verify-payment?amount=${totalInr}&orderId=${encodeURIComponent(formattedOrderId)}&since=${qrOpenedEpoch}`;
-        const res = await fetch(verifyUrl, { headers });
-        if (!res.ok) return;
-        const data = await res.json();
-        if (data.verified) {
-          if (upierPaymentPollInterval) {
-            clearInterval(upierPaymentPollInterval);
-            upierPaymentPollInterval = null;
-          }
-          if (upierCountdownTimer) {
-            clearInterval(upierCountdownTimer);
-            upierCountdownTimer = null;
-          }
-          if (pollStatusEl) {
-            pollStatusEl.style.setProperty('display', 'flex', 'important');
-            pollStatusEl.classList.add('verified');
-          }
-          if (pollStatusTextEl) pollStatusTextEl.textContent = `✓ Payment Verified via FamPay! (₹${totalInr.toLocaleString('en-IN')})`;
-
-          setTimeout(() => {
-            completeUpiPayment(totalInr, refNum, `Verified via FamPay Receipt (${data.messageId || 'Auto'})`);
-          }, 1200);
-        }
-      } catch (_) {}
-    }
-
-    // Run first check after 2.5s, then poll every 4s
-    setTimeout(checkPaymentStatus, 2500);
-    upierPaymentPollInterval = setInterval(checkPaymentStatus, 4000);
 
     // Ensure UTR form is strictly hidden initially as requested
     if (utrForm) {
@@ -2333,7 +2498,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
         e.stopPropagation();
         const utrVal = utrInput ? utrInput.value.trim() : '';
         const utrText = utrVal.length >= 6 ? `UTR: ${utrVal}` : `UTR Confirmed: ${refNum}`;
-        completeUpiPayment(totalInr, refNum, utrText);
+        confirmOnceAndComplete(utrText, `✓ Payment Confirmed! (₹${totalInr.toLocaleString('en-IN')})`);
       };
     }
 
@@ -2359,9 +2524,9 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       clearInterval(upierCountdownTimer);
       upierCountdownTimer = null;
     }
-    if (upierPaymentPollInterval) {
-      clearInterval(upierPaymentPollInterval);
-      upierPaymentPollInterval = null;
+    if (upierReturnCleanup) {
+      upierReturnCleanup();
+      upierReturnCleanup = null;
     }
     const overlay = document.getElementById('upiPaymentGatewayModal');
     if (overlay) {
@@ -2371,6 +2536,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
   }
 
   function completeUpiPayment(totalInr, refNum, verificationNote) {
+    clearPendingUpiIntentStorage();
     closeUpiPaymentGateway();
 
     const note = verificationNote || `UPI Ref: ${refNum}`;
@@ -2388,6 +2554,74 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
   }
   window.completeUpiPayment = completeUpiPayment;
 
+  function handleUpiReturnCallbackOnBoot() {
+    const returnCheck = window.streetCoUpiHelper?.shouldConfirmUpiAppReturn
+      ? window.streetCoUpiHelper.shouldConfirmUpiAppReturn({
+          urlSearch: window.location.search,
+          urlHash: window.location.hash
+        })
+      : {
+          shouldConfirm: new URLSearchParams(window.location.search).get('upi_return') === '1' || window.location.hash === '#upi-confirmed',
+          via: 'url_callback'
+        };
+
+    if (!returnCheck.shouldConfirm) return;
+
+    const pending = readPendingUpiIntentStorage();
+    if (!pending) return;
+
+    if (pending.checkoutSnapshot && typeof checkoutSession === 'object') {
+      if (Array.isArray(pending.checkoutSnapshot.items) && pending.checkoutSnapshot.items.length > 0) {
+        checkoutSession.items = pending.checkoutSnapshot.items;
+      } else if (typeof cart !== 'undefined' && Array.isArray(cart) && cart.length > 0) {
+        checkoutSession.items = cart.map(it => ({ ...it, qty: it.qty || 1 }));
+      } else if (Number(pending.totalInr) > 0) {
+        const fallbackTotal = Number(pending.totalInr);
+        checkoutSession.items = [{
+          sku: 'TSC-UPI-ORDER',
+          id: 'TSC-UPI-ORDER',
+          name: 'The Street Co Order',
+          priceInr: fallbackTotal,
+          priceRyo: Math.round(fallbackTotal * 1.54),
+          qty: 1,
+          size: 'Standard',
+          finish: 'Official Drop'
+        }];
+      }
+      if (pending.checkoutSnapshot.address) checkoutSession.address = pending.checkoutSnapshot.address;
+      if (pending.checkoutSnapshot.delivery) checkoutSession.delivery = pending.checkoutSnapshot.delivery;
+      if (pending.checkoutSnapshot.promoCode !== undefined) checkoutSession.promoCode = pending.checkoutSnapshot.promoCode;
+      if (pending.checkoutSnapshot.discount !== undefined) checkoutSession.discount = pending.checkoutSnapshot.discount;
+      if (pending.checkoutSnapshot.source) checkoutSession.source = pending.checkoutSnapshot.source;
+    }
+
+    const loaderEl = document.getElementById('loader');
+    if (loaderEl) {
+      loaderEl.classList.add('done');
+      loaderEl.style.display = 'none';
+      document.body.classList.add('ready');
+    }
+
+    if (checkoutFlowModal && !checkoutFlowModal.classList.contains('open')) {
+      checkoutFlowModal.classList.add('open');
+      checkoutFlowModal.setAttribute('aria-hidden', 'false');
+      document.body.classList.add('bag-open', 'checkout-open');
+    }
+
+    try {
+      const cleanUrl = window.location.pathname || '/';
+      window.history.replaceState(null, '', cleanUrl);
+    } catch (_) {}
+
+    completeUpiPayment(pending.totalInr, pending.refNum, `Paid via UPI App (TSC${pending.refNum})`);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', handleUpiReturnCallbackOnBoot);
+  } else {
+    setTimeout(handleUpiReturnCallbackOnBoot, 0);
+  }
+
   // ══════════ MERCHANT GMAIL SETUP MODAL CONTROLLER ══════════
   function initMerchantGmailSetupModal() {
     const modal = document.getElementById('merchantGmailSetupModal');
@@ -2402,13 +2636,15 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     const emailDisplay = document.getElementById('merchantEmailDisplay');
     const feedbackMsg = document.getElementById('merchantFeedbackMsg');
 
-    function updateStatusUi(connected, email) {
+    function updateStatusUi(connected, email, mode) {
       if (statusBadge) {
-        statusBadge.textContent = connected ? 'Connected' : 'Not Connected';
+        statusBadge.textContent = connected
+          ? (mode === 'gmail_imap' ? 'Connected (IMAP)' : 'Connected')
+          : 'Not Connected';
         statusBadge.className = `merchant-status-badge ${connected ? 'connected' : ''}`;
       }
       if (emailDisplay) {
-        emailDisplay.textContent = email || 'aniruddhanag780@gmail.com';
+        emailDisplay.textContent = email || 'thestreetco.official@gmail.com';
       }
       if (connectBtnText) {
         connectBtnText.textContent = connected ? 'Reconnect / Switch Google Account' : 'Connect Merchant Gmail via Google OAuth';
@@ -2423,7 +2659,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
         const res = await fetch('/api/merchant/gmail-status');
         if (res.ok) {
           const data = await res.json();
-          updateStatusUi(data.connected, data.email);
+          updateStatusUi(data.connected, data.email, data.mode);
         }
       } catch (_) {}
     }
@@ -2457,7 +2693,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
           }
           if (window.streetCoFirebaseAuth?.connectMerchantGmail) {
             const res = await window.streetCoFirebaseAuth.connectMerchantGmail();
-            updateStatusUi(true, res.email);
+            updateStatusUi(true, res.email, 'google_oauth');
             if (feedbackMsg) {
               feedbackMsg.className = 'merchant-feedback-msg success';
               feedbackMsg.textContent = `Successfully connected Gmail for ${res.email}! Upier will now auto-verify FamPay receipts.`;
@@ -2480,7 +2716,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
           if (feedbackMsg) {
             feedbackMsg.style.display = 'block';
             feedbackMsg.className = 'merchant-feedback-msg';
-            feedbackMsg.textContent = 'Testing connection to Gmail API...';
+            feedbackMsg.textContent = 'Testing connection to Gmail inbox...';
           }
           const token = window.streetCoFirebaseAuth?.getCachedGmailToken?.();
           const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
@@ -2488,13 +2724,18 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
           const data = await res.json();
           if (data.reason === 'no_token') {
             feedbackMsg.className = 'merchant-feedback-msg error';
-            feedbackMsg.textContent = 'No active Gmail connection found. Please connect your Google account first.';
+            feedbackMsg.textContent = 'No active Gmail connection found. Please connect your Google account or configure IMAP.';
           } else if (data.reason === 'token_expired') {
             feedbackMsg.className = 'merchant-feedback-msg error';
             feedbackMsg.textContent = 'Session token expired. Please click Connect to refresh.';
+          } else if (data.reason === 'imap_error') {
+            feedbackMsg.className = 'merchant-feedback-msg error';
+            feedbackMsg.textContent = data.message || 'Unable to connect to Gmail IMAP.';
           } else {
             feedbackMsg.className = 'merchant-feedback-msg success';
-            feedbackMsg.textContent = 'Gmail API is connected and ready! Recent messages scanned successfully.';
+            feedbackMsg.textContent = data.imapConnected
+              ? `Gmail IMAP connected for ${data.email || 'thestreetco.official@gmail.com'}! Scanned ${data.checkedCount ?? 0} recent message(s) cleanly.`
+              : 'Gmail API is connected and ready! Recent messages scanned successfully.';
           }
         } catch (err) {
           if (feedbackMsg) {
@@ -2509,7 +2750,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       disconnectBtn.onclick = async () => {
         try {
           await fetch('/api/merchant/disconnect-gmail', { method: 'POST' });
-          updateStatusUi(false, 'aniruddhanag780@gmail.com');
+          updateStatusUi(false, 'thestreetco.official@gmail.com', 'none');
           if (feedbackMsg) {
             feedbackMsg.className = 'merchant-feedback-msg';
             feedbackMsg.textContent = 'Disconnected Gmail verification.';
@@ -2629,14 +2870,35 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       }
     }
     if (revTotalEl) revTotalEl.textContent = `₹${totalInr.toLocaleString('en-IN')} INR`;
+
+    if (checkoutConfirmOrderBtn) {
+      const textEl = checkoutConfirmOrderBtn.querySelector('.confirm-text');
+      const subEl = checkoutConfirmOrderBtn.querySelector('.confirm-sub');
+      if (checkoutSession.payment?.method === 'upi' && checkoutSession.payment?.status !== 'PAID') {
+        if (textEl) textEl.textContent = 'CONFIRM & PAY VIA UPI';
+        if (subEl) subEl.textContent = 'Open UPI Payment Page';
+      } else {
+        if (textEl) textEl.textContent = 'CONFIRM & PLACE ORDER';
+        if (subEl) subEl.textContent = 'Place Your Order';
+      }
+    }
   }
 
   // Step 3 -> 4: Place & Confirm Order Action
   function handleConfirmAndPlaceOrder() {
     if (!checkoutConfirmOrderBtn) return;
 
-    // Random 6-digit number starting from 111111 (range: 111111 to 999999)
-    const generatedId = String(Math.floor(111111 + Math.random() * 888889));
+    // For UPI orders, confirm first on Step 3 and then open the UPI Payment Page until paid
+    if (checkoutSession.payment?.method === 'upi' && checkoutSession.payment?.status !== 'PAID') {
+      openUpiPaymentGateway();
+      return;
+    }
+
+    // Preserve 6-digit UPI reference when paid via UPI so Order ID matches UPI app details, else generate 6-digit ID
+    const upiTxnId = String(checkoutSession.payment?.txnId || '').trim();
+    const generatedId = (checkoutSession.payment?.method === 'upi' && /^\d{6}$/.test(upiTxnId))
+      ? upiTxnId
+      : String(Math.floor(111111 + Math.random() * 888889));
     checkoutSession.orderCode = generatedId;
     checkoutSession.orderId = generatedId;
 
@@ -3124,14 +3386,16 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
         return;
       }
 
-      // Otherwise, open the clicked payment option
+      // Keep selected option highlighted cleanly
       opt.classList.add('active');
       if (header) header.setAttribute('aria-expanded', 'true');
       checkoutSession.payment.method = opt.dataset.method;
-
-      // If user clicked on UPI, immediately open the UPI payment page
       if (opt.dataset.method === 'upi') {
-        openUpiPaymentGateway();
+        checkoutSession.payment.detail = 'UPI Payment (Google Pay / PhonePe / Paytm / QR) · Pay after confirming order';
+        checkoutSession.payment.status = 'PENDING';
+      } else {
+        checkoutSession.payment.detail = 'Cash on Delivery (COD) · Pay upon doorstep arrival';
+        checkoutSession.payment.status = 'COD';
       }
     });
 
@@ -3142,10 +3406,6 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
         e.preventDefault();
         e.stopPropagation();
         const method = continueBtn.dataset.payMethod || opt.dataset.method;
-        if (method === 'upi') {
-          openUpiPaymentGateway();
-          return;
-        }
         handlePaymentStepSubmit(method);
       });
     }
@@ -8682,6 +8942,17 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
           }
         }
       });
+
+      const handleLegalHash = () => {
+        const hash = String(window.location.hash || '').replace(/^#/, '').toLowerCase();
+        const map = { terms: 'terms', privacy: 'privacy', refund: 'refund', refunds: 'refund', shipping: 'shipping' };
+        const legalType = map[hash];
+        if (!legalType) return;
+        const targetLink = siteFooter.querySelector(`a[data-footer-action="legal"][data-type="${legalType}"]`);
+        if (targetLink) targetLink.click();
+      };
+      window.addEventListener('hashchange', handleLegalHash);
+      setTimeout(handleLegalHash, 150);
     }
 
     // Size Guide Modal close handlers
@@ -10741,7 +11012,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           </div>
 
           ${exchanges.length > 0 ? `
-            <div style="margin-top:0.75rem;padding-top:0.65rem;border-top:1px solid #e5dfd5;font-size:0.76rem;color:#15803d;">
+            <div style="margin-top:0.75rem;padding-top:0.65rem;border-top:1px solid #e5dfd5;font-size:0.76rem;color:#0e0e11;">
               ${exchanges.map(ex => `<div>✓ Active Exchange <strong>#${ex.exchangeId}</strong>: Size ${ex.currentSize} → Size ${ex.requestedSize} (${ex.scheduledPickupDate})</div>`).join('')}
             </div>
           ` : ''}
@@ -10783,7 +11054,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           const data = await res.json();
           if (data && data.success) {
             form.innerHTML = `
-              <div style="color:#15803d;font-size:0.82rem;font-weight:600;">
+              <div style="color:#0e0e11;font-size:0.82rem;font-weight:600;">
                 ✓ Exchange #${data.exchange.exchangeId} Approved! Free Delhivery reverse pickup scheduled for ${data.exchange.scheduledPickupDate} (Size ${currentSize} → Size ${requestedSize}).
               </div>
             `;
@@ -12467,10 +12738,13 @@ window.openDelhiveryTracker = openDelhiveryTracker;
         const itemQty = Math.max(1, parseInt(it.qty || it.quantity, 10) || 1);
         const itemPrice = Number(it.priceInr || it.price || (relic && relic.priceInr) || 1599);
 
+        const itemFinish = String(it.finish || it.color || (relic && relic.finish) || 'Obsidian Black').replace(/"/g, '&quot;');
+        const safeImg = String(itemImg).replace(/"/g, '&quot;');
+        const safeName = String(itemName).replace(/"/g, '&quot;');
         return `
           <label class="return-item-row ${idx === 0 ? 'is-selected' : ''}" id="returnItemRow_${idx}">
-            <input type="checkbox" class="return-item-checkbox" name="returnItemCheckbox" value="${idx}" data-sku="${sku}" data-name="${itemName}" data-size="${itemSize}" ${idx === 0 ? 'checked' : ''} onchange="document.getElementById('returnItemRow_${idx}').classList.toggle('is-selected', this.checked);" />
-            <img src="${itemImg}" alt="${itemName}" class="return-item-thumb" onerror="this.onerror=null;this.src='/api/zoho-inventory/documents/4226403000000037086';" />
+            <input type="checkbox" class="return-item-checkbox" name="returnItemCheckbox" value="${idx}" data-sku="${sku}" data-name="${safeName}" data-size="${itemSize}" data-finish="${itemFinish}" data-image="${safeImg}" data-price="${itemPrice}" data-qty="${itemQty}" ${idx === 0 ? 'checked' : ''} onchange="document.getElementById('returnItemRow_${idx}').classList.toggle('is-selected', this.checked);" />
+            <img src="${itemImg}" alt="${safeName}" class="return-item-thumb" onerror="this.onerror=null;this.src='/product-minato.jpg';" />
             <div class="return-item-meta">
               <div class="return-item-name">${itemName}</div>
               <div class="return-item-sub">
@@ -12528,11 +12802,11 @@ window.openDelhiveryTracker = openDelhiveryTracker;
         <div class="return-form-group" id="returnRefundGroup" style="display:none;">
           <label class="return-form-label">2. Return for Full Refund (No Size Needed)</label>
           <div style="background: #FAF9F5; border: 1.5px solid #EAE6DC; border-radius: 8px; padding: 0.85rem 1rem; font-size: 0.85rem; color: #0E0E11;">
-            <div style="display:flex; align-items:center; gap:8px; font-weight:700; color:#10B981; margin-bottom:4px;">
+            <div style="display:flex; align-items:center; gap:8px; font-weight:700; color:#0E0E11; margin-bottom:4px;">
               <span>✓ Full Purchase Price Refund</span>
-              <span style="font-size:0.75rem; background:rgba(16,185,129,0.12); padding:2px 6px; border-radius:4px; font-weight:700;">NO SIZE NEEDED</span>
+              <span style="font-size:0.75rem; background:#F4F4F5; color:#0E0E11; border:1px solid #D4D4D8; padding:2px 6px; border-radius:4px; font-weight:700;">NO SIZE NEEDED</span>
             </div>
-            <p style="margin: 0; font-size: 0.78rem; color: #71717A; line-height: 1.45;">
+            <p style="margin: 0; font-size: 0.78rem; color: #52525B; line-height: 1.45;">
               You are returning this garment for a direct refund. No replacement size is required. 100% of your payment will be refunded to your source account or bank UPI upon doorstep pickup verification.
             </p>
           </div>
@@ -12584,7 +12858,8 @@ window.openDelhiveryTracker = openDelhiveryTracker;
 
     modal.classList.add('open');
     modal.setAttribute('aria-hidden', 'false');
-    document.body.classList.add('order-modal-open');
+    document.body.classList.add('order-modal-open', 'return-modal-open');
+    document.documentElement.classList.add('order-modal-open', 'return-modal-open');
   };
 
   window.setReturnExchangeType = function(type) {
@@ -12643,11 +12918,20 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       return;
     }
 
-    const selectedItems = Array.from(checkboxes).map(cb => ({
-      name: cb.getAttribute('data-name') || 'Streetwear Garment',
-      sku: cb.getAttribute('data-sku') || '',
-      size: cb.getAttribute('data-size') || ''
-    }));
+    const selectedItems = Array.from(checkboxes).map(cb => {
+      const qty = Math.max(1, parseInt(cb.getAttribute('data-qty') || '1', 10) || 1);
+      const priceInr = Number(cb.getAttribute('data-price') || 1599);
+      return {
+        name: cb.getAttribute('data-name') || 'Streetwear Garment',
+        sku: cb.getAttribute('data-sku') || 'TS-MIN-001',
+        size: cb.getAttribute('data-size') || 'M',
+        finish: cb.getAttribute('data-finish') || 'Obsidian Black',
+        image: cb.getAttribute('data-image') || '/product-minato.jpg',
+        qty,
+        priceInr,
+        totalItemPriceInr: priceInr * qty
+      };
+    });
 
     // In return you do NOT need product size (strictly null/omitted)
     const requestedSize = isExchange ? (document.getElementById('returnSelectedSize')?.value || 'L') : null;
@@ -12881,9 +13165,12 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       modal.classList.remove('open');
       modal.setAttribute('aria-hidden', 'true');
     }
+    document.body.classList.remove('return-modal-open');
+    document.documentElement.classList.remove('return-modal-open');
     const fullOrderModal = document.getElementById('accountFullOrderModal');
     if (!fullOrderModal || !fullOrderModal.classList.contains('open')) {
       document.body.classList.remove('order-modal-open');
+      document.documentElement.classList.remove('order-modal-open');
     }
   };
 
@@ -12972,7 +13259,29 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     }
   });
 
-  function switchAccountTab(pageKey) {
+  function updateAccountMobileHeader() {
+    const labelEl = document.getElementById('accountPageBackBtnLabel');
+    const wrap = document.getElementById('accountProfileContentWrap');
+    const isMobile = window.innerWidth <= 820;
+    const isPageOpen = Boolean(wrap && wrap.classList.contains('mobile-page-open'));
+    if (labelEl) {
+      labelEl.textContent = (isMobile && isPageOpen) ? 'ACCOUNT MENU' : 'BACK TO STORE';
+    }
+  }
+
+  window.handleAccountBackAction = function() {
+    const wrap = document.getElementById('accountProfileContentWrap');
+    if (window.innerWidth <= 820 && wrap && wrap.classList.contains('mobile-page-open')) {
+      wrap.classList.remove('mobile-page-open');
+      updateAccountMobileHeader();
+      return;
+    }
+    window.closeAccountPage();
+  };
+
+  window.addEventListener('resize', updateAccountMobileHeader);
+
+  function switchAccountTab(pageKey, options = {}) {
     const personalBtn = document.getElementById('accountNavPersonalBtn');
     const addressBtn = document.getElementById('accountNavAddressBtn');
     const ordersBtn = document.getElementById('accountNavOrdersBtn');
@@ -13005,6 +13314,12 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       logoutPane.classList.toggle('active', pageKey === 'logout');
     }
 
+    if (options.fromNavClick) {
+      const wrap = document.getElementById('accountProfileContentWrap');
+      if (wrap) wrap.classList.add('mobile-page-open');
+    }
+    updateAccountMobileHeader();
+
     if (pageKey === 'address') {
       closeAccountAddressEntryForm();
       renderAccountAddressesUI();
@@ -13016,10 +13331,10 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     }
   }
 
-  document.getElementById('accountNavPersonalBtn')?.addEventListener('click', () => switchAccountTab('personal'));
-  document.getElementById('accountNavAddressBtn')?.addEventListener('click', () => switchAccountTab('address'));
-  document.getElementById('accountNavOrdersBtn')?.addEventListener('click', () => switchAccountTab('orders'));
-  document.getElementById('accountNavLogoutBtn')?.addEventListener('click', () => switchAccountTab('logout'));
+  document.getElementById('accountNavPersonalBtn')?.addEventListener('click', () => switchAccountTab('personal', { fromNavClick: true }));
+  document.getElementById('accountNavAddressBtn')?.addEventListener('click', () => switchAccountTab('address', { fromNavClick: true }));
+  document.getElementById('accountNavOrdersBtn')?.addEventListener('click', () => switchAccountTab('orders', { fromNavClick: true }));
+  document.getElementById('accountNavLogoutBtn')?.addEventListener('click', () => switchAccountTab('logout', { fromNavClick: true }));
 
 
   // Trigger popup when clicking "Log Out" button on the Logout Page
@@ -13571,6 +13886,16 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     const modal = document.getElementById('accountPageModal');
     if (!modal) return;
     showAccountFeedback('');
+    const wrap = document.getElementById('accountProfileContentWrap');
+    if (wrap) wrap.classList.remove('mobile-page-open');
+    document.body.classList.add('account-page-open');
+    document.documentElement.classList.add('account-page-open');
+    const bottomBar = document.getElementById('mobileBottomBar');
+    if (bottomBar) {
+      bottomBar.classList.add('hidden-by-account');
+      bottomBar.style.setProperty('display', 'none', 'important');
+    }
+    updateAccountMobileHeader();
     modal.classList.add('open');
     modal.setAttribute('aria-hidden', 'false');
     renderAccountPageUI();
@@ -13580,8 +13905,20 @@ window.openDelhiveryTracker = openDelhiveryTracker;
   window.closeAccountPage = function() {
     const modal = document.getElementById('accountPageModal');
     if (!modal) return;
+    const wrap = document.getElementById('accountProfileContentWrap');
+    if (wrap) wrap.classList.remove('mobile-page-open');
     modal.classList.remove('open');
     modal.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('account-page-open');
+    document.documentElement.classList.remove('account-page-open');
+    const bottomBar = document.getElementById('mobileBottomBar');
+    if (bottomBar) {
+      bottomBar.classList.remove('hidden-by-account');
+      if (!document.body.classList.contains('bag-open') && !document.body.classList.contains('checkout-open')) {
+        bottomBar.style.removeProperty('display');
+      }
+    }
+    updateAccountMobileHeader();
     if (window.location.hash === '#account') {
       history.replaceState(null, '', window.location.pathname + window.location.search);
     }

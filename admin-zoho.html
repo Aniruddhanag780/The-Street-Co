@@ -498,6 +498,10 @@
           </p>
         </div>
         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button type="button" class="btn btn-secondary" id="btnSyncPendingZoho" style="background: #14141c; border-color: #10b981; color: #34d399;">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            <span>SYNC UNSYNCED TO ZOHO</span>
+          </button>
           <button type="button" class="btn btn-secondary" id="btnSyncFulfillments" style="background: #14141c; border-color: #06b6d4; color: #67e8f9;">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
             <span>CHECK ZOHO FULFILLMENTS NOW</span>
@@ -707,15 +711,19 @@
         const res = await fetch('/api/zoho-inventory/status');
         const data = await res.json();
         const zoho = data.zoho || {};
+        const orgs = Array.isArray(data.organizations) ? data.organizations : [];
+        const orgListText = orgs.length > 1
+          ? ` • Available Zoho Orgs: ${orgs.map(o => `${o.organization_id} (${o.plan_name || 'ORG'}${o.is_active ? ' ✓ ACTIVE' : ''})`).join(', ')}`
+          : '';
 
         if (zoho.configured && zoho.syncStatus === 'synced') {
           dot.className = 'status-dot connected';
           text.textContent = 'CONNECTED TO ZOHO INVENTORY';
-          sub.textContent = `Active Organization: ${zoho.orgId} • ${zoho.cachedItemsCount} items synced • Token valid`;
+          sub.textContent = `Active Organization: ${zoho.orgId} • ${zoho.cachedItemsCount} items synced • Token valid${orgListText}`;
         } else if (zoho.configured) {
           dot.className = 'status-dot connected';
           text.textContent = 'CREDENTIALS CONFIGURED';
-          sub.textContent = `Organization: ${zoho.orgId} • Ready to sync items`;
+          sub.textContent = `Organization: ${zoho.orgId} • Ready to sync items${orgListText}`;
         } else {
           dot.className = 'status-dot';
           text.textContent = 'PENDING CONFIGURATION';
@@ -935,17 +943,17 @@
         const sorted = [...orders].reverse();
         container.innerHTML = sorted.map(ord => {
           const code = ord.orderCode || ord.orderId || 'UNKNOWN';
-          const isAwaiting = ord.status === 'AWAITING_ZOHO_CONFIRMATION' || ord.zoho_status === 'pending_confirmation';
           const isDelivered = ord.status === 'DELIVERED' || ord.deliveryStatus === 'DELIVERY_DONE';
-          const isConfirmed = ord.status === 'CONFIRMED' || isDelivered;
+          const isConfirmed = ord.zoho_status === 'confirmed' || (Boolean(ord.zoho_invoice_id) && !String(ord.zoho_invoice_id).startsWith('LOCAL-')) || isDelivered;
+          const isAwaiting = !isConfirmed && !isDelivered;
 
           let statusBadgeHtml = '';
           if (isDelivered) {
             statusBadgeHtml = '<span style="font-size: 0.7rem; font-weight: 700; color: #22d3ee; background: rgba(6, 182, 212, 0.15); border: 1px solid rgba(6, 182, 212, 0.35); padding: 3px 8px; border-radius: 4px; letter-spacing: 0.05em;">DELIVERED (DELHIVERY DONE)</span>';
           } else if (isConfirmed) {
-            statusBadgeHtml = `<span style="font-size: 0.7rem; font-weight: 700; color: #34d399; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.35); padding: 3px 8px; border-radius: 4px; letter-spacing: 0.05em;">CONFIRMED · INVOICE #${ord.invoice_number || 'INV'}</span>`;
+            statusBadgeHtml = `<span style="font-size: 0.7rem; font-weight: 700; color: #34d399; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.35); padding: 3px 8px; border-radius: 4px; letter-spacing: 0.05em;">CONFIRMED IN ZOHO · INVOICE #${ord.invoice_number || 'INV'}</span>`;
           } else {
-            statusBadgeHtml = '<span style="font-size: 0.7rem; font-weight: 700; color: #fbbf24; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.35); padding: 3px 8px; border-radius: 4px; letter-spacing: 0.05em;">AWAITING ZOHO CONFIRMATION</span>';
+            statusBadgeHtml = '<span style="font-size: 0.7rem; font-weight: 700; color: #fbbf24; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.35); padding: 3px 8px; border-radius: 4px; letter-spacing: 0.05em;">AWAITING ZOHO CONFIRMATION / INVOICE</span>';
           }
 
           const items = Array.isArray(ord.items) && ord.items.length > 0 ? ord.items : (Array.isArray(ord.products) ? ord.products : []);
@@ -957,7 +965,8 @@
           const grandTotal = Number(ord.grandTotalInr || ord.totalInr || 0);
           const dateStr = ord.orderDateFormatted || (ord.orderDate ? new Date(ord.orderDate).toLocaleString('en-IN') : 'Recent');
 
-          const salesOrderRef = ord.zoho_salesorder_number || ord.zoho_salesorder_id || 'Registered';
+          const hasZohoSo = Boolean(ord.zoho_salesorder_id);
+          const salesOrderRef = ord.zoho_salesorder_number || ord.zoho_salesorder_id || 'NOT IN ZOHO YET';
 
           return `
             <div class="order-pipeline-row" style="background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 16px; margin-bottom: 14px;">
@@ -971,7 +980,7 @@
                 </div>
                 <div style="text-align: right;">
                   <div style="font-size: 1rem; font-weight: 800; color: #f4f4f5;">₹${grandTotal.toLocaleString('en-IN')}</div>
-                  <div style="font-size: 0.72rem; color: #a1a1aa;">Zoho SO: <span style="font-family: monospace; color: #f4f4f5;">${salesOrderRef}</span></div>
+                  <div style="font-size: 0.72rem; color: #a1a1aa;">Zoho SO: <span style="font-family: monospace; color: ${hasZohoSo ? '#34d399' : '#f87171'};">${salesOrderRef}</span></div>
                 </div>
               </div>
 
@@ -1102,6 +1111,34 @@
 
     document.getElementById('btnRefreshOrders')?.addEventListener('click', loadOrders);
 
+    document.getElementById('btnSyncPendingZoho')?.addEventListener('click', async () => {
+      const btn = document.getElementById('btnSyncPendingZoho');
+      const originalHtml = btn?.innerHTML;
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span>SYNCING TO ZOHO...</span>';
+      }
+      showOrderNotification('Pushing unsynced orders and returns to Zoho Inventory...', 'notification');
+      try {
+        const res = await fetch('/api/zoho/sync-pending', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          showOrderNotification(`✓ ${data.message}${data.errors?.length ? ' (Notes: ' + data.errors.join('; ') + ')' : ''}`, 'success');
+          loadOrders();
+          loadReturns();
+        } else {
+          showOrderNotification(`Sync error: ${data.error || 'Server error'}`, 'error');
+        }
+      } catch (err) {
+        showOrderNotification(`Error: ${err.message}`, 'error');
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = originalHtml;
+        }
+      }
+    });
+
     document.getElementById('btnSyncFulfillments')?.addEventListener('click', async () => {
       const btn = document.getElementById('btnSyncFulfillments');
       const originalHtml = btn?.innerHTML;
@@ -1174,7 +1211,8 @@
             ? '<span style="font-size: 0.7rem; font-weight: 700; color: #34d399; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.35); padding: 3px 8px; border-radius: 4px; letter-spacing: 0.05em;">APPROVED &amp; EMAIL SENT</span>'
             : '<span style="font-size: 0.7rem; font-weight: 700; color: #fbbf24; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.35); padding: 3px 8px; border-radius: 4px; letter-spacing: 0.05em;">PENDING CONFIRMATION</span>';
 
-          const zohoSr = ret.salesreturn_number || ret.zoho_salesreturn_id || 'Registered in Zoho';
+          const hasZohoSr = Boolean(ret.zoho_salesreturn_id);
+          const zohoSr = hasZohoSr ? (ret.salesreturn_number || ret.zoho_salesreturn_id) : `NOT IN ZOHO YET (${ret.salesreturn_number || ret.id})`;
           const dateStr = ret.createdAt ? new Date(ret.createdAt).toLocaleString('en-IN') : 'Recent';
 
           return `
@@ -1191,7 +1229,7 @@
                 </div>
                 <div style="text-align: right;">
                   <div style="font-size: 0.74rem; color: #a1a1aa;">Zoho Sales Return:</div>
-                  <div style="font-family: monospace; font-size: 0.88rem; font-weight: 700; color: #34d399;">${zohoSr}</div>
+                  <div style="font-family: monospace; font-size: 0.88rem; font-weight: 700; color: ${hasZohoSr ? '#34d399' : '#f87171'};">${zohoSr}</div>
                 </div>
               </div>
 

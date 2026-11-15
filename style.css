@@ -11893,9 +11893,12 @@ input#checkoutPhone:focus {
   display: none !important;
 }
 
-/* On Step 3 (Review & Confirm), center review cards cleanly */
+/* On Step 3 (Review & Confirm) & Step 4 (Order Confirmation), center cards cleanly */
 .checkout-modal.step-3-active .checkout-modal__content-wrap,
-.checkout-modal[data-step="3"] .checkout-modal__content-wrap {
+.checkout-modal[data-step="3"] .checkout-modal__content-wrap,
+.checkout-modal.step-4-active .checkout-modal__content-wrap,
+.checkout-modal[data-step="4"] .checkout-modal__content-wrap,
+.checkout-modal.order-confirmed .checkout-modal__content-wrap {
   display: flex !important;
   flex-direction: column !important;
   max-width: 820px !important;
@@ -11904,7 +11907,10 @@ input#checkoutPhone:focus {
 }
 
 .checkout-modal.step-3-active .checkout-modal__views,
-.checkout-modal[data-step="3"] .checkout-modal__views {
+.checkout-modal[data-step="3"] .checkout-modal__views,
+.checkout-modal.step-4-active .checkout-modal__views,
+.checkout-modal[data-step="4"] .checkout-modal__views,
+.checkout-modal.order-confirmed .checkout-modal__views {
   width: 100% !important;
   max-width: 100% !important;
   flex: 1 0 auto !important;
@@ -13336,7 +13342,29 @@ a#heroShopNewArrivalsBtn:hover {
 .footer-payment-badges {
   display: flex !important;
   align-items: center !important;
-  gap: 0.5rem !important;
+  flex-wrap: wrap !important;
+  gap: 0.4rem !important;
+}
+.footer-pay-icon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 0 !important;
+  flex-shrink: 0 !important;
+}
+.footer-pay-icon img {
+  height: 28px !important;
+  width: auto !important;
+  display: block !important;
+  border: 0 !important;
+}
+@media (max-width: 640px) {
+  .footer-payment-badges {
+    gap: 0.35rem !important;
+  }
+  .footer-pay-icon img {
+    height: 25px !important;
+  }
 }
 .pay-badge {
   display: inline-flex !important;
@@ -14315,16 +14343,26 @@ main > section#shop > div:nth-of-type(1) > div#shopStoreLayout:nth-of-type(4) > 
   }
 }
 
-/* ══════════ STRICTLY HIDE MOBILE BOTTOM BAR IN CART / WISHLIST / CHECKOUT ══════════ */
+/* ══════════ STRICTLY HIDE MOBILE BOTTOM BAR IN CART / WISHLIST / CHECKOUT / MY ACCOUNT / RETURN ══════════ */
 body.bag-open .mobile-bottom-bar,
 html.bag-open .mobile-bottom-bar,
 body.cart-open .mobile-bottom-bar,
 html.cart-open .mobile-bottom-bar,
 body.checkout-open .mobile-bottom-bar,
 html.checkout-open .mobile-bottom-bar,
+body.account-page-open .mobile-bottom-bar,
+html.account-page-open .mobile-bottom-bar,
+body.return-modal-open .mobile-bottom-bar,
+html.return-modal-open .mobile-bottom-bar,
+body.order-modal-open .mobile-bottom-bar,
 .mobile-bottom-bar.hidden-by-drawer,
+.mobile-bottom-bar.hidden-by-account,
 body:has(.cart-drawer.open) .mobile-bottom-bar,
 body:has(#cartDrawer.open) .mobile-bottom-bar,
+body:has(#accountPageModal.open) .mobile-bottom-bar,
+body:has(.account-page-modal.open) .mobile-bottom-bar,
+body:has(#returnExchangeModal.open) .mobile-bottom-bar,
+body:has(.return-exchange-modal.open) .mobile-bottom-bar,
 .cart-drawer.open ~ .mobile-bottom-bar,
 .cart-drawer.open ~ * .mobile-bottom-bar {
   display: none !important;
@@ -15052,16 +15090,31 @@ body:has(#cartDrawer.open) .mobile-bottom-bar,
     z-index: 99999 !important;
   }
 
-  body.collections-page-open .mobile-bottom-bar,
-  html.collections-page-open .mobile-bottom-bar,
-  body.collections-page-open #mobileBottomBar,
-  .collections-hub-modal.open ~ .mobile-bottom-bar,
-  .collections-hub-modal.open ~ * #mobileBottomBar {
+  body.collections-page-open:not(.account-page-open):not(.return-modal-open):not(.bag-open):not(.checkout-open):not(.order-modal-open) .mobile-bottom-bar,
+  html.collections-page-open:not(.account-page-open):not(.return-modal-open):not(.bag-open):not(.checkout-open):not(.order-modal-open) .mobile-bottom-bar,
+  body.collections-page-open:not(.account-page-open):not(.return-modal-open):not(.bag-open):not(.checkout-open):not(.order-modal-open) #mobileBottomBar,
+  .collections-hub-modal.open ~ .mobile-bottom-bar:not(.hidden-by-account):not(.hidden-by-drawer),
+  .collections-hub-modal.open ~ * #mobileBottomBar:not(.hidden-by-account):not(.hidden-by-drawer) {
     display: flex !important;
     visibility: visible !important;
     opacity: 1 !important;
     pointer-events: auto !important;
     z-index: 99999 !important;
+  }
+
+  body.account-page-open #mobileBottomBar,
+  html.account-page-open #mobileBottomBar,
+  body.return-modal-open #mobileBottomBar,
+  html.return-modal-open #mobileBottomBar,
+  body.order-modal-open #mobileBottomBar,
+  body.bag-open #mobileBottomBar,
+  body.checkout-open #mobileBottomBar,
+  body:has(#accountPageModal.open) #mobileBottomBar,
+  body:has(#returnExchangeModal.open) #mobileBottomBar {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
   }
 
   .collections-hub-modal.open .collections-hub-dialog {
@@ -16712,8 +16765,50 @@ body:has(#cartDrawer.open) .mobile-bottom-bar,
   color: #d4d4d8 !important;
 }
 
+.account-nav-item__arrow {
+  display: none !important;
+  margin-left: auto !important;
+  font-size: 1.25rem !important;
+  font-weight: 500 !important;
+  line-height: 1 !important;
+  color: #71717a !important;
+}
 .account-main-content {
   min-width: 0 !important;
+}
+@media (max-width: 820px) {
+  .account-layout:not(.mobile-page-open) .account-main-content {
+    display: none !important;
+  }
+  .account-layout:not(.mobile-page-open) .account-sidebar {
+    display: block !important;
+    width: 100% !important;
+  }
+  .account-layout:not(.mobile-page-open) .account-nav-item {
+    background: #FFFFFF !important;
+    border: 1px solid #E8E2D8 !important;
+    color: #0e0e11 !important;
+    padding: 0.95rem 1.1rem !important;
+    border-radius: 12px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.025) !important;
+  }
+  .account-layout:not(.mobile-page-open) .account-nav-item.active {
+    background: #FFFFFF !important;
+    color: #0e0e11 !important;
+    border: 1px solid #E8E2D8 !important;
+  }
+  .account-layout:not(.mobile-page-open) .account-nav-item.active .account-nav-item__sub {
+    color: #71717a !important;
+  }
+  .account-layout:not(.mobile-page-open) .account-nav-item__arrow {
+    display: inline-flex !important;
+  }
+  .account-layout.mobile-page-open .account-sidebar {
+    display: none !important;
+  }
+  .account-layout.mobile-page-open .account-main-content {
+    display: block !important;
+  }
 }
 .account-status-badge--optional {
   background: #f4f4f5 !important;
@@ -19163,6 +19258,60 @@ header#topChrome #shopWishlistBtn {
   color: #71717A !important;
 }
 
+/* Remove any green text inside Return or Exchange view and force crisp black */
+.return-exchange-modal .text-success,
+.return-exchange-modal .text-free,
+.return-exchange-modal .text-discount {
+  color: #0E0E11 !important;
+}
+
+/* Mobile Full-Page Layout for Return or Exchange (No Popup Box) */
+@media (max-width: 768px) {
+  .order-details-modal.return-exchange-modal {
+    padding: 0 !important;
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    background: #FFFFFF !important;
+  }
+  .order-details-modal.return-exchange-modal .order-details-modal__backdrop {
+    display: none !important;
+  }
+  .order-details-modal.return-exchange-modal .order-details-modal__dialog,
+  .order-details-modal.return-exchange-modal .return-exchange-modal__dialog {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100% !important;
+    min-height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    transform: none !important;
+  }
+  .order-details-modal.return-exchange-modal .order-details-modal__header {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 10 !important;
+    padding: 0.9rem 1rem !important;
+  }
+  .order-details-modal.return-exchange-modal .return-exchange-modal__body {
+    flex: 1 1 auto !important;
+    padding: 1rem 1rem 2.25rem !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  .order-details-modal.return-exchange-modal .return-modal-actions {
+    flex-direction: column-reverse !important;
+    align-items: stretch !important;
+    gap: 0.6rem !important;
+  }
+  .order-details-modal.return-exchange-modal .return-btn-submit,
+  .order-details-modal.return-exchange-modal .return-btn-cancel {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+}
+
 /* ══════════════════════════════════════════════════════════════════
    THE STREET CASH VIP LOYALTY — FULL-SCREEN DEDICATED MOBILE VIEW
    Seamless edge-to-edge luxury editorial layout with card borders removed
@@ -19371,23 +19520,36 @@ header#topChrome #shopWishlistBtn {
   margin: 0 !important;
 }
 
-/* Remove cart item thumbnail */
-.cart-item__thumb,
-#cartItemsContainer > div > div:nth-of-type(1):not(.cart-item__info) {
-  display: none !important;
-  visibility: hidden !important;
-  width: 0 !important;
-  height: 0 !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  border: none !important;
+/* Cart item thumbnail & layout inside #cartItemsContainer */
+.cart-item__thumb {
+  width: 48px !important;
+  height: 48px !important;
+  min-width: 48px !important;
+  border-radius: 6px !important;
+  overflow: hidden !important;
+  background: #f4f4f5 !important;
+  border: 1px solid #e5e5e5 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+  visibility: visible !important;
 }
-
+.cart-item__thumb img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
 .cart-item {
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
-  gap: 1rem !important;
+  gap: 0.85rem !important;
+}
+.cart-item__info {
+  flex: 1 !important;
+  min-width: 0 !important;
 }
 
 /* Remove OFFICIAL EARN RATE banner */

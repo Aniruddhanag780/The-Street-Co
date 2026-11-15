@@ -275,7 +275,7 @@
     <!-- Meta Description Bar -->
     <div class="stage-meta">
       <span id="stageTitle">Displaying: <strong>1. Order Confirmed (with Zoho Invoice PDF)</strong></span>
-      <span>Palette: <strong>#FAF8F5 Creamy White · #0E0E11 Obsidian · Zero Loud Red</strong></span>
+      <span>Palette: <strong>#FAF8F5 Website Cream · ₹ INR · thestreetco.com</strong></span>
     </div>
 
     <!-- Main Live Iframe Renderer -->
@@ -291,163 +291,129 @@
       // ══════════════════════════════════════════════════════════════════════════
       const TEMPLATES = {
         order_confirmed: {
-          title: "1. Order Confirmed (with Zoho Invoice PDF)",
+          title: "1. Order Confirmed (Minimalist #FAF8F5)",
+          liveEndpoint: "/api/email-preview/order_confirmed",
           html: `<!doctype html>
 <html lang="en">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <meta name="color-scheme" content="light only">
+    <meta name="supported-color-schemes" content="light only">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-      body { margin:0;padding:0;background-color:#faf8f5;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;-webkit-font-smoothing:antialiased; }
+      :root { color-scheme: light only; supported-color-schemes: light only; }
+      html, body { margin:0;padding:0;background-color:#FAF8F5 !important;color:#171717 !important;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;-webkit-font-smoothing:antialiased; }
       table, td { border-collapse:collapse; }
       img { border:0;height:auto;line-height:100%;outline:none;text-decoration:none; }
+      @media (prefers-color-scheme: dark) {
+        html, body, .email-light-bg { background-color:#FAF8F5 !important;background-image:linear-gradient(#FAF8F5,#FAF8F5) !important;color:#171717 !important; }
+      }
     </style>
   </head>
-  <body style="margin:0;padding:0;background-color:#faf8f5;">
-    <div style="width:100%;background-color:#faf8f5;padding:32px 12px;box-sizing:border-box;">
-      <div style="max-width:600px;margin:0 auto;background-color:#ffffff;border:1px solid #e8e2d8;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.03);">
-        
-        <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;background:#0e0e11;border-bottom:1px solid #c5a880;">
-          <tbody>
+  <body bgcolor="#FAF8F5" class="email-light-bg" style="margin:0;padding:0;background-color:#FAF8F5;background-image:linear-gradient(#FAF8F5,#FAF8F5);color:#171717;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:#FAF8F5;">
+      <tr>
+        <td align="center" style="padding:40px 16px 48px 16px;background-color:#FAF8F5;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:560px;background-color:#FAF8F5;">
             <tr>
-              <td style="padding:26px 20px;text-align:center;">
-                <div style="font-family:'Playfair Display',Georgia,serif;font-size:22px;font-weight:700;letter-spacing:0.2em;color:#ffffff;text-transform:uppercase;">THE STREET CO</div>
-                <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.18em;color:#c5a880;text-transform:uppercase;margin-top:6px;">HAUTE STREETWEAR · ORDER CONFIRMATION</div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-
-        <div style="padding:32px 28px;">
-          <div style="font-size:11px;color:#8a7b6e;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;margin-bottom:6px;">ACQUISITION CONFIRMED</div>
-          <h1 style="font-family:'Playfair Display',Georgia,serif;font-size:24px;font-weight:600;color:#0e0e11;margin:0 0 14px;letter-spacing:-0.2px;line-height:1.25;">
-            You're In. Your Order Is Confirmed.
-          </h1>
-          <p style="font-size:15px;font-weight:600;color:#18181b;margin:0 0 10px;">
-            Hey Aniruddha Nag,
-          </p>
-          <p style="font-size:14px;line-height:1.65;color:#52525b;margin:0 0 24px;">
-            Your order <strong style="color:#0e0e11;">#STREET-20845312</strong> has been placed and is now queued for precision quality inspection and custom packaging. We will notify you the moment your drop is handed over to Delhivery Express.
-          </p>
-
-          <div style="background:#faf8f5;border:1px solid #e8e2d8;border-radius:10px;padding:20px;margin-bottom:26px;">
-            <table cellpadding="0" cellspacing="0" width="100%" border="0" style="color:#18181b;font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;line-height:22px;">
-              <tr style="text-align:left;">
-                <th style="width:50%;padding-right:15px;color:#8a7b6e;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;padding-bottom:8px;">ORDER DETAILS</th>
-                <th style="width:50%;border-left:1px solid #e8e2d8;padding-left:15px;color:#8a7b6e;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;padding-bottom:8px;">DELIVERY DESTINATION</th>
-              </tr>
-              <tr style="text-align:left;">
-                <td style="vertical-align:top;width:50%;padding-right:15px;color:#3f3f46;font-size:13px;line-height:22px;">
-                  <strong style="color:#0e0e11;">Order Ref:</strong> #STREET-20845312<br>
-                  <strong style="color:#0e0e11;">Date:</strong> 28 Oct 2026<br>
-                  <strong style="color:#0e0e11;">Payment:</strong> CASH ON DELIVERY (CONFIRMED)<br>
-                  <strong style="color:#0e0e11;">Logistics:</strong> Delhivery Express
-                </td>
-                <td style="vertical-align:top;width:50%;border-left:1px solid #e8e2d8;padding-left:15px;color:#3f3f46;font-size:13px;line-height:22px;">
-                  <strong style="color:#0e0e11;">Aniruddha Nag</strong><br>
-                  Thakurnagar Shimulpur Hazratala<br>
-                  Bongaon, West Bengal - 743287<br>
-                  <span style="color:#71717a;">Contact: +91 6296731835</span>
-                </td>
-              </tr>
-            </table>
-          </div>
-
-          <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#8a7b6e;margin-bottom:12px;">ARTICLES IN THIS DROP</div>
-
-          <table cellpadding="0" cellspacing="0" width="100%" border="0" style="width:100%;color:#18181b;font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;line-height:22px;margin-bottom:16px;border-bottom:1px solid #e8e2d8;padding-bottom:14px;">
-            <tr>
-              <td style="width:90px;vertical-align:top;padding-right:15px;padding-bottom:10px;">
-                <img src="/product-minato.jpg" alt="Fourth Hokage Minato Inspired Oversized T-Shirt" width="85" height="85" style="width:85px;height:85px;max-width:85px;object-fit:cover;border-radius:8px;border:1px solid #e8e2d8;display:block;" />
-              </td>
-              <td style="vertical-align:top;padding-bottom:10px;">
-                <div style="color:#0e0e11;font-weight:700;font-size:15px;line-height:20px;padding-bottom:3px;">
-                  Fourth Hokage Minato Inspired Oversized T-Shirt
-                </div>
-                <div style="color:#8a7b6e;font-size:13px;line-height:18px;padding-bottom:6px;">
-                  Heavyweight 260 GSM Bio-Washed Cotton
-                </div>
-                <div style="color:#52525b;font-size:13px;line-height:18px;">
-                  Size: <strong style="color:#0e0e11;">L</strong> &nbsp;|&nbsp; Qty: <strong style="color:#0e0e11;">1</strong>
-                  <span style="background:#faf8f5;color:#52525b;border:1px solid #e8e2d8;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;letter-spacing:0.5px;margin-left:8px;display:inline-block;">COUPON APPLIED</span>
-                </div>
+              <td align="center" style="padding:0 0 28px 0;">
+                <a href="https://thestreetco.com" target="_blank" style="text-decoration:none;color:#000000;font-size:20px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;">THE STREET CO</a>
               </td>
             </tr>
             <tr>
-              <td colspan="2" style="border-top:1px dashed #e8e2d8;padding-top:8px;">
-                <table cellpadding="0" cellspacing="0" width="100%" border="0">
+              <td align="center" style="padding:0 0 20px 0;">
+                <h1 style="margin:0;font-size:28px;font-weight:500;line-height:1.25;letter-spacing:-0.02em;color:#111111;">Order Confirmation</h1>
+              </td>
+            </tr>
+            <tr>
+              <td align="center" style="padding:0 12px 26px 12px;font-size:14px;line-height:1.65;color:#52525b;">
+                <div style="margin:0 0 16px 0;color:#404040;">Hey Aniruddha,</div>
+                <div style="margin:0 0 18px 0;">You made our day, hope we will make yours soon!<br>Thank you for your purchase &mdash; this email confirms your order.</div>
+                <div style="margin:0;">You can follow your order status by logging into your account at<br><a href="https://thestreetco.com" target="_blank" style="color:#2563eb;text-decoration:underline;">thestreetco.com</a>.<br>You can see the invoice using the button below.</div>
+              </td>
+            </tr>
+            <tr>
+              <td align="center" style="padding:0 0 34px 0;">
+                <a href="https://thestreetco.com/invoice/214822" target="_blank" style="display:inline-block;background-color:#1e1e1e;color:#ffffff;text-decoration:none;font-size:14px;font-weight:500;line-height:1;padding:15px 38px;border-radius:6px;">View Your Invoice</a>
+              </td>
+            </tr>
+            <tr><td style="border-top:1px solid #e5dfd5;padding:0;font-size:0;line-height:0;">&nbsp;</td></tr>
+            <tr>
+              <td align="center" style="padding:28px 0 26px 0;">
+                <div style="font-size:15px;font-weight:500;color:#171717;line-height:1.4;">Order No. #214822</div>
+                <div style="font-size:12px;color:#8a8279;line-height:1.5;margin-top:4px;">13/11/2026</div>
+              </td>
+            </tr>
+            <tr>
+              <td align="left" style="padding:0 0 10px 0;font-size:14px;font-weight:500;color:#171717;border-bottom:1px solid #e5dfd5;">Items ordered</td>
+            </tr>
+            <tr>
+              <td style="padding:16px 0;">
+                <table cellpadding="0" cellspacing="0" width="100%" border="0" style="width:100%;">
                   <tr>
-                    <td style="width:58%;text-align:left;color:#71717a;font-size:13px;padding:2px 0;">Unit Price</td>
-                    <td style="width:42%;text-align:right;color:#0e0e11;font-size:13px;padding:2px 0;">
-                      <span style="text-decoration:line-through;color:#a1a1aa;font-size:12px;margin-right:6px;">₹ 1,699</span>
-                      <strong style="color:#0e0e11;font-size:13px;">₹ 1,499</strong>
+                    <td style="width:74px;vertical-align:middle;padding-right:16px;">
+                      <img src="/product-minato.jpg" alt="Fourth Hokage Minato Inspired Oversized T-Shirt" width="72" height="72" style="width:72px;height:72px;object-fit:cover;display:block;border-radius:4px;background-color:#ffffff;border:1px solid #e8e2d8;" />
                     </td>
-                  </tr>
-                  <tr style="font-weight:700;">
-                    <td style="width:58%;text-align:left;color:#0e0e11;font-size:14px;padding-top:4px;">Item Total</td>
-                    <td style="width:42%;text-align:right;padding-top:4px;color:#0e0e11;font-size:14px;">₹ 1,499</td>
+                    <td style="vertical-align:middle;padding-right:12px;">
+                      <div style="font-size:14px;font-weight:500;color:#171717;line-height:1.35;">Fourth Hokage Minato Inspired Oversized T-Shirt</div>
+                      <div style="font-size:13px;color:#78716c;line-height:1.4;margin-top:2px;">Obsidian Black · Size L</div>
+                      <div style="font-size:12px;color:#a8a29e;line-height:1.4;margin-top:1px;">TS-MIN-001</div>
+                    </td>
+                    <td style="width:42px;vertical-align:middle;text-align:right;white-space:nowrap;font-size:13px;color:#52525b;padding-right:14px;">x 1</td>
+                    <td style="width:104px;vertical-align:middle;text-align:right;white-space:nowrap;font-size:14px;font-weight:500;color:#171717;">₹1,599.00</td>
                   </tr>
                 </table>
               </td>
             </tr>
+            <tr>
+              <td style="border-top:1px solid #e5dfd5;padding:14px 0 0 0;">
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;font-size:14px;line-height:1.8;">
+                  <tr><td style="text-align:left;color:#52525b;padding:4px 0;">Discount (STREET200)</td><td style="text-align:right;color:#52525b;padding:4px 0;">-₹200.00</td></tr>
+                  <tr><td style="text-align:left;color:#52525b;padding:4px 0;">Subtotal</td><td style="text-align:right;color:#171717;padding:4px 0;">₹1,399.00</td></tr>
+                  <tr><td style="text-align:left;color:#52525b;padding:4px 0;">Delhivery</td><td style="text-align:right;color:#171717;padding:4px 0;">Free</td></tr>
+                  <tr><td style="text-align:left;color:#52525b;padding:4px 0;">GST (12% Included)</td><td style="text-align:right;color:#171717;padding:4px 0;">₹191.88</td></tr>
+                  <tr><td style="text-align:left;color:#111111;font-weight:600;padding:8px 0 4px 0;">Total</td><td style="text-align:right;color:#111111;font-weight:600;padding:8px 0 4px 0;">₹1,399.00</td></tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td align="center" style="padding:32px 0 0 0;border-top:1px solid #e5dfd5;">
+                <div style="font-size:12px;color:#78716c;line-height:1.7;padding-top:22px;">Questions? Contact us at <a href="mailto:support@thestreetco.zohodesk.in" style="color:#171717;text-decoration:underline;">support@thestreetco.zohodesk.in</a><br><a href="https://thestreetco.com" target="_blank" rel="noopener noreferrer" style="color:#2563eb;text-decoration:underline;">thestreetco.com</a> &middot; The Street Co</div>
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:22px auto 0 auto;">
+                  <tr>
+                    <td style="padding:0 5px;"><a href="https://instagram.com" target="_blank" aria-label="Instagram"><img src="/public/assets/email/social-instagram.png" alt="Instagram" width="32" height="32" style="width:32px;height:32px;display:block;border:0;border-radius:50%;" /></a></td>
+                    <td style="padding:0 5px;"><a href="https://twitter.com" target="_blank" aria-label="Twitter"><img src="/public/assets/email/social-twitter.png" alt="Twitter" width="32" height="32" style="width:32px;height:32px;display:block;border:0;border-radius:50%;" /></a></td>
+                    <td style="padding:0 5px;"><a href="https://reddit.com" target="_blank" aria-label="Reddit"><img src="/public/assets/email/social-reddit.png" alt="Reddit" width="32" height="32" style="width:32px;height:32px;display:block;border:0;border-radius:50%;" /></a></td>
+                  </tr>
+                </table>
+                <div style="margin-top:20px;font-size:10px;font-weight:600;letter-spacing:0.22em;text-transform:uppercase;color:#78716c;">TIMELESS STREETWEAR CULTURE // ARCHIVE COLLECTION</div>
+                <div style="margin-top:8px;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#52525b;">&copy; 2026 THE STREET CO ALL RIGHTS RESERVED.</div>
+                <div style="margin-top:2px;font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:#a8a29e;">ELEVATED STYLE &middot; MODERN ESSENTIALS</div>
+                <div style="margin-top:18px;text-align:center;line-height:0;">
+                  <span style="display:inline-block;margin:3px;vertical-align:middle;"><img src="/public/assets/email/pay-visa.png" alt="Visa" width="52" height="30" style="width:52px;height:30px;display:block;border:0;" /></span>
+                  <span style="display:inline-block;margin:3px;vertical-align:middle;"><img src="/public/assets/email/pay-mastercard.png" alt="Mastercard" width="52" height="30" style="width:52px;height:30px;display:block;border:0;" /></span>
+                  <span style="display:inline-block;margin:3px;vertical-align:middle;"><img src="/public/assets/email/pay-paypal.png" alt="PayPal" width="58" height="30" style="width:58px;height:30px;display:block;border:0;" /></span>
+                  <span style="display:inline-block;margin:3px;vertical-align:middle;"><img src="/public/assets/email/pay-applepay.png" alt="Apple Pay" width="52" height="30" style="width:52px;height:30px;display:block;border:0;" /></span>
+                  <span style="display:inline-block;margin:3px;vertical-align:middle;"><img src="/public/assets/email/pay-stripe.png" alt="Stripe" width="52" height="30" style="width:52px;height:30px;display:block;border:0;" /></span>
+                  <span style="display:inline-block;margin:3px;vertical-align:middle;"><img src="/public/assets/email/pay-gpay.png" alt="Google Pay" width="55" height="30" style="width:55px;height:30px;display:block;border:0;" /></span>
+                  <span style="display:inline-block;margin:3px;vertical-align:middle;"><img src="/public/assets/email/pay-amazonpay.png" alt="Amazon Pay" width="64" height="30" style="width:64px;height:30px;display:block;border:0;" /></span>
+                </div>
+                <div style="margin-top:16px;font-size:11px;color:#78716c;">
+                  <a href="https://thestreetco.com/#terms" target="_blank" rel="noopener noreferrer" style="color:#2563eb;text-decoration:underline;">Terms</a>
+                  <span style="margin:0 6px;color:#c4bdb2;">&middot;</span>
+                  <a href="https://thestreetco.com/#privacy" target="_blank" rel="noopener noreferrer" style="color:#2563eb;text-decoration:underline;">Privacy</a>
+                  <span style="margin:0 6px;color:#c4bdb2;">&middot;</span>
+                  <a href="https://thestreetco.com/#refund" target="_blank" rel="noopener noreferrer" style="color:#2563eb;text-decoration:underline;">Refunds</a>
+                  <span style="margin:0 6px;color:#c4bdb2;">&middot;</span>
+                  <a href="https://thestreetco.com/#shipping" target="_blank" rel="noopener noreferrer" style="color:#2563eb;text-decoration:underline;">Shipping</a>
+                </div>
+              </td>
+            </tr>
           </table>
-
-          <div style="background:#faf8f5;border:1px solid #e8e2d8;border-radius:10px;padding:18px 20px;margin-bottom:26px;">
-            <table cellpadding="0" cellspacing="0" width="100%" border="0" style="width:100%;font-size:13px;color:#52525b;line-height:22px;">
-              <tr>
-                <td style="text-align:left;color:#71717a;padding:4px 0;">Subtotal</td>
-                <td style="text-align:right;color:#0e0e11;font-weight:600;padding:4px 0;">₹ 1,699</td>
-              </tr>
-              <tr>
-                <td style="text-align:left;color:#71717a;padding:4px 0;">Shipping &amp; Handling</td>
-                <td style="text-align:right;color:#059669;font-weight:600;padding:4px 0;">FREE</td>
-              </tr>
-              <tr>
-                <td style="text-align:left;color:#71717a;padding:4px 0;">Privilege Discount (VIP200)</td>
-                <td style="text-align:right;color:#52525b;font-weight:700;padding:4px 0;">-₹ 200</td>
-              </tr>
-              <tr style="font-size:16px;font-weight:800;color:#0e0e11;">
-                <td style="text-align:left;padding-top:12px;border-top:1px solid #e8e2d8;">Total Amount</td>
-                <td style="text-align:right;padding-top:12px;border-top:1px solid #e8e2d8;font-size:18px;">₹ 1,499</td>
-              </tr>
-            </table>
-          </div>
-
-          <div style="background:#faf8f5;border:1px dashed #c5a880;border-radius:8px;padding:14px 18px;margin-bottom:28px;">
-            <div style="font-size:12px;color:#3f3f46;line-height:1.5;">
-              <strong style="color:#0e0e11;">Official Zoho GST Tax Invoice Attached:</strong> Your compliant commercial tax invoice has been generated via Zoho and attached to this email as a PDF for your records.
-            </div>
-          </div>
-
-          <div style="text-align:center;margin-bottom:28px;">
-            <a href="https://www.delhivery.com/tracking" target="_blank" style="display:inline-block;background-color:#0e0e11;color:#ffffff;text-decoration:none;padding:15px 36px;border-radius:8px;font-weight:700;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;">
-              TRACK PACKAGE STATUS ↗
-            </a>
-          </div>
-
-          <div style="font-size:13px;line-height:1.6;color:#52525b;border-top:1px solid #e8e2d8;padding-top:20px;">
-            Thank you for being part of the family.<br>
-            <strong style="color:#0e0e11;">The Street Co Team</strong>
-          </div>
-        </div>
-
-        <div style="background-color:#faf8f5;border-top:1px solid #e8e2d8;padding:26px 20px;text-align:center;">
-          <div style="margin-bottom:14px;">
-            <a href="https://thestreetco.netlify.app" target="_blank" style="text-decoration:none;margin:0 12px;font-size:12px;font-weight:600;color:#0e0e11;">The Shop</a>
-            <span style="color:#c5a880;">•</span>
-            <a href="mailto:support@thestreetco.zohodesk.in" style="text-decoration:none;margin:0 12px;font-size:12px;font-weight:600;color:#0e0e11;">Client Concierge</a>
-            <span style="color:#c5a880;">•</span>
-            <a href="https://www.instagram.com/thestreetco_shop" target="_blank" style="text-decoration:none;margin:0 12px;font-size:12px;font-weight:600;color:#0e0e11;">Instagram</a>
-          </div>
-          <div style="font-size:11px;line-height:1.6;color:#8a7b6e;max-width:440px;margin:0 auto;">
-            The Street Co Apparel · Thakurnagar Shimulpur Hazratala, West Bengal 743287, India<br>
-            © 2026 The Street Co · All rights reserved.
-          </div>
-        </div>
-
-      </div>
-    </div>
+        </td>
+      </tr>
+    </table>
   </body>
 </html>`
         },
@@ -459,9 +425,12 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light only">
+    <meta name="supported-color-schemes" content="light only">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>:root{color-scheme:light only;supported-color-schemes:light only;}@media(prefers-color-scheme:dark){html,body{background-color:#faf8f5 !important;color:#18181b !important;}}</style>
   </head>
-  <body style="margin:0;padding:0;background-color:#faf8f5;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;color:#18181b;line-height:1.65;">
+  <body bgcolor="#faf8f5" style="margin:0;padding:0;background-color:#faf8f5;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;color:#18181b;line-height:1.65;">
     <div style="width:100%;background-color:#faf8f5;padding:32px 12px;box-sizing:border-box;">
       <div style="max-width:600px;margin:0 auto;background-color:#ffffff;border:1px solid #e8e2d8;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.03);">
         
@@ -534,9 +503,12 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light only">
+    <meta name="supported-color-schemes" content="light only">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>:root{color-scheme:light only;supported-color-schemes:light only;}@media(prefers-color-scheme:dark){html,body{background-color:#faf8f5 !important;color:#18181b !important;}}</style>
   </head>
-  <body style="margin:0;padding:0;background-color:#faf8f5;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;color:#18181b;">
+  <body bgcolor="#faf8f5" style="margin:0;padding:0;background-color:#faf8f5;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;color:#18181b;">
     <div style="width:100%;background-color:#faf8f5;padding:32px 12px;box-sizing:border-box;">
       <div style="max-width:600px;margin:0 auto;background-color:#ffffff;border:1px solid #e8e2d8;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.03);">
         
@@ -610,9 +582,12 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
+    <meta name="color-scheme" content="light only">
+    <meta name="supported-color-schemes" content="light only">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>:root{color-scheme:light only;supported-color-schemes:light only;}@media(prefers-color-scheme:dark){html,body{background-color:#faf8f5 !important;color:#18181b !important;}}</style>
   </head>
-  <body style="margin:0;padding:0;background-color:#faf8f5;font-family:'Plus Jakarta Sans',sans-serif;color:#18181b;">
+  <body bgcolor="#faf8f5" style="margin:0;padding:0;background-color:#faf8f5;font-family:'Plus Jakarta Sans',sans-serif;color:#18181b;">
     <div style="width:100%;background-color:#faf8f5;padding:32px 12px;box-sizing:border-box;">
       <div style="font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:540px;margin:0 auto;background:#faf8f5;border:1px solid #e8e2d8;border-radius:12px;overflow:hidden;color:#0e0e11;box-shadow:0 4px 20px rgba(0,0,0,0.03);">
         <div style="background:#0e0e11;color:#ffffff;padding:26px;text-align:center;border-bottom:1px solid #c5a880;">
@@ -649,11 +624,25 @@
       };
       TEMPLATES.exchange_requested = {
         title: "5. Size Exchange Request Received",
-        html: TEMPLATES.order_confirmed.html.replace("You're In. Your Order Is Confirmed.", "Exchange Request Received").replace("ACQUISITION CONFIRMED", "SIZE EXCHANGE QUEUED")
+        liveEndpoint: "/api/email-preview/exchange_requested",
+        html: TEMPLATES.order_confirmed.html
+          .replace("Order Confirmation", "Exchange Request Confirmation")
+          .replace("Thank you for your purchase &mdash; this email confirms your order.", "Thank you for reaching out &mdash; this email confirms your exchange request for size XL.")
+          .replace("You can see the invoice using the button below.", "You can follow your exchange status using the button below.")
+          .replace("View Your Invoice", "View Exchange Status")
+          .replace("Order No. #214822", "Return No. #EX-48291")
+          .replace("Items ordered", "Items to exchange")
       };
       TEMPLATES.return_requested = {
         title: "6. Return for Refund Request (No Size)",
-        html: TEMPLATES.order_confirmed.html.replace("You're In. Your Order Is Confirmed.", "Return For Refund Received").replace("ACQUISITION CONFIRMED", "RETURN FOR REFUND")
+        liveEndpoint: "/api/email-preview/return_requested",
+        html: TEMPLATES.order_confirmed.html
+          .replace("Order Confirmation", "Return Request Confirmation")
+          .replace("You made our day, hope we will make yours soon!<br>Thank you for your purchase &mdash; this email confirms your order.", "Thank you for reaching out &mdash; this email confirms your return request.<br>We have received your request and will share reverse pickup details shortly.")
+          .replace("You can see the invoice using the button below.", "You can follow your return status using the button below.")
+          .replace("View Your Invoice", "View Return Status")
+          .replace("Order No. #214822", "Return No. #RET-23665")
+          .replace("Items ordered", "Items to return")
       };
       TEMPLATES.pickup_confirmed = {
         title: "7. Reverse Pickup Scheduled & Confirmed",
@@ -685,7 +674,7 @@
       const stageTitle = document.getElementById('stageTitle');
       const frameWrapper = document.getElementById('frameWrapper');
 
-      function loadTemplate(key) {
+      async function loadTemplate(key) {
         const item = TEMPLATES[key] || TEMPLATES.order_confirmed;
         selector.value = key;
         stageTitle.innerHTML = 'Displaying: <strong>' + item.title + '</strong>';
@@ -695,10 +684,20 @@
           btn.classList.toggle('active', btn.getAttribute('data-template') === key);
         });
 
+        let htmlToRender = item.html;
+        if (item.liveEndpoint && typeof fetch === 'function') {
+          try {
+            const resp = await fetch(item.liveEndpoint);
+            if (resp.ok) {
+              htmlToRender = await resp.text();
+            }
+          } catch (_) {}
+        }
+
         // Inject into iframe
         const doc = frame.contentWindow.document;
         doc.open();
-        doc.write(item.html);
+        doc.write(htmlToRender);
         doc.close();
       }
 

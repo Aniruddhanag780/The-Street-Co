@@ -6,6 +6,8 @@ import twilio from 'twilio';
 import nodemailer from 'nodemailer';
 import * as zohoInventory from './zohoInventory.js';
 import { getProductImageBuffer } from './productImage.js';
+import { renderOrderConfirmationEmail, renderReturnConfirmationEmail } from './emailTemplates.js';
+import { verifyUpiPaymentViaImap } from './imapPaymentVerifier.js';
 import {
   connectMongoDb,
   getMongoStatus,
@@ -53,20 +55,20 @@ const TWILIO_PHONE_NUMBER = (process.env.TWILIO_PHONE_NUMBER || '+14356605689').
 
 // Direct Google Gmail SMTP Configuration (Exclusive Email Provider)
 const GMAIL_SMTP_USER = (process.env.GMAIL_SMTP_USER || 'thestreetco.official@gmail.com').trim();
-const GMAIL_SMTP_PASS = (process.env.GMAIL_SMTP_PASS || 'fiwbnxiycvoiefph').replace(/\s+/g, '').trim();
+const GMAIL_SMTP_PASS = (process.env.GMAIL_SMTP_PASS || 'hybxmdubrjmsddoh').replace(/\s+/g, '').trim();
 const GMAIL_SENDER_NAME = (process.env.GMAIL_SENDER_NAME || 'The Street Co').trim();
 const GMAIL_REPLY_TO = (process.env.GMAIL_REPLY_TO || process.env.ZOHO_DESK_SUPPORT_EMAIL || 'support@thestreetco.zohodesk.in').trim();
 const ZOHO_DESK_SUPPORT_EMAIL = (process.env.ZOHO_DESK_SUPPORT_EMAIL || process.env.GMAIL_REPLY_TO || 'support@thestreetco.zohodesk.in').trim();
 const ZOHO_DESK_PORTAL_NAME = (process.env.ZOHO_DESK_PORTAL_NAME || 'thestreetco').trim();
 
-// DEVELOPMENT MODE NOTIFICATION GATE:
-// While in active development, actual SMS and email transmissions are strictly paused.
-// They are simulated and logged locally without calling external APIs until live integration is explicitly requested.
+// Live Gmail transactional email delivery (active for confirmation & verification emails; can be paused via DISABLE_LIVE_EMAILS=true)
+const LIVE_EMAILS_ENABLED = process.env.DISABLE_LIVE_EMAILS !== 'true';
+// SMS notifications remain gated unless ENABLE_LIVE_NOTIFICATIONS=true
 const LIVE_NOTIFICATIONS_ENABLED = process.env.ENABLE_LIVE_NOTIFICATIONS === 'true';
 
 let gmailTransporter = null;
 function getGmailTransporter() {
-  if (!LIVE_NOTIFICATIONS_ENABLED) {
+  if (!LIVE_EMAILS_ENABLED) {
     return {
       sendMail: async (mailOptions) => {
         const to = mailOptions?.to || 'recipient';
@@ -313,72 +315,21 @@ async function sendOrderConfirmationEmailGmail(order, hostOrigin = '') {
 
   const orderCode = order.orderCode || order.orderId || 'ORDER';
 
-  if (!LIVE_NOTIFICATIONS_ENABLED) {
-    console.log(`[Gmail - Dev Paused] Order confirmation email for ${orderCode} to ${recipientEmail} simulated.`);
+  if (!LIVE_EMAILS_ENABLED) {
+    console.log(`[Gmail - Dev Paused] Order confirmation email for #${orderCode} to ${recipientEmail} simulated.`);
     return { success: true, simulated: true, pausedInDev: true };
   }
 
-  const customerName = order?.shippingAddress?.fullName || order?.contactDetails?.fullName || order?.userDetails?.name || 'Valued Customer';
-  const grandTotal = order.grandTotalInr ? `₹ ${Math.round(Number(order.grandTotalInr)).toLocaleString('en-IN')}` : '₹ 0.00';
-  const subtotal = order.subtotalInr ? `₹ ${Math.round(Number(order.subtotalInr)).toLocaleString('en-IN')}` : grandTotal;
-  const deliveryFee = order.deliveryFeeInr ? `₹ ${Math.round(Number(order.deliveryFeeInr))}` : 'FREE';
-  const discount = order.discountInr ? `-₹ ${Math.round(Number(order.discountInr))}` : '₹ 0.00';
-  const orderDate = order.orderDateFormatted || new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-  const paymentMethod = (order.paymentMethod || 'COD').toUpperCase();
-
-  const shippingAddr = order.shippingAddress || {};
-  const rawRecipientPhone = shippingAddr.phone || order?.contactDetails?.phone || order?.userDetails?.phone || order?.phone || '';
-  const recipientPhone = formatDisplayContactPhone(rawRecipientPhone);
-  const streetAddr = [shippingAddr.addressLine1, shippingAddr.addressLine2, shippingAddr.houseFlat, shippingAddr.streetRoad].filter(Boolean).join(', ') || 'Standard Shipping Address';
-  const cityStateZip = [shippingAddr.city, shippingAddr.state, shippingAddr.pincode].filter(Boolean).join(' - ');
-  const fullAddress = `${streetAddr}, ${cityStateZip}`.trim();
-
-  const rawItems = (Array.isArray(order.items) && order.items.length > 0)
-    ? order.items
-    : ((Array.isArray(order.products) && order.products.length > 0)
-        ? order.products
-        : ((Array.isArray(order.productDetails) && order.productDetails.length > 0)
-            ? order.productDetails
-            : []));
-
-  const items = rawItems.length > 0 ? rawItems : [
-    {
-      title: 'Heavyweight Graphic Hoodie',
-      name: 'Heavyweight Graphic Hoodie',
-      size: 'L',
-      quantity: 1,
-      qty: 1,
-      price: Math.round(Number(order.grandTotalInr) || 1499),
-      priceInr: Math.round(Number(order.grandTotalInr) || 1499),
-      image: 'https://thestreetco.netlify.app/og-preview.jpg'
-    }
-  ];
-
-  const estimatedDelivery = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric'
+  const supportEmail = (process.env.GMAIL_REPLY_TO || 'support@thestreetco.zohodesk.in').trim();
+  const { subject, html: htmlContent, text: plainTextContent, cleanOrderNumber, cidAttachments } = renderOrderConfirmationEmail({
+    order,
+    hostOrigin,
+    useCidAssets: true,
+    supportEmail
   });
 
-  const trackingUrl = `https://www.delhivery.com/tracking?awb=${encodeURIComponent(orderCode)}`;
-  const storeUrl = 'https://thestreetco.netlify.app';
-  const supportEmail = (process.env.GMAIL_REPLY_TO || 'support@thestreetco.zohodesk.in').trim();
-
-  // Coupon discount calculation
-  const discountVal = Math.round(Number(order.discountInr || order.discount || (order.pricing && order.pricing.discountInr) || 0));
-  const hasCoupon = discountVal > 0 || Boolean(order.promoCode || (order.pricing && order.pricing.promoCode));
-  const couponCode = order.promoCode || (order.pricing && order.pricing.promoCode) || '';
-
-  const buyerGstin = (
-    order.gstin ||
-    order?.shippingAddress?.gstin ||
-    order?.contactDetails?.gstin ||
-    order?.userDetails?.gstin ||
-    ''
-  ).trim().toUpperCase();
-
-  // Official Zoho Tax Invoice PDF attachment when order is confirmed
-  const mailAttachments = [];
+  // Official Zoho Tax Invoice PDF attachment when invoice has already been generated + inline CID assets
+  const mailAttachments = [...cidAttachments];
   const zohoInvoiceId = order.zoho_invoice_id || order.invoice_id;
   if (zohoInvoiceId && !String(zohoInvoiceId).startsWith('LOCAL-')) {
     try {
@@ -395,373 +346,6 @@ async function sendOrderConfirmationEmailGmail(order, hostOrigin = '') {
     }
   }
 
-  const resolvedOrigin = (hostOrigin && !hostOrigin.includes('localhost') && !hostOrigin.includes('127.0.0.1'))
-    ? hostOrigin
-    : 'https://thestreetco.netlify.app';
-
-  const itemsHtml = items.map(item => {
-    const itemTitle = item.title || item.name || 'Fourth Hokage Minato Inspired Oversized T-Shirt';
-    const itemSubtitle = item.subtitle || (item.category ? `Men Oversized Heavyweight ${item.category}` : (item.finish ? `${item.finish} Edition` : (item.collectionName || 'The Street Co Collection')));
-    const itemSize = item.size || 'M';
-    const itemQty = Number(item.quantity || item.qty || 1);
-    const unitPriceNum = Number(item.priceInr || item.price || (item.totalItemPriceInr ? item.totalItemPriceInr / itemQty : (Number(order.grandTotalInr) || 1599)));
-    const totalItemPriceNum = Number(item.totalItemPriceInr || (unitPriceNum * itemQty));
-
-    // Resolve item order picture
-    let itemImg = item.image || item.imageUrl || (item.images && item.images[0]) || '';
-    if (!itemImg) {
-      itemImg = `${resolvedOrigin}/product-minato.jpg`;
-    } else if (itemImg.startsWith('/')) {
-      itemImg = `${resolvedOrigin}${itemImg}`;
-    }
-
-    // Calculate coupon discount per item
-    const orderSubtotalNum = Number(order.subtotalInr) || totalItemPriceNum || 1;
-    const proportion = totalItemPriceNum / orderSubtotalNum;
-    const itemDiscountAmt = hasCoupon ? Math.round(discountVal * proportion) : 0;
-    const itemFinalTotal = Math.max(0, totalItemPriceNum - itemDiscountAmt);
-    const itemFinalUnit = Math.max(0, Math.round(itemFinalTotal / itemQty));
-
-    const unitPriceDisplay = (hasCoupon && itemDiscountAmt > 0)
-      ? `<span style="white-space:nowrap;display:inline-block;"><span style="text-decoration:line-through;color:#888888;font-size:12px;margin-right:6px;">₹ ${Math.round(unitPriceNum).toLocaleString('en-IN')}</span><strong style="color:#ed3031;font-size:13px;">₹ ${Math.round(itemFinalUnit).toLocaleString('en-IN')}</strong></span>`
-      : `<span style="white-space:nowrap;display:inline-block;font-weight:600;color:#111111;">₹ ${Math.round(unitPriceNum).toLocaleString('en-IN')}</span>`;
-
-    const totalPriceDisplay = (hasCoupon && itemDiscountAmt > 0)
-      ? `<span style="white-space:nowrap;display:inline-block;"><span style="text-decoration:line-through;color:#888888;font-size:12px;font-weight:normal;margin-right:6px;">₹ ${Math.round(totalItemPriceNum).toLocaleString('en-IN')}</span><strong style="color:#ed3031;font-size:14px;">₹ ${Math.round(itemFinalTotal).toLocaleString('en-IN')}</strong></span>`
-      : `<span style="white-space:nowrap;display:inline-block;color:#ed3031;font-size:14px;font-weight:700;">₹ ${Math.round(totalItemPriceNum).toLocaleString('en-IN')}</span>`;
-
-    return `
-        <table cellpadding="0" cellspacing="0" width="100%" border="0" style="width:100%;color:#282c3f;font-family:'Source Sans Pro', Helvetica, Arial, sans-serif;font-size:14px;line-height:22px;margin-bottom:16px;border-bottom:1px solid #e4e4e4;padding-bottom:14px;">
-          <!-- Top Row: Left Side = Order Picture, Right Side = All Texts -->
-          <tr>
-            <td style="width:90px;vertical-align:top;padding-right:15px;padding-bottom:10px;">
-              <img src="${itemImg}" alt="${itemTitle}" width="85" height="85" style="width:85px;height:85px;max-width:85px;object-fit:cover;border-radius:6px;border:1px solid #e4e4e4;display:block;" />
-            </td>
-            <td style="vertical-align:top;padding-bottom:10px;">
-              <div style="color:#111111;font-weight:700;font-size:15px;line-height:20px;padding-bottom:3px;word-break:break-word;">
-                ${itemTitle}
-              </div>
-              <div style="color:#686B78;font-size:13px;line-height:18px;padding-bottom:6px;">
-                ${itemSubtitle}
-              </div>
-              <div style="color:#444444;font-size:13px;line-height:18px;">
-                Size: <strong>${itemSize}</strong> &nbsp;|&nbsp; Qty: <strong>${itemQty}</strong>
-                ${hasCoupon && itemDiscountAmt > 0 ? '<span style="background:#fee2e2;color:#dc2626;font-size:10px;font-weight:700;padding:2px 6px;border-radius:3px;letter-spacing:0.3px;margin-left:8px;display:inline-block;">COUPON APPLIED</span>' : ''}
-              </div>
-            </td>
-          </tr>
-
-          <!-- Bottom: All Prices -->
-          <tr>
-            <td colspan="2" style="border-top:1px dashed #ebebeb;padding-top:8px;">
-              <table cellpadding="0" cellspacing="0" width="100%" border="0" style="width:100%;">
-                <tr>
-                  <td style="width:58%;text-align:left;color:#686B78;font-size:13px;padding:2px 0;vertical-align:middle;">Price</td>
-                  <td style="width:42%;text-align:right;color:#111111;font-size:13px;padding:2px 0;vertical-align:middle;white-space:nowrap;">${unitPriceDisplay}</td>
-                </tr>
-                <tr style="font-weight:700;">
-                  <td style="width:58%;text-align:left;color:#111111;font-size:14px;padding-top:4px;vertical-align:middle;">Item Total</td>
-                  <td style="width:42%;text-align:right;padding-top:4px;vertical-align:middle;white-space:nowrap;">${totalPriceDisplay}</td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-        </table>
-    `;
-  }).join('');
-
-  const cleanOrderNumber = String(orderCode).replace('#', '').trim();
-  const firstItem = items.length > 0 ? items[0] : null;
-  const firstItemTitle = firstItem ? (firstItem.title || firstItem.name || 'Heavyweight Streetwear Apparel') : 'Heavyweight Streetwear Apparel';
-  const firstItemImg = `${resolvedOrigin}/product-minato.jpg`;
-  const numericPrice = String(Math.round(Number(order.grandTotalInr) || 1499));
-  const isoOrderDate = new Date().toISOString();
-  const isoDeliveryDate = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-
-  const schemaJsonLd = JSON.stringify({
-    "@context": "http://schema.org",
-    "@type": "ParcelDelivery",
-    "deliveryAddress": {
-      "@type": "PostalAddress",
-      "name": customerName,
-      "streetAddress": streetAddr,
-      "addressLocality": shippingAddr.city || "Kolkata",
-      "addressRegion": shippingAddr.state || "West Bengal",
-      "postalCode": shippingAddr.pincode || "700001",
-      "addressCountry": "IN"
-    },
-    "expectedArrivalUntil": isoDeliveryDate,
-    "carrier": {
-      "@type": "Organization",
-      "name": "Delhivery",
-      "url": "https://www.delhivery.com"
-    },
-    "trackingNumber": cleanOrderNumber,
-    "trackingUrl": trackingUrl,
-    "partOfOrder": {
-      "@type": "Order",
-      "orderNumber": cleanOrderNumber,
-      "merchant": {
-        "@type": "Organization",
-        "name": "The Street Co",
-        "url": "https://thestreetco.netlify.app"
-      },
-      "orderStatus": "http://schema.org/OrderProcessing",
-      "priceCurrency": "INR",
-      "price": numericPrice,
-      "orderDate": isoOrderDate,
-      "customer": {
-        "@type": "Person",
-        "name": customerName
-      },
-      "acceptedOffer": items.map(item => ({
-        "@type": "Offer",
-        "itemOffered": {
-          "@type": "Product",
-          "name": item.title || item.name || 'Streetwear Apparel'
-        },
-        "price": String(Math.round(Number(item.price) || Number(numericPrice))),
-        "priceCurrency": "INR",
-        "eligibleQuantity": {
-          "@type": "QuantitativeValue",
-          "value": item.quantity || item.qty || 1
-        }
-      }))
-    },
-    "itemShipped": {
-      "@type": "Product",
-      "name": firstItemTitle
-    },
-    "potentialAction": [
-      {
-        "@type": "TrackAction",
-        "target": trackingUrl,
-        "name": "Track Package"
-      },
-      {
-        "@type": "ViewAction",
-        "target": "https://thestreetco.netlify.app",
-        "name": "View Shop"
-      }
-    ]
-  }, null, 2);
-
-  const htmlContent = `<!doctype html>
-<html lang="en">
-  <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Order Confirmed #${orderCode} - The Street Co</title>
-    <!-- Google Email Markup for Gmail Order Summary Card / Highlights -->
-    <script type="application/ld+json">
-${schemaJsonLd}
-    </script>
-    <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,600,700" rel="stylesheet" type="text/css">
-    <style type="text/css">
-      body { margin:0;padding:0;background-color:#ffffff;font-family:'Source Sans Pro', Helvetica, Arial, sans-serif; }
-      table, td { border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt; }
-      img { border:0;height:auto;line-height:100%;outline:none;text-decoration:none; }
-      p { display:block;margin:13px 0; }
-    </style>
-  </head>
-  <body style="margin:0;padding:0;background-color:#ffffff;">
-    <!-- Full-Page Email Wrapper (No Box, No Border, No Outer Canvas) -->
-    <div style="width:100%;margin:0;padding:0;background-color:#ffffff;">
-      
-      <!-- Top Brand Black Header with Crimson Accent (Full-Width Header) -->
-      <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;background:#0b0a0f;background-color:#0b0a0f;border-bottom:2px solid #e05a47;">
-        <tbody>
-          <tr>
-            <td style="padding:22px 20px;text-align:center;">
-              <a href="https://thestreetco.netlify.app" target="_blank" style="text-decoration:none;display:inline-block;">
-                <span style="font-family:'Source Sans Pro', sans-serif;font-size:22px;font-weight:900;letter-spacing:3px;color:#ffffff;text-transform:uppercase;">THE STREET CO</span>
-              </a>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      <!-- Inner Content Column (Clean Full Page flow) -->
-      <div style="max-width:600px;margin:0 auto;background-color:#ffffff;padding:0 20px;">
-
-      <!-- Main Welcome & Confirmation Message -->
-      <div style="padding:30px 5px 15px 5px;background-color:#ffffff;">
-        <div style="font-family:'Source Sans Pro', sans-serif;font-size:22px;font-weight:800;color:#111111;margin-bottom:12px;letter-spacing:-0.3px;">
-          You're In. Order Confirmed!
-        </div>
-        <div style="font-family:'Source Sans Pro', sans-serif;font-size:16px;font-weight:700;color:#262424;margin-bottom:12px;">
-          Hey ${customerName},
-        </div>
-        <div style="font-family:'Source Sans Pro', sans-serif;font-size:14px;line-height:1.6;color:#333333;">
-          Your order <strong>#${cleanOrderNumber}</strong> has been successfully placed and is now being carefully prepared by our team.
-          <br><br>
-          Thank you for shopping from <strong>The Street Co</strong>. We’re stoked to have you as part of the family. We'll send you another update with tracking info as soon as your drop is out the door.
-        </div>
-      </div>
-
-      <div style="padding:0 5px;">
-        <hr style="border:0;border-top:1px solid #e4e4e4;margin:10px 0;">
-      </div>
-
-      <!-- Order Details & Delivery Address Two-Column Block (Exact User Draft) -->
-      <div style="padding:15px 5px;">
-        <table cellpadding="0" cellspacing="0" width="100%" border="0" style="color:#000000;font-family:'Source Sans Pro', sans-serif;font-size:13px;line-height:22px;">
-          <tr style="text-align:left;">
-            <th style="width:50%;padding-right:15px;color:#111111;font-size:13px;text-transform:uppercase;letter-spacing:0.5px;">ORDER DETAILS:</th>
-            <th style="width:50%;border-left:1px solid #e4e4e4;padding-left:15px;color:#111111;font-size:13px;text-transform:uppercase;letter-spacing:0.5px;">DELIVERY ADDRESS:</th>
-          </tr>
-          <tr style="text-align:left;">
-            <td style="vertical-align:top;width:50%;padding-right:15px;color:#333333;font-size:13px;padding-top:8px;line-height:22px;">
-              Your Order #${cleanOrderNumber}<br>
-              ORDER DATE: ${orderDate}<br>
-              PAYMENT: ${paymentMethod} (CONFIRMED)<br>
-              SHIPMENT: Preparing Dispatch
-            </td>
-            <td style="vertical-align:top;width:50%;border-left:1px solid #e4e4e4;padding-left:15px;color:#333333;font-size:13px;padding-top:8px;line-height:22px;">
-              ${customerName}<br>
-              ${streetAddr}<br>
-              ${cityStateZip}<br>
-              Contact No: ${recipientPhone || 'Not provided'}${buyerGstin ? `<br>GSTIN: <strong>${buyerGstin}</strong>` : ''}
-            </td>
-          </tr>
-        </table>
-      </div>
-
-      <div style="padding:0 5px;">
-        <hr style="border:0;border-top:1px solid #e4e4e4;margin:10px 0;">
-      </div>
-
-      <!-- Items Section Header -->
-      <div style="padding:10px 5px 5px 5px;">
-        <div style="font-family:'Source Sans Pro', sans-serif;font-size:13px;font-weight:700;color:#111111;text-transform:uppercase;letter-spacing:0.5px;">
-          ITEMS IN THE ORDER
-        </div>
-      </div>
-
-      <!-- Product Items List -->
-      <div style="padding:10px 5px 5px 5px;">
-        ${itemsHtml}
-      </div>
-
-      <!-- Financial Totals Summary (Matching 58%/42% Column Alignment & No-Wrap Prices) -->
-      <div style="padding:0 5px 20px 5px;">
-        <table cellpadding="0" cellspacing="0" width="100%" border="0" style="width:100%;table-layout:fixed;font-family:'Source Sans Pro', Helvetica, Arial, sans-serif;font-size:13px;color:#444444;line-height:22px;border-top:1px solid #e4e4e4;padding-top:12px;">
-          <tr>
-            <td style="width:58%;text-align:left;color:#686B78;padding:4px 0;vertical-align:middle;">Subtotal</td>
-            <td style="width:42%;text-align:right;color:#111111;font-weight:600;padding:4px 0;vertical-align:middle;white-space:nowrap;">${subtotal}</td>
-          </tr>
-          <tr>
-            <td style="width:58%;text-align:left;color:#686B78;padding:4px 0;vertical-align:middle;">Shipping &amp; Delivery</td>
-            <td style="width:42%;text-align:right;color:#10b981;font-weight:600;padding:4px 0;vertical-align:middle;white-space:nowrap;">${deliveryFee}</td>
-          </tr>
-          ${discountVal > 0 ? `
-          <tr>
-            <td style="width:58%;text-align:left;color:#686B78;padding:4px 0;vertical-align:middle;">
-              Coupon Discount ${couponCode ? `<strong style="color:#ed3031;font-weight:700;">(${couponCode})</strong>` : ''}
-            </td>
-            <td style="width:42%;text-align:right;color:#ed3031;font-weight:700;padding:4px 0;vertical-align:middle;white-space:nowrap;">-₹ ${discountVal.toLocaleString('en-IN')}</td>
-          </tr>` : ''}
-          <tr style="font-size:15px;font-weight:700;color:#111111;">
-            <td style="width:58%;text-align:left;padding-top:10px;border-top:1px solid #e4e4e4;color:#111111;vertical-align:middle;">Grand Total</td>
-            <td style="width:42%;text-align:right;padding-top:10px;border-top:1px solid #e4e4e4;color:#ed3031;font-size:16px;font-weight:700;white-space:nowrap;vertical-align:middle;">${grandTotal}</td>
-          </tr>
-        </table>
-      </div>
-
-      <!-- Signoff / Have a nice day -->
-      <div style="padding:10px 5px 20px 5px;">
-        <div style="font-family:'Source Sans Pro', sans-serif;font-size:14px;color:#282c3f;font-weight:600;">Have a nice day!</div>
-        <div style="font-family:'Source Sans Pro', sans-serif;font-size:14px;color:#282c3f;margin-top:2px;">The Street Co Team</div>
-      </div>
-
-      <div style="padding:0 5px;">
-        <hr style="border:0;border-top:1px solid #e4e4e4;margin:0 0 20px 0;">
-      </div>
-
-      <!-- Track Requisition CTA Button (Black Box matching View Invoice) -->
-      <div style="padding:0 5px 25px 5px;text-align:center;">
-        <a href="${trackingUrl}" target="_blank" style="display:inline-block;background-color:#0b0a0f;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:6px;font-weight:700;font-size:13px;letter-spacing:1px;text-transform:uppercase;">
-          TRACK ORDER STATUS ↗
-        </a>
-      </div>
-
-      <!-- Footer Social Icons & Address (Full Page, no box) -->
-      <div style="background-color:#ffffff;padding:25px 5px 30px 5px;text-align:center;border-top:1px solid #eeeeee;">
-        <div style="font-family:'Source Sans Pro', sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;color:#282C3F;letter-spacing:1px;margin-bottom:12px;">
-          WANT TO STAY IN THE LOOP?
-        </div>
-        <div style="margin-bottom:15px;">
-          <a href="${storeUrl}" target="_blank" style="text-decoration:none;margin:0 10px;font-size:12px;font-weight:700;color:#ed3031;">Visit Shop</a>
-          <span style="color:#d9d9d9;">•</span>
-          <a href="mailto:${supportEmail}" style="text-decoration:none;margin:0 10px;font-size:12px;font-weight:700;color:#ed3031;">Customer Support</a>
-          <span style="color:#d9d9d9;">•</span>
-          <a href="https://www.instagram.com/thestreetco_shop?stkn=ZnJ3eDZmaHd6Ym5o" target="_blank" style="text-decoration:none;margin:0 10px;font-size:12px;font-weight:700;color:#ed3031;">Instagram</a>
-        </div>
-        <div style="font-family:'Source Sans Pro', sans-serif;font-size:11px;line-height:18px;color:#686B78;max-width:480px;margin:0 auto;">
-          The Street Co • Thakurnagar Shimulpur Hazratala, West Bengal 743287, India<br>
-          © ${new Date().getFullYear()} The Street Co · All rights reserved.
-        </div>
-      </div>
-
-      </div> <!-- /inner column -->
-    </div> <!-- /full-page wrapper -->
-  </body>
-</html>`;
-
-  const plainTextItemsList = items.map(item => {
-    const itemTitle = item.title || item.name || 'Fourth Hokage Minato Inspired Oversized T-Shirt';
-    const itemSize = item.size || 'M';
-    const itemQty = Number(item.quantity || item.qty || 1);
-    const unitPriceNum = Number(item.priceInr || item.price || 1599);
-    const totalItemPriceNum = Number(item.totalItemPriceInr || (unitPriceNum * itemQty));
-    const orderSubtotalNum = Number(order.subtotalInr) || totalItemPriceNum || 1;
-    const proportion = totalItemPriceNum / orderSubtotalNum;
-    const itemDiscountAmt = hasCoupon ? Math.round(discountVal * proportion) : 0;
-    const itemFinalTotal = Math.max(0, totalItemPriceNum - itemDiscountAmt);
-    const itemFinalUnit = Math.max(0, Math.round(itemFinalTotal / itemQty));
-
-    const priceText = hasCoupon && itemDiscountAmt > 0
-      ? `Original: ₹${Math.round(unitPriceNum)} | Discounted: ₹${Math.round(itemFinalUnit)} (Coupon Applied) | Total: ₹${Math.round(itemFinalTotal)}`
-      : `₹${Math.round(unitPriceNum)} x ${itemQty} = ₹${Math.round(totalItemPriceNum)}`;
-
-    return `• ${itemTitle} (Size: ${itemSize}, Qty: ${itemQty}) - ${priceText}`;
-  }).join('\n');
-
-  const plainTextContent = `You're In. Order Confirmed!
-
-Hey ${customerName},
-
-Your order #${cleanOrderNumber} has been successfully placed and is now being carefully prepared by our team.
-
-Thank you for shopping from The Street Co! We're stoked to have you as part of the family. We'll send you another update with tracking info as soon as your drop is out the door.
-
-ORDER DETAILS:
-Your Order #${cleanOrderNumber}
-ORDER DATE: ${orderDate}
-PAYMENT: ${paymentMethod} (CONFIRMED)
-SHIPMENT: Preparing Dispatch
-
-DELIVERY ADDRESS:
-${customerName}
-${streetAddr}
-${cityStateZip}
-Contact No: ${recipientPhone || 'Not provided'}
-
-Items in Your Order:
-${plainTextItemsList}
-
-Subtotal: ${subtotal}
-Shipping: ${deliveryFee}${discountVal > 0 ? `\nCoupon Discount: -₹ ${discountVal}` : ''}
-Grand Total: ${grandTotal}
-
-Track your package anytime at: ${trackingUrl}
-Instagram: https://www.instagram.com/thestreetco_shop?stkn=ZnJ3eDZmaHd6Ym5o
-Support: ${supportEmail}
-
-Have a nice day!
-The Street Co Team`;
-
-  // Exclusive Google Gmail SMTP Delivery
   const gmail = getGmailTransporter();
   if (!gmail) {
     console.warn('[Gmail SMTP] Transporter not initialized. Ensure GMAIL_SMTP_USER and GMAIL_SMTP_PASS are set.');
@@ -780,13 +364,13 @@ The Street Co Team`;
       from: `"${senderDisplayName}" <${senderUser}>`,
       replyTo: replyToEmail,
       to: recipientEmail,
-      subject: `Order Confirmed #${orderCode} - The Street Co`,
+      subject,
       text: plainTextContent,
       html: htmlContent,
       attachments: mailAttachments
     };
     const info = await gmail.sendMail(mailOptions);
-    console.log(`[Gmail SMTP] Native Google order email successfully delivered for #${orderCode} to ${recipientEmail}. MessageId:`, info.messageId);
+    console.log(`[Gmail SMTP] Order confirmation email delivered for #${orderCode} to ${recipientEmail}. MessageId:`, info.messageId);
     return {
       success: true,
       provider: 'gmail_smtp',
@@ -853,9 +437,17 @@ ${supportEmail}`;
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light only">
+  <meta name="supported-color-schemes" content="light only">
   <title>${subject}</title>
+  <style type="text/css">
+    :root { color-scheme: light only; supported-color-schemes: light only; }
+    @media (prefers-color-scheme: dark) {
+      html, body { background-color: #ffffff !important; color: #1f2937 !important; }
+    }
+  </style>
 </head>
-<body style="margin: 0; padding: 0; background-color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1f2937; line-height: 1.65;">
+<body bgcolor="#ffffff" style="margin: 0; padding: 0; background-color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1f2937; line-height: 1.65;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width: 100%; margin: 0; padding: 0; background-color: #ffffff; border: none;">
     
     <!-- Top Full-Width Brand Bar (No Box) -->
@@ -1058,10 +650,18 @@ async function sendDeliveryDoneEmail(order, hostOrigin = '') {
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light only">
+    <meta name="supported-color-schemes" content="light only">
     <title>${subject}</title>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style type="text/css">
+      :root { color-scheme: light only; supported-color-schemes: light only; }
+      @media (prefers-color-scheme: dark) {
+        html, body { background-color: #ffffff !important; color: #18181b !important; }
+      }
+    </style>
   </head>
-  <body style="margin:0;padding:0;background-color:#ffffff;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;color:#18181b;">
+  <body bgcolor="#ffffff" style="margin:0;padding:0;background-color:#ffffff;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;color:#18181b;">
     <div style="width:100%;margin:0;padding:0;background-color:#ffffff;">
       
       <!-- Top Brand Header -->
@@ -1249,16 +849,22 @@ async function sendReturnApprovedEmail(returnRecord, hostOrigin = '') {
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light only">
+    <meta name="supported-color-schemes" content="light only">
     <title>${subject}</title>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style type="text/css">
-      body { margin:0;padding:0;background-color:#faf8f5;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;-webkit-font-smoothing:antialiased; }
+      :root { color-scheme: light only; supported-color-schemes: light only; }
+      body { margin:0;padding:0;background-color:#faf8f5 !important;color:#18181b !important;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;-webkit-font-smoothing:antialiased; }
       table, td { border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt; }
       img { border:0;height:auto;line-height:100%;outline:none;text-decoration:none; }
       p { display:block;margin:12px 0; }
+      @media (prefers-color-scheme: dark) {
+        html, body { background-color:#faf8f5 !important;color:#18181b !important; }
+      }
     </style>
   </head>
-  <body style="margin:0;padding:0;background-color:#faf8f5;">
+  <body bgcolor="#faf8f5" style="margin:0;padding:0;background-color:#faf8f5;">
     <!-- Outer Creamy Canvas -->
     <div style="width:100%;background-color:#faf8f5;padding:32px 12px;box-sizing:border-box;">
       
@@ -1496,16 +1102,22 @@ async function sendOrderReadyToShipEmail(order, hostOrigin = '') {
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light only">
+    <meta name="supported-color-schemes" content="light only">
     <title>${subject}</title>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style type="text/css">
-      body { margin:0;padding:0;background-color:#faf8f5;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;-webkit-font-smoothing:antialiased; }
+      :root { color-scheme: light only; supported-color-schemes: light only; }
+      body { margin:0;padding:0;background-color:#faf8f5 !important;color:#18181b !important;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;-webkit-font-smoothing:antialiased; }
       table, td { border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt; }
       img { border:0;height:auto;line-height:100%;outline:none;text-decoration:none; }
       p { display:block;margin:12px 0; }
+      @media (prefers-color-scheme: dark) {
+        html, body { background-color:#faf8f5 !important;color:#18181b !important; }
+      }
     </style>
   </head>
-  <body style="margin:0;padding:0;background-color:#faf8f5;">
+  <body bgcolor="#faf8f5" style="margin:0;padding:0;background-color:#faf8f5;">
     <!-- Outer Creamy Canvas -->
     <div style="width:100%;background-color:#faf8f5;padding:32px 12px;box-sizing:border-box;">
       
@@ -1643,170 +1255,30 @@ The Street Co Team`;
 // ══════════════════════════════════════════════════════════════════════════
 // 5. Dedicated Confirmation of Exchange Request Submitted Email
 // ══════════════════════════════════════════════════════════════════════════
-async function sendExchangeRequestSubmittedEmail(returnRecord, hostOrigin = '') {
+async function sendExchangeRequestSubmittedEmail(returnRecord, hostOrigin = '', linkedOrder = null) {
   const recipientEmail = (
     returnRecord?.customerEmail ||
     returnRecord?.email ||
     returnRecord?.shippingAddress?.email ||
     returnRecord?.contactDetails?.email ||
+    linkedOrder?.contactDetails?.email ||
+    linkedOrder?.shippingAddress?.email ||
     ''
   ).trim();
 
   if (!recipientEmail) return { success: false, error: 'No recipient email found for exchange confirmation.' };
 
-  const returnId = returnRecord.id || `EX-${Date.now()}`;
-  const orderCode = returnRecord.orderCode || 'ORDER';
-  const cleanOrderNumber = String(orderCode).replace('#', '').trim();
-  const customerName = returnRecord.customerName || returnRecord.fullName || 'Valued Customer';
-  const requestedSize = returnRecord.requestedSize || 'Selected Size';
-  const storeUrl = 'https://thestreetco.netlify.app';
+  const orderCode = String(returnRecord?.orderCode || '').replace(/^#/, '').trim();
+  const order = linkedOrder || inMemoryOrders.get(orderCode) || inMemoryOrders.get(`UCHIHA-${orderCode}`) || {};
   const supportEmail = (process.env.GMAIL_REPLY_TO || 'support@thestreetco.zohodesk.in').trim();
 
-  const items = Array.isArray(returnRecord.items) && returnRecord.items.length > 0
-    ? returnRecord.items
-    : [{ name: returnRecord.itemNames || 'Streetwear Garment', size: 'M' }];
-
-  const itemsHtml = items.map(item => `
-    <div style="padding:10px 0;border-bottom:1px solid #f0eee9;display:flex;justify-content:space-between;align-items:center;">
-      <div>
-        <strong style="color:#0e0e11;font-size:14px;">${item.name || 'Streetwear Garment'}</strong>
-        <div style="color:#71717a;font-size:12px;margin-top:2px;">Original Size: <strong>${item.size || 'M'}</strong></div>
-      </div>
-      <span style="font-size:11px;font-weight:700;color:#6366f1;background:#eef2ff;border:1px solid #c7d2fe;padding:3px 8px;border-radius:4px;letter-spacing:0.5px;">EXCHANGE REQUESTED</span>
-    </div>
-  `).join('');
-
-  const subject = `Exchange Request Received: Order #${cleanOrderNumber} (${returnId}) · The Street Co`;
-
-  const htmlContent = `<!doctype html>
-<html lang="en">
-  <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>${subject}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <style type="text/css">
-      body { margin:0;padding:0;background-color:#faf8f5;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;-webkit-font-smoothing:antialiased; }
-      table, td { border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt; }
-      img { border:0;height:auto;line-height:100%;outline:none;text-decoration:none; }
-      p { display:block;margin:12px 0; }
-    </style>
-  </head>
-  <body style="margin:0;padding:0;background-color:#faf8f5;">
-    <!-- Outer Creamy Canvas -->
-    <div style="width:100%;background-color:#faf8f5;padding:32px 12px;box-sizing:border-box;">
-      
-      <!-- Center Luxury Card -->
-      <div style="max-width:600px;margin:0 auto;background-color:#ffffff;border:1px solid #e8e2d8;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.03);">
-        
-        <!-- Top Obsidian Header with Gold Accent -->
-        <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;background:#0e0e11;border-bottom:1px solid #c5a880;">
-          <tbody>
-            <tr>
-              <td style="padding:26px 20px;text-align:center;">
-                <a href="${storeUrl}" target="_blank" style="text-decoration:none;display:inline-block;">
-                  <div style="font-family:'Playfair Display',Georgia,serif;font-size:22px;font-weight:700;letter-spacing:0.2em;color:#ffffff;text-transform:uppercase;">THE STREET CO</div>
-                  <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.18em;color:#c5a880;text-transform:uppercase;margin-top:6px;">CLIENT CONCIERGE · SIZE EXCHANGE REQUEST</div>
-                </a>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-
-        <!-- Main Content Area -->
-        <div style="padding:32px 28px;">
-          
-          <!-- Banner -->
-          <div style="background:#faf8f5;border:1px solid #e8e2d8;border-radius:10px;padding:22px 20px;margin-bottom:26px;text-align:center;">
-            <div style="display:inline-block;width:40px;height:40px;line-height:40px;border-radius:50%;background:#0e0e11;color:#ffffff;font-size:18px;font-weight:bold;margin-bottom:8px;">↺</div>
-            <div style="font-family:'Playfair Display',Georgia,serif;font-size:22px;font-weight:600;color:#0e0e11;letter-spacing:-0.2px;margin-bottom:4px;">Exchange Request Received</div>
-            <div style="font-size:12px;color:#8a7b6e;font-weight:600;">Requested Size: <strong>${requestedSize}</strong> · Request ID: ${returnId}</div>
-          </div>
-
-          <p style="font-size:15px;font-weight:600;color:#18181b;margin:0 0 10px;">
-            Hey ${customerName},
-          </p>
-          <p style="font-size:14px;line-height:1.65;color:#52525b;margin:0 0 24px;">
-            We have received your size exchange request for Order <strong style="color:#0e0e11;">#${cleanOrderNumber}</strong>. We are holding your replacement article in size <strong style="color:#0e0e11;">${requestedSize}</strong>.
-          </p>
-
-          <!-- Request Summary Card -->
-          <div style="background:#faf8f5;border:1px solid #e8e2d8;border-radius:10px;padding:18px 20px;margin-bottom:24px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-              <span style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#8a7b6e;">EXCHANGE REFERENCE</span>
-              <span style="font-family:monospace;font-size:13px;color:#0e0e11;font-weight:700;">${returnId}</span>
-            </div>
-            <div style="font-size:13px;color:#3f3f46;margin-bottom:6px;">
-              Replacement Size: <strong style="background:#ffffff;border:1px solid #e8e2d8;padding:2px 8px;border-radius:4px;color:#0e0e11;">${requestedSize}</strong>
-            </div>
-            <div style="font-size:12px;color:#71717a;margin-top:8px;border-top:1px dashed #e8e2d8;padding-top:8px;">
-              Doorstep Pickup Address: <strong style="color:#0e0e11;">${returnRecord.pickupAddress || 'Address on file'}</strong>
-            </div>
-          </div>
-
-          <!-- Items to Exchange -->
-          <div style="margin-bottom:26px;">
-            <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#8a7b6e;margin-bottom:12px;">ARTICLE TO BE EXCHANGED</div>
-            ${itemsHtml}
-          </div>
-
-          <!-- Next Steps -->
-          <div style="background:#0e0e11;color:#ffffff;border-radius:10px;padding:22px;margin-bottom:28px;">
-            <div style="font-size:10px;font-weight:700;letter-spacing:0.16em;color:#c5a880;text-transform:uppercase;margin-bottom:6px;">WHAT HAPPENS NEXT?</div>
-            <p style="font-size:13px;line-height:1.6;color:#d4d4d8;margin:0;">
-              1. Our fulfillment team validates your request in Zoho Inventory.<br/>
-              2. You will receive an official <strong>Pickup Confirmed email</strong> with Delhivery reverse tracking details.<br/>
-              3. Delhivery collects your parcel and your new <strong>${requestedSize}</strong> piece is dispatched immediately!
-            </p>
-          </div>
-
-          <!-- Support Info -->
-          <div style="font-size:13px;line-height:1.6;color:#52525b;margin-bottom:24px;border-top:1px solid #e8e2d8;padding-top:18px;">
-            Questions? Reply directly to this email or reach us at <a href="mailto:${supportEmail}" style="color:#0e0e11;font-weight:700;text-decoration:underline;">${supportEmail}</a>.
-          </div>
-
-          <!-- Signoff -->
-          <div style="font-size:13px;color:#18181b;">
-            Best regards,<br>
-            <strong style="color:#0e0e11;">The Street Co Team</strong>
-          </div>
-
-        </div> <!-- /main content -->
-
-        <!-- Footer -->
-        <div style="background-color:#faf8f5;border-top:1px solid #e8e2d8;padding:26px 20px;text-align:center;">
-          <div style="margin-bottom:14px;">
-            <a href="${storeUrl}" target="_blank" style="text-decoration:none;margin:0 12px;font-size:12px;font-weight:600;color:#0e0e11;">The Shop</a>
-            <span style="color:#c5a880;">•</span>
-            <a href="mailto:${supportEmail}" style="text-decoration:none;margin:0 12px;font-size:12px;font-weight:600;color:#0e0e11;">Client Concierge</a>
-            <span style="color:#c5a880;">•</span>
-            <a href="https://www.instagram.com/thestreetco_shop?stkn=ZnJ3eDZmaHd6Ym5o" target="_blank" style="text-decoration:none;margin:0 12px;font-size:12px;font-weight:600;color:#0e0e11;">Instagram</a>
-          </div>
-          <div style="font-size:11px;line-height:1.6;color:#8a7b6e;max-width:440px;margin:0 auto;">
-            The Street Co Apparel · Thakurnagar Shimulpur Hazratala, West Bengal 743287, India<br>
-            © ${new Date().getFullYear()} The Street Co · All rights reserved.
-          </div>
-        </div>
-
-      </div> <!-- /center card -->
-    </div> <!-- /outer canvas -->
-  </body>
-</html>`;
-
-  const plainTextContent = `Exchange Request Received: Order #${cleanOrderNumber} (${returnId})
-
-Hey ${customerName},
-
-We've received your exchange request for Order #${cleanOrderNumber}.
-Requested Replacement Size: ${requestedSize}
-Reference ID: ${returnId}
-
-Next step: Once approved in Zoho Inventory, you'll receive reverse pickup scheduling details via Delhivery Express.
-
-Support: ${supportEmail}
-
-Best regards,
-The Street Co Team`;
+  const { subject, html: htmlContent, text: plainTextContent, returnId, cidAttachments } = renderReturnConfirmationEmail({
+    returnRecord: { ...returnRecord, type: 'exchange' },
+    order,
+    hostOrigin,
+    useCidAssets: true,
+    supportEmail
+  });
 
   const gmail = getGmailTransporter();
   if (!gmail) return { success: false, error: 'Gmail SMTP transporter not initialized.' };
@@ -1822,7 +1294,8 @@ The Street Co Team`;
       to: recipientEmail,
       subject,
       text: plainTextContent,
-      html: htmlContent
+      html: htmlContent,
+      attachments: cidAttachments
     });
 
     console.log(`[Gmail SMTP] Exchange request confirmation email delivered for #${returnId} to ${recipientEmail}. MessageId:`, info.messageId);
@@ -1836,169 +1309,30 @@ The Street Co Team`;
 // ══════════════════════════════════════════════════════════════════════════
 // 6. Dedicated Confirmation of Return Request Submitted Email (No Size Needed)
 // ══════════════════════════════════════════════════════════════════════════
-async function sendReturnRequestSubmittedEmail(returnRecord, hostOrigin = '') {
+async function sendReturnRequestSubmittedEmail(returnRecord, hostOrigin = '', linkedOrder = null) {
   const recipientEmail = (
     returnRecord?.customerEmail ||
     returnRecord?.email ||
     returnRecord?.shippingAddress?.email ||
     returnRecord?.contactDetails?.email ||
+    linkedOrder?.contactDetails?.email ||
+    linkedOrder?.shippingAddress?.email ||
     ''
   ).trim();
 
   if (!recipientEmail) return { success: false, error: 'No recipient email found for return confirmation.' };
 
-  const returnId = returnRecord.id || `RET-${Date.now()}`;
-  const orderCode = returnRecord.orderCode || 'ORDER';
-  const cleanOrderNumber = String(orderCode).replace('#', '').trim();
-  const customerName = returnRecord.customerName || returnRecord.fullName || 'Valued Customer';
-  const storeUrl = 'https://thestreetco.netlify.app';
+  const orderCode = String(returnRecord?.orderCode || '').replace(/^#/, '').trim();
+  const order = linkedOrder || inMemoryOrders.get(orderCode) || inMemoryOrders.get(`UCHIHA-${orderCode}`) || {};
   const supportEmail = (process.env.GMAIL_REPLY_TO || 'support@thestreetco.zohodesk.in').trim();
 
-  const items = Array.isArray(returnRecord.items) && returnRecord.items.length > 0
-    ? returnRecord.items
-    : [{ name: returnRecord.itemNames || 'Streetwear Garment', size: 'M' }];
-
-  const itemsHtml = items.map(item => `
-    <div style="padding:10px 0;border-bottom:1px solid #e8e2d8;display:flex;justify-content:space-between;align-items:center;">
-      <div>
-        <strong style="color:#0e0e11;font-size:14px;">${item.name || 'Streetwear Garment'}</strong>
-        <div style="color:#71717a;font-size:12px;margin-top:2px;">Size: <strong style="color:#0e0e11;">${item.size || 'Original'}</strong></div>
-      </div>
-      <span style="font-size:11px;font-weight:700;color:#52525b;background:#faf8f5;border:1px solid #e8e2d8;padding:3px 8px;border-radius:4px;letter-spacing:0.5px;">RETURN (REFUND)</span>
-    </div>
-  `).join('');
-
-  const subject = `Return Request Received: Order #${cleanOrderNumber} (${returnId}) · The Street Co`;
-
-  const htmlContent = `<!doctype html>
-<html lang="en">
-  <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>${subject}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <style type="text/css">
-      body { margin:0;padding:0;background-color:#faf8f5;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;-webkit-font-smoothing:antialiased; }
-      table, td { border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt; }
-      img { border:0;height:auto;line-height:100%;outline:none;text-decoration:none; }
-      p { display:block;margin:12px 0; }
-    </style>
-  </head>
-  <body style="margin:0;padding:0;background-color:#faf8f5;">
-    <!-- Outer Creamy Canvas -->
-    <div style="width:100%;background-color:#faf8f5;padding:32px 12px;box-sizing:border-box;">
-      
-      <!-- Center Luxury Card -->
-      <div style="max-width:600px;margin:0 auto;background-color:#ffffff;border:1px solid #e8e2d8;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.03);">
-        
-        <!-- Top Obsidian Header with Gold Accent -->
-        <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;background:#0e0e11;border-bottom:1px solid #c5a880;">
-          <tbody>
-            <tr>
-              <td style="padding:26px 20px;text-align:center;">
-                <a href="${storeUrl}" target="_blank" style="text-decoration:none;display:inline-block;">
-                  <div style="font-family:'Playfair Display',Georgia,serif;font-size:22px;font-weight:700;letter-spacing:0.2em;color:#ffffff;text-transform:uppercase;">THE STREET CO</div>
-                  <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.18em;color:#c5a880;text-transform:uppercase;margin-top:6px;">CLIENT CONCIERGE · RETURN FOR REFUND</div>
-                </a>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-
-        <!-- Main Content Area -->
-        <div style="padding:32px 28px;">
-          
-          <!-- Banner -->
-          <div style="background:#faf8f5;border:1px solid #e8e2d8;border-radius:10px;padding:22px 20px;margin-bottom:26px;text-align:center;">
-            <div style="display:inline-block;width:40px;height:40px;line-height:40px;border-radius:50%;background:#0e0e11;color:#ffffff;font-size:18px;font-weight:bold;margin-bottom:8px;">↩</div>
-            <div style="font-family:'Playfair Display',Georgia,serif;font-size:22px;font-weight:600;color:#0e0e11;letter-spacing:-0.2px;margin-bottom:4px;">Return For Refund Received</div>
-            <div style="font-size:12px;color:#8a7b6e;font-weight:600;">Direct Refund Scheduled · No Size Needed · Ref ID: ${returnId}</div>
-          </div>
-
-          <p style="font-size:15px;font-weight:600;color:#18181b;margin:0 0 10px;">
-            Hey ${customerName},
-          </p>
-          <p style="font-size:14px;line-height:1.65;color:#52525b;margin:0 0 24px;">
-            We have received your request to return articles from Order <strong style="color:#0e0e11;">#${cleanOrderNumber}</strong> for a direct purchase refund. No replacement size selection is required.
-          </p>
-
-          <!-- Refund Summary Card -->
-          <div style="background:#faf8f5;border:1px solid #e8e2d8;border-radius:10px;padding:18px 20px;margin-bottom:24px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-              <span style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#8a7b6e;">REFUND DETAILS</span>
-              <span style="font-family:monospace;font-size:13px;color:#0e0e11;font-weight:700;">${returnId}</span>
-            </div>
-            <div style="font-size:13px;color:#3f3f46;margin-bottom:6px;">
-              Refund Destination: <strong style="color:#0e0e11;">Original Payment Method / Bank UPI</strong>
-            </div>
-            <div style="font-size:12px;color:#71717a;margin-top:8px;border-top:1px dashed #e8e2d8;padding-top:8px;">
-              Doorstep Pickup Address: <strong style="color:#0e0e11;">${returnRecord.pickupAddress || 'Address on file'}</strong>
-            </div>
-          </div>
-
-          <!-- Items to Return -->
-          <div style="margin-bottom:26px;">
-            <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#8a7b6e;margin-bottom:12px;">ARTICLES TO BE RETURNED</div>
-            ${itemsHtml}
-          </div>
-
-          <!-- Timeline -->
-          <div style="background:#0e0e11;color:#ffffff;border-radius:10px;padding:22px;margin-bottom:28px;">
-            <div style="font-size:10px;font-weight:700;letter-spacing:0.16em;color:#c5a880;text-transform:uppercase;margin-bottom:6px;">REVERSE LOGISTICS &amp; REFUND TIMELINE</div>
-            <p style="font-size:13px;line-height:1.6;color:#d4d4d8;margin:0;">
-              • You will receive a <strong>Pickup Confirmed email</strong> as soon as Delhivery reverse courier is assigned.<br/>
-              • Hand the parcel with brand tags attached to the courier. Free doorstep pickup.<br/>
-              • 100% full refund will be processed immediately upon doorstep collection scan!
-            </p>
-          </div>
-
-          <!-- Support Info -->
-          <div style="font-size:13px;line-height:1.6;color:#52525b;margin-bottom:24px;border-top:1px solid #e8e2d8;padding-top:18px;">
-            Have questions? Reply directly to this email or reach us at <a href="mailto:${supportEmail}" style="color:#0e0e11;font-weight:700;text-decoration:underline;">${supportEmail}</a>.
-          </div>
-
-          <!-- Signoff -->
-          <div style="font-size:13px;color:#18181b;">
-            Best regards,<br>
-            <strong style="color:#0e0e11;">The Street Co Team</strong>
-          </div>
-
-        </div> <!-- /main content -->
-
-        <!-- Footer -->
-        <div style="background-color:#faf8f5;border-top:1px solid #e8e2d8;padding:26px 20px;text-align:center;">
-          <div style="margin-bottom:14px;">
-            <a href="${storeUrl}" target="_blank" style="text-decoration:none;margin:0 12px;font-size:12px;font-weight:600;color:#0e0e11;">The Shop</a>
-            <span style="color:#c5a880;">•</span>
-            <a href="mailto:${supportEmail}" style="text-decoration:none;margin:0 12px;font-size:12px;font-weight:600;color:#0e0e11;">Client Concierge</a>
-            <span style="color:#c5a880;">•</span>
-            <a href="https://www.instagram.com/thestreetco_shop?stkn=ZnJ3eDZmaHd6Ym5o" target="_blank" style="text-decoration:none;margin:0 12px;font-size:12px;font-weight:600;color:#0e0e11;">Instagram</a>
-          </div>
-          <div style="font-size:11px;line-height:1.6;color:#8a7b6e;max-width:440px;margin:0 auto;">
-            The Street Co Apparel · Thakurnagar Shimulpur Hazratala, West Bengal 743287, India<br>
-            © ${new Date().getFullYear()} The Street Co · All rights reserved.
-          </div>
-        </div>
-
-      </div> <!-- /center card -->
-    </div> <!-- /outer canvas -->
-  </body>
-</html>`;
-
-  const plainTextContent = `Return Request Received: Order #${cleanOrderNumber} (${returnId})
-
-Hey ${customerName},
-
-Your return for refund request for Order #${cleanOrderNumber} has been received.
-Reference ID: ${returnId}
-Refund Method: Original Payment Method / Bank UPI (No size needed)
-
-Doorstep Pickup: Free reverse pickup via Delhivery Express will be assigned within 24-48 hours.
-
-Support: ${supportEmail}
-
-Best regards,
-The Street Co Team`;
+  const { subject, html: htmlContent, text: plainTextContent, returnId, cidAttachments } = renderReturnConfirmationEmail({
+    returnRecord: { ...returnRecord, type: returnRecord?.type === 'exchange' ? 'exchange' : 'return' },
+    order,
+    hostOrigin,
+    useCidAssets: true,
+    supportEmail
+  });
 
   const gmail = getGmailTransporter();
   if (!gmail) return { success: false, error: 'Gmail SMTP transporter not initialized.' };
@@ -2014,7 +1348,8 @@ The Street Co Team`;
       to: recipientEmail,
       subject,
       text: plainTextContent,
-      html: htmlContent
+      html: htmlContent,
+      attachments: cidAttachments
     });
 
     console.log(`[Gmail SMTP] Return request confirmation email delivered for #${returnId} to ${recipientEmail}. MessageId:`, info.messageId);
@@ -2055,16 +1390,22 @@ async function sendRefundDoneEmail(returnRecord, hostOrigin = '') {
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light only">
+    <meta name="supported-color-schemes" content="light only">
     <title>${subject}</title>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style type="text/css">
-      body { margin:0;padding:0;background-color:#faf8f5;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;-webkit-font-smoothing:antialiased; }
+      :root { color-scheme: light only; supported-color-schemes: light only; }
+      body { margin:0;padding:0;background-color:#faf8f5 !important;color:#18181b !important;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;-webkit-font-smoothing:antialiased; }
       table, td { border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt; }
       img { border:0;height:auto;line-height:100%;outline:none;text-decoration:none; }
       p { display:block;margin:12px 0; }
+      @media (prefers-color-scheme: dark) {
+        html, body { background-color:#faf8f5 !important;color:#18181b !important; }
+      }
     </style>
   </head>
-  <body style="margin:0;padding:0;background-color:#faf8f5;">
+  <body bgcolor="#faf8f5" style="margin:0;padding:0;background-color:#faf8f5;">
     <!-- Outer Creamy Canvas -->
     <div style="width:100%;background-color:#faf8f5;padding:32px 12px;box-sizing:border-box;">
       
@@ -2227,16 +1568,22 @@ async function sendExchangeDoneEmail(returnRecord, hostOrigin = '') {
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light only">
+    <meta name="supported-color-schemes" content="light only">
     <title>${subject}</title>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style type="text/css">
-      body { margin:0;padding:0;background-color:#faf8f5;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;-webkit-font-smoothing:antialiased; }
+      :root { color-scheme: light only; supported-color-schemes: light only; }
+      body { margin:0;padding:0;background-color:#faf8f5 !important;color:#18181b !important;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;-webkit-font-smoothing:antialiased; }
       table, td { border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt; }
       img { border:0;height:auto;line-height:100%;outline:none;text-decoration:none; }
       p { display:block;margin:12px 0; }
+      @media (prefers-color-scheme: dark) {
+        html, body { background-color:#faf8f5 !important;color:#18181b !important; }
+      }
     </style>
   </head>
-  <body style="margin:0;padding:0;background-color:#faf8f5;">
+  <body bgcolor="#faf8f5" style="margin:0;padding:0;background-color:#faf8f5;">
     <!-- Outer Creamy Canvas -->
     <div style="width:100%;background-color:#faf8f5;padding:32px 12px;box-sizing:border-box;">
       
@@ -3418,7 +2765,7 @@ app.get(['/api/download-env', '/api/env'], (req, res) => {
 
 # --- 1. Google Gmail SMTP (Exclusive Email Sender) ---
 GMAIL_SMTP_USER=thestreetco.official@gmail.com
-GMAIL_SMTP_PASS=fiwbnxiycvoiefph
+GMAIL_SMTP_PASS=hybxmdubrjmsddoh
 GMAIL_SENDER_NAME=The Street Co
 GMAIL_REPLY_TO=support@thestreetco.zohodesk.in
 
@@ -3539,13 +2886,20 @@ function loadMerchantGmailConfig() {
   } catch (_) {}
   return {
     accessToken: null,
-    email: 'aniruddhanag780@gmail.com',
+    email: GMAIL_SMTP_USER || 'thestreetco.official@gmail.com',
     connectedAt: null,
-    expiresAt: null
+    expiresAt: null,
+    imapDisabled: false
   };
 }
 
 let merchantGmailConfig = loadMerchantGmailConfig();
+
+function getImapCredentials() {
+  const user = (process.env.UPI_IMAP_USER || process.env.GMAIL_SMTP_USER || GMAIL_SMTP_USER || '').trim();
+  const pass = (process.env.UPI_IMAP_PASS || process.env.GMAIL_SMTP_PASS || GMAIL_SMTP_PASS || '').replace(/\s+/g, '').trim();
+  return { user, pass, configured: Boolean(user && pass) };
+}
 
 function saveMerchantGmailConfig(cfg) {
   try {
@@ -3567,7 +2921,8 @@ app.post('/api/merchant/set-gmail-token', express.json(), (req, res) => {
     return res.status(400).json({ success: false, error: 'Token is required' });
   }
   merchantGmailConfig.accessToken = token;
-  merchantGmailConfig.email = email || merchantGmailConfig.email || 'aniruddhanag780@gmail.com';
+  merchantGmailConfig.imapDisabled = false;
+  merchantGmailConfig.email = email || merchantGmailConfig.email || GMAIL_SMTP_USER || 'thestreetco.official@gmail.com';
   merchantGmailConfig.connectedAt = new Date().toISOString();
   if (expiresIn) {
     merchantGmailConfig.expiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
@@ -3582,25 +2937,31 @@ app.post('/api/merchant/set-gmail-token', express.json(), (req, res) => {
   });
 });
 
-// GET /api/merchant/gmail-status - Check if token is connected
+// GET /api/merchant/gmail-status - Check if IMAP or OAuth token is connected
 app.get('/api/merchant/gmail-status', (req, res) => {
+  const imap = getImapCredentials();
+  const hasOAuth = Boolean(merchantGmailConfig.accessToken);
+  const imapActive = imap.configured && !merchantGmailConfig.imapDisabled;
+  const connected = hasOAuth || imapActive;
   res.json({
-    connected: Boolean(merchantGmailConfig.accessToken),
-    email: merchantGmailConfig.email,
-    connectedAt: merchantGmailConfig.connectedAt,
-    expiresAt: merchantGmailConfig.expiresAt
+    connected,
+    mode: hasOAuth ? 'google_oauth' : (imapActive ? 'gmail_imap' : 'none'),
+    email: hasOAuth ? (merchantGmailConfig.email || imap.user) : (imap.user || merchantGmailConfig.email),
+    connectedAt: merchantGmailConfig.connectedAt || (imapActive ? new Date().toISOString() : null),
+    expiresAt: hasOAuth ? merchantGmailConfig.expiresAt : null
   });
 });
 
-// POST /api/merchant/disconnect-gmail - Disconnect token
+// POST /api/merchant/disconnect-gmail - Disconnect token / pause IMAP auto-check
 app.post('/api/merchant/disconnect-gmail', (req, res) => {
   merchantGmailConfig.accessToken = null;
   merchantGmailConfig.connectedAt = null;
+  merchantGmailConfig.imapDisabled = true;
   saveMerchantGmailConfig(merchantGmailConfig);
   res.json({ success: true, connected: false });
 });
 
-// GET /api/verify-payment - Checks Gmail API for FamPay receipt within 9:59 time window
+// GET /api/verify-payment - Checks Gmail IMAP (or OAuth Gmail API) for FamPay/UPI receipt within checkout window
 app.get('/api/verify-payment', async (req, res) => {
   try {
     const rawAuth = req.headers.authorization;
@@ -3613,11 +2974,25 @@ app.get('/api/verify-payment', async (req, res) => {
     const sinceEpoch = Number(req.query.since) || Math.floor((Date.now() - 600000) / 1000);
 
     if (!token) {
-      return res.json({
-        verified: false,
-        reason: 'no_token',
-        message: 'Merchant Gmail not connected yet. Waiting or use UTR manual submission.'
+      const imap = getImapCredentials();
+      if (!imap.configured || merchantGmailConfig.imapDisabled) {
+        return res.json({
+          verified: false,
+          reason: 'no_token',
+          message: 'Merchant Gmail not connected yet. Waiting or use UTR manual submission.'
+        });
+      }
+      const imapResult = await verifyUpiPaymentViaImap({
+        user: imap.user,
+        pass: imap.pass,
+        amount,
+        orderId,
+        sinceEpoch
       });
+      if (imapResult.verified) {
+        console.log(`[FamPay Verified via IMAP] Amount: ₹${amount}, MsgId: ${imapResult.messageId}, Subject: ${imapResult.subject}`);
+      }
+      return res.json(imapResult);
     }
 
     // Query Gmail API for incoming messages after sinceEpoch
@@ -4374,22 +3749,67 @@ app.post('/api/orders', async (req, res) => {
       }
     }
 
-    // Automated Zoho Inventory Sales Order Push upon checkout
+    // Automated Zoho Inventory Sales Order + Invoice Push upon checkout
     let zohoSalesOrderResult = null;
     try {
       zohoSalesOrderResult = await zohoInventory.createSalesOrder(orderDocument);
       if (zohoSalesOrderResult && zohoSalesOrderResult.success) {
         orderDocument.zoho_salesorder_id = zohoSalesOrderResult.zoho_salesorder_id;
         orderDocument.zoho_salesorder_number = zohoSalesOrderResult.zoho_salesorder_number;
+        delete orderDocument.zoho_sync_error;
+        persistOrders(orderDocument);
+      } else if (zohoSalesOrderResult && zohoSalesOrderResult.error) {
+        orderDocument.zoho_sync_error = zohoSalesOrderResult.error;
         persistOrders(orderDocument);
       }
     } catch (zohoOrderErr) {
       console.warn('[Zoho Inventory] Sales order sync notice:', zohoOrderErr.message);
       zohoSalesOrderResult = { success: false, error: zohoOrderErr.message };
+      orderDocument.zoho_sync_error = zohoOrderErr.message;
+      persistOrders(orderDocument);
     }
 
-    // NOTE: Order confirmation SMS, email, and Zoho Invoice are strictly deferred per business rules.
-    // They will ONLY be dispatched once the order is confirmed in Zoho Inventory (via webhook or admin action).
+    // Create/convert Zoho Invoice immediately after order creation so View Your Invoice button links straight to Zoho
+    let zohoInvoiceResult = null;
+    try {
+      zohoInvoiceResult = orderDocument.zoho_salesorder_id
+        ? await zohoInventory.convertSalesOrderToInvoice(orderDocument.zoho_salesorder_id, orderDocument)
+        : await zohoInventory.createGstInvoice(orderDocument);
+      if (zohoInvoiceResult && zohoInvoiceResult.success) {
+        orderDocument.invoice_number = zohoInvoiceResult.invoice_number;
+        orderDocument.invoice_id = zohoInvoiceResult.invoice_id;
+        orderDocument.zoho_invoice_id = zohoInvoiceResult.zoho_invoice_id || zohoInvoiceResult.invoice_id;
+        orderDocument.zoho_invoice_url = String(zohoInvoiceResult.invoice_url || '').trim();
+        orderDocument.template_name = zohoInvoiceResult.template_name || 'The Street Co';
+        orderDocument.gstBreakdown = zohoInvoiceResult.gstBreakdown || orderDocument.gstBreakdown;
+        orderDocument.invoiceUrl = orderDocument.zoho_invoice_url || `/invoice/${orderDocument.orderCode}`;
+        persistOrders(orderDocument);
+        if (
+          orderDocument.zoho_invoice_id &&
+          !String(orderDocument.zoho_invoice_id).startsWith('LOCAL-') &&
+          String(orderDocument.paymentMethod || 'COD').toUpperCase() !== 'COD'
+        ) {
+          await zohoInventory.recordCustomerPaymentInZoho(orderDocument.zoho_invoice_id, orderDocument).catch(() => {});
+        }
+      }
+    } catch (zohoInvErr) {
+      console.warn('[Zoho Inventory] Immediate invoice creation notice:', zohoInvErr.message);
+      zohoInvoiceResult = { success: false, error: zohoInvErr.message };
+    }
+
+    // Dispatch Order Confirmation Email (with View Your Invoice linking to the Zoho invoice URL)
+    const reqHostOrigin = `${req.protocol}://${req.get('host')}`;
+    let confirmationEmailResult = null;
+    try {
+      confirmationEmailResult = await sendOrderConfirmationEmailGmail(orderDocument, reqHostOrigin);
+      if (confirmationEmailResult && confirmationEmailResult.success && !confirmationEmailResult.simulated) {
+        orderDocument.confirmationEmailSent = true;
+        persistOrders(orderDocument);
+      }
+    } catch (emailErr) {
+      console.warn('[Order Confirmation Email Notice]:', emailErr.message);
+      confirmationEmailResult = { success: false, error: emailErr.message };
+    }
 
     res.json({
       success: true,
@@ -4397,9 +3817,16 @@ app.post('/api/orders', async (req, res) => {
       orderId: orderDocument.orderId,
       order: orderDocument,
       zohoSalesOrder: zohoSalesOrderResult,
+      zohoInvoice: zohoInvoiceResult,
+      invoiceUrl: orderDocument.invoiceUrl || `/invoice/${orderDocument.orderCode}`,
+      email: confirmationEmailResult,
       status: orderDocument.status,
-      awaitingZohoConfirmation: true,
-      message: 'Order placed and registered in Zoho Inventory. Confirmation SMS, email, and Zoho Invoice will be sent as soon as the merchant marks the order confirmed in Zoho Inventory.'
+      awaitingZohoConfirmation: false,
+      message: zohoInvoiceResult?.success
+        ? 'Order placed, Zoho Invoice created, and order confirmation email sent with invoice link.'
+        : (zohoSalesOrderResult?.success
+          ? 'Order placed and registered in Zoho Inventory. Order confirmation email sent.'
+          : `Order saved locally; Zoho sync notice: ${zohoSalesOrderResult?.error || 'Pending retry'}`)
     });
   } catch (err) {
     console.error('[Server] Order processing error:', err);
@@ -4442,26 +3869,54 @@ async function confirmOrderFromZoho(codeOrId, hostOrigin = '') {
 
   console.log(`[Zoho Order Lifecycle] Processing Zoho confirmation for #${order.orderCode} (Sales Order: ${order.zoho_salesorder_number || order.zoho_salesorder_id || 'N/A'})`);
 
+  // 0. Ensure Sales Order exists in Zoho Inventory if previously unsynced
+  if (!order.zoho_salesorder_id) {
+    try {
+      const createdSo = await zohoInventory.createSalesOrder(order);
+      if (createdSo && createdSo.success && createdSo.zoho_salesorder_id) {
+        order.zoho_salesorder_id = createdSo.zoho_salesorder_id;
+        order.zoho_salesorder_number = createdSo.zoho_salesorder_number;
+        delete order.zoho_sync_error;
+      }
+    } catch (_) {}
+  }
+
   // 1. Mark confirmed in Zoho Inventory if salesorder_id exists
   if (order.zoho_salesorder_id) {
     await zohoInventory.confirmSalesOrderInZoho(order.zoho_salesorder_id).catch(() => {});
   }
 
-  // 2. Convert Sales Order to Official Zoho Invoice via Zoho Invoice API
+  // 2. Ensure Zoho Invoice exists if not already created during checkout
   let zohoInvoiceResult = null;
-  try {
-    zohoInvoiceResult = await zohoInventory.convertSalesOrderToInvoice(order.zoho_salesorder_id, order);
-    if (zohoInvoiceResult && zohoInvoiceResult.success) {
-      order.invoice_number = zohoInvoiceResult.invoice_number;
-      order.invoice_id = zohoInvoiceResult.invoice_id;
-      order.zoho_invoice_id = zohoInvoiceResult.zoho_invoice_id || zohoInvoiceResult.invoice_id;
-      order.zoho_invoice_url = zohoInvoiceResult.invoice_url || '';
-      order.template_name = zohoInvoiceResult.template_name || 'The Street Co';
-      order.gstBreakdown = zohoInvoiceResult.gstBreakdown || order.gstBreakdown;
-      order.invoiceUrl = `/invoice/${order.orderCode}`;
+  if (order.zoho_invoice_id && !String(order.zoho_invoice_id).startsWith('LOCAL-')) {
+    zohoInvoiceResult = {
+      success: true,
+      alreadyCreated: true,
+      invoice_id: order.zoho_invoice_id,
+      zoho_invoice_id: order.zoho_invoice_id,
+      invoice_number: order.invoice_number,
+      invoice_url: String(order.zoho_invoice_url || '').trim()
+    };
+  } else {
+    try {
+      zohoInvoiceResult = order.zoho_salesorder_id
+        ? await zohoInventory.convertSalesOrderToInvoice(order.zoho_salesorder_id, order)
+        : await zohoInventory.createGstInvoice(order);
+      if (zohoInvoiceResult && zohoInvoiceResult.success) {
+        order.invoice_number = zohoInvoiceResult.invoice_number;
+        order.invoice_id = zohoInvoiceResult.invoice_id;
+        order.zoho_invoice_id = zohoInvoiceResult.zoho_invoice_id || zohoInvoiceResult.invoice_id;
+        order.zoho_invoice_url = String(zohoInvoiceResult.invoice_url || '').trim();
+        order.template_name = zohoInvoiceResult.template_name || 'The Street Co';
+        order.gstBreakdown = zohoInvoiceResult.gstBreakdown || order.gstBreakdown;
+        order.invoiceUrl = order.zoho_invoice_url || `/invoice/${order.orderCode}`;
+        if (order.zoho_invoice_id && !String(order.zoho_invoice_id).startsWith('LOCAL-') && String(order.paymentMethod || 'COD').toUpperCase() !== 'COD') {
+          await zohoInventory.recordCustomerPaymentInZoho(order.zoho_invoice_id, order).catch(() => {});
+        }
+      }
+    } catch (invErr) {
+      console.warn('[Zoho Invoice Conversion Notice]', invErr.message);
     }
-  } catch (invErr) {
-    console.warn('[Zoho Invoice Conversion Notice]', invErr.message);
   }
 
   // 3. Update order state to CONFIRMED
@@ -4470,21 +3925,19 @@ async function confirmOrderFromZoho(codeOrId, hostOrigin = '') {
   order.confirmedAt = new Date().toISOString();
   persistOrders(order);
 
-  // 4. Now dispatch Confirmation SMS, Email with Invoice attached, and Dedicated GST Tax Invoice Email
-  const resolvedHostOrigin = hostOrigin || 'https://thestreetco.netlify.app';
-  const [smsResult, emailResult, invoiceEmailResult] = await Promise.all([
+  // 4. Dispatch Confirmation SMS and Confirmation Email only (no separate legacy GST invoice email)
+  const resolvedHostOrigin = hostOrigin || 'https://thestreetco.com';
+  const [smsResult, emailResult] = await Promise.all([
     sendOrderConfirmationSms(order, resolvedHostOrigin).catch(smsErr => {
       console.warn('[Twilio SMS Notice]:', smsErr.message);
       return { success: false, error: smsErr.message };
     }),
-    sendOrderConfirmationEmailGmail(order, resolvedHostOrigin).catch(emailErr => {
-      console.warn('[Order Email Notice]:', emailErr.message);
-      return { success: false, error: emailErr.message };
-    }),
-    sendGstTaxInvoiceEmail(order, resolvedHostOrigin).catch(invErr => {
-      console.warn('[GST Invoice Email Notice]:', invErr.message);
-      return { success: false, error: invErr.message };
-    })
+    order.confirmationEmailSent
+      ? Promise.resolve({ success: true, alreadySentOnPlacement: true })
+      : sendOrderConfirmationEmailGmail(order, resolvedHostOrigin).catch(emailErr => {
+          console.warn('[Order Email Notice]:', emailErr.message);
+          return { success: false, error: emailErr.message };
+        })
   ]);
 
   return {
@@ -4494,8 +3947,7 @@ async function confirmOrderFromZoho(codeOrId, hostOrigin = '') {
     zohoInvoice: zohoInvoiceResult,
     sms: smsResult,
     email: emailResult,
-    invoiceEmail: invoiceEmailResult,
-    message: `Order #${order.orderCode} confirmed in Zoho Inventory! Converted to Zoho Invoice (${order.invoice_number || 'INV'}), and confirmation SMS and email with invoice attached dispatched.`
+    message: `Order #${order.orderCode} confirmed in Zoho Inventory (${order.invoice_number || 'INV'}) with confirmation email.`
   };
 }
 
@@ -4604,6 +4056,19 @@ async function checkZohoShipmentFulfillments(hostOrigin = '') {
         const rawStatus = String(so.status || '').toLowerCase();
         const rawShipped = String(so.shipped_status || '').toLowerCase();
         const rawOrderStat = String(so.order_status || '').toLowerCase();
+        const rawInvoiced = String(so.invoiced_status || '').toLowerCase();
+
+        // Detect SO confirmed directly in Zoho Inventory UI and auto-convert to Invoice (Sale)
+        const isConfirmedInZoho =
+          rawStatus === 'confirmed' ||
+          rawStatus === 'open' ||
+          rawOrderStat === 'confirmed' ||
+          rawInvoiced === 'invoiced';
+
+        if (isConfirmedInZoho && order.zoho_status !== 'confirmed' && !order.zoho_invoice_id) {
+          console.log(`[Automated Zoho Monitor] Order #${order.orderCode} (${so.salesorder_number || order.zoho_salesorder_id}) confirmed in Zoho! Converting to Invoice.`);
+          await confirmOrderFromZoho(order.orderCode, hostOrigin);
+        }
 
         const isFulfilledInZoho = 
           rawStatus === 'fulfilled' || 
@@ -4819,7 +4284,7 @@ app.post('/api/orders/:code/mark-fulfilled', async (req, res) => {
   }
 });
 
-// Endpoint to trigger or resend GST Tax Invoice Email for an order
+// Endpoint to trigger or resend Confirmation Email (containing View Your Invoice link) for an order
 app.post('/api/orders/:code/send-invoice-email', async (req, res) => {
   const code = (req.params.code || '').trim().toUpperCase();
   const order = inMemoryOrders.get(code);
@@ -4827,7 +4292,7 @@ app.post('/api/orders/:code/send-invoice-email', async (req, res) => {
     return res.status(404).json({ error: 'Order not found' });
   }
   const hostOrigin = `${req.protocol}://${req.get('host')}`;
-  const result = await sendGstTaxInvoiceEmail(order, hostOrigin);
+  const result = await sendOrderConfirmationEmailGmail(order, hostOrigin);
   res.json({ success: true, result });
 });
 
@@ -4924,6 +4389,68 @@ app.post('/api/send-order-sms', async (req, res) => {
 // Orders: Get list for admin
 app.get('/api/orders', async (req, res) => {
   res.json({ success: true, orders: Array.from(inMemoryOrders.values()) });
+});
+
+// Live HTML preview endpoint rendering exact transactional email templates
+app.get('/api/email-preview/:type', (req, res) => {
+  const type = String(req.params.type || 'order_confirmed').toLowerCase();
+  const supportEmail = (process.env.GMAIL_REPLY_TO || 'support@thestreetco.zohodesk.in').trim();
+  const sampleOrder = {
+    orderCode: '214822',
+    orderDate: '2026-11-13T10:00:00.000Z',
+    shippingAddress: {
+      fullName: 'Aniruddha Nag',
+      addressLine1: 'Thakurnagar Shimulpur Hazratala',
+      city: 'Bongaon',
+      state: 'West Bengal',
+      pincode: '743287'
+    },
+    subtotalInr: 1599,
+    discountInr: 200,
+    appliedPromoCode: 'STREET200',
+    deliveryFeeInr: 0,
+    grandTotalInr: 1399,
+    items: [
+      {
+        title: 'Fourth Hokage Minato Inspired Oversized T-Shirt',
+        finish: 'Obsidian Black',
+        size: 'L',
+        sku: 'TS-MIN-001',
+        qty: 1,
+        priceInr: 1599,
+        totalItemPriceInr: 1599,
+        image: '/product-minato.jpg'
+      }
+    ]
+  };
+
+  if (type === 'return_requested' || type === 'exchange_requested') {
+    const isExchange = type === 'exchange_requested';
+    const { html } = renderReturnConfirmationEmail({
+      returnRecord: {
+        id: isExchange ? 'EX-48291' : 'RET-23665',
+        orderCode: '214822',
+        type: isExchange ? 'exchange' : 'return',
+        requestedSize: isExchange ? 'XL' : null,
+        customerName: 'Aniruddha Nag',
+        createdAt: '2026-11-13T11:30:00.000Z',
+        items: sampleOrder.items
+      },
+      order: sampleOrder,
+      useRelativeAssets: true,
+      supportEmail
+    });
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    return res.send(html);
+  }
+
+  const { html } = renderOrderConfirmationEmail({
+    order: sampleOrder,
+    useRelativeAssets: true,
+    supportEmail
+  });
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  return res.send(html);
 });
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -5036,12 +4563,37 @@ app.post('/api/returns/create', async (req, res) => {
     const pickupAddress = raw.pickupAddress || order?.shippingAddress?.fullAddress || 'Address on file';
     const requestedSize = type === 'exchange' ? (raw.requestedSize || 'L') : null; // Strictly null for return!
 
+    const orderItemsList = Array.isArray(order?.items) && order.items.length > 0
+      ? order.items
+      : (Array.isArray(order?.products) ? order.products : []);
+    const normalizedReturnItems = (Array.isArray(raw.items) ? raw.items : []).map((it, idx) => {
+      const skuKey = String(it?.sku || it?.id || '').trim().toUpperCase();
+      const nameKey = String(it?.name || it?.title || '').trim().toLowerCase();
+      const matched = orderItemsList.find(oi =>
+        (skuKey && String(oi?.sku || oi?.id || '').trim().toUpperCase() === skuKey) ||
+        (nameKey && String(oi?.title || oi?.name || '').trim().toLowerCase() === nameKey)
+      ) || orderItemsList[idx] || orderItemsList[0] || {};
+      const qty = Math.max(1, parseInt(it?.qty || it?.quantity || matched?.qty || matched?.quantity || 1, 10) || 1);
+      const unitPrice = Number(it?.priceInr || it?.price || matched?.priceInr || matched?.price || 1599);
+      return {
+        ...it,
+        sku: it?.sku || matched?.sku || matched?.id || 'TS-MIN-001',
+        name: it?.name || it?.title || matched?.title || matched?.name || 'Fourth Hokage Minato Inspired Oversized T-Shirt',
+        size: it?.size || matched?.size || 'M',
+        finish: it?.finish || it?.color || matched?.finish || matched?.color || 'Obsidian Black',
+        qty,
+        priceInr: unitPrice,
+        totalItemPriceInr: Number(it?.totalItemPriceInr || (unitPrice * qty)),
+        image: it?.image || it?.imageUrl || matched?.image || matched?.imageUrl || '/product-minato.jpg'
+      };
+    });
+
     const returnRecord = {
       id: returnId,
       orderCode,
       type,
-      items: Array.isArray(raw.items) ? raw.items : [],
-      itemNames: raw.itemNames || (Array.isArray(raw.items) ? raw.items.map(i => i.name).join(', ') : 'Streetwear Garment'),
+      items: normalizedReturnItems,
+      itemNames: raw.itemNames || (normalizedReturnItems.length > 0 ? normalizedReturnItems.map(i => i.name).join(', ') : 'Streetwear Garment'),
       requestedSize,
       reason: raw.reason || 'Fit / Size Adjustment',
       notes: raw.notes || '',
@@ -5060,11 +4612,25 @@ app.post('/api/returns/create', async (req, res) => {
     try {
       zohoSalesReturnResult = await zohoInventory.createSalesReturnInZoho(returnRecord, order || {});
       if (zohoSalesReturnResult && zohoSalesReturnResult.success) {
-        returnRecord.zoho_salesreturn_id = zohoSalesReturnResult.zoho_salesreturn_id;
-        returnRecord.salesreturn_number = zohoSalesReturnResult.salesreturn_number;
+        if (zohoSalesReturnResult.zoho_salesreturn_id) {
+          returnRecord.zoho_salesreturn_id = zohoSalesReturnResult.zoho_salesreturn_id;
+        }
+        if (zohoSalesReturnResult.salesreturn_number) {
+          returnRecord.salesreturn_number = zohoSalesReturnResult.salesreturn_number;
+        }
+        if (zohoSalesReturnResult.zoho_salesorder_id && !returnRecord.zoho_salesorder_id) {
+          returnRecord.zoho_salesorder_id = zohoSalesReturnResult.zoho_salesorder_id;
+          if (order && !order.zoho_salesorder_id) {
+            order.zoho_salesorder_id = zohoSalesReturnResult.zoho_salesorder_id;
+          }
+        }
+        returnRecord.zoho_synced = Boolean(zohoSalesReturnResult.zohoSynced && zohoSalesReturnResult.zoho_salesreturn_id);
+        returnRecord.zoho_sync_error = zohoSalesReturnResult.zohoError || null;
       }
     } catch (zErr) {
       console.warn('[Zoho createSalesReturnInZoho Notice]:', zErr.message);
+      returnRecord.zoho_synced = false;
+      returnRecord.zoho_sync_error = zErr.message;
     }
 
     inMemoryReturns.set(returnId, returnRecord);
@@ -5081,12 +4647,12 @@ app.post('/api/returns/create', async (req, res) => {
     const hostOrigin = `${req.protocol}://${req.get('host')}`;
     let submissionEmailResult = null;
     if (type === 'exchange') {
-      submissionEmailResult = await sendExchangeRequestSubmittedEmail(returnRecord, hostOrigin).catch(e => {
+      submissionEmailResult = await sendExchangeRequestSubmittedEmail(returnRecord, hostOrigin, order).catch(e => {
         console.warn('[Exchange Submission Email Notice]:', e.message);
         return { success: false, error: e.message };
       });
     } else {
-      submissionEmailResult = await sendReturnRequestSubmittedEmail(returnRecord, hostOrigin).catch(e => {
+      submissionEmailResult = await sendReturnRequestSubmittedEmail(returnRecord, hostOrigin, order).catch(e => {
         console.warn('[Return Submission Email Notice]:', e.message);
         return { success: false, error: e.message };
       });
@@ -5100,7 +4666,9 @@ app.post('/api/returns/create', async (req, res) => {
       returnRecord,
       zohoSalesReturn: zohoSalesReturnResult,
       submissionEmail: submissionEmailResult,
-      message: `${type === 'exchange' ? 'Size exchange' : 'Return'} saved and registered in Zoho Inventory as Sales Return (#${returnRecord.salesreturn_number || returnRecord.id}). Confirmation email dispatched to customer.`
+      message: returnRecord.zoho_synced
+        ? `${type === 'exchange' ? 'Size exchange' : 'Return'} saved and registered in Zoho Inventory as Sales Return (${returnRecord.salesreturn_number}). Confirmation email dispatched to customer.`
+        : `${type === 'exchange' ? 'Size exchange' : 'Return'} saved locally (${returnRecord.id}). Zoho sync note: ${returnRecord.zoho_sync_error || 'Pending Zoho sync'}`
     });
   } catch (err) {
     console.error('[Server] Return create error:', err);
@@ -7211,12 +6779,70 @@ app.get('/api/account/orders', async (req, res) => {
 // ═══════════════════════════════════════════════════════════════════════════
 
 // Status & diagnostic check
-app.get('/api/zoho-inventory/status', (req, res) => {
+app.get('/api/zoho-inventory/status', async (req, res) => {
+  const organizations = await zohoInventory.listOrganizations().catch(() => []);
   res.json({
     success: true,
     zoho: zohoInventory.getStatus(),
+    organizations,
     timestamp: new Date().toISOString()
   });
+});
+
+// Sync unsynced local orders, sales/invoices, and returns to Zoho Inventory
+app.post('/api/zoho/sync-pending', async (req, res) => {
+  if (!zohoInventory.isZohoConfigured()) {
+    return res.status(400).json({ success: false, error: 'Zoho Inventory is not configured.' });
+  }
+  const results = { ordersSynced: 0, invoicesSynced: 0, returnsSynced: 0, errors: [] };
+  try {
+    const uniqueOrders = Array.from(new Set(inMemoryOrders.values()));
+    for (const order of uniqueOrders) {
+      if (!order || !order.orderCode) continue;
+      if (!order.zoho_salesorder_id) {
+        const soRes = await zohoInventory.createSalesOrder(order);
+        if (soRes && soRes.success && soRes.zoho_salesorder_id) {
+          order.zoho_salesorder_id = soRes.zoho_salesorder_id;
+          order.zoho_salesorder_number = soRes.zoho_salesorder_number;
+          delete order.zoho_sync_error;
+          persistOrders(order);
+          results.ordersSynced++;
+        } else if (soRes && soRes.error) {
+          order.zoho_sync_error = soRes.error;
+          results.errors.push(`Order ${order.orderCode}: ${soRes.error}`);
+        }
+      }
+    }
+
+    const uniqueReturns = Array.from(new Set(inMemoryReturns.values()));
+    for (const ret of uniqueReturns) {
+      if (!ret || !ret.id) continue;
+      if (!ret.zoho_salesreturn_id) {
+        const ord = inMemoryOrders.get(ret.orderCode) || inMemoryOrders.get(`UCHIHA-${ret.orderCode}`) || {};
+        const srRes = await zohoInventory.createSalesReturnInZoho(ret, ord);
+        if (srRes && srRes.zohoSynced && srRes.zoho_salesreturn_id) {
+          ret.zoho_salesreturn_id = srRes.zoho_salesreturn_id;
+          ret.salesreturn_number = srRes.salesreturn_number;
+          ret.zoho_salesorder_id = srRes.zoho_salesorder_id || ret.zoho_salesorder_id;
+          ret.zoho_synced = true;
+          ret.zoho_sync_error = null;
+          persistReturn(ret);
+          results.returnsSynced++;
+        } else if (srRes && srRes.zohoError) {
+          ret.zoho_sync_error = srRes.zohoError;
+          results.errors.push(`Return ${ret.id}: ${srRes.zohoError}`);
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      ...results,
+      message: `Synced ${results.ordersSynced} order(s) and ${results.returnsSynced} return(s) to Zoho Inventory.`
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message, ...results });
+  }
 });
 
 // Trigger full catalog sync from Zoho Inventory

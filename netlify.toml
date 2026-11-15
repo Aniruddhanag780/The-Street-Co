@@ -4,7 +4,7 @@
   functions = "netlify/functions"
 
 [functions]
-  included_files = ["*.jpg", "*.png", "zoho_inventory_cache.json", "productImage.js"]
+  included_files = ["*.jpg", "*.png", "public/assets/email/*.png", "zoho_inventory_cache.json", "productImage.js"]
 
 [build.environment]
   SECRETS_SCAN_ENABLED = "false"

@@ -4,10 +4,12 @@ import twilio from 'twilio';
 import nodemailer from 'nodemailer';
 import * as zohoInventory from '../../zohoInventory.js';
 import { getProductImageBuffer } from '../../productImage.js';
+import { renderOrderConfirmationEmail } from '../../emailTemplates.js';
+import { verifyUpiPaymentViaImap } from '../../imapPaymentVerifier.js';
 
 // Direct Google Gmail SMTP Configuration (Guaranteed Primary Inbox Delivery)
 const GMAIL_SMTP_USER = (process.env.GMAIL_SMTP_USER || 'thestreetco.official@gmail.com').trim();
-const GMAIL_SMTP_PASS = (process.env.GMAIL_SMTP_PASS || 'fiwbnxiycvoiefph').replace(/\s+/g, '').trim();
+const GMAIL_SMTP_PASS = (process.env.GMAIL_SMTP_PASS || 'hybxmdubrjmsddoh').replace(/\s+/g, '').trim();
 const GMAIL_SENDER_NAME = (process.env.GMAIL_SENDER_NAME || 'The Street Co').trim();
 const GMAIL_REPLY_TO = (process.env.GMAIL_REPLY_TO || process.env.ZOHO_DESK_SUPPORT_EMAIL || 'support@thestreetco.zohodesk.in').trim();
 const ZOHO_DESK_SUPPORT_EMAIL = (process.env.ZOHO_DESK_SUPPORT_EMAIL || process.env.GMAIL_REPLY_TO || 'support@thestreetco.zohodesk.in').trim();
@@ -143,7 +145,7 @@ async function sendOrderConfirmationSms(order) {
   }
 }
 
-// Exclusive Google Gmail Transactional Email Dispatcher (Modern Brand Edition)
+// Exclusive Google Gmail Transactional Email Dispatcher (Modern Minimalist Edition)
 async function sendOrderConfirmationEmailGmail(order, hostOrigin = '') {
   const recipientEmail = (
     order?.contactDetails?.email ||
@@ -158,450 +160,15 @@ async function sendOrderConfirmationEmailGmail(order, hostOrigin = '') {
   }
 
   const orderCode = order.orderCode || order.orderId || 'ORDER';
-  const customerName = order?.shippingAddress?.fullName || order?.contactDetails?.fullName || order?.userDetails?.name || 'Valued Customer';
-  const grandTotal = order.grandTotalInr ? `₹ ${Math.round(Number(order.grandTotalInr)).toLocaleString('en-IN')}` : '₹ 0.00';
-  const subtotal = order.subtotalInr ? `₹ ${Math.round(Number(order.subtotalInr)).toLocaleString('en-IN')}` : grandTotal;
-  const deliveryFee = order.deliveryFeeInr ? `₹ ${Math.round(Number(order.deliveryFeeInr))}` : 'FREE';
-  const discount = order.discountInr ? `-₹ ${Math.round(Number(order.discountInr))}` : '₹ 0.00';
-  const orderDate = order.orderDateFormatted || new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-  const paymentMethod = (order.paymentMethod || 'COD').toUpperCase();
-
-  const shippingAddr = order.shippingAddress || {};
-  const rawRecipientPhone = shippingAddr.phone || order?.contactDetails?.phone || order?.userDetails?.phone || order?.phone || '';
-  const recipientPhone = formatDisplayContactPhone(rawRecipientPhone);
-  const streetAddr = [shippingAddr.addressLine1, shippingAddr.addressLine2, shippingAddr.houseFlat, shippingAddr.streetRoad].filter(Boolean).join(', ') || 'Standard Shipping Address';
-  const cityStateZip = [shippingAddr.city, shippingAddr.state, shippingAddr.pincode].filter(Boolean).join(' - ');
-  const fullAddress = `${streetAddr}, ${cityStateZip}`.trim();
-
-  const rawItems = (Array.isArray(order.items) && order.items.length > 0)
-    ? order.items
-    : ((Array.isArray(order.products) && order.products.length > 0)
-        ? order.products
-        : ((Array.isArray(order.productDetails) && order.productDetails.length > 0)
-            ? order.productDetails
-            : []));
-
-  const items = rawItems.length > 0 ? rawItems : [
-    {
-      title: 'Fourth Hokage Minato Inspired Oversized T-Shirt',
-      name: 'Fourth Hokage Minato Inspired Oversized T-Shirt',
-      size: 'L',
-      quantity: 1,
-      qty: 1,
-      price: Math.round(Number(order.grandTotalInr) || 1599),
-      priceInr: Math.round(Number(order.grandTotalInr) || 1599),
-      image: 'https://thestreetco.netlify.app/product-minato.jpg'
-    }
-  ];
-
-  const estimatedDelivery = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric'
+  const supportEmail = (process.env.GMAIL_REPLY_TO || 'support@thestreetco.zohodesk.in').trim();
+  const { subject, html: htmlContent, text: plainTextContent, cidAttachments } = renderOrderConfirmationEmail({
+    order,
+    hostOrigin,
+    useCidAssets: true,
+    supportEmail
   });
 
-  const trackingUrl = `https://www.delhivery.com/tracking?awb=${encodeURIComponent(orderCode)}`;
-  const storeUrl = 'https://thestreetco.netlify.app';
-  const supportEmail = (process.env.GMAIL_REPLY_TO || 'support@thestreetco.zohodesk.in').trim();
-
-  // Coupon discount calculation
-  const discountVal = Math.round(Number(order.discountInr || order.discount || (order.pricing && order.pricing.discountInr) || 0));
-  const hasCoupon = discountVal > 0 || Boolean(order.promoCode || (order.pricing && order.pricing.promoCode));
-  const couponCode = order.promoCode || (order.pricing && order.pricing.promoCode) || '';
-
-  // Original Product Picture resolution & CID attachment
-  let minatoBuffer = null;
-  try {
-    minatoBuffer = getProductImageBuffer();
-  } catch (_) {}
-  if (!minatoBuffer) {
-    const candidateImgPaths = [
-      path.join(__dirname, '../../product-minato.jpg'),
-      path.join(__dirname, '../product-minato.jpg'),
-      path.join(__dirname, 'product-minato.jpg'),
-      path.join(process.cwd(), 'product-minato.jpg'),
-      path.join(process.cwd(), 'app', 'applet', 'product-minato.jpg')
-    ];
-    for (const p of candidateImgPaths) {
-      try {
-        if (fs.existsSync(p)) {
-          minatoBuffer = fs.readFileSync(p);
-          break;
-        }
-      } catch (_) {}
-    }
-  }
-
-  // No file or image attachments in order confirmation email per user instruction
-  const mailAttachments = [];
-
-  const resolvedOrigin = (hostOrigin && !hostOrigin.includes('localhost') && !hostOrigin.includes('127.0.0.1'))
-    ? hostOrigin
-    : 'https://thestreetco.netlify.app';
-
-  const itemsHtml = items.map(item => {
-    const itemTitle = item.title || item.name || 'Fourth Hokage Minato Inspired Oversized T-Shirt';
-    const itemSubtitle = item.subtitle || (item.category ? `Men Oversized Heavyweight ${item.category}` : (item.finish ? `${item.finish} Edition` : (item.collectionName || 'The Street Co Collection')));
-    const itemSize = item.size || 'M';
-    const itemQty = Number(item.quantity || item.qty || 1);
-    const unitPriceNum = Number(item.priceInr || item.price || (item.totalItemPriceInr ? item.totalItemPriceInr / itemQty : (Number(order.grandTotalInr) || 1599)));
-    const totalItemPriceNum = Number(item.totalItemPriceInr || (unitPriceNum * itemQty));
-
-    // Calculate coupon discount per item
-    const orderSubtotalNum = Number(order.subtotalInr) || totalItemPriceNum || 1;
-    const proportion = totalItemPriceNum / orderSubtotalNum;
-    const itemDiscountAmt = hasCoupon ? Math.round(discountVal * proportion) : 0;
-    const itemFinalTotal = Math.max(0, totalItemPriceNum - itemDiscountAmt);
-    const itemFinalUnit = Math.max(0, Math.round(itemFinalTotal / itemQty));
-
-    // Resolve item order picture
-    let itemImg = item.image || item.imageUrl || (item.images && item.images[0]) || '';
-    if (!itemImg) {
-      itemImg = `${resolvedOrigin}/product-minato.jpg`;
-    } else if (itemImg.startsWith('/')) {
-      itemImg = `${resolvedOrigin}${itemImg}`;
-    }
-
-    const unitPriceDisplay = hasCoupon && itemDiscountAmt > 0
-      ? `<span style="text-decoration:line-through;color:#888888;font-size:12px;margin-right:4px;">₹${Math.round(unitPriceNum).toLocaleString('en-IN')}</span> <strong style="color:#ed3031;font-size:13px;">₹${Math.round(itemFinalUnit).toLocaleString('en-IN')}</strong>`
-      : `₹ ${Math.round(unitPriceNum).toLocaleString('en-IN')}`;
-
-    const totalPriceDisplay = hasCoupon && itemDiscountAmt > 0
-      ? `<span style="text-decoration:line-through;color:#888888;font-size:12px;margin-right:4px;font-weight:normal;">₹${Math.round(totalItemPriceNum).toLocaleString('en-IN')}</span> <strong style="color:#ed3031;font-size:14px;">₹${Math.round(itemFinalTotal).toLocaleString('en-IN')}</strong>`
-      : `₹ ${Math.round(totalItemPriceNum).toLocaleString('en-IN')}`;
-
-    return `
-        <table cellpadding="0" cellspacing="0" width="100%" border="0" style="width:100%;color:#282c3f;font-family:'Source Sans Pro', sans-serif;font-size:14px;line-height:22px;margin-bottom:16px;border-bottom:1px solid #e4e4e4;padding-bottom:14px;">
-          <!-- Top Row: Left Side = Order Picture, Right Side = All Texts -->
-          <tr>
-            <td style="width:90px;vertical-align:top;padding-right:15px;padding-bottom:10px;">
-              <img src="${itemImg}" alt="${itemTitle}" width="85" height="85" style="width:85px;height:85px;max-width:85px;object-fit:cover;border-radius:6px;border:1px solid #e4e4e4;display:block;" />
-            </td>
-            <td style="vertical-align:top;padding-bottom:10px;">
-              <div style="color:#111111;font-weight:700;font-size:15px;line-height:20px;padding-bottom:3px;word-break:break-word;">
-                ${itemTitle}
-              </div>
-              <div style="color:#686B78;font-size:13px;line-height:18px;padding-bottom:6px;">
-                ${itemSubtitle}
-              </div>
-              <div style="color:#444444;font-size:13px;line-height:18px;">
-                Size: <strong>${itemSize}</strong> &nbsp;|&nbsp; Qty: <strong>${itemQty}</strong>
-                ${hasCoupon && itemDiscountAmt > 0 ? '<span style="background:#fee2e2;color:#dc2626;font-size:10px;font-weight:700;padding:2px 6px;border-radius:3px;letter-spacing:0.3px;margin-left:8px;display:inline-block;">COUPON APPLIED</span>' : ''}
-              </div>
-            </td>
-          </tr>
-
-          <!-- Bottom: All Prices -->
-          <tr>
-            <td colspan="2" style="border-top:1px dashed #ebebeb;padding-top:8px;">
-              <table cellpadding="0" cellspacing="0" width="100%" border="0" style="width:100%;">
-                <tr>
-                  <td style="width:58%;text-align:left;color:#686B78;font-size:13px;padding:2px 0;vertical-align:middle;">Price</td>
-                  <td style="width:42%;text-align:right;color:#111111;font-size:13px;padding:2px 0;vertical-align:middle;white-space:nowrap;">${unitPriceDisplay}</td>
-                </tr>
-                <tr style="font-weight:700;">
-                  <td style="width:58%;text-align:left;color:#111111;font-size:14px;padding-top:4px;vertical-align:middle;">Item Total</td>
-                  <td style="width:42%;text-align:right;color:#ed3031;font-size:14px;padding-top:4px;vertical-align:middle;white-space:nowrap;">${totalPriceDisplay}</td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-        </table>
-    `;
-  }).join('');
-
-  const cleanOrderNumber = String(orderCode).replace('#', '').trim();
-  const firstItem = items.length > 0 ? items[0] : null;
-  const firstItemTitle = firstItem ? (firstItem.title || firstItem.name || 'Heavyweight Streetwear Apparel') : 'Heavyweight Streetwear Apparel';
-  const firstItemImg = (firstItem && (firstItem.image || firstItem.imageUrl) && String(firstItem.image || firstItem.imageUrl).startsWith('http'))
-    ? String(firstItem.image || firstItem.imageUrl)
-    : `${resolvedOrigin}/product-minato.jpg`;
-  const numericPrice = String(Math.round(Number(order.grandTotalInr) || 1499));
-  const isoOrderDate = new Date().toISOString();
-  const isoDeliveryDate = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-
-  const schemaJsonLd = JSON.stringify({
-    "@context": "http://schema.org",
-    "@type": "ParcelDelivery",
-    "deliveryAddress": {
-      "@type": "PostalAddress",
-      "name": customerName,
-      "streetAddress": streetAddr,
-      "addressLocality": shippingAddr.city || "Kolkata",
-      "addressRegion": shippingAddr.state || "West Bengal",
-      "postalCode": shippingAddr.pincode || "700001",
-      "addressCountry": "IN"
-    },
-    "expectedArrivalUntil": isoDeliveryDate,
-    "carrier": {
-      "@type": "Organization",
-      "name": "Delhivery",
-      "url": "https://www.delhivery.com"
-    },
-    "trackingNumber": cleanOrderNumber,
-    "trackingUrl": trackingUrl,
-    "partOfOrder": {
-      "@type": "Order",
-      "orderNumber": cleanOrderNumber,
-      "merchant": {
-        "@type": "Organization",
-        "name": "The Street Co",
-        "url": "https://thestreetco.netlify.app"
-      },
-      "orderStatus": "http://schema.org/OrderProcessing",
-      "priceCurrency": "INR",
-      "price": numericPrice,
-      "orderDate": isoOrderDate,
-      "customer": {
-        "@type": "Person",
-        "name": customerName
-      },
-      "acceptedOffer": items.map(item => ({
-        "@type": "Offer",
-        "itemOffered": {
-          "@type": "Product",
-          "name": item.title || item.name || 'Streetwear Apparel'
-        },
-        "price": String(Math.round(Number(item.price) || Number(numericPrice))),
-        "priceCurrency": "INR",
-        "eligibleQuantity": {
-          "@type": "QuantitativeValue",
-          "value": item.quantity || item.qty || 1
-        }
-      }))
-    },
-    "itemShipped": {
-      "@type": "Product",
-      "name": firstItemTitle
-    },
-    "potentialAction": [
-      {
-        "@type": "TrackAction",
-        "target": trackingUrl,
-        "name": "Track Package"
-      },
-      {
-        "@type": "ViewAction",
-        "target": "https://thestreetco.netlify.app",
-        "name": "View Shop"
-      }
-    ]
-  }, null, 2);
-
-  const htmlContent = `<!doctype html>
-<html lang="en">
-  <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Order Confirmed #${orderCode} - The Street Co</title>
-    <!-- Google Email Markup for Gmail Order Summary Card / Highlights -->
-    <script type="application/ld+json">
-${schemaJsonLd}
-    </script>
-    <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,600,700" rel="stylesheet" type="text/css">
-    <style type="text/css">
-      body { margin:0;padding:0;background-color:#ffffff;font-family:'Source Sans Pro', Helvetica, Arial, sans-serif; }
-      table, td { border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt; }
-      img { border:0;height:auto;line-height:100%;outline:none;text-decoration:none; }
-      p { display:block;margin:13px 0; }
-    </style>
-  </head>
-  <body style="margin:0;padding:0;background-color:#ffffff;">
-    <!-- Full-Page Email Wrapper (No Box, No Border, No Outer Canvas) -->
-    <div style="width:100%;margin:0;padding:0;background-color:#ffffff;">
-      
-      <!-- Top Brand Black Header with Crimson Accent (Full-Width Header) -->
-      <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;background:#0b0a0f;background-color:#0b0a0f;border-bottom:2px solid #e05a47;">
-        <tbody>
-          <tr>
-            <td style="padding:22px 20px;text-align:center;">
-              <a href="https://thestreetco.netlify.app" target="_blank" style="text-decoration:none;display:inline-block;">
-                <span style="font-family:'Source Sans Pro', sans-serif;font-size:22px;font-weight:900;letter-spacing:3px;color:#ffffff;text-transform:uppercase;">THE STREET CO</span>
-              </a>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      <!-- Inner Content Column (Clean Full Page flow) -->
-      <div style="max-width:600px;margin:0 auto;background-color:#ffffff;padding:0 20px;">
-
-      <!-- Main Welcome & Confirmation Message -->
-      <div style="padding:30px 5px 15px 5px;background-color:#ffffff;">
-        <div style="font-family:'Source Sans Pro', sans-serif;font-size:22px;font-weight:800;color:#111111;margin-bottom:12px;letter-spacing:-0.3px;">
-          You're In. Order Confirmed!
-        </div>
-        <div style="font-family:'Source Sans Pro', sans-serif;font-size:16px;font-weight:700;color:#262424;margin-bottom:12px;">
-          Hey ${customerName},
-        </div>
-        <div style="font-family:'Source Sans Pro', sans-serif;font-size:14px;line-height:1.6;color:#333333;">
-          Your order <strong>#${cleanOrderNumber}</strong> has been successfully placed and is now being carefully prepared by our team.
-          <br><br>
-          Thank you for shopping from <strong>The Street Co</strong>. We’re stoked to have you as part of the family. We'll send you another update with tracking info as soon as your drop is out the door.
-        </div>
-      </div>
-
-      <div style="padding:0 5px;">
-        <hr style="border:0;border-top:1px solid #e4e4e4;margin:10px 0;">
-      </div>
-
-      <!-- Order Details & Delivery Address Two-Column Block (Exact User Draft) -->
-      <div style="padding:15px 5px;">
-        <table cellpadding="0" cellspacing="0" width="100%" border="0" style="color:#000000;font-family:'Source Sans Pro', sans-serif;font-size:13px;line-height:22px;">
-          <tr style="text-align:left;">
-            <th style="width:50%;padding-right:15px;color:#111111;font-size:13px;text-transform:uppercase;letter-spacing:0.5px;">ORDER DETAILS:</th>
-            <th style="width:50%;border-left:1px solid #e4e4e4;padding-left:15px;color:#111111;font-size:13px;text-transform:uppercase;letter-spacing:0.5px;">DELIVERY ADDRESS:</th>
-          </tr>
-          <tr style="text-align:left;">
-            <td style="vertical-align:top;width:50%;padding-right:15px;color:#333333;font-size:13px;padding-top:8px;line-height:22px;">
-              Your Order #${cleanOrderNumber}<br>
-              ORDER DATE: ${orderDate}<br>
-              PAYMENT: ${paymentMethod} (CONFIRMED)<br>
-              SHIPMENT: Preparing Dispatch
-            </td>
-            <td style="vertical-align:top;width:50%;border-left:1px solid #e4e4e4;padding-left:15px;color:#333333;font-size:13px;padding-top:8px;line-height:22px;">
-              ${customerName}<br>
-              ${streetAddr}<br>
-              ${cityStateZip}<br>
-              Contact No: ${recipientPhone || 'Not provided'}
-            </td>
-          </tr>
-        </table>
-      </div>
-
-      <div style="padding:0 5px;">
-        <hr style="border:0;border-top:1px solid #e4e4e4;margin:10px 0;">
-      </div>
-
-      <!-- Items Section Header -->
-      <div style="padding:10px 5px 5px 5px;">
-        <div style="font-family:'Source Sans Pro', sans-serif;font-size:13px;font-weight:700;color:#111111;text-transform:uppercase;letter-spacing:0.5px;">
-          ITEMS IN THE ORDER
-        </div>
-      </div>
-
-      <!-- Product Items List -->
-      <div style="padding:10px 5px 5px 5px;">
-        ${itemsHtml}
-      </div>
-
-      <!-- Financial Totals Summary -->
-      <div style="padding:0 5px 20px 5px;">
-        <table cellpadding="0" cellspacing="0" width="100%" border="0" style="font-family:'Source Sans Pro', sans-serif;font-size:13px;color:#444444;line-height:22px;border-top:1px solid #e4e4e4;padding-top:10px;">
-          <tr>
-            <td style="color:#686B78;">Subtotal</td>
-            <td style="text-align:right;color:#111111;">${subtotal}</td>
-          </tr>
-          <tr>
-            <td style="color:#686B78;">Shipping & Delivery</td>
-            <td style="text-align:right;color:#10b981;font-weight:600;">${deliveryFee}</td>
-          </tr>
-          ${discountVal > 0 ? `
-          <tr>
-            <td style="color:#686B78;">Coupon Discount ${couponCode ? `(${couponCode})` : ''}</td>
-            <td style="text-align:right;color:#ed3031;font-weight:700;">-₹ ${discountVal.toLocaleString('en-IN')}</td>
-          </tr>` : ''}
-          <tr style="font-size:16px;font-weight:700;color:#111111;">
-            <td style="padding-top:8px;border-top:1px solid #e4e4e4;">Grand Total</td>
-            <td style="text-align:right;padding-top:8px;border-top:1px solid #e4e4e4;color:#ed3031;">${grandTotal}</td>
-          </tr>
-        </table>
-      </div>
-
-      <!-- Signoff / Have a nice day -->
-      <div style="padding:10px 5px 20px 5px;">
-        <div style="font-family:'Source Sans Pro', sans-serif;font-size:14px;color:#282c3f;font-weight:600;">Have a nice day!</div>
-        <div style="font-family:'Source Sans Pro', sans-serif;font-size:14px;color:#282c3f;margin-top:2px;">The Street Co Team</div>
-      </div>
-
-      <div style="padding:0 5px;">
-        <hr style="border:0;border-top:1px solid #e4e4e4;margin:0 0 20px 0;">
-      </div>
-
-      <!-- Track Requisition CTA Button (Black Box matching View Invoice) -->
-      <div style="padding:0 5px 25px 5px;text-align:center;">
-        <a href="${trackingUrl}" target="_blank" style="display:inline-block;background-color:#0b0a0f;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:6px;font-weight:700;font-size:13px;letter-spacing:1px;text-transform:uppercase;">
-          TRACK ORDER STATUS ↗
-        </a>
-      </div>
-
-      <!-- Footer Social Icons & Address (Full Page, no box) -->
-      <div style="background-color:#ffffff;padding:25px 5px 30px 5px;text-align:center;border-top:1px solid #eeeeee;">
-        <div style="font-family:'Source Sans Pro', sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;color:#282C3F;letter-spacing:1px;margin-bottom:12px;">
-          WANT TO STAY IN THE LOOP?
-        </div>
-        <div style="margin-bottom:15px;">
-          <a href="${storeUrl}" target="_blank" style="text-decoration:none;margin:0 10px;font-size:12px;font-weight:700;color:#ed3031;">Visit Shop</a>
-          <span style="color:#d9d9d9;">•</span>
-          <a href="mailto:${supportEmail}" style="text-decoration:none;margin:0 10px;font-size:12px;font-weight:700;color:#ed3031;">Customer Support</a>
-          <span style="color:#d9d9d9;">•</span>
-          <a href="https://www.instagram.com/thestreetco_shop?stkn=ZnJ3eDZmaHd6Ym5o" target="_blank" style="text-decoration:none;margin:0 10px;font-size:12px;font-weight:700;color:#ed3031;">Instagram</a>
-        </div>
-        <div style="font-family:'Source Sans Pro', sans-serif;font-size:11px;line-height:18px;color:#686B78;max-width:480px;margin:0 auto;">
-          The Street Co • Thakurnagar Shimulpur Hazratala, West Bengal 743287, India<br>
-          © ${new Date().getFullYear()} The Street Co · All rights reserved.
-        </div>
-      </div>
-
-      </div> <!-- /inner column -->
-    </div> <!-- /full-page wrapper -->
-  </body>
-</html>`;
-
-  const plainTextItemsList = items.map(item => {
-    const itemTitle = item.title || item.name || 'Fourth Hokage Minato Inspired Oversized T-Shirt';
-    const itemSize = item.size || 'M';
-    const itemQty = Number(item.quantity || item.qty || 1);
-    const unitPriceNum = Number(item.priceInr || item.price || 1599);
-    const totalItemPriceNum = Number(item.totalItemPriceInr || (unitPriceNum * itemQty));
-    const orderSubtotalNum = Number(order.subtotalInr) || totalItemPriceNum || 1;
-    const proportion = totalItemPriceNum / orderSubtotalNum;
-    const itemDiscountAmt = hasCoupon ? Math.round(discountVal * proportion) : 0;
-    const itemFinalTotal = Math.max(0, totalItemPriceNum - itemDiscountAmt);
-    const itemFinalUnit = Math.max(0, Math.round(itemFinalTotal / itemQty));
-
-    const priceText = hasCoupon && itemDiscountAmt > 0
-      ? `Original: ₹${Math.round(unitPriceNum)} | Discounted: ₹${Math.round(itemFinalUnit)} (Coupon Applied) | Total: ₹${Math.round(itemFinalTotal)}`
-      : `₹${Math.round(unitPriceNum)} x ${itemQty} = ₹${Math.round(totalItemPriceNum)}`;
-
-    return `• ${itemTitle} (Size: ${itemSize}, Qty: ${itemQty}) - ${priceText}`;
-  }).join('\n');
-
-  const plainTextContent = `You're In. Order Confirmed!
-
-Hey ${customerName},
-
-Your order #${cleanOrderNumber} has been successfully placed and is now being carefully prepared by our team.
-
-Thank you for shopping from The Street Co! We're stoked to have you as part of the family. We'll send you another update with tracking info as soon as your drop is out the door.
-
-ORDER DETAILS:
-Your Order #${cleanOrderNumber}
-ORDER DATE: ${orderDate}
-PAYMENT: ${paymentMethod} (CONFIRMED)
-SHIPMENT: Preparing Dispatch
-
-DELIVERY ADDRESS:
-${customerName}
-${streetAddr}
-${cityStateZip}
-Contact No: ${recipientPhone || 'Not provided'}
-
-Items in Your Order:
-${plainTextItemsList}
-
-Subtotal: ${subtotal}
-Shipping: ${deliveryFee}${discountVal > 0 ? `\nCoupon Discount: -₹ ${discountVal}` : ''}
-Grand Total: ${grandTotal}
-
-Track your package anytime at: ${trackingUrl}
-Instagram: https://www.instagram.com/thestreetco_shop?stkn=ZnJ3eDZmaHd6Ym5o
-Support: ${supportEmail}
-
-Have a nice day!
-The Street Co Team`;
-
-  // 1. Attempt Native Google Gmail SMTP Delivery (Guaranteed 100% Primary Inbox Delivery)
+  // 1. Attempt Native Google Gmail SMTP Delivery (Guaranteed Primary Inbox Delivery)
   const gmail = getGmailTransporter();
   if (gmail) {
     try {
@@ -612,13 +179,13 @@ The Street Co Team`;
         from: `"${senderDisplayName}" <${senderUser}>`,
         replyTo: replyToEmail,
         to: recipientEmail,
-        subject: `Order Confirmed #${orderCode} - The Street Co`,
+        subject,
         text: plainTextContent,
         html: htmlContent,
-        attachments: mailAttachments
+        attachments: cidAttachments
       };
       const info = await gmail.sendMail(mailOptions);
-      console.log(`[Gmail Netlify] Native Google order email delivered for #${orderCode} to ${recipientEmail}. MessageId:`, info.messageId);
+      console.log(`[Gmail Netlify] Order confirmation email delivered for #${orderCode} to ${recipientEmail}. MessageId:`, info.messageId);
       return {
         success: true,
         provider: 'gmail_smtp',
@@ -697,9 +264,17 @@ ${supportEmail}`;
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light only">
+  <meta name="supported-color-schemes" content="light only">
   <title>${subject}</title>
+  <style type="text/css">
+    :root { color-scheme: light only; supported-color-schemes: light only; }
+    @media (prefers-color-scheme: dark) {
+      html, body { background-color: #ffffff !important; color: #1f2937 !important; }
+    }
+  </style>
 </head>
-<body style="margin: 0; padding: 0; background-color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1f2937; line-height: 1.65;">
+<body bgcolor="#ffffff" style="margin: 0; padding: 0; background-color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1f2937; line-height: 1.65;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width: 100%; margin: 0; padding: 0; background-color: #ffffff; border: none;">
     
     <!-- Top Full-Width Brand Bar (No Box) -->
@@ -923,7 +498,7 @@ export const handler = async (event) => {
 
 # --- 1. Google Gmail SMTP (Exclusive Email Sender) ---
 GMAIL_SMTP_USER=thestreetco.official@gmail.com
-GMAIL_SMTP_PASS=fiwbnxiycvoiefph
+GMAIL_SMTP_PASS=hybxmdubrjmsddoh
 GMAIL_SENDER_NAME=The Street Co
 GMAIL_REPLY_TO=support@thestreetco.zohodesk.in
 
@@ -1350,27 +925,33 @@ NODE_ENV=production
       let zohoSalesOrderResult = null;
       try {
         zohoSalesOrderResult = await zohoInventory.createSalesOrder(orderDocument);
-        if (zohoSalesOrderResult && zohoSalesOrderResult.salesorder) {
-          orderDocument.zoho_salesorder_id = zohoSalesOrderResult.salesorder.salesorder_id;
-          orderDocument.salesorder_number = zohoSalesOrderResult.salesorder.salesorder_number;
+        if (zohoSalesOrderResult && zohoSalesOrderResult.success && zohoSalesOrderResult.zoho_salesorder_id) {
+          orderDocument.zoho_salesorder_id = zohoSalesOrderResult.zoho_salesorder_id;
+          orderDocument.zoho_salesorder_number = zohoSalesOrderResult.zoho_salesorder_number;
+          orderDocument.salesorder_number = zohoSalesOrderResult.zoho_salesorder_number;
         }
       } catch (soErr) {
         console.warn('[Zoho Netlify] Sales order error:', soErr.message);
         zohoSalesOrderResult = { success: false, error: soErr.message };
       }
 
-      // 2. Automated Zoho Indian GST Tax Invoice Creation
+      // 2. Automated Zoho Indian GST Tax Invoice Creation (so View Your Invoice links straight to Zoho)
       let zohoInvoiceResult = null;
       try {
-        zohoInvoiceResult = await zohoInventory.createGstInvoice(orderDocument);
+        zohoInvoiceResult = orderDocument.zoho_salesorder_id
+          ? await zohoInventory.convertSalesOrderToInvoice(orderDocument.zoho_salesorder_id, orderDocument)
+          : await zohoInventory.createGstInvoice(orderDocument);
         if (zohoInvoiceResult && zohoInvoiceResult.success) {
           orderDocument.invoice_number = zohoInvoiceResult.invoice_number;
           orderDocument.invoice_id = zohoInvoiceResult.invoice_id;
           orderDocument.zoho_invoice_id = zohoInvoiceResult.zoho_invoice_id || zohoInvoiceResult.invoice_id;
-          orderDocument.zoho_invoice_url = zohoInvoiceResult.invoice_url || '';
+          orderDocument.zoho_invoice_url = String(zohoInvoiceResult.invoice_url || '').trim();
           orderDocument.template_name = zohoInvoiceResult.template_name || 'The Street Co';
           orderDocument.gstBreakdown = zohoInvoiceResult.gstBreakdown;
-          orderDocument.invoiceUrl = `/invoice/${orderDocument.orderCode}`;
+          orderDocument.invoiceUrl = orderDocument.zoho_invoice_url || `/invoice/${orderDocument.orderCode}`;
+          if (orderDocument.zoho_invoice_id && !String(orderDocument.zoho_invoice_id).startsWith('LOCAL-') && String(orderDocument.paymentMethod || 'COD').toUpperCase() !== 'COD') {
+            await zohoInventory.recordCustomerPaymentInZoho(orderDocument.zoho_invoice_id, orderDocument).catch(() => {});
+          }
         }
       } catch (invErr) {
         console.warn('[Zoho Netlify GST Invoice Notice]', invErr.message);
@@ -1384,9 +965,8 @@ NODE_ENV=production
         ? `${event.headers['x-forwarded-proto']}://${event.headers.host}`
         : 'https://thestreetco.netlify.app';
 
-      // Automated Dispatches in Parallel (SMS + Order Confirmation Email + Dedicated GST Tax Invoice Email)
-      // Running concurrently guarantees both emails and SMS complete rapidly without hitting Netlify's 10s execution limit
-      const [smsResult, emailResult, invoiceEmailResult] = await Promise.all([
+      // Automated Dispatches in Parallel (SMS + Order Confirmation Email with Zoho Invoice link)
+      const [smsResult, emailResult] = await Promise.all([
         sendOrderConfirmationSms(orderDocument).catch(smsErr => {
           console.warn('[Twilio Netlify] SMS error:', smsErr.message);
           return { success: false, error: smsErr.message };
@@ -1394,10 +974,6 @@ NODE_ENV=production
         sendOrderConfirmationEmailGmail(orderDocument, hostOrigin).catch(emailErr => {
           console.warn('[Gmail Netlify] Order confirmation email error:', emailErr.message);
           return { success: false, error: emailErr.message };
-        }),
-        sendGstTaxInvoiceEmail(orderDocument, hostOrigin).catch(invEmailErr => {
-          console.warn('[Gmail Netlify] GST Tax Invoice email error:', invEmailErr.message);
-          return { success: false, error: invEmailErr.message };
         })
       ]);
 
@@ -1414,13 +990,12 @@ NODE_ENV=production
           invoiceUrl: orderDocument.invoiceUrl || `/invoice/${orderDocument.orderCode}`,
           sms: smsResult,
           email: emailResult,
-          invoiceEmail: invoiceEmailResult,
-          message: 'Order created, Sales Order registered, and both Order Confirmation & GST Tax Invoice emails dispatched separately.'
+          message: 'Order created, Zoho Invoice generated, and Order Confirmation email sent with invoice link.'
         })
       };
     }
 
-    // Endpoint to trigger or resend GST Tax Invoice Email for an order
+    // Endpoint to trigger or resend Order Confirmation Email (with View Your Invoice link)
     if (rawPath.includes('send-invoice-email') && method === 'POST') {
       const parts = rawPath.split('/').filter(Boolean);
       const idx = parts.findIndex(p => p === 'orders');
@@ -1436,11 +1011,50 @@ NODE_ENV=production
       const hostOrigin = (event.headers?.['x-forwarded-proto'] && event.headers?.host)
         ? `${event.headers['x-forwarded-proto']}://${event.headers.host}`
         : 'https://thestreetco.netlify.app';
-      const result = await sendGstTaxInvoiceEmail(order, hostOrigin);
+      const result = await sendOrderConfirmationEmailGmail(order, hostOrigin);
       return {
         statusCode: 200,
         headers: CORS_HEADERS,
         body: JSON.stringify({ success: true, result })
+      };
+    }
+
+    // Merchant Gmail Status & UPI Payment Verification via IMAP: /api/merchant/gmail-status, /api/verify-payment
+    if (rawPath.includes('merchant/gmail-status') && method === 'GET') {
+      const imapUser = (process.env.UPI_IMAP_USER || process.env.GMAIL_SMTP_USER || GMAIL_SMTP_USER || '').trim();
+      const imapPass = (process.env.UPI_IMAP_PASS || process.env.GMAIL_SMTP_PASS || GMAIL_SMTP_PASS || '').replace(/\s+/g, '').trim();
+      const connected = Boolean(imapUser && imapPass);
+      return {
+        statusCode: 200,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({
+          connected,
+          mode: connected ? 'gmail_imap' : 'none',
+          email: imapUser || 'thestreetco.official@gmail.com',
+          connectedAt: connected ? new Date().toISOString() : null,
+          expiresAt: null
+        })
+      };
+    }
+
+    if (rawPath.includes('verify-payment') && method === 'GET') {
+      const qs = event.queryStringParameters || {};
+      const amount = Number(qs.amount) || 0;
+      const orderId = String(qs.orderId || '').trim();
+      const sinceEpoch = Number(qs.since) || Math.floor((Date.now() - 600000) / 1000);
+      const imapUser = (process.env.UPI_IMAP_USER || process.env.GMAIL_SMTP_USER || GMAIL_SMTP_USER || '').trim();
+      const imapPass = (process.env.UPI_IMAP_PASS || process.env.GMAIL_SMTP_PASS || GMAIL_SMTP_PASS || '').replace(/\s+/g, '').trim();
+      const result = await verifyUpiPaymentViaImap({
+        user: imapUser,
+        pass: imapPass,
+        amount,
+        orderId,
+        sinceEpoch
+      });
+      return {
+        statusCode: 200,
+        headers: CORS_HEADERS,
+        body: JSON.stringify(result)
       };
     }
 

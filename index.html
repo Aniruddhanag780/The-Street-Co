@@ -811,16 +811,29 @@
       <div class="footer__tribute">ELEVATED STYLE · MODERN ESSENTIALS</div>
     </div>
 
-    <!-- Payment Badges -->
-    <div class="footer-payment-badges">
-      <span class="pay-badge pay-badge--visa" title="Visa">VISA</span>
-      <span class="pay-badge pay-badge--mc" title="Mastercard">
-        <span class="mc-circle mc-circle--red"></span>
-        <span class="mc-circle mc-circle--orange"></span>
+    <!-- Payment Badges (same icons as transactional email footer) -->
+    <div class="footer-payment-badges" aria-label="Accepted Payment Methods">
+      <span class="footer-pay-icon" title="Visa">
+        <img src="/public/assets/email/pay-visa.png" alt="Visa" width="52" height="30" loading="lazy" />
       </span>
-      <span class="pay-badge pay-badge--paypal" title="PayPal">PayPal</span>
-      <span class="pay-badge pay-badge--apple" title="Apple Pay">Pay</span>
-      <span class="pay-badge pay-badge--shop" title="Shop Pay">shop<span class="pay-text">Pay</span></span>
+      <span class="footer-pay-icon" title="Mastercard">
+        <img src="/public/assets/email/pay-mastercard.png" alt="Mastercard" width="52" height="30" loading="lazy" />
+      </span>
+      <span class="footer-pay-icon" title="PayPal">
+        <img src="/public/assets/email/pay-paypal.png" alt="PayPal" width="58" height="30" loading="lazy" />
+      </span>
+      <span class="footer-pay-icon" title="Apple Pay">
+        <img src="/public/assets/email/pay-applepay.png" alt="Apple Pay" width="52" height="30" loading="lazy" />
+      </span>
+      <span class="footer-pay-icon" title="Stripe">
+        <img src="/public/assets/email/pay-stripe.png" alt="Stripe" width="52" height="30" loading="lazy" />
+      </span>
+      <span class="footer-pay-icon" title="Google Pay">
+        <img src="/public/assets/email/pay-gpay.png" alt="Google Pay" width="55" height="30" loading="lazy" />
+      </span>
+      <span class="footer-pay-icon" title="Amazon Pay">
+        <img src="/public/assets/email/pay-amazonpay.png" alt="Amazon Pay" width="64" height="30" loading="lazy" />
+      </span>
     </div>
 
     <ul class="footer__legal-links">
@@ -2297,8 +2310,8 @@
           <div class="checkout-payment-methods" id="checkoutPaymentMethods">
             <!-- Official UPI Instant Payment Option -->
             <!-- Official UPI Instant Payment Option -->
-            <div class="checkout-pay-option" data-method="upi" id="checkoutPayOptionUpi" onclick="openUpiPaymentGateway()" style="cursor: pointer;">
-              <div class="checkout-pay-header" role="button" tabindex="0" aria-expanded="true" onclick="openUpiPaymentGateway()">
+            <div class="checkout-pay-option" data-method="upi" id="checkoutPayOptionUpi" style="cursor: pointer;">
+              <div class="checkout-pay-header" role="button" tabindex="0" aria-expanded="true">
                 <div class="checkout-pay-title-group">
                   <span class="checkout-pay-icon checkout-pay-icon--upi" aria-label="UPI Logo">
                     <img src="/img/upi.svg" alt="UPI" width="34" height="18" style="object-fit:contain;" />
@@ -2308,7 +2321,7 @@
                       <strong>UPI (Google Pay / PhonePe / Paytm / Any UPI App)</strong>
                       <span class="pay-chip pay-chip--green">⚡ INSTANT</span>
                     </div>
-                    <small>Click to open UPI payment page &amp; scan QR</small>
+                    <small>Review order next, then pay in any UPI app or scan QR</small>
                   </div>
                 </div>
                 <div class="checkout-pay-badges">
@@ -2316,11 +2329,11 @@
                 </div>
               </div>
               <div class="checkout-pay-body" style="display:block;">
-                <div class="checkout-upi-box" onclick="openUpiPaymentGateway()">
+                <div class="checkout-upi-box">
                   <div class="checkout-upi-box-header">
                     <div class="upi-box-badge">⚡ SECURE UPI PAYMENT</div>
                     <p class="checkout-upi-info">
-                      Scan the QR code with any UPI app (Google Pay, PhonePe, Paytm, BHIM, CRED) with your order amount auto-entered.
+                      Select UPI and continue to review your order. Once you confirm, you can pay directly in Google Pay, PhonePe, Paytm, or FamPay with your exact order amount pre-filled, or scan the QR code.
                     </p>
                   </div>
                 </div>
@@ -2597,13 +2610,13 @@
       <!-- Order ID -->
       <div class="upier-order-id" id="upierOrderIdDisplay">Order ID: 169396</div>
 
-      <!-- Valid for 09:59 timer pill -->
+      <!-- Valid for 04:00 auto-verify timer pill -->
       <div class="upier-timer-pill">
         <svg class="upier-clock-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="10"></circle>
           <polyline points="12 6 12 12 16 14"></polyline>
         </svg>
-        <span>Valid for <strong id="upierTimerClock">09:59</strong></span>
+        <span>Valid for <strong id="upierTimerClock">04:00</strong></span>
       </div>
 
       <!-- QR Code with rounded border -->
@@ -2611,9 +2624,9 @@
         <div class="upier-qr-skeleton">Generating QR...</div>
       </div>
 
-      <!-- Solid Black Button: PAY VIA ANY UPI APP -->
-      <a href="#" class="upier-pay-button" id="upierPayButton" rel="noopener noreferrer">
-        PAY VIA ANY UPI APP
+      <!-- Solid Black Button: Pay with UPI App -->
+      <a href="#" class="upier-pay-button" id="upierPayButton">
+        Pay with UPI App
       </a>
 
       <!-- Live Checking / Polling Status Indicator (Hidden during listening, shows only when confirmed) -->
@@ -2671,7 +2684,7 @@
         <span class="merchant-status-label">Current Connection:</span>
         <span class="merchant-status-badge" id="merchantStatusBadge">Checking...</span>
       </div>
-      <div class="merchant-email-display" id="merchantEmailDisplay">aniruddhanag780@gmail.com</div>
+      <div class="merchant-email-display" id="merchantEmailDisplay">thestreetco.official@gmail.com</div>
     </div>
 
     <!-- Official Google Sign-In Button -->
@@ -3393,11 +3406,11 @@
     <!-- Top Header Bar -->
     <header class="account-page__header">
       <div class="account-page__header-inner">
-        <button type="button" class="account-page__back-btn" id="accountPageBackBtn" onclick="if(window.closeAccountPage){window.closeAccountPage();}">
+        <button type="button" class="account-page__back-btn" id="accountPageBackBtn" onclick="if(window.handleAccountBackAction){window.handleAccountBackAction();}else if(window.closeAccountPage){window.closeAccountPage();}">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="15 18 9 12 15 6"></polyline>
           </svg>
-          <span>BACK TO STORE</span>
+          <span id="accountPageBackBtnLabel">BACK TO STORE</span>
         </button>
       </div>
     </header>
@@ -3421,24 +3434,28 @@
                   <span class="account-nav-item__title">Personal Information</span>
                   <small class="account-nav-item__sub">Name, Mobile No. <span class="account-clean-amp">&amp;</span> Email</small>
                 </div>
+                <span class="account-nav-item__arrow" aria-hidden="true">›</span>
               </button>
               <button type="button" class="account-nav-item" id="accountNavAddressBtn" data-account-page="address">
                 <div class="account-nav-item__info">
                   <span class="account-nav-item__title">Delivery Address</span>
                   <small class="account-nav-item__sub">Saved Delivery Addresses</small>
                 </div>
+                <span class="account-nav-item__arrow" aria-hidden="true">›</span>
               </button>
               <button type="button" class="account-nav-item" id="accountNavOrdersBtn" data-account-page="orders">
                 <div class="account-nav-item__info">
                   <span class="account-nav-item__title">Order History</span>
                   <small class="account-nav-item__sub">Purchases &amp; Item Pictures</small>
                 </div>
+                <span class="account-nav-item__arrow" aria-hidden="true">›</span>
               </button>
               <button type="button" class="account-nav-item" id="accountNavLogoutBtn" data-account-page="logout">
                 <div class="account-nav-item__info">
                   <span class="account-nav-item__title">Log Out</span>
                   <small class="account-nav-item__sub">Session &amp; Sign Out</small>
                 </div>
+                <span class="account-nav-item__arrow" aria-hidden="true">›</span>
               </button>
             </nav>
           </aside>
@@ -3866,7 +3883,11 @@
   };
   var renderVipUI = window.renderVipUI;
 </script>
-<script src="main.js?v=20261108_order_v7"></script>
+<script type="module">
+  import * as upiIntentHelper from '/upiIntentHelper.js';
+  window.streetCoUpiHelper = upiIntentHelper;
+</script>
+<script src="main.js?v=20261113_upi_v8"></script>
 
 <!-- Guaranteed Header & Step Button Sync (Overrides any browser cache) -->
 <script>

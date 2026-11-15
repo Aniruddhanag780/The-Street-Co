@@ -3357,17 +3357,13 @@ const handleListProducts = async (req, res) => {
 
   if (zohoInventory.isZohoConfigured()) {
     try {
-      const [zohoResult, catsResult] = await Promise.all([
-        zohoInventory.fetchZohoItems().catch(() => null),
-        zohoInventory.fetchZohoCategories().catch(() => ({ categories: [], collections: [] }))
-      ]);
+      const zohoResult = await zohoInventory.fetchZohoItems(false).catch(() => null);
 
       if (zohoResult && Array.isArray(zohoResult.items) && zohoResult.items.length > 0) {
         zohoItems = zohoResult.items;
       } else if (zohoInventory.tokenState && Array.isArray(zohoInventory.tokenState.cachedItems)) {
         zohoItems = zohoInventory.tokenState.cachedItems;
       }
-      if (catsResult) zohoCats = catsResult;
     } catch (zohoErr) {
       console.warn('[Zoho Inventory] Real-time sync notice:', zohoErr.message);
     }
@@ -4039,9 +4035,31 @@ async function checkZohoShipmentFulfillments(hostOrigin = '') {
   const updatedOrders = [];
 
   try {
-    const candidateOrders = Array.from(inMemoryOrders.values()).filter(o => 
-      o && o.zoho_salesorder_id && o.status !== 'DELIVERED' && o.deliveryStatus !== 'DELIVERY_DONE'
-    );
+    // Attempt to sync any pending unsynced orders into Zoho Inventory (60090378434)
+    const seenPending = new Set();
+    for (const ord of inMemoryOrders.values()) {
+      if (!ord || !ord.orderCode || seenPending.has(ord.orderCode)) continue;
+      seenPending.add(ord.orderCode);
+      if (!ord.zoho_salesorder_id) {
+        const soRes = await zohoInventory.createSalesOrder(ord);
+        if (soRes && soRes.success && soRes.zoho_salesorder_id) {
+          ord.zoho_salesorder_id = soRes.zoho_salesorder_id;
+          ord.zoho_salesorder_number = soRes.zoho_salesorder_number;
+          ord.zoho_status = 'confirmed';
+          delete ord.zoho_sync_error;
+          persistOrders(ord);
+        } else {
+          break; // Wait for next window if Zoho rate limit is still active
+        }
+      }
+    }
+
+    const seenCodes = new Set();
+    const candidateOrders = Array.from(inMemoryOrders.values()).filter(o => {
+      if (!o || !o.orderCode || seenCodes.has(o.orderCode)) return false;
+      seenCodes.add(o.orderCode);
+      return o.zoho_salesorder_id && o.status !== 'DELIVERED' && o.deliveryStatus !== 'DELIVERY_DONE';
+    });
 
     if (candidateOrders.length === 0) {
       isCheckingFulfillments = false;
@@ -4107,17 +4125,20 @@ async function checkZohoShipmentFulfillments(hostOrigin = '') {
   };
 }
 
-// Start automated background monitoring loop (runs automatically every 30 seconds)
+// Start automated background monitoring loop (runs every 10 minutes to conserve Zoho API rate limits; real-time updates also arrive via webhook)
 setInterval(() => {
   checkZohoShipmentFulfillments().catch(() => {});
-}, 30000);
+}, 600000);
 
 // Endpoint to inspect automated fulfillment monitor status
 app.get('/api/zoho/fulfillment-monitor-status', (req, res) => {
   const isConfigured = zohoInventory.isZohoConfigured();
-  const pendingCount = Array.from(inMemoryOrders.values()).filter(o => 
-    o && o.zoho_salesorder_id && o.status !== 'DELIVERED' && o.deliveryStatus !== 'DELIVERY_DONE'
-  ).length;
+  const seenCodes = new Set();
+  const pendingCount = Array.from(inMemoryOrders.values()).filter(o => {
+    if (!o || !o.orderCode || seenCodes.has(o.orderCode)) return false;
+    seenCodes.add(o.orderCode);
+    return o.zoho_salesorder_id && o.status !== 'DELIVERED' && o.deliveryStatus !== 'DELIVERY_DONE';
+  }).length;
 
   res.json({
     success: true,
@@ -6205,9 +6226,9 @@ app.post('/api/account/send-email-otp', async (req, res) => {
                 <p style="font-size:14px;line-height:1.6;color:#52525b;margin:0 0 24px;">
                   Use the 6-digit verification code below to verify and save your email address (<strong>${cleanEmail}</strong>) on your The Street Co account:
                 </p>
-                <div style="background:#faf8f5;border:2px dashed #0e0e11;border-radius:12px;padding:20px;text-align:center;margin:0 0 24px;">
-                  <span style="font-size:11px;letter-spacing:0.14em;color:#71717a;display:block;margin-bottom:8px;font-weight:700;">YOUR 6-DIGIT VERIFICATION OTP</span>
-                  <div style="font-size:34px;font-weight:800;letter-spacing:0.28em;color:#0e0e11;font-family:monospace;">${otpCode}</div>
+                <div style="background:#faf8f5;border:1.5px dashed #d4d4d8;border-radius:12px;padding:20px;text-align:center;margin:0 0 24px;">
+                  <span style="font-size:11px;letter-spacing:0.14em;color:#71717a;display:block;margin-bottom:8px;font-weight:500;">YOUR 6-DIGIT VERIFICATION OTP</span>
+                  <div style="font-size:32px;font-weight:500;letter-spacing:0.24em;color:#27272a;font-family:'Plus Jakarta Sans',sans-serif;">${otpCode}</div>
                 </div>
                 <p style="font-size:12px;color:#71717a;line-height:1.5;margin:0;">
                   This code is valid for 10 minutes. If you did not request this verification, you can safely ignore this email.
@@ -6374,11 +6395,11 @@ app.post('/api/account/change-phone/send-otp', async (req, res) => {
                 <div style="padding:32px 28px;background:#ffffff;">
                   <p style="font-size:15px;margin:0 0 12px;color:#18181b;">Hello,</p>
                   <p style="font-size:14px;line-height:1.6;color:#52525b;margin:0 0 20px;">
-                    We received a request to update the primary mobile number on your The Street Co account from <strong>+91 ${cleanCurrent}</strong> to <strong>+91 ${cleanNew}</strong>.
+                    We received a request to update the primary mobile number on your The Street Co account from <span style="font-weight:500;color:#3f3f46;">+91 ${cleanCurrent}</span> to <span style="font-weight:500;color:#3f3f46;">+91 ${cleanNew}</span>.
                   </p>
-                  <div style="background:#faf8f5;border:2px dashed #0e0e11;border-radius:12px;padding:20px;text-align:center;margin:0 0 24px;">
-                    <span style="font-size:11px;letter-spacing:0.14em;color:#71717a;display:block;margin-bottom:8px;font-weight:700;">YOUR 6-DIGIT AUTHORIZATION OTP</span>
-                    <div style="font-size:34px;font-weight:800;letter-spacing:0.28em;color:#0e0e11;font-family:monospace;">${otpCode}</div>
+                  <div style="background:#faf8f5;border:1.5px dashed #d4d4d8;border-radius:12px;padding:20px;text-align:center;margin:0 0 24px;">
+                    <span style="font-size:11px;letter-spacing:0.14em;color:#71717a;display:block;margin-bottom:8px;font-weight:500;">YOUR 6-DIGIT AUTHORIZATION OTP</span>
+                    <div style="font-size:32px;font-weight:500;letter-spacing:0.24em;color:#27272a;font-family:'Plus Jakarta Sans',sans-serif;">${otpCode}</div>
                   </div>
                   <p style="font-size:12px;color:#71717a;line-height:1.5;margin:0;">
                     This authorization code is valid for 10 minutes. If you did not initiate this change, please contact support immediately at support@thestreetco.zohodesk.in.
@@ -6532,9 +6553,9 @@ app.post('/api/account/change-email/send-otp', async (req, res) => {
                   <p style="font-size:14px;line-height:1.6;color:#52525b;margin:0 0 20px;">
                     We received a request to update the email address on your The Street Co account from <strong>${userEmail}</strong> to <strong>${cleanNewEmail}</strong>.
                   </p>
-                  <div style="background:#faf8f5;border:2px dashed #0e0e11;border-radius:12px;padding:20px;text-align:center;margin:0 0 24px;">
-                    <span style="font-size:11px;letter-spacing:0.14em;color:#71717a;display:block;margin-bottom:8px;font-weight:700;">YOUR 6-DIGIT AUTHORIZATION OTP</span>
-                    <div style="font-size:34px;font-weight:800;letter-spacing:0.28em;color:#0e0e11;font-family:monospace;">${otpCode}</div>
+                  <div style="background:#faf8f5;border:1.5px dashed #d4d4d8;border-radius:12px;padding:20px;text-align:center;margin:0 0 24px;">
+                    <span style="font-size:11px;letter-spacing:0.14em;color:#71717a;display:block;margin-bottom:8px;font-weight:500;">YOUR 6-DIGIT AUTHORIZATION OTP</span>
+                    <div style="font-size:32px;font-weight:500;letter-spacing:0.24em;color:#27272a;font-family:'Plus Jakarta Sans',sans-serif;">${otpCode}</div>
                   </div>
                   <p style="font-size:12px;color:#71717a;line-height:1.5;margin:0;">
                     This authorization code is valid for 10 minutes. If you did not initiate this change, please contact support immediately at support@thestreetco.zohodesk.in.
@@ -6794,16 +6815,34 @@ app.post('/api/zoho/sync-pending', async (req, res) => {
   if (!zohoInventory.isZohoConfigured()) {
     return res.status(400).json({ success: false, error: 'Zoho Inventory is not configured.' });
   }
+  const forceResync = Boolean(req.body && req.body.forceResync);
   const results = { ordersSynced: 0, invoicesSynced: 0, returnsSynced: 0, errors: [] };
   try {
-    const uniqueOrders = Array.from(new Set(inMemoryOrders.values()));
+    const seenOrderCodes = new Set();
+    const uniqueOrders = [];
+    for (const ord of inMemoryOrders.values()) {
+      if (ord && ord.orderCode && !seenOrderCodes.has(ord.orderCode)) {
+        seenOrderCodes.add(ord.orderCode);
+        uniqueOrders.push(ord);
+      }
+    }
     for (const order of uniqueOrders) {
       if (!order || !order.orderCode) continue;
-      if (!order.zoho_salesorder_id) {
+      const needsSync = forceResync || !order.zoho_salesorder_id;
+      if (needsSync) {
         const soRes = await zohoInventory.createSalesOrder(order);
         if (soRes && soRes.success && soRes.zoho_salesorder_id) {
           order.zoho_salesorder_id = soRes.zoho_salesorder_id;
           order.zoho_salesorder_number = soRes.zoho_salesorder_number;
+          order.zoho_status = 'confirmed';
+          await zohoInventory.confirmSalesOrderInZoho(soRes.zoho_salesorder_id).catch(() => {});
+          const invRes = await zohoInventory.convertSalesOrderToInvoice(soRes.zoho_salesorder_id, order).catch(() => null);
+          if (invRes && (invRes.zoho_invoice_id || invRes.invoice_id)) {
+            order.zoho_invoice_id = invRes.zoho_invoice_id || invRes.invoice_id;
+            order.zoho_invoice_number = invRes.invoice_number;
+            order.zoho_invoice_url = invRes.invoice_url || `/api/orders/${order.orderCode}/gst-invoice`;
+            results.invoicesSynced++;
+          }
           delete order.zoho_sync_error;
           persistOrders(order);
           results.ordersSynced++;
@@ -6838,7 +6877,8 @@ app.post('/api/zoho/sync-pending', async (req, res) => {
     res.json({
       success: true,
       ...results,
-      message: `Synced ${results.ordersSynced} order(s) and ${results.returnsSynced} return(s) to Zoho Inventory.`
+      organization_id: zohoInventory.config.orgId,
+      message: `Synced ${results.ordersSynced} order(s), ${results.invoicesSynced} invoice(s), and ${results.returnsSynced} return(s) to Zoho Inventory.`
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message, ...results });
@@ -6848,7 +6888,7 @@ app.post('/api/zoho/sync-pending', async (req, res) => {
 // Trigger full catalog sync from Zoho Inventory
 app.post('/api/zoho-inventory/sync', async (req, res) => {
   try {
-    const result = await zohoInventory.fetchZohoItems();
+    const result = await zohoInventory.fetchZohoItems(true);
     res.json({
       success: result.success,
       source: result.source,
@@ -6863,10 +6903,19 @@ app.post('/api/zoho-inventory/sync', async (req, res) => {
   }
 });
 
-// Proxy Zoho Inventory Item Images with OAuth Token & Guaranteed Fallback
+const zohoImageBufferCache = new Map();
+
+// Proxy Zoho Inventory Item Images with OAuth Token, Memory Cache & Guaranteed Fallback
 app.get('/api/zoho-inventory/items/:itemId/image', async (req, res) => {
   try {
     const { itemId } = req.params;
+    const cacheKey = `item_${itemId}`;
+    if (zohoImageBufferCache.has(cacheKey)) {
+      const cached = zohoImageBufferCache.get(cacheKey);
+      res.setHeader('Content-Type', cached.contentType);
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      return res.send(cached.buffer);
+    }
     if (zohoInventory.isZohoConfigured()) {
       const token = await zohoInventory.getAccessToken();
       const url = `${zohoInventory.getApiBaseUrl()}/items/${itemId}/image?organization_id=${zohoInventory.config.orgId}`;
@@ -6876,10 +6925,11 @@ app.get('/api/zoho-inventory/items/:itemId/image', async (req, res) => {
 
       if (zohoRes.ok) {
         const contentType = zohoRes.headers.get('content-type') || 'image/jpeg';
+        const buffer = Buffer.from(await zohoRes.arrayBuffer());
+        zohoImageBufferCache.set(cacheKey, { contentType, buffer });
         res.setHeader('Content-Type', contentType);
         res.setHeader('Cache-Control', 'public, max-age=86400');
-        const buffer = await zohoRes.arrayBuffer();
-        return res.send(Buffer.from(buffer));
+        return res.send(buffer);
       }
     }
   } catch (err) {
@@ -6891,10 +6941,17 @@ app.get('/api/zoho-inventory/items/:itemId/image', async (req, res) => {
   res.send(getProductImageBuffer());
 });
 
-// Proxy Zoho Inventory Document Images & Guaranteed Fallback
+// Proxy Zoho Inventory Document Images, Memory Cache & Guaranteed Fallback
 app.get(['/api/zoho-inventory/documents/:docId', '/api/product-image'], async (req, res) => {
   try {
     const { docId } = req.params;
+    const cacheKey = `doc_${docId}`;
+    if (docId && zohoImageBufferCache.has(cacheKey)) {
+      const cached = zohoImageBufferCache.get(cacheKey);
+      res.setHeader('Content-Type', cached.contentType);
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      return res.send(cached.buffer);
+    }
     if (docId && zohoInventory.isZohoConfigured()) {
       const token = await zohoInventory.getAccessToken();
       const url = `${zohoInventory.getApiBaseUrl()}/documents/${docId}?organization_id=${zohoInventory.config.orgId}`;
@@ -6904,10 +6961,11 @@ app.get(['/api/zoho-inventory/documents/:docId', '/api/product-image'], async (r
 
       if (zohoRes.ok) {
         const contentType = zohoRes.headers.get('content-type') || 'image/jpeg';
+        const buffer = Buffer.from(await zohoRes.arrayBuffer());
+        zohoImageBufferCache.set(cacheKey, { contentType, buffer });
         res.setHeader('Content-Type', contentType);
         res.setHeader('Cache-Control', 'public, max-age=86400');
-        const buffer = await zohoRes.arrayBuffer();
-        return res.send(Buffer.from(buffer));
+        return res.send(buffer);
       }
     }
   } catch (err) {

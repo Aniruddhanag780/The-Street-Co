@@ -619,7 +619,13 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     }
 
     const titleLower = title.toLowerCase();
-    const isCartToast = (type === 'cart' || type === 'bag') || (titleLower.includes('bag') || titleLower.includes('cart') || (titleLower.includes('added') && !titleLower.includes('address')));
+    const isCartToast = (
+      titleLower === 'added to bag' ||
+      titleLower === 'moved to bag' ||
+      titleLower === 'moved to cart' ||
+      titleLower === 'all items moved' ||
+      titleLower === 'all items moved to cart'
+    );
     const isWishlistToast = type === 'wishlist' || titleLower.includes('wishlist');
     const isPriceDropToast = type === 'price-drop' || titleLower.includes('price drop');
 
@@ -737,6 +743,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
 
   // Globally accessible toast notification matching product-add-to-cart style
   window.streetCoShowToast = showToast;
+  window.showToast = showToast;
 
   function updateHeartButtons(sku, isWish) {
     document.querySelectorAll(`[data-wishlist-toggle="${sku}"]`).forEach(btn => {
@@ -1277,7 +1284,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     }
 
     updateCartUI();
-    showToast(qtyToAdd > 1 ? `${qtyToAdd}× ${item.name}` : item.name);
+    showToast('ADDED TO BAG', qtyToAdd > 1 ? `${qtyToAdd}× ${item.name}` : item.name, 'bag');
     if (typeof autoApplyStreetCashCouponIfAvailable === 'function') {
       autoApplyStreetCashCouponIfAvailable();
     }
@@ -3258,15 +3265,13 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
         `;
       }).join('');
     }
-
-    showToast('ORDER PLACED & CONFIRMED', `Order ID: ${orderId}`, 'bag');
   }
 
   // Attach Stepper & Navigation Events
   if (checkoutRefreshAddressBtn) {
     checkoutRefreshAddressBtn.addEventListener('click', () => {
       resetAddressAndDeliveryFields({ clearStorage: true });
-      showToast('FIELDS REFRESHED', 'Address & courier options cleared', 'bag');
+      showToast('FIELDS REFRESHED', 'Address & courier options cleared', 'info');
       if (checkoutNameInput) checkoutNameInput.focus();
     });
   }
@@ -3365,7 +3370,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
 
       // Unavailable payment methods notice
       if (opt.dataset.unavailable === 'true' || opt.classList.contains('checkout-pay-option--unavailable')) {
-        showToast('PAYMENT NOTICE', 'Online payment methods are temporarily unavailable. Cash on Delivery (COD) is selected.', 'bag');
+        showToast('PAYMENT NOTICE', 'Online payment methods are temporarily unavailable. Cash on Delivery (COD) is selected.', 'info');
         return;
       }
 
@@ -4267,12 +4272,12 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       navigator.clipboard.writeText(orderId).then(() => {
         const span = checkoutCopyIdBtn.querySelector('span');
         if (span) span.textContent = 'ORDER ID COPIED! ✓';
-        showToast('COPIED ORDER ID', orderId, 'bag');
+        showToast('COPIED ORDER ID', orderId, 'info');
         setTimeout(() => {
           if (span) span.textContent = 'COPY ORDER ID';
         }, 2200);
       }).catch(() => {
-        showToast('ORDER ID', orderId, 'bag');
+        showToast('ORDER ID', orderId, 'info');
       });
     });
   }
@@ -6812,11 +6817,14 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       relicGalleryPriceInr.textContent = newPrice.toLocaleString('en-IN');
     }
     if (relicGallerySavingsTag) {
+      relicGallerySavingsTag.style.display = 'none';
+      relicGallerySavingsTag.textContent = '';
+    }
+    if (pdpImgDiscountBadge) {
       const originalMrp = item.originalMrp ? Number(item.originalMrp) : Math.round(newPrice * 1.35);
       const savingsAmount = originalMrp - newPrice;
       const savingsPercent = Math.round((savingsAmount / originalMrp) * 100);
-      relicGallerySavingsTag.textContent = `SAVE ₹${savingsAmount.toLocaleString('en-IN')} (${savingsPercent}% OFF)`;
-      if (pdpImgDiscountBadge) pdpImgDiscountBadge.textContent = `${savingsPercent}% OFF`;
+      pdpImgDiscountBadge.textContent = `${savingsPercent}% OFF`;
     }
     if (pdpSubtotalPrice) {
       pdpSubtotalPrice.textContent = `₹${(newPrice * currentPdpQty).toLocaleString('en-IN')} INR`;
@@ -7466,8 +7474,8 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       if (mrpBlock) mrpBlock.style.display = 'flex';
       if (relicGalleryOriginalPrice) relicGalleryOriginalPrice.textContent = `₹${item.originalMrp.toLocaleString('en-IN')}`;
       if (relicGallerySavingsTag) {
-        relicGallerySavingsTag.style.display = 'inline-block';
-        relicGallerySavingsTag.textContent = `SAVE ₹${savingsAmount.toLocaleString('en-IN')} (${savingsPercent}% OFF)`;
+        relicGallerySavingsTag.style.display = 'none';
+        relicGallerySavingsTag.textContent = '';
       }
       if (dealRibbon) dealRibbon.style.display = 'flex';
       if (pdpImgDiscountBadge) {
@@ -13476,7 +13484,10 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     }
     if (!message) return;
     const cleanMsg = String(message).replace(/^[❌⚠️✓ℹ️]\s*/, '').trim();
-    showToast(isError ? 'Notice' : 'Success', cleanMsg, isError ? 'error' : 'success');
+    const toastFn = window.streetCoShowToast || window.showToast;
+    if (typeof toastFn === 'function') {
+      toastFn(isError ? 'Notice' : 'Success', cleanMsg, isError ? 'error' : 'success');
+    }
   }
 
   function showAccountFeedback(message, isError = false) {
@@ -13487,7 +13498,10 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     }
     if (!message) return;
     const cleanMsg = String(message).replace(/^[❌⚠️✓ℹ️]\s*/, '').trim();
-    showToast(isError ? 'Notice' : 'Changes Saved', cleanMsg, isError ? 'error' : 'success');
+    const toastFn = window.streetCoShowToast || window.showToast;
+    if (typeof toastFn === 'function') {
+      toastFn(isError ? 'Notice' : 'Changes Saved', cleanMsg, isError ? 'error' : 'success');
+    }
   }
 
   function updateEmailBadgeUI() {
@@ -13787,6 +13801,60 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     }
   }
 
+  let unifiedOtpResendInterval = null;
+  let unifiedOtpResendRemaining = 0;
+
+  function formatOtpResendTime(totalSec) {
+    const mins = Math.floor(Math.max(0, totalSec) / 60);
+    const secs = Math.max(0, totalSec) % 60;
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  }
+
+  function stopUnifiedOtpResendCooldown() {
+    if (unifiedOtpResendInterval) {
+      clearInterval(unifiedOtpResendInterval);
+      unifiedOtpResendInterval = null;
+    }
+    unifiedOtpResendRemaining = 0;
+  }
+
+  function startUnifiedOtpResendCooldown(durationSeconds = 120) {
+    stopUnifiedOtpResendCooldown();
+    unifiedOtpResendRemaining = durationSeconds;
+
+    const resendBtn = document.getElementById('unifiedOtpResendBtn');
+    const timerEl = document.getElementById('unifiedOtpResendTimer');
+
+    const updateTimerUI = () => {
+      if (unifiedOtpResendRemaining > 0) {
+        if (resendBtn) {
+          resendBtn.disabled = true;
+          resendBtn.textContent = 'Resend OTP';
+        }
+        if (timerEl) {
+          timerEl.style.display = 'inline-flex';
+          timerEl.textContent = `in ${formatOtpResendTime(unifiedOtpResendRemaining)}`;
+        }
+      } else {
+        stopUnifiedOtpResendCooldown();
+        if (resendBtn) {
+          resendBtn.disabled = false;
+          resendBtn.textContent = 'Resend OTP';
+        }
+        if (timerEl) {
+          timerEl.style.display = 'none';
+          timerEl.textContent = '';
+        }
+      }
+    };
+
+    updateTimerUI();
+    unifiedOtpResendInterval = setInterval(() => {
+      unifiedOtpResendRemaining -= 1;
+      updateTimerUI();
+    }, 1000);
+  }
+
   window.openUnifiedOtpModal = function(options = {}) {
     const otpModal = document.getElementById('unifiedOtpModal');
     if (!otpModal) return;
@@ -13838,12 +13906,14 @@ window.openDelhiveryTracker = openDelhiveryTracker;
 
     showFlowFeedback('unifiedOtpStatusMsg', '');
     clearOtpBoxes();
+    startUnifiedOtpResendCooldown(120);
 
     otpModal.classList.add('open');
     otpModal.setAttribute('aria-hidden', 'false');
   };
 
   window.closeUnifiedOtpModal = function() {
+    stopUnifiedOtpResendCooldown();
     const otpModal = document.getElementById('unifiedOtpModal');
     if (!otpModal) return;
     otpModal.classList.remove('open');
@@ -14265,7 +14335,14 @@ window.openDelhiveryTracker = openDelhiveryTracker;
   const unifiedResendBtn = document.getElementById('unifiedOtpResendBtn');
   if (unifiedResendBtn) {
     unifiedResendBtn.addEventListener('click', async () => {
+      if (unifiedOtpResendRemaining > 0) return;
+      const timerEl = document.getElementById('unifiedOtpResendTimer');
       unifiedResendBtn.disabled = true;
+      unifiedResendBtn.textContent = 'Sending...';
+      if (timerEl) {
+        timerEl.style.display = 'none';
+        timerEl.textContent = '';
+      }
       showFlowFeedback('unifiedOtpStatusMsg', 'Sending a new 6-digit OTP...', false);
       try {
         if (activeOtpContext.mode === 'change_phone') {
@@ -14285,6 +14362,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
             bannerEl.innerHTML = `Your 6-Digit Authorization OTP: <strong>${data.otpCode}</strong>`;
           }
           clearOtpBoxes();
+          startUnifiedOtpResendCooldown(120);
           showFlowFeedback('unifiedOtpStatusMsg', data.message || `New authorization code dispatched.`, false);
         } else if (activeOtpContext.mode === 'change_email') {
           const res = await fetch('/api/account/change-email/send-otp', {
@@ -14303,6 +14381,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
             bannerEl.innerHTML = `Your 6-Digit Authorization OTP: <strong>${data.otpCode}</strong>`;
           }
           clearOtpBoxes();
+          startUnifiedOtpResendCooldown(120);
           showFlowFeedback('unifiedOtpStatusMsg', data.message || `New authorization code dispatched.`, false);
         } else if (activeOtpContext.mode === 'phone') {
           const res = await fetch('/api/account/send-phone-otp', {
@@ -14318,6 +14397,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
             bannerEl.innerHTML = `Your 6-Digit Verification OTP: <strong>${data.otpCode}</strong>`;
           }
           clearOtpBoxes();
+          startUnifiedOtpResendCooldown(120);
           showFlowFeedback('unifiedOtpStatusMsg', `New 6-digit OTP sent to ${activeOtpContext.targetPhone}.`, false);
         } else {
           const res = await fetch('/api/account/send-email-otp', {
@@ -14332,13 +14412,19 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           });
           const data = await res.json();
           if (!res.ok || !data.success) throw new Error(data.error || 'Failed to resend Email OTP.');
+          const bannerEl = document.getElementById('unifiedOtpInstantBanner');
+          if (bannerEl && !data.emailDispatched && data.otpCode) {
+            bannerEl.style.display = 'block';
+            bannerEl.innerHTML = `Your 6-Digit Verification OTP: <strong>${data.otpCode}</strong>`;
+          }
           clearOtpBoxes();
+          startUnifiedOtpResendCooldown(120);
           showFlowFeedback('unifiedOtpStatusMsg', `New 6-digit OTP sent to ${activeOtpContext.targetEmail}.`, false);
         }
       } catch (err) {
-        showFlowFeedback('unifiedOtpStatusMsg', err.message || 'Could not resend OTP.', true);
-      } finally {
         unifiedResendBtn.disabled = false;
+        unifiedResendBtn.textContent = 'Resend OTP';
+        showFlowFeedback('unifiedOtpStatusMsg', err.message || 'Could not resend OTP.', true);
       }
     });
   }
@@ -14774,7 +14860,10 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           if (saveBtn) saveBtn.textContent = 'Save Account Profile';
         }, 1200);
       }
-      showToast('Changes Saved', 'Your account profile has been saved.', 'success');
+      const toastFn = window.streetCoShowToast || window.showToast;
+      if (typeof toastFn === 'function') {
+        toastFn('Changes Saved', 'Your account profile has been saved.', 'success');
+      }
     });
   }
 

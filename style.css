@@ -3699,10 +3699,7 @@ div#relicGalleryThumbs > div.active > span:nth-of-type(1) {
   display:flex;align-items:center;gap:.6rem;
 }
 .pdp-deal-pill{
-  font-family:var(--mono);font-size:.5rem;font-weight:800;letter-spacing:.14em;
-  background:rgba(192,18,31,.2);color:var(--blood-hot);
-  border:1px solid rgba(192,18,31,.4);
-  padding:.18rem .55rem;border-radius:9999px;
+  display:none !important;
 }
 .pdp-deal-discount{
   font-family:var(--mono);font-size:.95rem;font-weight:800;
@@ -3734,10 +3731,9 @@ div#relicGalleryThumbs > div.active > span:nth-of-type(1) {
 .pdp-original-mrp{
   font-family:var(--mono);font-size:.85rem;color:var(--ash);
 }
-.pdp-savings-tag{
-  font-family:var(--mono);font-size:.52rem;font-weight:700;letter-spacing:.1em;
-  padding:.18rem .5rem;border-radius:9999px;
-  background:rgba(16,185,129,.12);color:#10b981;border:1px solid rgba(16,185,129,.25);
+.pdp-savings-tag,
+#relicGallerySavingsTag{
+  display:none !important;
 }
 .pdp-ryo-equiv{
   font-family:var(--mono);font-size:.6rem;letter-spacing:.1em;color:var(--smoke);
@@ -5671,14 +5667,14 @@ div#relicGalleryThumbs > div.active > span:nth-of-type(1) {
   height:100%;padding:0 .9rem;background:#f4f4f5 !important;
   border:none;border-right:1.5px solid #d4d4d8 !important;
   border-radius:0;
-  color:#000000 !important;font-family:var(--elanora-font-sans, sans-serif) !important;font-size:.88rem;font-weight:700;letter-spacing:normal !important;
+  color:#52525b !important;font-family:var(--elanora-font-sans, sans-serif) !important;font-size:.88rem;font-weight:500 !important;letter-spacing:normal !important;
   display:flex;align-items:center;justify-content:center;
   flex-shrink:0;
 }
 .checkout-input--phone,
 input#checkoutPhone{
   border:none !important;height:100% !important;border-radius:0 !important;background:transparent !important;
-  padding:0 .85rem !important;font-size:.9rem !important;color:#000000 !important;outline:none !important;
+  padding:0 .85rem !important;font-size:.9rem !important;font-weight:400 !important;color:#27272a !important;outline:none !important;
   flex:1 1 auto !important;width:100% !important;box-shadow:none !important;
 }
 .checkout-input--phone:focus,
@@ -9675,17 +9671,11 @@ div#relicGalleryModal > div#relicModalDialog > div:nth-of-type(2) > div:nth-of-t
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25) !important;
 }
 
-/* ── Delivery & Pincode Estimate Light Theme (Compact Normal Proportions) ── */
+/* ── Delivery & Pincode Estimate (Removed per user request) ── */
 .pdp-delivery-lookup,
 .pdp-pincode-card,
 div#relicGalleryModal > div#relicModalDialog > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(6) {
-  background: #f9fafb !important;
-  border: 1px solid #e5e7eb !important;
-  border-radius: 8px !important;
-  padding: 0.75rem 1rem !important;
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 0.5rem !important;
+  display: none !important;
 }
 .pdp-delivery-header {
   color: #111827 !important;
@@ -10356,16 +10346,7 @@ div#relicGalleryModal > div#relicModalDialog > div:nth-of-type(4) > div#pdpCross
   }
   .relic-modal__close-btn,
   button#relicGalleryCloseBtn {
-    width: 28px !important;
-    height: 28px !important;
-    font-size: 0.85rem !important;
-    background: #f3f4f6 !important;
-    border: 1px solid #e5e7eb !important;
-    color: #111827 !important;
-    border-radius: 6px !important;
-    display: grid !important;
-    place-items: center !important;
-    flex-shrink: 0 !important;
+    display: none !important;
   }
 }
 
@@ -10812,11 +10793,11 @@ div#relicGalleryModal > div#relicModalDialog > div:nth-of-type(4) > div#pdpCross
 .checkout-phone-prefix {
   background: #f4f4f5 !important;
   border-right: 1.5px solid #d4d4d8 !important;
-  color: #000000 !important;
+  color: #52525b !important;
   font-family: var(--elanora-font-sans, sans-serif) !important;
   letter-spacing: normal !important;
   font-size: 0.88rem !important;
-  font-weight: 800 !important;
+  font-weight: 500 !important;
   height: 100% !important;
   padding: 0 1rem !important;
   display: flex !important;
@@ -10832,7 +10813,8 @@ input#checkoutPhone {
   height: 100% !important;
   box-shadow: none !important;
   outline: none !important;
-  color: #000000 !important;
+  color: #27272a !important;
+  font-weight: 400 !important;
   padding: 0 0.85rem !important;
   font-size: 0.92rem !important;
   flex: 1 1 auto !important;
@@ -12033,7 +12015,8 @@ input#checkoutPhone:focus {
   .checkout-phone-prefix {
     font-size: 0.85rem !important;
     padding: 0 0.75rem !important;
-    font-weight: 700 !important;
+    font-weight: 500 !important;
+    color: #52525b !important;
   }
   .checkout-input--phone,
   input#checkoutPhone {
@@ -16035,8 +16018,9 @@ body:has(.return-exchange-modal.open) .mobile-bottom-bar,
 }
 .auth-flow__kicker {
   display: inline-block !important;
+  font-family: var(--elanora-font-sans) !important;
   font-size: 0.68rem !important;
-  font-weight: 700 !important;
+  font-weight: 500 !important;
   letter-spacing: 0.14em !important;
   color: #78716C !important;
   margin-bottom: 0.45rem !important;
@@ -16044,12 +16028,14 @@ body:has(.return-exchange-modal.open) .mobile-bottom-bar,
 .auth-flow__title {
   font-family: var(--elanora-font-serif) !important;
   font-size: 1.55rem !important;
-  font-weight: 600 !important;
-  color: #0e0e11 !important;
+  font-weight: 500 !important;
+  color: #18181b !important;
   margin: 0 0 0.5rem !important;
 }
 .auth-flow__sub {
+  font-family: var(--elanora-font-sans) !important;
   font-size: 0.86rem !important;
+  font-weight: 400 !important;
   color: #52525b !important;
   line-height: 1.5 !important;
   margin: 0 0 1.5rem !important;
@@ -16068,14 +16054,14 @@ body:has(.return-exchange-modal.open) .mobile-bottom-bar,
   height: 54px !important;
   display: flex;
   align-items: center !important;
-  border: 2px solid #18181b !important;
+  border: 1.5px solid #d4d4d8 !important;
   border-radius: 16px !important;
   background: #FAF8F5 !important;
   overflow: hidden !important;
   box-sizing: border-box !important;
   outline: none !important;
   box-shadow: none !important;
-  transition: background 0.16s ease !important;
+  transition: background 0.16s ease, border-color 0.16s ease !important;
 }
 .auth-curved-box-wrap[style*="display: none"],
 .auth-curved-box-wrap[style*="display:none"],
@@ -16086,7 +16072,7 @@ body:has(.return-exchange-modal.open) .mobile-bottom-bar,
 .auth-curved-box-wrap:focus-within,
 .auth-curved-box-wrap:active {
   background: #FFFFFF !important;
-  border: 2px solid #18181b !important;
+  border: 1.5px solid #52525b !important;
   outline: none !important;
   box-shadow: none !important;
 }
@@ -16097,9 +16083,9 @@ body:has(.return-exchange-modal.open) .mobile-bottom-bar,
   height: 100% !important;
   padding: 0 0.9rem 0 1.1rem !important;
   font-family: var(--elanora-font-sans) !important;
-  font-size: 1.02rem !important;
-  font-weight: 700 !important;
-  color: #0e0e11 !important;
+  font-size: 0.95rem !important;
+  font-weight: 400 !important;
+  color: #52525b !important;
   border-right: 1.5px solid #e4e4e7 !important;
   user-select: none !important;
   flex-shrink: 0 !important;
@@ -16119,11 +16105,11 @@ body:has(.return-exchange-modal.open) .mobile-bottom-bar,
   border-color: transparent !important;
   border-radius: 0 !important;
   background: transparent !important;
-  color: #0e0e11 !important;
+  color: #3f3f46 !important;
   font-family: var(--elanora-font-sans) !important;
-  font-size: 1.05rem !important;
-  font-weight: 600 !important;
-  letter-spacing: 0.06em !important;
+  font-size: 0.96rem !important;
+  font-weight: 400 !important;
+  letter-spacing: 0.02em !important;
   text-align: left !important;
   font-variant-numeric: tabular-nums !important;
   box-sizing: border-box !important;
@@ -16143,14 +16129,14 @@ body:has(.return-exchange-modal.open) .mobile-bottom-bar,
 .auth-curved-primary-btn {
   width: 100% !important;
   height: 52px !important;
-  background: #0e0e11 !important;
+  background: #18181b !important;
   color: #ffffff !important;
   border: none !important;
   border-radius: 16px !important;
   font-family: var(--elanora-font-sans) !important;
   font-size: 0.95rem !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.04em !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.03em !important;
   cursor: pointer !important;
   transition: background 0.16s ease, transform 0.12s ease !important;
 }
@@ -16182,14 +16168,14 @@ body:has(.return-exchange-modal.open) .mobile-bottom-bar,
 .otp-curved-square-box:user-invalid {
   width: 48px !important;
   height: 52px !important;
-  border: 2px solid #18181b !important;
-  border-color: #18181b !important;
+  border: 1.5px solid #d4d4d8 !important;
+  border-color: #d4d4d8 !important;
   border-radius: 12px !important;
   background: #FAF8F5 !important;
-  color: #0e0e11 !important;
-  font-family: var(--mono, monospace) !important;
-  font-size: 1.3rem !important;
-  font-weight: 800 !important;
+  color: #3f3f46 !important;
+  font-family: var(--elanora-font-sans, sans-serif) !important;
+  font-size: 1.15rem !important;
+  font-weight: 400 !important;
   text-align: center !important;
   font-variant-numeric: tabular-nums !important;
   outline: none !important;
@@ -16201,7 +16187,7 @@ body:has(.return-exchange-modal.open) .mobile-bottom-bar,
 }
 .otp-curved-square-box:focus {
   background: #FFFFFF !important;
-  border-color: #18181b !important;
+  border-color: #52525b !important;
   box-shadow: none !important;
   outline: none !important;
 }
@@ -16218,34 +16204,38 @@ body:has(.return-exchange-modal.open) .mobile-bottom-bar,
     width: 42px !important;
     height: 48px !important;
     border-radius: 10px !important;
-    font-size: 1.15rem !important;
+    font-size: 1.08rem !important;
   }
 }
 
 .auth-otp-instant-banner {
   width: 100% !important;
   background: #FAF8F5 !important;
-  border: 1.5px dashed #0e0e11 !important;
+  border: 1px dashed #d4d4d8 !important;
   border-radius: 12px !important;
   padding: 0.65rem 0.9rem !important;
   margin-bottom: 1rem !important;
+  font-family: var(--elanora-font-sans) !important;
   font-size: 0.8rem !important;
-  color: #18181b !important;
+  font-weight: 400 !important;
+  color: #71717a !important;
   line-height: 1.45 !important;
 }
 .auth-otp-instant-banner strong {
-  font-family: var(--mono, monospace) !important;
-  font-size: 0.95rem !important;
-  letter-spacing: 0.12em !important;
-  color: #c0121f !important;
+  font-family: var(--elanora-font-sans, sans-serif) !important;
+  font-size: 0.9rem !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.08em !important;
+  color: #3f3f46 !important;
 }
 
 .auth-flow__feedback {
   width: 100% !important;
   padding: 0.65rem 0.85rem !important;
   border-radius: 12px !important;
+  font-family: var(--elanora-font-sans) !important;
   font-size: 0.8rem !important;
-  font-weight: 600 !important;
+  font-weight: 500 !important;
   line-height: 1.4 !important;
 }
 .auth-otp-resend-row {
@@ -16253,6 +16243,7 @@ body:has(.return-exchange-modal.open) .mobile-bottom-bar,
   align-items: center !important;
   justify-content: center !important;
   gap: 0.4rem !important;
+  font-family: var(--elanora-font-sans) !important;
   font-size: 0.8rem !important;
   color: #71717a !important;
   margin-top: 0.25rem !important;
@@ -16261,11 +16252,29 @@ body:has(.return-exchange-modal.open) .mobile-bottom-bar,
   background: none !important;
   border: none !important;
   padding: 0 !important;
-  color: #0e0e11 !important;
-  font-weight: 700 !important;
+  font-family: var(--elanora-font-sans) !important;
+  color: #3f3f46 !important;
+  font-weight: 500 !important;
   font-size: 0.8rem !important;
   text-decoration: underline !important;
   cursor: pointer !important;
+  transition: opacity 0.2s ease, color 0.2s ease !important;
+}
+.auth-otp-resend-link:disabled {
+  color: #a1a1aa !important;
+  text-decoration: none !important;
+  cursor: not-allowed !important;
+  opacity: 0.75 !important;
+}
+.auth-otp-resend-timer {
+  display: inline-flex !important;
+  align-items: center !important;
+  font-family: var(--elanora-font-sans) !important;
+  font-size: 0.78rem !important;
+  font-weight: 500 !important;
+  font-variant-numeric: tabular-nums !important;
+  color: #71717a !important;
+  letter-spacing: 0.02em !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -16521,7 +16530,8 @@ body:has(.return-exchange-modal.open) .mobile-bottom-bar,
 .account-input--readonly-curved {
   background: #F4F4F5 !important;
   border-color: #E4E4E7 !important;
-  font-weight: 700 !important;
+  font-weight: 400 !important;
+  color: #3f3f46 !important;
   letter-spacing: normal !important;
   font-variant-numeric: tabular-nums !important;
 }
@@ -16541,7 +16551,7 @@ body:has(.return-exchange-modal.open) .mobile-bottom-bar,
   padding: 0.25rem 0.65rem !important;
   border-radius: 6px !important;
   font-size: 0.68rem !important;
-  font-weight: 700 !important;
+  font-weight: 500 !important;
   letter-spacing: 0.06em !important;
   white-space: nowrap !important;
 }
@@ -16571,13 +16581,13 @@ body:has(.return-exchange-modal.open) .mobile-bottom-bar,
 .account-send-otp-btn {
   height: 46px !important;
   padding: 0 1.2rem !important;
-  background: #0e0e11 !important;
+  background: #18181b !important;
   color: #ffffff !important;
   border: none !important;
   border-radius: 12px !important;
   font-family: var(--elanora-font-sans) !important;
   font-size: 0.82rem !important;
-  font-weight: 700 !important;
+  font-weight: 500 !important;
   white-space: nowrap !important;
   cursor: pointer !important;
   flex-shrink: 0 !important;
@@ -16600,7 +16610,7 @@ body:has(.return-exchange-modal.open) .mobile-bottom-bar,
   border-radius: 12px !important;
   font-family: var(--elanora-font-sans) !important;
   font-size: 0.82rem !important;
-  font-weight: 700 !important;
+  font-weight: 500 !important;
   letter-spacing: 0.02em !important;
   white-space: nowrap !important;
   cursor: pointer !important;
@@ -16910,7 +16920,7 @@ body:has(.return-exchange-modal.open) .mobile-bottom-bar,
 }
 .saved-address-card__phone {
   font-size: 0.78rem !important;
-  font-weight: 600 !important;
+  font-weight: 400 !important;
   color: #52525b !important;
   font-variant-numeric: tabular-nums !important;
 }
@@ -17329,8 +17339,8 @@ textarea::placeholder,
 .account-logout-profile-phone {
   font-family: var(--elanora-font-sans) !important;
   font-size: 0.86rem !important;
-  font-weight: 600 !important;
-  color: #4B5563 !important;
+  font-weight: 400 !important;
+  color: #52525b !important;
   margin-top: 0.15rem !important;
   letter-spacing: normal !important;
 }
@@ -17509,8 +17519,8 @@ textarea::placeholder,
 .logout-confirm-modal__user-meta strong {
   font-family: var(--elanora-font-sans) !important;
   font-size: 0.85rem !important;
-  font-weight: 700 !important;
-  color: #0E0E11 !important;
+  font-weight: 500 !important;
+  color: #3f3f46 !important;
   letter-spacing: normal !important;
 }
 .logout-confirm-modal__user-meta small {
@@ -18012,8 +18022,8 @@ textarea::placeholder,
   margin: 0 0 1.5rem !important;
 }
 .account-orders-empty-desc strong {
-  color: #0E0E11 !important;
-  font-weight: 700 !important;
+  color: #3f3f46 !important;
+  font-weight: 500 !important;
 }
 .account-orders-empty-perks {
   display: grid !important;
@@ -19645,9 +19655,7 @@ header#topChrome #shopWishlistBtn {
 
 /* ── PRODUCT ENLARGE / VIEW CLOSE BUTTON (WHITE CIRCLE, BLACK X IN PROPER PLACE) ── */
 .amazon-zoom-close-btn,
-#amazonZoomCloseBtn,
-.relic-modal__close-btn,
-#relicGalleryCloseBtn {
+#amazonZoomCloseBtn {
   width: 42px !important;
   height: 42px !important;
   min-width: 42px !important;
@@ -19670,9 +19678,7 @@ header#topChrome #shopWishlistBtn {
   visibility: visible !important;
 }
 .amazon-zoom-close-btn:hover,
-#amazonZoomCloseBtn:hover,
-.relic-modal__close-btn:hover,
-#relicGalleryCloseBtn:hover {
+#amazonZoomCloseBtn:hover {
   background: #f4f4f5 !important;
   border-color: rgba(0, 0, 0, 0.3) !important;
   color: #000000 !important;
@@ -19680,12 +19686,16 @@ header#topChrome #shopWishlistBtn {
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.36) !important;
 }
 .amazon-zoom-close-btn:active,
-#amazonZoomCloseBtn:active,
-.relic-modal__close-btn:active,
-#relicGalleryCloseBtn:active {
+#amazonZoomCloseBtn:active {
   transform: rotate(90deg) scale(0.95) !important;
   background: #e4e4e7 !important;
   color: #000000 !important;
+}
+.relic-modal__close-btn,
+#relicGalleryCloseBtn {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
 }
 
 /* ── REMOVE ALL BACK BUTTONS IN CREDENTIAL CHANGE & OTP VERIFICATION ── */

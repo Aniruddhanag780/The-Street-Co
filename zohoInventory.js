@@ -110,7 +110,7 @@ try {
     if (parsed.refreshToken) config.refreshToken = parsed.refreshToken;
     if (parsed.clientId) config.clientId = parsed.clientId;
     if (parsed.clientSecret) config.clientSecret = parsed.clientSecret;
-    if (parsed.orgId) config.orgId = parsed.orgId;
+    if (parsed.orgId) config.orgId = '60090378434';
     if (parsed.domain) config.domain = parsed.domain;
     if (parsed.sellerGstin) config.sellerGstin = parsed.sellerGstin;
     if (parsed.businessName) config.businessName = parsed.businessName;
@@ -330,13 +330,25 @@ export async function getAccessToken() {
  * Fetch all items from Zoho Inventory
  * Maps Zoho items into the storefront relic format
  */
-export async function fetchZohoItems() {
+export async function fetchZohoItems(force = false) {
   if (!isZohoConfigured()) {
     return {
       success: false,
       source: 'offline',
       items: tokenState.cachedItems || [],
       message: 'Zoho Inventory credentials pending. Serving cached catalog.'
+    };
+  }
+
+  // Serve from cache unless forced or cache is older than 15 minutes
+  const lastSyncMs = tokenState.lastSync ? new Date(tokenState.lastSync).getTime() : 0;
+  if (!force && Array.isArray(tokenState.cachedItems) && tokenState.cachedItems.length > 0 && (Date.now() - lastSyncMs < 15 * 60 * 1000)) {
+    return {
+      success: true,
+      source: 'zoho_cache',
+      count: tokenState.cachedItems.length,
+      items: tokenState.cachedItems,
+      lastSync: tokenState.lastSync
     };
   }
 
@@ -441,18 +453,21 @@ export async function fetchZohoItems() {
       };
     });
 
-    tokenState.cachedItems = mappedItems;
+    if (mappedItems.length > 0) {
+      tokenState.cachedItems = mappedItems;
+    }
     tokenState.lastSync = new Date().toISOString();
     tokenState.syncStatus = 'synced';
     tokenState.lastError = null;
     saveCache();
 
-    console.log(`[Zoho Inventory] Successfully fetched ${mappedItems.length} active items with full photo galleries from organization ${config.orgId}`);
+    const activeItems = mappedItems.length > 0 ? mappedItems : (tokenState.cachedItems || []);
+    console.log(`[Zoho Inventory] Successfully fetched ${activeItems.length} active items with full photo galleries from organization ${config.orgId}`);
     return {
       success: true,
       source: 'zoho_inventory',
-      count: mappedItems.length,
-      items: mappedItems,
+      count: activeItems.length,
+      items: activeItems,
       lastSync: tokenState.lastSync
     };
   } catch (err) {
@@ -556,7 +571,7 @@ export async function findOrCreateContact(shippingInfo) {
       mobile: cleanPhone,
       shipping_address: {
         attention: fullName,
-        address: shippingInfo.address || shippingInfo.fullAddress || '',
+        address: String(shippingInfo.address || shippingInfo.fullAddress || '').slice(0, 99),
         city: shippingInfo.city || '',
         state: shippingInfo.state || '',
         zip: shippingInfo.pincode || '',
@@ -565,7 +580,7 @@ export async function findOrCreateContact(shippingInfo) {
       },
       billing_address: {
         attention: fullName,
-        address: shippingInfo.address || shippingInfo.fullAddress || '',
+        address: String(shippingInfo.address || shippingInfo.fullAddress || '').slice(0, 99),
         city: shippingInfo.city || '',
         state: shippingInfo.state || '',
         zip: shippingInfo.pincode || '',
@@ -618,6 +633,55 @@ export async function findOrCreateContact(shippingInfo) {
 }
 
 /**
+ * Resolve or create a Zoho item by SKU/name in the active organization
+ */
+const orgItemsMapCache = new Map();
+export async function resolveOrCreateOrgItem(item, token) {
+  const orgKey = `${config.orgId}:${(item.sku || item.id || item.name || 'TS-MIN-001').toUpperCase()}`;
+  if (orgItemsMapCache.has(orgKey)) return orgItemsMapCache.get(orgKey);
+
+  try {
+    const sku = String(item.sku || item.id || 'TS-MIN-001').trim();
+    const searchRes = await fetch(`${getApiBaseUrl()}/items?organization_id=${config.orgId}&sku=${encodeURIComponent(sku)}`, {
+      headers: { Authorization: `Zoho-oauthtoken ${token}` }
+    });
+    const searchData = await searchRes.json();
+    if (searchRes.ok && Array.isArray(searchData.items) && searchData.items.length > 0) {
+      const foundId = searchData.items[0].item_id;
+      orgItemsMapCache.set(orgKey, foundId);
+      return foundId;
+    }
+
+    // Create item in active org if it doesn't exist yet
+    const createRes = await fetch(`${getApiBaseUrl()}/items?organization_id=${config.orgId}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Zoho-oauthtoken ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        name: (item.title || item.name || 'Fourth Hokage Minato Inspired Oversized T-Shirt').slice(0, 99),
+        sku: sku,
+        rate: Number(item.priceInr ?? item.price ?? 1599),
+        purchase_rate: Number(item.originalMrp ?? item.originalPrice ?? 1799),
+        unit: 'pcs',
+        product_type: 'goods',
+        item_type: 'inventory',
+        initial_stock: 100,
+        initial_stock_rate: 800,
+        description: String(item.desc || item.description || 'Premium Heavyweight Oversized Streetwear Apparel').slice(0, 1900)
+      })
+    });
+    const createData = await createRes.json();
+    if (createRes.ok && createData.item && createData.item.item_id) {
+      orgItemsMapCache.set(orgKey, createData.item.item_id);
+      return createData.item.item_id;
+    }
+  } catch (_) {}
+  return null;
+}
+
+/**
  * Create a Sales Order directly in Zoho Inventory when a customer checks out
  */
 export async function createSalesOrder(orderRecord) {
@@ -658,6 +722,9 @@ export async function createSalesOrder(orderRecord) {
     const existingSo = await findSalesOrderByReference(cleanCode);
     if (existingSo && existingSo.salesorder_id) {
       console.log(`[Zoho Inventory] Found existing Sales Order ${existingSo.salesorder_number} (ID: ${existingSo.salesorder_id}) for ${cleanCode}`);
+      if (String(existingSo.status || '').toLowerCase() === 'draft') {
+        await confirmSalesOrderInZoho(existingSo.salesorder_id).catch(() => {});
+      }
       return {
         success: true,
         existing: true,
@@ -670,7 +737,7 @@ export async function createSalesOrder(orderRecord) {
 
     // 2. Prepare line items for Zoho
     const rawItems = orderRecord.items || orderRecord.products || [];
-    const lineItems = rawItems.map(item => {
+    const lineItems = await Promise.all(rawItems.map(async item => {
       const skuLower = String(item.sku || item.id || '').trim().toLowerCase();
       const titleLower = String(item.title || item.name || '').trim().toLowerCase();
       const cached = (tokenState.cachedItems || []).find(ci =>
@@ -678,8 +745,9 @@ export async function createSalesOrder(orderRecord) {
         (item.zoho_item_id && ci.zoho_item_id === item.zoho_item_id) ||
         (titleLower && String(ci.name || '').trim().toLowerCase() === titleLower)
       );
-      const zohoItemId = item.zoho_item_id || (cached && cached.zoho_item_id);
-      const rate = Number(item.priceInr ?? item.price ?? item.rate ?? (cached && cached.price) ?? 0);
+      const resolvedOrgItemId = await resolveOrCreateOrgItem(item, token);
+      const zohoItemId = resolvedOrgItemId || item.zoho_item_id || (cached && cached.zoho_item_id);
+      const rate = Number(item.priceInr ?? item.price ?? item.rate ?? (cached && cached.price) ?? 1599);
       const qty = Math.max(1, Number(item.quantity || item.qty || 1));
 
       const lineItem = {
@@ -692,13 +760,14 @@ export async function createSalesOrder(orderRecord) {
         lineItem.item_id = zohoItemId;
       }
       return lineItem;
-    });
+    }));
 
     // Fallback: If lineItems empty, pick first cached item
     if (lineItems.length === 0 && tokenState.cachedItems && tokenState.cachedItems.length > 0) {
       const first = tokenState.cachedItems[0];
+      const resolvedId = await resolveOrCreateOrgItem(first, token);
       lineItems.push({
-        item_id: first.zoho_item_id,
+        ...(resolvedId ? { item_id: resolvedId } : {}),
         name: first.name,
         rate: first.price,
         quantity: 1,
@@ -707,14 +776,13 @@ export async function createSalesOrder(orderRecord) {
     }
 
     // 3. Construct Sales Order Payload (omit salesorder_number so Zoho auto-generates sequential number)
-    const todayIst = getIstDateString();
-    const tomorrowIst = getIstDateString(Date.now() + 86400000);
+    const orderDateIst = orderRecord.orderDate ? getIstDateString(orderRecord.orderDate) : getIstDateString();
+    const shipmentDateIst = getIstDateString((orderRecord.orderDate ? new Date(orderRecord.orderDate).getTime() : Date.now()) + 86400000);
     const salesOrderPayload = {
       customer_id: contactId,
       reference_number: cleanCode,
-      date: todayIst,
-      shipment_date: tomorrowIst,
-      is_inclusive_tax: true,
+      date: orderDateIst,
+      shipment_date: shipmentDateIst,
       line_items: lineItems,
       shipping_charge: Number(orderRecord.deliveryFeeInr ?? orderRecord.delivery?.cost ?? orderRecord.shippingCost ?? 0),
       discount: Number(orderRecord.discountInr ?? orderRecord.discount ?? 0),
@@ -740,6 +808,9 @@ export async function createSalesOrder(orderRecord) {
 
     const zohoOrder = data.salesorder || {};
     console.log(`[Zoho Inventory] Successfully created Sales Order: ${zohoOrder.salesorder_number} (ID: ${zohoOrder.salesorder_id}) for ${cleanCode}`);
+
+    // Immediately confirm the Sales Order in Zoho so it appears as Confirmed rather than Draft
+    await confirmSalesOrderInZoho(zohoOrder.salesorder_id).catch(() => {});
 
     return {
       success: true,
@@ -874,14 +945,9 @@ export async function createGstInvoice(orderRecord) {
       const contactId = await findOrCreateContact(shippingInfo);
 
       const items = Array.isArray(orderRecord.items) ? orderRecord.items : [];
-      const lineItems = items.map(item => {
-        let itemId = item.zoho_item_id || item.item_id;
-        if (!itemId && (item.sku === 'TS-MIN-001' || (item.name && item.name.toLowerCase().includes('minato')) || (item.title && item.title.toLowerCase().includes('minato')))) {
-          itemId = '4226403000000037080';
-        }
-        if (!itemId && tokenState.cachedItems && tokenState.cachedItems.length > 0) {
-          itemId = tokenState.cachedItems[0].zoho_item_id;
-        }
+      const lineItems = await Promise.all(items.map(async item => {
+        const resolvedId = await resolveOrCreateOrgItem(item, token);
+        const itemId = resolvedId || item.zoho_item_id || item.item_id;
 
         const lineObj = {
           rate: Number(item.price || item.priceInr || 1599),
@@ -893,7 +959,7 @@ export async function createGstInvoice(orderRecord) {
           lineObj.name = item.name || item.title || 'Streetwear Apparel';
         }
         return lineObj;
-      });
+      }));
 
       const invoicePayload = {
         customer_id: contactId,

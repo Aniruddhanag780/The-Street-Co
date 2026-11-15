@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "node server.js",
-    "build": "mkdir -p dist && node -c server.js",
+    "build": "node -e \"require('fs').mkdirSync('dist', { recursive: true })\" && node --check server.js",
     "lint": "node -c server.js",
     "start": "node server.js"
   },

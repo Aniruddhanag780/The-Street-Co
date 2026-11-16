@@ -1442,6 +1442,27 @@ export function mapReturnLineItemsForZoho(soLineItems = [], requestedItems = [])
 /**
  * Create a Sales Return in Zoho Inventory when a customer initiates an Exchange or Return
  */
+export async function deleteSalesReturnInZoho(salesReturnId) {
+  if (!isZohoConfigured() || !salesReturnId) {
+    return { success: false, message: 'Zoho Inventory not configured or salesReturnId missing.' };
+  }
+  try {
+    const token = await getAccessToken();
+    const url = `${getApiBaseUrl()}/salesreturns/${salesReturnId}?organization_id=${config.orgId}`;
+    const res = await fetch(url, {
+      method: 'DELETE',
+      headers: { Authorization: `Zoho-oauthtoken ${token}` }
+    });
+    const data = await res.json();
+    return { success: res.ok && data.code === 0, data };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Create a Sales Return in Zoho Inventory when a customer initiates an Exchange or Return
+ */
 export async function createSalesReturnInZoho(returnRecord, salesOrder = {}) {
   const returnId = returnRecord.id || `RET-${Date.now()}`;
   let salesOrderId = returnRecord.zoho_salesorder_id || salesOrder.zoho_salesorder_id;
@@ -1450,16 +1471,27 @@ export async function createSalesReturnInZoho(returnRecord, salesOrder = {}) {
   if (isZohoConfigured()) {
     try {
       const token = await getAccessToken();
+      let soDetail = null;
 
-      // 1. Resolve or auto-create Sales Order in Zoho if missing
+      // 1. Verify existing salesOrderId in active Zoho organization (ignore stale IDs from removed orgs)
+      if (salesOrderId) {
+        soDetail = await getSalesOrderFromZoho(salesOrderId);
+        if (!soDetail) {
+          salesOrderId = null;
+        }
+      }
+
+      // 2. Resolve by order reference_number in Zoho if salesOrderId is missing or stale
       if (!salesOrderId && returnRecord.orderCode) {
         const existingSo = await findSalesOrderByReference(returnRecord.orderCode);
         if (existingSo && existingSo.salesorder_id) {
           salesOrderId = existingSo.salesorder_id;
+          soDetail = await getSalesOrderFromZoho(salesOrderId);
         }
       }
 
-      if (!salesOrderId) {
+      // 3. Auto-create Sales Order in Zoho Inventory if not yet present
+      if (!salesOrderId || !soDetail) {
         const soFallbackInput = (salesOrder && (salesOrder.orderCode || salesOrder.items?.length))
           ? salesOrder
           : {
@@ -1477,58 +1509,72 @@ export async function createSalesReturnInZoho(returnRecord, salesOrder = {}) {
         const createdSo = await createSalesOrder(soFallbackInput);
         if (createdSo && createdSo.success && createdSo.zoho_salesorder_id) {
           salesOrderId = createdSo.zoho_salesorder_id;
+          soDetail = await getSalesOrderFromZoho(salesOrderId);
         } else {
           lastZohoError = createdSo?.error || 'Could not link or create Sales Order in Zoho.';
         }
       }
 
-      if (salesOrderId) {
-        // 2. Fetch live SO from Zoho & ensure it is Confirmed + Packaged + Shipped (prerequisite for Zoho Sales Return)
-        let soDetail = await getSalesOrderFromZoho(salesOrderId);
-        if (soDetail) {
-          const totalShipped = (soDetail.line_items || []).reduce((s, li) => s + Number(li.quantity_shipped || 0), 0);
-          if (totalShipped <= 0) {
-            await markShipmentFulfilledInZoho(salesOrderId, salesOrder?.deliveryDetails?.trackingCode || '');
-            soDetail = await getSalesOrderFromZoho(salesOrderId) || soDetail;
-          }
+      if (salesOrderId && soDetail) {
+        // 4. Ensure Sales Order is Confirmed + Packaged + Shipped (prerequisite for Zoho Sales Return)
+        const totalShipped = (soDetail.line_items || []).reduce((s, li) => s + Number(li.quantity_shipped || 0), 0);
+        if (totalShipped <= 0) {
+          await markShipmentFulfilledInZoho(salesOrderId, salesOrder?.deliveryDetails?.trackingCode || '');
+          soDetail = await getSalesOrderFromZoho(salesOrderId) || soDetail;
+        }
 
-          const zohoLineItems = mapReturnLineItemsForZoho(soDetail.line_items || [], returnRecord.items || []);
-          const returnPayload = {
-            date: soDetail.date || getIstDateString(),
-            reference_number: returnId,
-            reason: returnRecord.reason || 'Fit / Size Adjustment',
-            notes: `[The Street Co] ${returnRecord.type === 'exchange' ? 'Size Exchange Request' : 'Return for Refund'}\nCustomer: ${returnRecord.customerName || 'Customer'} (${returnRecord.customerPhone || ''})\nPickup Address: ${returnRecord.pickupAddress || ''}\n${returnRecord.requestedSize ? `Requested Replacement Size: ${returnRecord.requestedSize}\n` : ''}Notes: ${returnRecord.notes || 'None'}`,
-            line_items: zohoLineItems
+        // 5. If all line items were already returned in a prior Sales Return on this order, replace the prior return in Zoho
+        const remainingReturnable = (soDetail.line_items || []).reduce(
+          (s, li) => s + Math.max(0, Number(li.quantity || 0) - Number(li.quantity_returned || 0)),
+          0
+        );
+        if (remainingReturnable <= 0) {
+          const priorReturns = Array.isArray(soDetail.salesreturns) ? soDetail.salesreturns : [];
+          for (const pr of priorReturns) {
+            if (pr && pr.salesreturn_id) {
+              await deleteSalesReturnInZoho(pr.salesreturn_id);
+            }
+          }
+          soDetail = await getSalesOrderFromZoho(salesOrderId) || soDetail;
+        }
+
+        const zohoLineItems = mapReturnLineItemsForZoho(soDetail.line_items || [], returnRecord.items || []);
+        const returnPayload = {
+          date: soDetail.date || getIstDateString(),
+          reference_number: returnId,
+          reason: returnRecord.reason || 'Fit / Size Adjustment',
+          notes: `[The Street Co] ${returnRecord.type === 'exchange' ? 'Size Exchange Request' : 'Return for Refund'}\nCustomer: ${returnRecord.customerName || 'Customer'} (${returnRecord.customerPhone || ''})\nPickup Address: ${returnRecord.pickupAddress || ''}\n${returnRecord.requestedSize ? `Requested Replacement Size: ${returnRecord.requestedSize}\n` : ''}Notes: ${returnRecord.notes || 'None'}`,
+          line_items: zohoLineItems
+        };
+
+        const url = `${getApiBaseUrl()}/salesreturns?organization_id=${config.orgId}&salesorder_id=${salesOrderId}`;
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            Authorization: `Zoho-oauthtoken ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(returnPayload)
+        });
+
+        const data = await res.json();
+        if (res.ok && data.code === 0 && data.salesreturn) {
+          const sr = data.salesreturn;
+          console.log(`[Zoho Inventory] Successfully created Sales Return #${sr.salesreturn_number} (ID: ${sr.salesreturn_id}) for ${returnId}`);
+          return {
+            success: true,
+            zohoSynced: true,
+            source: 'zoho_inventory',
+            zoho_salesorder_id: salesOrderId,
+            zoho_salesorder_number: soDetail.salesorder_number || salesOrder.zoho_salesorder_number || '',
+            zoho_salesreturn_id: sr.salesreturn_id,
+            salesreturn_number: sr.salesreturn_number,
+            total: sr.total,
+            message: `Recorded in Zoho Inventory: ${sr.salesreturn_number}`
           };
-
-          const url = `${getApiBaseUrl()}/salesreturns?organization_id=${config.orgId}&salesorder_id=${salesOrderId}`;
-          const res = await fetch(url, {
-            method: 'POST',
-            headers: {
-              Authorization: `Zoho-oauthtoken ${token}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(returnPayload)
-          });
-
-          const data = await res.json();
-          if (res.ok && data.code === 0 && data.salesreturn) {
-            const sr = data.salesreturn;
-            console.log(`[Zoho Inventory] Successfully created Sales Return #${sr.salesreturn_number} (ID: ${sr.salesreturn_id}) for ${returnId}`);
-            return {
-              success: true,
-              zohoSynced: true,
-              source: 'zoho_inventory',
-              zoho_salesorder_id: salesOrderId,
-              zoho_salesreturn_id: sr.salesreturn_id,
-              salesreturn_number: sr.salesreturn_number,
-              total: sr.total,
-              message: `Recorded in Zoho Inventory: ${sr.salesreturn_number}`
-            };
-          } else {
-            lastZohoError = data.message || `Zoho API returned HTTP ${res.status}`;
-            console.warn('[Zoho Sales Return Notice]', lastZohoError);
-          }
+        } else {
+          lastZohoError = data.message || `Zoho API returned HTTP ${res.status}`;
+          console.warn('[Zoho Sales Return Notice]', lastZohoError);
         }
       }
     } catch (err) {

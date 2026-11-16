@@ -6,7 +6,8 @@ import {
   extractCustomerFirstName,
   resolveItemImageUrl,
   renderOrderConfirmationEmail,
-  renderReturnConfirmationEmail
+  renderReturnConfirmationEmail,
+  renderShipmentFulfilledEmail
 } from './emailTemplates.js';
 
 test('formatInrCurrency formats Indian Rupees with ₹ symbol and commas', () => {
@@ -76,8 +77,10 @@ test('renderOrderConfirmationEmail renders clean #FAF8F5 layout with ₹, Englis
   assert.match(result.html, /https:\/\/thestreetco\.com\/invoice\/214822/);
   assert.match(result.html, /Order No\. #214822/);
   assert.match(result.html, /src="\/product-minato\.jpg"/);
+  assert.match(result.html, /width="96" height="96"/);
   assert.match(result.html, /Obsidian Black · Size L/);
   assert.match(result.html, /TS-MIN-001/);
+  assert.match(result.html, /Qty: 1/);
   assert.match(result.html, /₹1,599\.00/);
   assert.match(result.html, /-₹200\.00/);
   assert.match(result.html, /Delhivery/);
@@ -216,6 +219,44 @@ test('email templates enforce light theme across both light and dark mode client
   assert.match(result.html, /bgcolor="#FAF8F5"/i);
   assert.match(result.html, /linear-gradient\(#FAF8F5,#FAF8F5\)/i);
 });
+
+test('renderShipmentFulfilledEmail renders #FAF8F5 layout with 96x96 product image and horizontal details', () => {
+  const result = renderShipmentFulfilledEmail({
+    order: {
+      orderCode: '214822',
+      deliveredAtFormatted: '15 Nov 2026, 10:15 PM IST',
+      shippingAddress: {
+        fullName: 'Aniruddha Nag',
+        houseFlat: 'Shimulpur Hazratala',
+        city: 'Bongaon',
+        state: 'West Bengal',
+        pincode: '743287'
+      },
+      grandTotalInr: 1399,
+      items: [
+        {
+          title: 'Fourth Hokage Minato Inspired Oversized T-Shirt',
+          finish: 'Obsidian Black',
+          size: 'L',
+          sku: 'TS-MIN-001',
+          qty: 1,
+          priceInr: 1599,
+          totalItemPriceInr: 1599,
+          image: '/product-minato.jpg'
+        }
+      ]
+    },
+    useCidAssets: true
+  });
+
+  assert.match(result.subject, /Shipment Fulfilled & Delivered #214822 - The Street Co/);
+  assert.match(result.html, /Shipment Fulfilled/);
+  assert.match(result.html, /src="cid:product-minato"/);
+  assert.match(result.html, /width="96" height="96"/);
+  assert.match(result.html, /Fulfilled &amp; Delivered/);
+  assert.match(result.html, /Items delivered/);
+});
+
 
 
 

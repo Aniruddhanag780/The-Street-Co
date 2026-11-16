@@ -2146,6 +2146,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     goToCheckoutStep(2);
   }
   window.streetCoProceedToPaymentStep = handleAddressStepSubmit;
+  window.handleAddressStepSubmit = handleAddressStepSubmit;
 
   // Step 2 Validation & Proceed (Always goes to Step 3 Review & Confirm first)
   function handlePaymentStepSubmit(chosenMethod) {
@@ -4256,6 +4257,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       renderSuggestedCoupons();
     }
   }
+  window.applyCouponCode = applyCouponCode;
 
   // Hook Promo Apply Button
   if (checkoutPromoApplyBtn) {
@@ -4560,6 +4562,13 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       return [];
     }
   }
+
+  window.ORDERS_STORAGE_KEY = ORDERS_STORAGE_KEY;
+  window.getSavedLocalOrders = getSavedLocalOrders;
+  window.saveLocalOrder = saveLocalOrder;
+  window.RETURNS_STORAGE_KEY = RETURNS_STORAGE_KEY;
+  window.getSavedReturnExchangeRequests = getSavedReturnExchangeRequests;
+  window.saveReturnExchangeRequest = saveReturnExchangeRequest;
 
   // ═══════════ ALL COLLECTIONS CATALOG & VIEW ═══════════
   // 16 Canonical Streetwear Products with complete gallery images, prices, specs & seals
@@ -11107,6 +11116,65 @@ window.openDelhiveryTracker = openDelhiveryTracker;
    ═══════════════════════════════════════════════════════════════════════════ */
 (function initUserAccountPage() {
   const ACCOUNT_STORAGE_KEY = 'the_street_co_account_v2';
+  const ORDERS_STORAGE_KEY = 'the_street_co_orders_v1';
+  const RETURNS_STORAGE_KEY = 'the_street_co_returns_v1';
+
+  function getSavedLocalOrders() {
+    if (typeof window.getSavedLocalOrders === 'function') {
+      return window.getSavedLocalOrders();
+    }
+    try {
+      const raw = localStorage.getItem(ORDERS_STORAGE_KEY) || localStorage.getItem('the_street_co_orders');
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveLocalOrder(order) {
+    if (typeof window.saveLocalOrder === 'function') {
+      return window.saveLocalOrder(order);
+    }
+    try {
+      const current = getSavedLocalOrders();
+      const updated = [order, ...current.filter(o => o && o.orderCode !== order.orderCode)].slice(0, 12);
+      localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(updated));
+    } catch (e) {
+      console.warn('Failed to save order to localStorage', e);
+    }
+  }
+
+  function getSavedReturnExchangeRequests() {
+    if (typeof window.getSavedReturnExchangeRequests === 'function') {
+      return window.getSavedReturnExchangeRequests();
+    }
+    try {
+      const raw = localStorage.getItem(RETURNS_STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveReturnExchangeRequest(req) {
+    if (typeof window.saveReturnExchangeRequest === 'function') {
+      return window.saveReturnExchangeRequest(req);
+    }
+    try {
+      const current = getSavedReturnExchangeRequests();
+      const updated = [req, ...current.filter(r => r && r.id !== req.id && r.orderCode !== req.orderCode)];
+      localStorage.setItem(RETURNS_STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    } catch (e) {
+      console.warn('Failed to save return request', e);
+      return [];
+    }
+  }
+
+  function showToast(...args) {
+    const fn = window.streetCoShowToast || window.showToast;
+    if (typeof fn === 'function') return fn(...args);
+  }
 
   function normalizeClientAddresses(rawAddresses = [], preferredDefaultId = '') {
     if (!Array.isArray(rawAddresses)) return { addresses: [], defaultAddressId: '' };
@@ -12057,12 +12125,35 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       const res = await fetch(`/api/account/orders?phone=${encodeURIComponent(cleanPhone)}`);
       const data = await res.json();
       if (data && data.success && Array.isArray(data.orders)) {
+        const localReturnReqs = getSavedReturnExchangeRequests();
+        const mergedOrders = data.orders.map(ord => {
+          if (!ord) return ord;
+          if (ord.returnRequest && ord.returnRequest.status !== 'CANCELLED') {
+            saveReturnExchangeRequest(ord.returnRequest);
+            return ord;
+          }
+          const oCode = String(ord.orderCode || ord.orderId || '').replace(/^#/, '').trim();
+          const oDigits = oCode.replace(/\D/g, '');
+          const matchedLocalReq = localReturnReqs.find(r => {
+            if (!r || !r.orderCode || r.status === 'CANCELLED') return false;
+            const rCode = String(r.orderCode).replace(/^#/, '').trim();
+            return rCode === oCode || (oDigits && rCode.replace(/\D/g, '') === oDigits);
+          });
+          if (matchedLocalReq) {
+            return {
+              ...ord,
+              returnRequest: matchedLocalReq,
+              returnStatus: matchedLocalReq.type === 'exchange' ? 'EXCHANGE REQUESTED' : 'RETURN REQUESTED'
+            };
+          }
+          return ord;
+        });
         saveLocalAccount({
-          orders: data.orders
+          orders: mergedOrders
         });
         renderAccountOrdersUI();
         if (showToastFeedback && window.streetCoShowToast) {
-          window.streetCoShowToast(`Synced ${data.orders.length} order${data.orders.length === 1 ? '' : 's'} from MongoDB Atlas.`);
+          window.streetCoShowToast(`Synced ${mergedOrders.length} order${mergedOrders.length === 1 ? '' : 's'} from MongoDB Atlas.`);
         }
       }
     } catch (err) {
@@ -12290,6 +12381,19 @@ window.openDelhiveryTracker = openDelhiveryTracker;
                 </svg>
                 <span>Deliver to: <strong>${shipName}</strong> (${destSummary})</span>
               </div>
+              ${returnReq ? `
+                <div class="account-order-return-summary" style="margin-top:10px;padding:9px 12px;border-radius:8px;background:${isExchange ? 'rgba(37,99,235,0.06)' : 'rgba(217,119,6,0.07)'};border:1px solid ${isExchange ? 'rgba(37,99,235,0.22)' : 'rgba(217,119,6,0.25)'};font-size:12px;line-height:1.45;color:#18181b;">
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;font-weight:700;color:${isExchange ? '#1d4ed8' : '#b45309'};">
+                    <span>${isExchange ? `↻ Size Exchange Requested (Replacement Size: ${returnReq.requestedSize || 'L'})` : '↩ Return Requested (Full Refund)'}</span>
+                    <span style="font-size:11px;font-weight:700;color:#0E0E11;background:#ffffff;border:1px solid #e4e4e7;padding:2px 7px;border-radius:4px;">${returnReq.salesreturn_number ? `Zoho RMA: #${returnReq.salesreturn_number}` : `Req: #${returnReq.id}`}</span>
+                  </div>
+                  <div style="margin-top:4px;color:#52525b;font-size:11.5px;">
+                    Ref: <strong>#${returnReq.id}</strong>
+                    ${returnReq.reverseAwb ? ` · Reverse AWB: <strong>#${returnReq.reverseAwb}</strong>` : ''}
+                    ${returnReq.reason ? ` · Reason: ${returnReq.reason}` : ''}
+                  </div>
+                </div>
+              ` : ''}
             </div>
           </div>
 
@@ -12668,7 +12772,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
                 ${isEx ? `Replacement Size: ${existingReq.requestedSize || 'Selected Size'}` : 'Refund Scheduled'}
               </h4>
               <p style="margin: 0; font-size: 0.8rem; color: #71717A;">
-                Reference ID: <strong>${existingReq.id}</strong> · Placed on ${new Date(existingReq.createdAt || Date.now()).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                Reference ID: <strong>${existingReq.id}</strong>${existingReq.salesreturn_number ? ` · Zoho RMA: <strong>#${existingReq.salesreturn_number}</strong>` : ''} · Placed on ${new Date(existingReq.createdAt || Date.now()).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
               </p>
             </div>
             <div style="text-align: right;">
@@ -13005,6 +13109,8 @@ window.openDelhiveryTracker = openDelhiveryTracker;
         if (apiData && apiData.success && apiData.returnRecord) {
           req.salesreturn_number = apiData.returnRecord.salesreturn_number;
           req.zoho_salesreturn_id = apiData.returnRecord.zoho_salesreturn_id;
+          req.zoho_salesorder_id = apiData.returnRecord.zoho_salesorder_id;
+          req.zoho_synced = apiData.returnRecord.zoho_synced;
           req.reverseAwb = apiData.returnRecord.reverseAwb;
         }
       }
@@ -13022,6 +13128,9 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     if (ord) {
       ord.returnStatus = type === 'exchange' ? 'EXCHANGE REQUESTED' : 'RETURN REQUESTED';
       ord.returnRequest = req;
+      if (req.zoho_salesorder_id) {
+        ord.zoho_salesorder_id = req.zoho_salesorder_id;
+      }
       if (typeof saveLocalOrder === 'function') saveLocalOrder(ord);
       if (window._allAccountOrdersMap) {
         window._allAccountOrdersMap.set(cleanCode, ord);
@@ -13029,25 +13138,27 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     }
 
     accountState = typeof loadLocalAccount === 'function' ? loadLocalAccount() : {};
-    if (Array.isArray(accountState.orders)) {
-      const codeNum = cleanCode.replace(/\D/g, '');
-      const accOrd = accountState.orders.find(o => {
-        if (!o) return false;
-        const c1 = String(o.orderCode || '').replace(/^#/, '').trim();
-        const c2 = String(o.orderId || '').replace(/^#/, '').trim();
-        return c1 === cleanCode || c2 === cleanCode || (codeNum && (c1.replace(/\D/g, '') === codeNum || c2.replace(/\D/g, '') === codeNum));
-      });
-      if (accOrd) {
-        accOrd.returnStatus = type === 'exchange' ? 'EXCHANGE REQUESTED' : 'RETURN REQUESTED';
-        accOrd.returnRequest = req;
-        saveLocalAccount({ orders: accountState.orders });
-      }
+    const currentAccOrders = Array.isArray(accountState.orders) ? [...accountState.orders] : [];
+    const codeNum = cleanCode.replace(/\D/g, '');
+    const accOrd = currentAccOrders.find(o => {
+      if (!o) return false;
+      const c1 = String(o.orderCode || '').replace(/^#/, '').trim();
+      const c2 = String(o.orderId || '').replace(/^#/, '').trim();
+      return c1 === cleanCode || c2 === cleanCode || (codeNum && (c1.replace(/\D/g, '') === codeNum || c2.replace(/\D/g, '') === codeNum));
+    });
+    if (accOrd) {
+      accOrd.returnStatus = type === 'exchange' ? 'EXCHANGE REQUESTED' : 'RETURN REQUESTED';
+      accOrd.returnRequest = req;
+      if (req.zoho_salesorder_id) accOrd.zoho_salesorder_id = req.zoho_salesorder_id;
+      saveLocalAccount({ orders: currentAccOrders });
+    } else if (ord) {
+      saveLocalAccount({ orders: [ord, ...currentAccOrders] });
     }
 
     if (typeof showToast === 'function') {
       showToast(
         type === 'exchange' ? 'EXCHANGE REQUEST SUBMITTED' : 'RETURN REQUEST SUBMITTED',
-        `Order #${cleanCode} · Free reverse pickup scheduled within 24–48h.`,
+        `Order #${cleanCode}${req.salesreturn_number ? ` · Zoho RMA #${req.salesreturn_number}` : ''} · Free reverse pickup scheduled.`,
         'cart'
       );
     }

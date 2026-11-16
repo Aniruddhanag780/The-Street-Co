@@ -6,7 +6,7 @@ import twilio from 'twilio';
 import nodemailer from 'nodemailer';
 import * as zohoInventory from './zohoInventory.js';
 import { getProductImageBuffer } from './productImage.js';
-import { renderOrderConfirmationEmail, renderReturnConfirmationEmail } from './emailTemplates.js';
+import { renderOrderConfirmationEmail, renderReturnConfirmationEmail, renderShipmentFulfilledEmail } from './emailTemplates.js';
 import { verifyUpiPaymentViaImap } from './imapPaymentVerifier.js';
 import {
   connectMongoDb,
@@ -596,173 +596,13 @@ async function sendDeliveryDoneEmail(order, hostOrigin = '') {
   }
 
   const orderCode = order.orderCode || order.orderId || 'ORDER';
-  const cleanOrderNumber = String(orderCode).replace('#', '').trim();
-  const customerName = order?.shippingAddress?.fullName || order?.contactDetails?.fullName || order?.userDetails?.name || 'Valued Customer';
-  const deliveredAt = order.deliveredAtFormatted || new Date().toLocaleString('en-IN', {
-    timeZone: 'Asia/Kolkata',
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true
-  }) + ' IST';
-
-  const shippingAddr = order.shippingAddress || {};
-  const streetAddr = [shippingAddr.addressLine1, shippingAddr.addressLine2, shippingAddr.houseFlat, shippingAddr.streetRoad].filter(Boolean).join(', ') || 'Your address on file';
-  const cityStateZip = [shippingAddr.city, shippingAddr.state, shippingAddr.pincode].filter(Boolean).join(' - ');
-  const fullAddress = `${streetAddr}, ${cityStateZip}`.trim();
-
-  const storeUrl = 'https://thestreetco.netlify.app';
   const supportEmail = (process.env.GMAIL_REPLY_TO || 'support@thestreetco.zohodesk.in').trim();
-  const trackingUrl = `https://www.delhivery.com/tracking?awb=${encodeURIComponent(cleanOrderNumber)}`;
-  const exchangePortalUrl = `${storeUrl}/#account`;
-
-  const rawItems = (Array.isArray(order.items) && order.items.length > 0)
-    ? order.items
-    : ((Array.isArray(order.products) && order.products.length > 0)
-        ? order.products
-        : []);
-
-  const items = rawItems.length > 0 ? rawItems : [
-    { title: 'Fourth Hokage Minato Inspired Oversized T-Shirt', size: 'M', qty: 1 }
-  ];
-
-  const subject = `Delivered! Your Drop Has Arrived – #${cleanOrderNumber} · The Street Co`;
-
-  const itemsHtml = items.map(item => {
-    const itemTitle = item.title || item.name || 'Streetwear Apparel';
-    const itemSize = item.size || 'M';
-    const itemQty = Number(item.quantity || item.qty || 1);
-    return `
-      <div style="padding:10px 0;border-bottom:1px solid #f0eee9;display:flex;justify-content:space-between;align-items:center;">
-        <div>
-          <strong style="color:#0e0e11;font-size:14px;">${itemTitle}</strong>
-          <div style="color:#71717a;font-size:12px;margin-top:2px;">Size: <strong>${itemSize}</strong> · Qty: <strong>${itemQty}</strong></div>
-        </div>
-        <span style="font-size:11px;font-weight:700;color:#10b981;background:#ecfdf5;border:1px solid #a7f3d0;padding:3px 8px;border-radius:4px;letter-spacing:0.5px;">DELIVERED</span>
-      </div>
-    `;
-  }).join('');
-
-  const htmlContent = `<!doctype html>
-<html lang="en">
-  <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="color-scheme" content="light only">
-    <meta name="supported-color-schemes" content="light only">
-    <title>${subject}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <style type="text/css">
-      :root { color-scheme: light only; supported-color-schemes: light only; }
-      @media (prefers-color-scheme: dark) {
-        html, body { background-color: #ffffff !important; color: #18181b !important; }
-      }
-    </style>
-  </head>
-  <body bgcolor="#ffffff" style="margin:0;padding:0;background-color:#ffffff;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;color:#18181b;">
-    <div style="width:100%;margin:0;padding:0;background-color:#ffffff;">
-      
-      <!-- Top Brand Header -->
-      <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;background:#0b0a0f;border-bottom:2px solid #e05a47;">
-        <tbody>
-          <tr>
-            <td style="padding:22px 20px;text-align:center;">
-              <a href="${storeUrl}" target="_blank" style="text-decoration:none;display:inline-block;">
-                <span style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:900;letter-spacing:3px;color:#ffffff;text-transform:uppercase;">THE STREET CO</span>
-              </a>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      <!-- Main Column -->
-      <div style="max-width:600px;margin:0 auto;background-color:#ffffff;padding:28px 20px;">
-        
-        <!-- Delivery Banner -->
-        <div style="background:#f4fbf7;border:1px solid #bbf7d0;border-radius:10px;padding:20px;margin-bottom:24px;text-align:center;">
-          <div style="display:inline-block;width:44px;height:44px;line-height:44px;border-radius:50%;background:#10b981;color:#ffffff;font-size:22px;font-weight:bold;margin-bottom:10px;">✓</div>
-          <div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;color:#065f46;letter-spacing:-0.3px;margin-bottom:6px;">Your Drop Has Been Delivered!</div>
-          <div style="font-size:13px;color:#047857;font-weight:600;">Delhivery Express delivery completed on ${deliveredAt}</div>
-        </div>
-
-        <div style="font-size:15px;line-height:1.65;color:#27272a;margin-bottom:20px;">
-          Hey <strong>${customerName}</strong>,<br><br>
-          Your order <strong>#${cleanOrderNumber}</strong> has been successfully delivered by Delhivery Express to your doorstep. We hope you love the fit, drape, and heavyweight craftsmanship!
-        </div>
-
-        <!-- Delivery Destination Card -->
-        <div style="background:#faf9f5;border:1px solid #e7e5e0;border-radius:8px;padding:16px;margin-bottom:20px;">
-          <div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#71717a;margin-bottom:6px;">DELIVERED TO</div>
-          <div style="font-size:14px;font-weight:700;color:#0e0e11;">${customerName}</div>
-          <div style="font-size:13px;color:#52525b;line-height:1.5;margin-top:2px;">${fullAddress}</div>
-          <div style="font-size:12px;color:#71717a;margin-top:8px;">Courier: <strong>Delhivery Express</strong> · Tracking: <a href="${trackingUrl}" target="_blank" style="color:#0e0e11;font-weight:700;text-decoration:underline;">AWB #${cleanOrderNumber} ↗</a></div>
-        </div>
-
-        <!-- Items Delivered -->
-        <div style="margin-bottom:24px;">
-          <div style="font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#0e0e11;margin-bottom:10px;">ITEMS DELIVERED IN THIS SHIPMENT</div>
-          ${itemsHtml}
-        </div>
-
-        <!-- 7-Day Free Size Exchange & Return Guarantee Callout -->
-        <div style="background:#0e0e11;color:#ffffff;border-radius:10px;padding:22px;margin-bottom:26px;">
-          <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#e05a47;text-transform:uppercase;margin-bottom:6px;">7-DAY EASY SIZE EXCHANGE &amp; RETURN GUARANTEE</div>
-          <div style="font-size:16px;font-weight:700;color:#ffffff;margin-bottom:8px;">Need a Different Size or Resolution?</div>
-          <p style="font-size:13px;line-height:1.6;color:#d4d4d8;margin:0 0 16px 0;">
-            Try your pieces on with peace of mind. If you need a size exchange or return, our automated self-service portal is ready for you. We provide free doorstep reverse pickup via Delhivery Express!
-          </p>
-          <div style="text-align:center;">
-            <a href="${exchangePortalUrl}" target="_blank" style="display:inline-block;background:#ffffff;color:#0e0e11;font-weight:800;font-size:12px;letter-spacing:0.8px;text-transform:uppercase;padding:12px 24px;border-radius:6px;text-decoration:none;">
-              REQUEST SIZE EXCHANGE OR RETURN ↗
-            </a>
-          </div>
-        </div>
-
-        <!-- Support Info -->
-        <div style="font-size:13px;line-height:1.6;color:#52525b;margin-bottom:24px;border-top:1px solid #e4e4e7;padding-top:18px;">
-          Have questions or feedback? Reply directly to this email or reach our dedicated support desk at <a href="mailto:${supportEmail}" style="color:#0e0e11;font-weight:700;text-decoration:underline;">${supportEmail}</a>.
-        </div>
-
-        <!-- Signoff -->
-        <div style="font-size:13px;color:#27272a;margin-bottom:24px;">
-          Best regards,<br>
-          <strong>The Street Co Team</strong>
-        </div>
-
-      </div>
-
-      <!-- Footer -->
-      <div style="background-color:#0b0a0f;padding:22px 20px;text-align:center;color:#a1a1aa;font-size:11px;">
-        <div style="margin-bottom:8px;letter-spacing:1px;font-weight:700;color:#ffffff;">THE STREET CO APPAREL PVT LTD</div>
-        <div>West Bengal, India · © ${new Date().getFullYear()} The Street Co · All rights reserved.</div>
-      </div>
-
-    </div>
-  </body>
-</html>`;
-
-  const plainTextContent = `Delivered! Your Drop Has Arrived – #${cleanOrderNumber}
-
-Hey ${customerName},
-
-Great news! Your order #${cleanOrderNumber} has been successfully delivered by Delhivery Express on ${deliveredAt}.
-
-DELIVERED TO:
-${customerName}
-${fullAddress}
-Courier: Delhivery Express
-Tracking: ${trackingUrl}
-
-7-DAY EASY SIZE EXCHANGE & RETURN GUARANTEE:
-Need a different size or fit adjustment? Every order is protected by our 7-Day Free Size Exchange Policy.
-Initiate your exchange or return easily at: ${exchangePortalUrl}
-
-Customer Support: ${supportEmail}
-
-Best regards,
-The Street Co Team`;
+  const { subject, html: htmlContent, text: plainTextContent, cleanOrderNumber, cidAttachments } = renderShipmentFulfilledEmail({
+    order,
+    hostOrigin,
+    useCidAssets: true,
+    supportEmail
+  });
 
   const gmail = getGmailTransporter();
   if (!gmail) {
@@ -780,10 +620,11 @@ The Street Co Team`;
       to: recipientEmail,
       subject: subject,
       text: plainTextContent,
-      html: htmlContent
+      html: htmlContent,
+      attachments: cidAttachments
     });
 
-    console.log(`[Gmail SMTP] Delhivery Done email delivered for #${cleanOrderNumber} to ${recipientEmail}. MessageId:`, info.messageId);
+    console.log(`[Gmail SMTP] Shipment fulfilled email delivered for #${cleanOrderNumber} (order ${orderCode}) to ${recipientEmail}. MessageId:`, info.messageId);
     return {
       success: true,
       provider: 'gmail_smtp',
@@ -4465,6 +4306,23 @@ app.get('/api/email-preview/:type', (req, res) => {
     return res.send(html);
   }
 
+  if (type === 'shipment_fulfilled' || type === 'delhivery_done' || type === 'delivered') {
+    const { html } = renderShipmentFulfilledEmail({
+      order: {
+        ...sampleOrder,
+        deliveredAtFormatted: '15/11/2026, 04:30 PM IST',
+        deliveryDetails: {
+          carrier: 'Delhivery Express',
+          trackingNumber: 'DLV-214822-IN'
+        }
+      },
+      useRelativeAssets: true,
+      supportEmail
+    });
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    return res.send(html);
+  }
+
   const { html } = renderOrderConfirmationEmail({
     order: sampleOrder,
     useRelativeAssets: true,
@@ -4639,10 +4497,13 @@ app.post('/api/returns/create', async (req, res) => {
         if (zohoSalesReturnResult.salesreturn_number) {
           returnRecord.salesreturn_number = zohoSalesReturnResult.salesreturn_number;
         }
-        if (zohoSalesReturnResult.zoho_salesorder_id && !returnRecord.zoho_salesorder_id) {
+        if (zohoSalesReturnResult.zoho_salesorder_id) {
           returnRecord.zoho_salesorder_id = zohoSalesReturnResult.zoho_salesorder_id;
-          if (order && !order.zoho_salesorder_id) {
+          if (order) {
             order.zoho_salesorder_id = zohoSalesReturnResult.zoho_salesorder_id;
+            if (zohoSalesReturnResult.zoho_salesorder_number) {
+              order.zoho_salesorder_number = zohoSalesReturnResult.zoho_salesorder_number;
+            }
           }
         }
         returnRecord.zoho_synced = Boolean(zohoSalesReturnResult.zohoSynced && zohoSalesReturnResult.zoho_salesreturn_id);
@@ -4658,10 +4519,43 @@ app.post('/api/returns/create', async (req, res) => {
     inMemoryReturns.set(`ORD_${orderCode}`, returnRecord);
     persistReturn(returnRecord);
 
+    if (!order && orderCode) {
+      const cleanAccPhone = String(customerPhone || '').replace(/\D/g, '').slice(-10);
+      order = {
+        orderCode,
+        orderId: orderCode,
+        accountPhone: cleanAccPhone,
+        orderDate: new Date().toISOString(),
+        status: 'DELIVERED',
+        items: normalizedReturnItems,
+        products: normalizedReturnItems,
+        subtotalInr: normalizedReturnItems.reduce((s, it) => s + Number(it.totalItemPriceInr || 1599), 0),
+        grandTotalInr: normalizedReturnItems.reduce((s, it) => s + Number(it.totalItemPriceInr || 1599), 0),
+        shippingAddress: {
+          fullName: customerName,
+          phone: cleanAccPhone,
+          email: customerEmail,
+          fullAddress: pickupAddress
+        },
+        contactDetails: {
+          fullName: customerName,
+          phone: cleanAccPhone,
+          email: customerEmail
+        },
+        zoho_salesorder_id: returnRecord.zoho_salesorder_id || null,
+        zoho_salesorder_number: zohoSalesReturnResult?.zoho_salesorder_number || ''
+      };
+      inMemoryOrders.set(orderCode, order);
+    }
+
     if (order) {
       order.returnStatus = type === 'exchange' ? 'EXCHANGE REQUESTED' : 'RETURN REQUESTED';
       order.returnRequest = returnRecord;
       persistOrders(order);
+      const targetPhone = String(customerPhone || order.accountPhone || order.shippingAddress?.phone || order.contactDetails?.phone || '').replace(/\D/g, '').slice(-10);
+      if (targetPhone.length === 10) {
+        await appendOrderToUserAccount(targetPhone, order).catch(() => {});
+      }
     }
 
     // 5 & 6. Dispatch Confirmation of Exchange or Confirmation of Return email to customer
@@ -4704,18 +4598,29 @@ app.post('/api/returns/cancel', async (req, res) => {
     const orderCode = String(raw.orderCode || '').trim().toUpperCase().replace(/^#/, '');
     const returnId = String(raw.returnId || '').trim().toUpperCase();
 
-    // 1. Remove from inMemoryReturns map
+    // 1. Collect any Zoho Sales Return IDs to delete from Zoho Inventory & remove from inMemoryReturns map
+    const zohoReturnIdsToDelete = new Set();
+    if (returnId && inMemoryReturns.get(returnId)?.zoho_salesreturn_id) {
+      zohoReturnIdsToDelete.add(inMemoryReturns.get(returnId).zoho_salesreturn_id);
+    }
     if (returnId) inMemoryReturns.delete(returnId);
     if (orderCode) {
+      if (inMemoryReturns.get(`ORD_${orderCode}`)?.zoho_salesreturn_id) {
+        zohoReturnIdsToDelete.add(inMemoryReturns.get(`ORD_${orderCode}`).zoho_salesreturn_id);
+      }
       inMemoryReturns.delete(`ORD_${orderCode}`);
       for (const [key, val] of inMemoryReturns.entries()) {
         if (!val) continue;
         const c = String(val.orderCode || '').trim().toUpperCase().replace(/^#/, '');
         const rid = String(val.id || '').trim().toUpperCase();
         if (c === orderCode || (returnId && rid === returnId)) {
+          if (val.zoho_salesreturn_id) zohoReturnIdsToDelete.add(val.zoho_salesreturn_id);
           inMemoryReturns.delete(key);
         }
       }
+    }
+    for (const srId of zohoReturnIdsToDelete) {
+      await zohoInventory.deleteSalesReturnInZoho(srId).catch(() => {});
     }
     saveJsonCache(RETURNS_CACHE_FILE, Array.from(new Set(inMemoryReturns.values())));
 
@@ -6662,7 +6567,8 @@ app.get('/api/account/profile', async (req, res) => {
       return res.json({ success: true, account: null });
     }
     const account = await findUserByPhone(cleanPhone);
-    const orders = await findOrdersByAccountPhone(cleanPhone);
+    const mongoOrders = await findOrdersByAccountPhone(cleanPhone);
+    const orders = enrichOrdersWithInMemoryState(mongoOrders, cleanPhone);
     return res.json({
       success: true,
       account: account
@@ -6781,6 +6687,54 @@ app.post('/api/account/addresses', async (req, res) => {
   }
 });
 
+function enrichOrdersWithInMemoryState(baseOrders = [], cleanPhone = '') {
+  const seen = new Map();
+  for (const ord of (Array.isArray(baseOrders) ? baseOrders : [])) {
+    if (!ord) continue;
+    const code = String(ord.orderCode || ord.orderId || '').replace(/^#/, '').trim().toUpperCase();
+    if (!code) continue;
+    const memOrd = inMemoryOrders.get(code) || inMemoryOrders.get(`UCHIHA-${code}`);
+    const memRet = inMemoryReturns.get(`ORD_${code}`) || memOrd?.returnRequest || ord.returnRequest || null;
+    const activeRet = (memRet && memRet.status !== 'CANCELLED') ? memRet : null;
+    seen.set(code, {
+      ...ord,
+      ...(memOrd ? {
+        status: memOrd.status || ord.status,
+        zoho_salesorder_id: memOrd.zoho_salesorder_id || ord.zoho_salesorder_id,
+        zoho_salesorder_number: memOrd.zoho_salesorder_number || ord.zoho_salesorder_number,
+        zoho_invoice_url: memOrd.zoho_invoice_url || ord.zoho_invoice_url
+      } : {}),
+      ...(activeRet ? {
+        returnRequest: activeRet,
+        returnStatus: activeRet.type === 'exchange' ? 'EXCHANGE REQUESTED' : 'RETURN REQUESTED'
+      } : {})
+    });
+  }
+
+  // Also include any inMemoryOrders for this phone that weren't in baseOrders yet
+  if (cleanPhone && cleanPhone.length === 10) {
+    for (const memOrd of inMemoryOrders.values()) {
+      if (!memOrd) continue;
+      const code = String(memOrd.orderCode || memOrd.orderId || '').replace(/^#/, '').trim().toUpperCase();
+      if (!code || seen.has(code)) continue;
+      const ordPhone = String(memOrd.accountPhone || memOrd.shippingAddress?.phone || memOrd.contactDetails?.phone || '').replace(/\D/g, '').slice(-10);
+      if (ordPhone === cleanPhone) {
+        const memRet = inMemoryReturns.get(`ORD_${code}`) || memOrd.returnRequest || null;
+        const activeRet = (memRet && memRet.status !== 'CANCELLED') ? memRet : null;
+        seen.set(code, {
+          ...memOrd,
+          ...(activeRet ? {
+            returnRequest: activeRet,
+            returnStatus: activeRet.type === 'exchange' ? 'EXCHANGE REQUESTED' : 'RETURN REQUESTED'
+          } : {})
+        });
+      }
+    }
+  }
+
+  return Array.from(seen.values());
+}
+
 // Get User's Orders from MongoDB Atlas according to their account phone
 app.get('/api/account/orders', async (req, res) => {
   try {
@@ -6788,7 +6742,8 @@ app.get('/api/account/orders', async (req, res) => {
     if (cleanPhone.length !== 10) {
       return res.json({ success: true, orders: [] });
     }
-    const orders = await findOrdersByAccountPhone(cleanPhone);
+    const mongoOrders = await findOrdersByAccountPhone(cleanPhone);
+    const orders = enrichOrdersWithInMemoryState(mongoOrders, cleanPhone);
     return res.json({ success: true, phone: cleanPhone, count: orders.length, orders });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });

@@ -383,8 +383,11 @@ export async function appendOrderToUserAccount(accountPhone, orderDocument) {
       deliveryDetails: orderDocument.deliveryDetails || orderDocument.delivery || {},
       items: normalizedItems,
       products: normalizedItems,
+      zoho_salesorder_id: orderDocument.zoho_salesorder_id || '',
       zoho_salesorder_number: orderDocument.zoho_salesorder_number || '',
-      zoho_invoice_url: orderDocument.zoho_invoice_url || orderDocument.invoiceUrl || ''
+      zoho_invoice_url: orderDocument.zoho_invoice_url || orderDocument.invoiceUrl || '',
+      ...(orderDocument.returnStatus ? { returnStatus: orderDocument.returnStatus } : {}),
+      ...(orderDocument.returnRequest ? { returnRequest: orderDocument.returnRequest } : {})
     };
 
     const filtered = currentOrders.filter(o => o && o.orderCode !== orderSummary.orderCode && o.orderId !== orderSummary.orderId);
@@ -435,30 +438,66 @@ export async function findOrdersByAccountPhone(phone) {
       }
     }
 
-    const seen = new Set();
-    const combined = [];
-    for (const ord of [...(docs || []), ...userOrders]) {
-      if (!ord) continue;
-      const key = ord.orderCode || ord.orderId;
-      if (key && !seen.has(key)) {
-        seen.add(key);
-        // Ensure items have proper pictures
-        const items = ord.items || ord.products || [];
-        const normalizedItems = Array.isArray(items) ? items.map(it => ({
-          ...it,
-          image: it.image || it.imageUrl || it.img || (Array.isArray(it.images) ? it.images[0] : '') || '',
-          imageUrl: it.imageUrl || it.image || it.img || (Array.isArray(it.images) ? it.images[0] : '') || ''
-        })) : [];
-
-        combined.push({
-          ...ord,
-          items: normalizedItems,
-          products: normalizedItems
-        });
+    // Also fetch any active returns from the 'returns' collection for this customer phone
+    const returnsCol = await getCollection('returns');
+    const returnsByOrderCode = new Map();
+    if (returnsCol) {
+      const retDocs = await returnsCol
+        .find(
+          {
+            status: { $ne: 'CANCELLED' },
+            $or: [
+              { customerPhone: { $regex: `${cleanPhone}$` } },
+              { orderCode: { $in: [...(docs || []), ...userOrders].map(o => o?.orderCode).filter(Boolean) } }
+            ]
+          },
+          { projection: { _id: 0 } }
+        )
+        .toArray()
+        .catch(() => []);
+      for (const r of retDocs) {
+        if (r && r.orderCode) {
+          returnsByOrderCode.set(String(r.orderCode).replace(/^#/, '').trim().toUpperCase(), r);
+        }
       }
     }
 
-    return combined;
+    const seen = new Map();
+    for (const ord of [...(docs || []), ...userOrders]) {
+      if (!ord) continue;
+      const key = String(ord.orderCode || ord.orderId || '').replace(/^#/, '').trim().toUpperCase();
+      if (!key) continue;
+
+      const items = ord.items || ord.products || [];
+      const normalizedItems = Array.isArray(items) ? items.map(it => ({
+        ...it,
+        image: it.image || it.imageUrl || it.img || (Array.isArray(it.images) ? it.images[0] : '') || '',
+        imageUrl: it.imageUrl || it.image || it.img || (Array.isArray(it.images) ? it.images[0] : '') || ''
+      })) : [];
+
+      const matchedReturn = returnsByOrderCode.get(key) || ord.returnRequest || null;
+      const matchedReturnStatus = matchedReturn
+        ? (ord.returnStatus || (matchedReturn.type === 'exchange' ? 'EXCHANGE REQUESTED' : 'RETURN REQUESTED'))
+        : (ord.returnStatus || undefined);
+
+      if (!seen.has(key)) {
+        seen.set(key, {
+          ...ord,
+          items: normalizedItems,
+          products: normalizedItems,
+          ...(matchedReturn ? { returnRequest: matchedReturn } : {}),
+          ...(matchedReturnStatus ? { returnStatus: matchedReturnStatus } : {})
+        });
+      } else {
+        const existing = seen.get(key);
+        if (!existing.returnRequest && matchedReturn) {
+          existing.returnRequest = matchedReturn;
+          existing.returnStatus = matchedReturnStatus;
+        }
+      }
+    }
+
+    return Array.from(seen.values());
   } catch (err) {
     console.warn('[MongoDB findOrdersByAccountPhone]:', err.message);
     return [];

@@ -235,22 +235,21 @@ function renderItemRowsHtml(items, assetOpts) {
     const borderBottom = idx < items.length - 1 ? 'border-bottom:1px solid #e8e2d8;' : '';
     return `
       <tr>
-        <td style="padding:16px 0;${borderBottom}">
+        <td style="padding:18px 0;${borderBottom}">
           <table cellpadding="0" cellspacing="0" width="100%" border="0" role="presentation" style="width:100%;border-collapse:collapse;">
             <tr>
-              <td style="width:74px;vertical-align:middle;padding-right:16px;">
-                <img src="${escapeHtml(imgSrc)}" alt="${escapeHtml(item.title)}" width="72" height="72" style="width:72px;height:72px;max-width:72px;object-fit:cover;display:block;border-radius:4px;background-color:#ffffff;border:1px solid #e8e2d8;" />
+              <td width="112" style="width:96px;vertical-align:top;padding-right:16px;">
+                <img src="${escapeHtml(imgSrc)}" alt="${escapeHtml(item.title)}" width="96" height="96" style="width:96px;height:96px;min-width:96px;max-width:96px;object-fit:cover;display:block;border-radius:6px;background-color:#ffffff;border:1px solid #e8e2d8;" />
               </td>
-              <td style="vertical-align:middle;padding-right:12px;">
-                <div style="font-size:14px;font-weight:500;color:#171717;line-height:1.35;">${escapeHtml(item.title)}</div>
-                <div style="font-size:13px;color:#78716c;line-height:1.4;margin-top:2px;">${escapeHtml(item.variant)}</div>
-                <div style="font-size:12px;color:#a8a29e;line-height:1.4;margin-top:1px;">${escapeHtml(item.sku)}</div>
-              </td>
-              <td style="width:42px;vertical-align:middle;text-align:right;white-space:nowrap;font-size:13px;color:#52525b;padding-right:14px;">
-                x ${item.qty}
-              </td>
-              <td style="width:104px;vertical-align:middle;text-align:right;white-space:nowrap;font-size:14px;font-weight:500;color:#171717;">
-                ${escapeHtml(formatInrCurrency(item.totalInr))}
+              <td style="vertical-align:top;width:auto;">
+                <div style="font-size:15px;font-weight:600;color:#171717;line-height:1.4;margin:0;">${escapeHtml(item.title)}</div>
+                <div style="font-size:13px;color:#78716c;line-height:1.45;margin-top:4px;">${escapeHtml(item.variant)} <span style="color:#c4bdb2;">&middot;</span> <span style="color:#a8a29e;white-space:nowrap;">${escapeHtml(item.sku)}</span></div>
+                <table cellpadding="0" cellspacing="0" width="100%" border="0" role="presentation" style="width:100%;border-collapse:collapse;margin-top:10px;">
+                  <tr>
+                    <td align="left" style="vertical-align:middle;font-size:13px;color:#52525b;white-space:nowrap;">Qty: ${item.qty}</td>
+                    <td align="right" style="vertical-align:middle;font-size:14px;font-weight:600;color:#171717;white-space:nowrap;">${escapeHtml(formatInrCurrency(item.totalInr))}</td>
+                  </tr>
+                </table>
               </td>
             </tr>
           </table>
@@ -809,3 +808,131 @@ Terms · Privacy · Refunds · Shipping`;
 
   return { subject, html, text, returnId, cleanOrderNumber, isExchange, cidAttachments };
 }
+
+export function renderShipmentFulfilledEmail({
+  order = {},
+  hostOrigin = '',
+  useRelativeAssets = false,
+  useCidAssets = false,
+  supportEmail = DEFAULT_SUPPORT_EMAIL,
+  websiteHref = DEFAULT_WEBSITE_URL,
+  websiteLabel = DEFAULT_WEBSITE_LABEL
+} = {}) {
+  const cidAttachments = [];
+  const assetOpts = { hostOrigin, useRelativeAssets, useCidAssets, cidList: cidAttachments };
+  const rawOrderCode = order.orderCode || order.orderId || 'ORDER';
+  const cleanOrderNumber = String(rawOrderCode).replace(/^#/, '').trim();
+  const firstName = extractCustomerFirstName(order);
+  const fullName = (
+    order?.shippingAddress?.fullName ||
+    order?.contactDetails?.fullName ||
+    order?.userDetails?.name ||
+    firstName
+  ).trim();
+  const formattedDate = formatDateDdMmYyyy(order.deliveredAt || order.orderDate || order.createdAt);
+  const deliveredAt = order.deliveredAtFormatted || formattedDate;
+
+  const rawItems = (Array.isArray(order.items) && order.items.length > 0)
+    ? order.items
+    : ((Array.isArray(order.products) && order.products.length > 0)
+      ? order.products
+      : (Array.isArray(order.productDetails) ? order.productDetails : []));
+  const items = normalizeItemsForDisplay(rawItems, order);
+
+  const rawSubtotalVal = Number(order.subtotalInr ?? order.pricing?.subtotalInr ?? items.reduce((s, it) => s + Number(it.totalInr || 0), 0)) || 0;
+  const discountVal = Math.max(0, Number(order.discountInr ?? order.discount ?? 0) || 0);
+  const deliveryFeeVal = Math.max(0, Number(order.deliveryFeeInr ?? order.delivery?.cost ?? 0) || 0);
+  const grandTotalVal = Number(order.grandTotalInr ?? order.totalInr ?? Math.max(0, rawSubtotalVal - discountVal) + deliveryFeeVal) || 0;
+
+  const shippingAddr = order.shippingAddress || {};
+  const streetAddr = [shippingAddr.addressLine1, shippingAddr.addressLine2, shippingAddr.houseFlat, shippingAddr.streetRoad].filter(Boolean).join(', ');
+  const cityStateZip = [shippingAddr.city, shippingAddr.state, shippingAddr.pincode].filter(Boolean).join(' - ');
+  const fullAddress = [streetAddr, cityStateZip].filter(Boolean).join(', ') || 'Your delivery address on file';
+
+  const accountStatusUrl = `${websiteHref.replace(/\/$/, '')}/#account`;
+  const trackingUrl = `https://www.delhivery.com/tracking?awb=${encodeURIComponent(cleanOrderNumber)}`;
+
+  const introHtml = `
+    <div style="margin:0 0 18px 0;">
+      Your shipment for order <strong style="color:#171717;">#${escapeHtml(cleanOrderNumber)}</strong> has been fulfilled and delivered to your doorstep.<br>
+      Delivered on <strong style="color:#171717;">${escapeHtml(deliveredAt)}</strong>.
+    </div>
+    <div style="margin:0;">
+      Need a different size or easy return? Our 7-day reverse pickup portal is open anytime at
+      <a href="${escapeHtml(accountStatusUrl)}" target="_blank" style="color:#2563eb;text-decoration:underline;">${escapeHtml(websiteLabel)}</a> or using the button below.
+    </div>
+  `;
+
+  const itemsHtml = renderItemRowsHtml(items, assetOpts);
+
+  const summaryRowsHtml = `
+    <tr>
+      <td style="text-align:left;color:#52525b;padding:4px 0;">Status</td>
+      <td style="text-align:right;color:#15803d;font-weight:600;padding:4px 0;white-space:nowrap;">Fulfilled &amp; Delivered</td>
+    </tr>
+    <tr>
+      <td style="text-align:left;color:#52525b;padding:4px 0;">Courier</td>
+      <td style="text-align:right;color:#171717;padding:4px 0;white-space:nowrap;">
+        <a href="${escapeHtml(trackingUrl)}" target="_blank" style="color:#2563eb;text-decoration:underline;">Delhivery Express (#${escapeHtml(cleanOrderNumber)})</a>
+      </td>
+    </tr>
+    <tr>
+      <td style="text-align:left;color:#52525b;padding:4px 0;vertical-align:top;">Delivered To</td>
+      <td style="text-align:right;color:#171717;padding:4px 0;max-width:300px;line-height:1.45;">${escapeHtml(fullName)} &mdash; ${escapeHtml(fullAddress)}</td>
+    </tr>
+    <tr>
+      <td style="text-align:left;color:#111111;font-weight:600;padding:8px 0 4px 0;">Order Total</td>
+      <td style="text-align:right;color:#111111;font-weight:600;padding:8px 0 4px 0;white-space:nowrap;">${escapeHtml(formatInrCurrency(grandTotalVal))}</td>
+    </tr>
+  `;
+
+  const subject = `Shipment Fulfilled & Delivered #${cleanOrderNumber} - The Street Co`;
+  const html = renderMinimalEmailShell({
+    pageTitle: subject,
+    heading: 'Shipment Fulfilled',
+    firstName,
+    introHtml,
+    ctaLabel: 'Request Exchange / Return',
+    ctaHref: accountStatusUrl,
+    referenceTitle: `Order No. #${cleanOrderNumber}`,
+    referenceSubtitle: `Delivered · ${deliveredAt}`,
+    sectionLabel: 'Items delivered',
+    itemsHtml,
+    summaryRowsHtml,
+    supportEmail,
+    websiteHref,
+    websiteLabel,
+    assetOpts
+  });
+
+  const plainItems = items.map(it =>
+    `• ${it.title} (${it.variant}, ${it.sku}) x ${it.qty} — ${formatInrCurrency(it.totalInr)}`
+  ).join('\n');
+
+  const text = `Shipment Fulfilled
+
+Hey ${firstName},
+
+Your shipment for order #${cleanOrderNumber} has been fulfilled and delivered to your doorstep on ${deliveredAt}.
+Courier: Delhivery Express (${trackingUrl})
+Delivered To: ${fullName} — ${fullAddress}
+
+Need a different size or easy return? Visit ${accountStatusUrl} within 7 days.
+
+Order No. #${cleanOrderNumber}
+Delivered · ${deliveredAt}
+
+Items delivered:
+${plainItems}
+
+Status: Fulfilled & Delivered
+Order Total: ${formatInrCurrency(grandTotalVal)}
+
+Questions? Contact us at ${supportEmail}
+${websiteLabel}
+TIMELESS STREETWEAR CULTURE // ARCHIVE COLLECTION
+© 2026 THE STREET CO ALL RIGHTS RESERVED.`;
+
+  return { subject, html, text, cleanOrderNumber, cidAttachments };
+}
+

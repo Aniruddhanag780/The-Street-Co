@@ -427,25 +427,80 @@ export async function fetchZohoItems(force = false) {
         docImages.push(`/api/zoho-inventory/items/${item.item_id}/image`);
       }
 
+      const itemName = item.name || item.item_name || 'Zoho Item';
+      const itemSku = (item.sku || '').trim();
+      const nameLower = `${itemName} ${itemSku}`.toLowerCase();
+
+      // Provide accurate SKU/type fallback images when no image is uploaded in Zoho Inventory yet
+      if (docImages.length === 0) {
+        if (nameLower.includes('holster')) {
+          docImages = [
+            'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=800&q=80',
+            'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=800&q=80'
+          ];
+        } else if (nameLower.includes('jogger') || nameLower.includes('cargo') || nameLower.includes('ts-str-004')) {
+          docImages = [
+            'https://images.unsplash.com/photo-1517445312882-bc9910d016b7?w=800&q=80',
+            'https://images.unsplash.com/photo-1552902865-b72c031ac5ea?w=800&q=80'
+          ];
+        } else {
+          docImages = ['/product-minato.jpg'];
+        }
+      }
+
+      // Infer clean category when category_name is blank in Zoho Inventory
+      let resolvedCategoryName = (item.category_name || item.brand || '').trim();
+      if (!resolvedCategoryName || resolvedCategoryName.toLowerCase() === 't-shirt') {
+        if (nameLower.includes('jogger') || nameLower.includes('cargo') || nameLower.includes('pant')) {
+          resolvedCategoryName = 'Cargo Pants & Joggers';
+        } else if (nameLower.includes('holster') || nameLower.includes('ring') || nameLower.includes('hat') || nameLower.includes('necklace')) {
+          resolvedCategoryName = 'Accessories & Jewelry';
+        } else if (nameLower.includes('hoodie') || nameLower.includes('sweatshirt')) {
+          resolvedCategoryName = 'Hoodies & Sweatshirts';
+        } else if (nameLower.includes('jacket') || nameLower.includes('bomber') || nameLower.includes('cloak')) {
+          resolvedCategoryName = 'Jackets & Outerwear';
+        } else if (!resolvedCategoryName) {
+          resolvedCategoryName = 'Oversized T-Shirts';
+        }
+      }
+
+      // Avoid using group_name when Zoho sets group_name identical to the full item title
+      const rawGroup = (item.group_name || item.cf_collection || '').trim();
+      const validGroup = (rawGroup && rawGroup.toLowerCase() !== itemName.toLowerCase()) ? rawGroup : '';
+      let resolvedCollectionName = validGroup;
+      if (!resolvedCollectionName) {
+        if (nameLower.includes('minato') || nameLower.includes('hokage')) {
+          resolvedCollectionName = 'Minato Namikaze';
+        } else if (nameLower.includes('holster') || nameLower.includes('akatsuki')) {
+          resolvedCollectionName = 'Akatsuki Shadows';
+        } else if (nameLower.includes('tokyo') || nameLower.includes('ts-str') || nameLower.includes('cargo')) {
+          resolvedCollectionName = 'Street Core';
+        } else if (nameLower.includes('uchiha') || nameLower.includes('sharingan') || nameLower.includes('susanoo')) {
+          resolvedCollectionName = 'Uchiha Clan';
+        } else {
+          resolvedCollectionName = 'Official Collection';
+        }
+      }
+
       return {
-        id: item.sku || item.item_id || `zoho-item-${idx + 1}`,
+        id: itemSku || item.item_id || `zoho-item-${idx + 1}`,
         zoho_item_id: item.item_id,
-        sku: item.sku || '',
-        title: item.name || item.item_name || 'Zoho Item',
-        name: item.name || item.item_name || 'Zoho Item',
+        sku: itemSku,
+        title: itemName,
+        name: itemName,
         price: itemRate,
         priceInr: itemRate,
         originalPrice: origPrice,
         originalMrp: origPrice,
         hasDiscount: hasRealMrp,
         discountPercent: hasRealMrp ? Math.round(((purchaseRate - itemRate) / purchaseRate) * 100) : 0,
-        unit: item.unit || '',
+        unit: item.unit || 'pcs',
         stock: Math.max(0, stock),
         inStock: stock > 0,
-        category: (item.category_name || item.brand || 't-shirt').toLowerCase(),
-        category_name: item.category_name || item.brand || 'T-Shirt',
-        collection: (item.group_name || item.cf_collection || (item.name && item.name.includes('Minato') ? 'minato' : '') || 'official-collection').toLowerCase(),
-        collectionName: item.group_name || item.cf_collection || (item.name && item.name.includes('Minato') ? 'Minato' : '') || 'Official Collection',
+        category: resolvedCategoryName.toLowerCase(),
+        category_name: resolvedCategoryName,
+        collection: resolvedCollectionName.toLowerCase(),
+        collectionName: resolvedCollectionName,
         description: fullDesc,
         purchase_description: item.purchase_description || '',
         images: docImages,

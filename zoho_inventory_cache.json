@@ -17,8 +17,8 @@
       "inStock": true,
       "category": "t-shirt",
       "category_name": "T-Shirt",
-      "collection": "fourth hokage minato inspired oversized t-shirt - premium flame print anime streetwear",
-      "collectionName": "Fourth Hokage Minato Inspired Oversized T-Shirt - Premium Flame Print Anime Streetwear",
+      "collection": "minato namikaze",
+      "collectionName": "Minato Namikaze",
       "description": "Product Overview\nUnleash the spirit of the Hidden Leaf's fastest shinobi. This premium drop-shoulder oversized tee brings the iconic aesthetic of the Fourth Hokage’s legendary cloak straight into modern streetwear. Featuring a bold dual-tone color block and crisp graphic elements, it’s a must-have statement piece for every anime enthusiast.\nProduct Features\n• Authentic Design: Replicates the iconic burgundy fire border from the signature Hokage cloak wrapping around a clean cream-colored body.\n• Premium Graphics: Features a high-density print of the fire kanji (火) on the front chest and the vertical Fourth Hokage character inscription (四代目火影) boldly running down the back.\n• Streetwear Fit: Trendy oversized silhouette with dropped shoulders and loose half-sleeves for ultimate casual comfort.\n• Durable Comfort: Crafted from heavy-density, breathable cotton blend fabric designed to hold its boxy shape wash after wash.\nStyle & Pairing Tips\nRock this oversized graphic tee with black cargo pants, utility joggers, or distressed denim. Finish the look with high-top sneakers for an effortless, streetwear-ready vibe.\nMaterial & Care\n• Fabric: Premium Heavyweight Cotton Blend\n• Fit: Oversized / Loose Fit\n• Neckline: Classic Crew Neck\n• Care Instructions: Machine wash cold inside-out with like colors. Tumble dry low. Do not iron directly over printed graphics.",
       "purchase_description": "Product Overview\nUnleash the spirit of the Hidden Leaf's fastest shinobi. This premium drop-shoulder oversized tee brings the iconic aesthetic of the Fourth Hokage’s legendary cloak straight into modern streetwear. Featuring a bold dual-tone color block and crisp graphic elements, it’s a must-have statement piece for every anime enthusiast.\nProduct Features\n• Authentic Design: Replicates the iconic burgundy fire border from the signature Hokage cloak wrapping around a clean cream-colored body.\n• Premium Graphics: Features a high-density print of the fire kanji (火) on the front chest and the vertical Fourth Hokage character inscription (四代目火影) boldly running down the back.\n• Streetwear Fit: Trendy oversized silhouette with dropped shoulders and loose half-sleeves for ultimate casual comfort.\n• Durable Comfort: Crafted from heavy-density, breathable cotton blend fabric designed to hold its boxy shape wash after wash.\nStyle & Pairing Tips\nRock this oversized graphic tee with black cargo pants, utility joggers, or distressed denim. Finish the look with high-top sneakers for an effortless, streetwear-ready vibe.\nMaterial & Care\n• Fabric: Premium Heavyweight Cotton Blend\n• Fit: Oversized / Loose Fit\n• Neckline: Classic Crew Neck\n• Care Instructions: Machine wash cold inside-out with like colors. Tumble dry low. Do not iron directly over printed graphics.",
       "images": [
@@ -47,14 +47,16 @@
       "unit": "pcs",
       "stock": 100,
       "inStock": true,
-      "category": "t-shirt",
-      "category_name": "T-Shirt",
-      "collection": "minato tee",
-      "collectionName": "Minato Tee",
+      "category": "oversized t-shirts",
+      "category_name": "Oversized T-Shirts",
+      "collection": "minato namikaze",
+      "collectionName": "Minato Namikaze",
       "description": "Premium Heavyweight Oversized Streetwear Apparel",
       "purchase_description": "",
-      "images": [],
-      "imageUrl": ""
+      "images": [
+        "/product-minato.jpg"
+      ],
+      "imageUrl": "/product-minato.jpg"
     },
     {
       "id": "shadow-holster",
@@ -71,14 +73,17 @@
       "unit": "pcs",
       "stock": 100,
       "inStock": true,
-      "category": "t-shirt",
-      "category_name": "T-Shirt",
-      "collection": "shadow leather kunai leg holster",
-      "collectionName": "Shadow Leather Kunai Leg Holster",
+      "category": "accessories & jewelry",
+      "category_name": "Accessories & Jewelry",
+      "collection": "akatsuki shadows",
+      "collectionName": "Akatsuki Shadows",
       "description": "Premium Heavyweight Oversized Streetwear Apparel",
       "purchase_description": "",
-      "images": [],
-      "imageUrl": ""
+      "images": [
+        "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=800&q=80",
+        "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=800&q=80"
+      ],
+      "imageUrl": "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=800&q=80"
     },
     {
       "id": "TS-STR-004",
@@ -95,14 +100,17 @@
       "unit": "pcs",
       "stock": 100,
       "inStock": true,
-      "category": "t-shirt",
-      "category_name": "T-Shirt",
-      "collection": "tokyo shadow tactical cargo joggers",
-      "collectionName": "Tokyo Shadow Tactical Cargo Joggers",
+      "category": "cargo pants & joggers",
+      "category_name": "Cargo Pants & Joggers",
+      "collection": "street core",
+      "collectionName": "Street Core",
       "description": "Premium Heavyweight Oversized Streetwear Apparel",
       "purchase_description": "",
-      "images": [],
-      "imageUrl": ""
+      "images": [
+        "https://images.unsplash.com/photo-1517445312882-bc9910d016b7?w=800&q=80",
+        "https://images.unsplash.com/photo-1552902865-b72c031ac5ea?w=800&q=80"
+      ],
+      "imageUrl": "https://images.unsplash.com/photo-1517445312882-bc9910d016b7?w=800&q=80"
     }
   ],
   "cachedInvoices": [
@@ -1344,9 +1352,9 @@
       "status": "issued"
     }
   ],
-  "lastSync": "2026-11-16T18:00:42.238Z",
-  "accessToken": "1000.a38ec69270387d7914ac9fd1bf3ed0f5.23d62ace7a4dbece79c8a0cdaeaa5640",
-  "expiresAt": 1794853870381,
+  "lastSync": "2026-11-17T05:02:52.572Z",
+  "accessToken": "1000.07995a63ade394199025f8b41161ba8b.dcae7f9e13cfb651c9b5639396c73eef",
+  "expiresAt": 1794894298604,
   "refreshToken": "1000.be2b654a1e1c745bf85384b670224252.43b26bde60e360a5a7a083f98fe01c7e",
   "clientId": "1000.UZX14OW3RS263F9HO71UTABZ83BEUK",
   "clientSecret": "89c5bfa5bb94d3b6a6b956e030753116ed3f765095",

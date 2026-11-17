@@ -2137,6 +2137,13 @@ function normalizeProduct(p) {
   const discountPercent = hasDiscount ? Math.round(((originalMrp - priceInr) / originalMrp) * 100) : 0;
   const description = p.description || p.purchase_description || '';
 
+  const rawCat = (p.category_name || p.category || 'Oversized T-Shirts').trim();
+  const rawColName = (p.collectionName || p.collection || '').trim();
+  const itemName = (p.name || p.title || '').trim();
+  const cleanColName = (rawColName && rawColName.toLowerCase() !== itemName.toLowerCase())
+    ? rawColName
+    : ((itemName.toLowerCase().includes('minato')) ? 'Minato Namikaze' : 'Official Collection');
+
   return {
     ...p,
     sku,
@@ -2149,11 +2156,11 @@ function normalizeProduct(p) {
     discountPercent,
     description,
     purchase_description: p.purchase_description || '',
-    unit: p.unit || '',
-    category_name: p.category_name || 'T-Shirt',
-    category: (p.category_name || 't-shirt').toLowerCase(),
-    collectionName: (p.name && p.name.toLowerCase().includes('minato')) ? 'Minato' : (p.collectionName || 'Official Collection'),
-    collection: ((p.name && p.name.toLowerCase().includes('minato')) ? 'minato' : (p.collection || 'official-collection')).toLowerCase(),
+    unit: p.unit || 'pcs',
+    category_name: rawCat,
+    category: rawCat.toLowerCase(),
+    collectionName: cleanColName,
+    collection: cleanColName.toLowerCase(),
     images,
     imageUrl: images[0] || ''
   };

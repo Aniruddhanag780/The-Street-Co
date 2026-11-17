@@ -1114,12 +1114,12 @@ html.bag-open, body.bag-open {
   transform:translateX(-50%) translateY(16px);
   z-index:100050 !important;
   width:auto;
-  max-width:min(92vw, 420px);
+  max-width:min(94vw, 540px);
   padding:0;
   background:#ffffff !important;
-  border:1px solid #e4e4e7 !important;
-  color:#18181b !important;
-  box-shadow:0 12px 30px rgba(0,0,0,0.14), 0 4px 10px rgba(0,0,0,0.06) !important;
+  border:1px solid #d4d4d8 !important;
+  color:#0e0e11 !important;
+  box-shadow:0 14px 34px rgba(14,14,17,0.16), 0 4px 12px rgba(14,14,17,0.08) !important;
   opacity:0;pointer-events:none;
   transition:transform .28s cubic-bezier(0.16, 1, 0.3, 1),opacity .22s ease !important;
   overflow:hidden;
@@ -1134,16 +1134,16 @@ div#shopToast:nth-of-type(4) > div:nth-of-type(2),
 div#shopToast > div:nth-of-type(2),
 div#shopToast > div,
 .shop-toast__inner {
-  display:flex;align-items:center;gap:.6rem;
-  padding:.45rem .55rem .45rem .8rem !important;
+  display:flex;align-items:center;gap:.55rem;
+  padding:.42rem .6rem .42rem .65rem !important;
   background:#ffffff !important;
-  color:#18181b !important;
+  color:#0e0e11 !important;
   border-radius:9999px;
 }
 .shop-toast__icon {
   width:22px;height:22px;border-radius:50%;
   background:#f4f4f5 !important;border:none !important;
-  color:#18181b !important;display:grid;place-items:center;flex-shrink:0;
+  color:#0e0e11 !important;display:grid;place-items:center;flex-shrink:0;
   box-shadow:none !important;
   animation:none !important;
 }
@@ -1151,23 +1151,32 @@ div#shopToast > div,
   background:#fef2f2 !important;color:#dc2626 !important;
 }
 .shop-toast__icon.cart-toast-icon {
-  background:#f4f4f5 !important;color:#18181b !important;
+  background:#f4f4f5 !important;color:#0e0e11 !important;
 }
 .shop-toast__icon.price-drop-icon {
   background:#fef3c7 !important;color:#d97706 !important;
 }
 .shop-toast__body {
-  display:flex;align-items:center;gap:.35rem;
+  display:flex;align-items:center;gap:.5rem;
   flex:1;min-width:0;line-height:1.25;
 }
 .shop-toast__title,
 .shop-toast__status {
+  display:inline-flex !important;
+  align-items:center !important;
   font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-  font-size:.76rem !important;letter-spacing:normal !important;
-  color:#18181b !important;font-weight:600 !important;
+  font-size:.64rem !important;
+  letter-spacing:.06em !important;
+  background:#0e0e11 !important;
+  color:#ffffff !important;
+  font-weight:700 !important;
+  padding:.22rem .56rem !important;
+  border-radius:6px !important;
   margin:0 !important;
-  text-transform:none !important;
-  white-space:nowrap;
+  text-transform:uppercase !important;
+  white-space:nowrap !important;
+  flex-shrink:0 !important;
+  line-height:1.2 !important;
 }
 .shop-toast__title::after,
 .shop-toast__status::after {
@@ -1176,9 +1185,9 @@ div#shopToast > div,
 .shop-toast__name,
 .shop-toast__item {
   font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-  font-size:.74rem !important;letter-spacing:normal !important;font-weight:400 !important;
-  color:#71717a !important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  max-width:150px;
+  font-size:.76rem !important;letter-spacing:normal !important;font-weight:500 !important;
+  color:#18181b !important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  max-width:270px;
 }
 .shop-toast__btn,
 #toastOpenWishlistBtn,
@@ -2510,7 +2519,7 @@ main footer#end form#footerNewsletterForm > span:nth-of-type(1){
     transform: translateX(-50%) translateY(16px) !important;
     z-index: 100050 !important;
     width: auto !important;
-    max-width: min(92vw, 380px) !important;
+    max-width: min(94vw, 420px) !important;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.16), 0 2px 8px rgba(0, 0, 0, 0.08) !important;
   }
   .shop-toast.show,
@@ -2520,10 +2529,10 @@ main footer#end form#footerNewsletterForm > span:nth-of-type(1){
     pointer-events: auto !important;
   }
   .shop-toast__inner{
-    padding:.4rem .55rem .4rem .75rem !important;gap:.5rem !important;
+    padding:.4rem .55rem .4rem .6rem !important;gap:.45rem !important;
   }
   .shop-toast__name, .shop-toast__item{
-    max-width:120px !important;font-size:.72rem !important;
+    max-width:185px !important;font-size:.73rem !important;
   }
   .shop-toast__btn{
     padding:.28rem .65rem !important;font-size:.65rem !important;letter-spacing:normal !important;
@@ -14927,12 +14936,17 @@ body:has(.return-exchange-modal.open) .mobile-bottom-bar,
 }
 
 .notification-card__tag {
+  display: inline-flex;
+  align-items: center;
+  background: #0e0e11;
+  color: #ffffff;
   font-family: var(--mono, monospace);
   font-size: 0.58rem;
-  letter-spacing: 0.1em;
-  color: #dc2626;
+  letter-spacing: 0.08em;
   font-weight: 700;
   text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 4px;
 }
 
 .notification-card__time {

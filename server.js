@@ -8,7 +8,7 @@ import nodemailer from 'nodemailer';
 import * as zohoInventory from './zohoInventory.js';
 import { doesZohoSalesOrderBelongToCustomer, mapZohoSalesOrderToAccountOrder } from './zohoOrderHelper.js';
 import { getProductImageBuffer } from './productImage.js';
-import { renderOrderConfirmationEmail, renderReturnConfirmationEmail, renderShipmentFulfilledEmail } from './emailTemplates.js';
+import { renderOrderConfirmationEmail, renderReturnConfirmationEmail, renderShipmentFulfilledEmail, renderEmailOtpEmail } from './emailTemplates.js';
 import { verifyUpiPaymentViaImap } from './imapPaymentVerifier.js';
 import {
   connectMongoDb,
@@ -3174,14 +3174,12 @@ const handleListProducts = async (req, res) => {
     }
   }
 
-  // Combine Zoho items first, then DEFAULT_PRODUCTS for any remaining catalog items
-  const combined = [...zohoItems];
-  const seenSkus = new Set(zohoItems.map(i => (i.sku || i.id || '').toLowerCase()));
-  for (const p of DEFAULT_PRODUCTS) {
-    if (!seenSkus.has((p.sku || p.id || '').toLowerCase())) {
-      combined.push(p);
-    }
-  }
+  // Strictly serve only the active products present in Zoho Inventory
+  const combined = zohoItems.length > 0
+    ? [...zohoItems]
+    : (zohoInventory.tokenState && Array.isArray(zohoInventory.tokenState.cachedItems) && zohoInventory.tokenState.cachedItems.length > 0
+      ? [...zohoInventory.tokenState.cachedItems]
+      : [DEFAULT_PRODUCTS[0]]);
 
   const normalized = combined.map(normalizeProduct);
 
@@ -4215,6 +4213,47 @@ app.get('/api/email-preview/:type', (req, res) => {
     return res.send(html);
   }
 
+  if (type === 'auth_otp') {
+    const { html } = renderEmailOtpEmail({
+      otpCode: '849201',
+      recipientName: 'Aniruddha Nag',
+      recipientEmail: 'aniruddhanag9@gmail.com',
+      heading: 'Email Verification',
+      codeLabel: 'Verification OTP',
+      supportEmail
+    });
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    return res.send(html);
+  }
+
+  if (type === 'change_phone_otp') {
+    const { html } = renderEmailOtpEmail({
+      otpCode: '849201',
+      recipientName: 'Aniruddha Nag',
+      heading: 'Phone Number Change',
+      bodyLineHtml: 'We received a request to update the primary mobile number on your The Street Co account from <strong style="color:#171717;font-weight:600;">+91 6296731835</strong> to <strong style="color:#171717;font-weight:600;">+91 9876543210</strong>.',
+      codeLabel: 'Authorization OTP',
+      validityNote: 'This authorization code is valid for 10 minutes. If you did not initiate this change, please contact support immediately.',
+      supportEmail
+    });
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    return res.send(html);
+  }
+
+  if (type === 'change_email_otp') {
+    const { html } = renderEmailOtpEmail({
+      otpCode: '849201',
+      recipientName: 'Aniruddha Nag',
+      heading: 'Email Address Change',
+      bodyLineHtml: 'We received a request to update the email address on your The Street Co account from <strong style="color:#171717;font-weight:600;">aniruddhanag9@gmail.com</strong> to <strong style="color:#171717;font-weight:600;">newcontact@thestreetco.com</strong>.',
+      codeLabel: 'Authorization OTP',
+      validityNote: 'This authorization code is valid for 10 minutes. If you did not initiate this change, please contact support immediately.',
+      supportEmail
+    });
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    return res.send(html);
+  }
+
   const { html } = renderOrderConfirmationEmail({
     order: sampleOrder,
     useRelativeAssets: true,
@@ -4789,8 +4828,8 @@ app.post('/api/newsletter', (req, res) => {
     istDateTime: dt.istDateTime,
     savedToDatabase: true,
     message: isNew
-      ? 'Subscription complete. You have been enrolled into the VIP Network. ₹500 welcome credit activated!'
-      : 'Your email is already subscribed to VIP dispatches. Updates will continue as scheduled.'
+      ? `Subscribed ${cleanEmail} to limited drop & restock alerts.`
+      : `${cleanEmail} is already subscribed to drop alerts.`
   });
 });
 
@@ -5917,34 +5956,21 @@ app.post('/api/account/send-email-otp', async (req, res) => {
     if (gmail) {
       try {
         const senderUser = (process.env.GMAIL_SMTP_USER || GMAIL_SMTP_USER).trim();
+        const supportEmail = (process.env.GMAIL_REPLY_TO || 'support@thestreetco.zohodesk.in').trim();
+        const { subject, html, text } = renderEmailOtpEmail({
+          otpCode,
+          recipientName: fullName,
+          recipientEmail: cleanEmail,
+          heading: 'Email Verification',
+          codeLabel: 'Verification OTP',
+          supportEmail
+        });
         await gmail.sendMail({
           from: `"${GMAIL_SENDER_NAME}" <${senderUser}>`,
           to: cleanEmail,
-          subject: `${otpCode} is your 6-Digit Email Verification OTP — The Street Co`,
-          html: `
-            <div style="font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:540px;margin:0 auto;background:#faf8f5;border:1px solid #e8e2d8;border-radius:12px;overflow:hidden;color:#0e0e11;">
-              <div style="background:#0e0e11;color:#ffffff;padding:24px;text-align:center;">
-                <div style="font-family:'Playfair Display',Georgia,serif;font-size:22px;letter-spacing:0.18em;font-weight:600;">THE STREET CO</div>
-                <div style="font-size:11px;letter-spacing:0.14em;color:#c5a880;margin-top:6px;">EMAIL VERIFICATION · SECURITY CODE</div>
-              </div>
-              <div style="padding:32px 28px;background:#ffffff;">
-                <p style="font-size:15px;margin:0 0 12px;color:#18181b;">Hello <strong>${fullName}</strong>,</p>
-                <p style="font-size:14px;line-height:1.6;color:#52525b;margin:0 0 24px;">
-                  Use the 6-digit verification code below to verify and save your email address (<strong>${cleanEmail}</strong>) on your The Street Co account:
-                </p>
-                <div style="background:#faf8f5;border:1.5px dashed #d4d4d8;border-radius:12px;padding:20px;text-align:center;margin:0 0 24px;">
-                  <span style="font-size:11px;letter-spacing:0.14em;color:#71717a;display:block;margin-bottom:8px;font-weight:500;">YOUR 6-DIGIT VERIFICATION OTP</span>
-                  <div style="font-size:32px;font-weight:500;letter-spacing:0.24em;color:#27272a;font-family:'Plus Jakarta Sans',sans-serif;">${otpCode}</div>
-                </div>
-                <p style="font-size:12px;color:#71717a;line-height:1.5;margin:0;">
-                  This code is valid for 10 minutes. If you did not request this verification, you can safely ignore this email.
-                </p>
-              </div>
-              <div style="padding:16px 28px;background:#f5efeb;border-top:1px solid #e8e2d8;text-align:center;font-size:11px;color:#78716c;">
-                © ${new Date().getFullYear()} The Street Co · Elevated Style. Modern Essentials.
-              </div>
-            </div>
-          `
+          subject,
+          text,
+          html
         });
         emailDispatched = true;
         console.log(`[Account Email OTP] Sent 6-digit OTP to ${cleanEmail}`);
@@ -6088,34 +6114,23 @@ app.post('/api/account/change-phone/send-otp', async (req, res) => {
       if (gmail) {
         try {
           const senderUser = (process.env.GMAIL_SMTP_USER || GMAIL_SMTP_USER).trim();
+          const supportEmail = (process.env.GMAIL_REPLY_TO || 'support@thestreetco.zohodesk.in').trim();
+          const { subject, html, text } = renderEmailOtpEmail({
+            otpCode,
+            recipientName: user?.firstName || 'Customer',
+            heading: 'Phone Number Change',
+            bodyLineHtml: `We received a request to update the primary mobile number on your The Street Co account from <strong style="color:#171717;font-weight:600;">+91 ${cleanCurrent}</strong> to <strong style="color:#171717;font-weight:600;">+91 ${cleanNew}</strong>.`,
+            codeLabel: 'Authorization OTP',
+            validityNote: 'This authorization code is valid for 10 minutes. If you did not initiate this change, please contact support immediately.',
+            subject: `${otpCode} — Security Code to Change Mobile Number · The Street Co`,
+            supportEmail
+          });
           await gmail.sendMail({
             from: `"${GMAIL_SENDER_NAME}" <${senderUser}>`,
             to: userEmail,
-            subject: `${otpCode} — Security Code to Change Mobile Number · The Street Co`,
-            html: `
-              <div style="font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;max-width:540px;margin:0 auto;background:#faf8f5;border:1px solid #e8e2d8;border-radius:12px;overflow:hidden;color:#0e0e11;">
-                <div style="background:#0e0e11;color:#ffffff;padding:24px;text-align:center;">
-                  <div style="font-family:'Playfair Display',Georgia,serif;font-size:22px;letter-spacing:0.18em;font-weight:600;">THE STREET CO</div>
-                  <div style="font-size:11px;letter-spacing:0.14em;color:#c5a880;margin-top:6px;">SECURITY AUTHORIZATION · PHONE NUMBER CHANGE</div>
-                </div>
-                <div style="padding:32px 28px;background:#ffffff;">
-                  <p style="font-size:15px;margin:0 0 12px;color:#18181b;">Hello,</p>
-                  <p style="font-size:14px;line-height:1.6;color:#52525b;margin:0 0 20px;">
-                    We received a request to update the primary mobile number on your The Street Co account from <span style="font-weight:500;color:#3f3f46;">+91 ${cleanCurrent}</span> to <span style="font-weight:500;color:#3f3f46;">+91 ${cleanNew}</span>.
-                  </p>
-                  <div style="background:#faf8f5;border:1.5px dashed #d4d4d8;border-radius:12px;padding:20px;text-align:center;margin:0 0 24px;">
-                    <span style="font-size:11px;letter-spacing:0.14em;color:#71717a;display:block;margin-bottom:8px;font-weight:500;">YOUR 6-DIGIT AUTHORIZATION OTP</span>
-                    <div style="font-size:32px;font-weight:500;letter-spacing:0.24em;color:#27272a;font-family:'Plus Jakarta Sans',sans-serif;">${otpCode}</div>
-                  </div>
-                  <p style="font-size:12px;color:#71717a;line-height:1.5;margin:0;">
-                    This authorization code is valid for 10 minutes. If you did not initiate this change, please contact support immediately at support@thestreetco.zohodesk.in.
-                  </p>
-                </div>
-                <div style="padding:16px 28px;background:#f5efeb;border-top:1px solid #e8e2d8;text-align:center;font-size:11px;color:#78716c;">
-                  © ${new Date().getFullYear()} The Street Co · Security Department
-                </div>
-              </div>
-            `
+            subject,
+            text,
+            html
           });
           emailDispatched = true;
         } catch (mailErr) {
@@ -6244,34 +6259,23 @@ app.post('/api/account/change-email/send-otp', async (req, res) => {
       if (gmail) {
         try {
           const senderUser = (process.env.GMAIL_SMTP_USER || GMAIL_SMTP_USER).trim();
+          const supportEmail = (process.env.GMAIL_REPLY_TO || 'support@thestreetco.zohodesk.in').trim();
+          const { subject, html, text } = renderEmailOtpEmail({
+            otpCode,
+            recipientName: user?.firstName || 'Customer',
+            heading: 'Email Address Change',
+            bodyLineHtml: `We received a request to update the email address on your The Street Co account from <strong style="color:#171717;font-weight:600;">${userEmail}</strong> to <strong style="color:#171717;font-weight:600;">${cleanNewEmail}</strong>.`,
+            codeLabel: 'Authorization OTP',
+            validityNote: 'This authorization code is valid for 10 minutes. If you did not initiate this change, please contact support immediately.',
+            subject: `${otpCode} — Security Code to Change Account Email · The Street Co`,
+            supportEmail
+          });
           await gmail.sendMail({
             from: `"${GMAIL_SENDER_NAME}" <${senderUser}>`,
             to: userEmail,
-            subject: `${otpCode} — Security Code to Change Account Email · The Street Co`,
-            html: `
-              <div style="font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;max-width:540px;margin:0 auto;background:#faf8f5;border:1px solid #e8e2d8;border-radius:12px;overflow:hidden;color:#0e0e11;">
-                <div style="background:#0e0e11;color:#ffffff;padding:24px;text-align:center;">
-                  <div style="font-family:'Playfair Display',Georgia,serif;font-size:22px;letter-spacing:0.18em;font-weight:600;">THE STREET CO</div>
-                  <div style="font-size:11px;letter-spacing:0.14em;color:#c5a880;margin-top:6px;">SECURITY AUTHORIZATION · EMAIL ADDRESS CHANGE</div>
-                </div>
-                <div style="padding:32px 28px;background:#ffffff;">
-                  <p style="font-size:15px;margin:0 0 12px;color:#18181b;">Hello,</p>
-                  <p style="font-size:14px;line-height:1.6;color:#52525b;margin:0 0 20px;">
-                    We received a request to update the email address on your The Street Co account from <strong>${userEmail}</strong> to <strong>${cleanNewEmail}</strong>.
-                  </p>
-                  <div style="background:#faf8f5;border:1.5px dashed #d4d4d8;border-radius:12px;padding:20px;text-align:center;margin:0 0 24px;">
-                    <span style="font-size:11px;letter-spacing:0.14em;color:#71717a;display:block;margin-bottom:8px;font-weight:500;">YOUR 6-DIGIT AUTHORIZATION OTP</span>
-                    <div style="font-size:32px;font-weight:500;letter-spacing:0.24em;color:#27272a;font-family:'Plus Jakarta Sans',sans-serif;">${otpCode}</div>
-                  </div>
-                  <p style="font-size:12px;color:#71717a;line-height:1.5;margin:0;">
-                    This authorization code is valid for 10 minutes. If you did not initiate this change, please contact support immediately at support@thestreetco.zohodesk.in.
-                  </p>
-                </div>
-                <div style="padding:16px 28px;background:#f5efeb;border-top:1px solid #e8e2d8;text-align:center;font-size:11px;color:#78716c;">
-                  © ${new Date().getFullYear()} The Street Co · Security Department
-                </div>
-              </div>
-            `
+            subject,
+            text,
+            html
           });
           emailDispatched = true;
         } catch (mailErr) {

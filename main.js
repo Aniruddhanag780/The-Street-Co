@@ -621,17 +621,50 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     let title = '';
     let itemText = '';
 
+    function inferContextualToastTitle(rawText, toastType) {
+      const m = String(rawText || '').toLowerCase();
+      if (toastType === 'wishlist') return 'Saved to Wishlist';
+      if (toastType === 'price-drop') return 'Price Drop Alert';
+      if (toastType === 'cart' || toastType === 'bag') return 'Added to Bag';
+      if (m.includes('logged in') || m.includes('signed in')) return 'Signed In';
+      if (m.includes('logged out') || m.includes('signed out')) return 'Signed Out';
+      if (m.includes('synced') && m.includes('order')) return 'Orders Synced';
+      if (m.includes('order') && (m.includes('confirmed') || m.includes('placed'))) return 'Order Confirmed';
+      if (m.includes('sms') && m.includes('sent')) return 'Order SMS Sent';
+      if (m.includes('otp') && (m.includes('sent') || m.includes('dispatched') || m.includes('sending'))) return 'OTP Dispatched';
+      if (m.includes('otp') || m.includes('6 digits') || m.includes('6-digit') || m.includes('authorization code')) {
+        return toastType === 'error' ? 'OTP Verification' : 'OTP Verified';
+      }
+      if (m.includes('email') && (m.includes('verified') || m.includes('saved') || m.includes('changed'))) return 'Email Verified';
+      if (m.includes('email')) return toastType === 'error' ? 'Email Required' : 'Email Update';
+      if ((m.includes('mobile') || m.includes('phone')) && (m.includes('changed') || m.includes('updated') || m.includes('verified'))) return 'Phone Updated';
+      if (m.includes('10-digit') || m.includes('mobile number') || m.includes('phone')) return 'Mobile Number Required';
+      if (m.includes('pin') || m.includes('zip')) return 'PIN Code Required';
+      if (m.includes('recipient') || m.includes('full name') || m.includes('first name') || m.includes('last name')) return 'Name Required';
+      if (m.includes('house') || m.includes('flat') || m.includes('street') || m.includes('city') || m.includes('state') || m.includes('address')) {
+        return toastType === 'error' ? 'Incomplete Address' : 'Address Updated';
+      }
+      if (m.includes('coupon') || m.includes('promo') || m.includes('voucher')) {
+        return toastType === 'error' ? 'Promo Code Required' : 'Voucher Applied';
+      }
+      if (m.includes('cash on delivery') || m.includes('payment') || m.includes('cod')) return 'Cash on Delivery';
+      if (m.includes('exchange')) return 'Exchange Scheduled';
+      if (m.includes('return')) return 'Return Scheduled';
+      if (m.includes('street cash')) return 'The Street Cash';
+      return toastType === 'error' ? 'Action Required' : 'Store Update';
+    }
+
     if (optionalDetail) {
-      title = String(titleOrName || '').trim();
+      const rawTitle = String(titleOrName || '').trim();
       itemText = String(optionalDetail || '').trim();
+      if (!rawTitle || rawTitle.toLowerCase() === 'notice' || rawTitle.toLowerCase() === 'payment notice') {
+        title = inferContextualToastTitle(itemText, type);
+      } else {
+        title = rawTitle;
+      }
     } else {
-      const isWishlist = type === 'wishlist';
-      const isPriceDrop = type === 'price-drop';
-      if (isWishlist) title = 'Saved to Wishlist';
-      else if (isPriceDrop) title = 'Price Drop Alert';
-      else if (type === 'cart' || type === 'bag') title = 'Added to Bag';
-      else title = 'Notice';
-      itemText = String(titleOrName || '').trim();
+      itemText = String(titleOrName || '').trim().replace(/^[✓✔]\s*/, '');
+      title = inferContextualToastTitle(itemText, type);
     }
 
     const titleLower = title.toLowerCase();
@@ -653,13 +686,20 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     else if (title === 'ALL ITEMS MOVED TO CART') title = 'All Items Moved';
     else if (title === 'PRICE DROP ALERT') title = 'Price Alert';
     else if (title === 'ALERT REMOVED') title = 'Alert Removed';
-    else if (title === 'ORDER SMS DISPATCHED') title = 'SMS Sent';
+    else if (title === 'ORDER SMS DISPATCHED') title = 'Order SMS Sent';
     else if (title === 'ORDER PLACED & CONFIRMED') title = 'Order Confirmed';
     else if (title === 'FIELDS REFRESHED') title = 'Fields Cleared';
-    else if (title === 'COPIED ORDER ID' || title === 'ORDER ID') title = 'Copied';
+    else if (title === 'COPIED ORDER ID' || title === 'ORDER ID') title = 'Order ID Copied';
+    else if (title === 'COPIED REQUEST ID' || title === 'REQUEST ID') title = 'Request ID Copied';
     else if (title === 'LINK COPIED') title = 'Link Copied';
     else if (title === 'SHARED') title = 'Shared';
     else if (title === 'APP INSTALLED') title = 'App Installed';
+    else if (title === 'INCOMPLETE ADDRESS') title = 'Incomplete Address';
+    else if (title === 'CART IS EMPTY') title = 'Bag is Empty';
+    else if (title === 'PLEASE SELECT AN ITEM') title = 'Select an Item';
+    else if (title === 'RETURN REQUEST SUBMITTED') title = 'Return Confirmed';
+    else if (title === 'EXCHANGE REQUEST SUBMITTED') title = 'Exchange Confirmed';
+    else if (title === 'REQUEST CANCELLED') title = 'Request Cancelled';
 
     const isRemoved = title.toLowerCase().includes('removed');
 
@@ -726,7 +766,6 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
         <div class="shop-toast__body">
           <span class="shop-toast__title">${title}</span>
           ${itemText && itemText !== title ? `
-            <span style="color:#d4d4d8;font-size:.65rem;user-select:none;">·</span>
             <span class="shop-toast__name" title="${itemText}">${itemText}</span>
           ` : ''}
         </div>
@@ -2108,9 +2147,6 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     validateField(checkoutPincodeInput, document.getElementById('checkoutPincodeError'), 'Please enter a valid 6-digit postal PIN', v => /^\d{6}$/.test(v.trim()));
 
     if (!isValid) {
-      if (typeof showToast === 'function') {
-        showToast('INCOMPLETE ADDRESS', 'Please fill in all required delivery fields (Name, Phone, House/Flat, City, State, PIN).', 'info');
-      }
       return;
     }
 
@@ -3045,6 +3081,27 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       updateCartUI();
     }
 
+    // Show immediate ORDER PLACED toast and add order confirmation to the Notifications Bell drawer
+    const firstItemName = (itemsToOrder && itemsToOrder[0] && (itemsToOrder[0].name || itemsToOrder[0].title)) || 'The Street Co Apparel';
+    const moreCount = (itemsToOrder && itemsToOrder.length > 1) ? ` +${itemsToOrder.length - 1} more` : '';
+    if (typeof showToast === 'function') {
+      showToast(
+        'ORDER PLACED',
+        `Order #${generatedId} · ${firstItemName}${moreCount} (₹${Number(totalInr || 0).toLocaleString('en-IN')})`,
+        'info'
+      );
+    }
+    if (typeof window.pushStoreNotification === 'function') {
+      window.pushStoreNotification({
+        id: `order_${generatedId}_${Date.now()}`,
+        title: `Order #${generatedId} Confirmed`,
+        body: `${firstItemName}${moreCount} · Total ₹${Number(totalInr || 0).toLocaleString('en-IN')} (${paymentMethod === 'cod' ? 'Cash on Delivery' : 'Paid'}). Dispatches via Delhivery Express.`,
+        tag: 'ORDER PLACED',
+        iconEmoji: '📦',
+        timestamp: Date.now()
+      });
+    }
+
     // Immediately render and switch to confirmation step without any delay or loading screen
     renderOrderConfirmationStep(fullOrderRecord);
     goToCheckoutStep(4);
@@ -3208,7 +3265,6 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
   if (checkoutRefreshAddressBtn) {
     checkoutRefreshAddressBtn.addEventListener('click', () => {
       resetAddressAndDeliveryFields({ clearStorage: true });
-      showToast('FIELDS REFRESHED', 'Address & courier options cleared', 'info');
       if (checkoutNameInput) checkoutNameInput.focus();
     });
   }
@@ -3305,9 +3361,9 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       // Don't toggle accordion if click is inside the body's interactive inputs
       if (e.target.closest('.checkout-pay-body')) return;
 
-      // Unavailable payment methods notice
+      // Unavailable payment methods feedback
       if (opt.dataset.unavailable === 'true' || opt.classList.contains('checkout-pay-option--unavailable')) {
-        showToast('PAYMENT NOTICE', 'Online payment methods are temporarily unavailable. Cash on Delivery (COD) is selected.', 'info');
+        showToast('Cash on Delivery Active', 'Online payment methods are temporarily unavailable. Cash on Delivery (COD) is selected.', 'info');
         return;
       }
 
@@ -4047,7 +4103,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
         checkoutPromoMsg.textContent = '';
         checkoutPromoMsg.style.display = 'none';
       }
-      showToast('Notice', 'Please enter a coupon code.', 'error');
+      showToast('Enter Promo Code', 'Please type a coupon code before applying.', 'error');
       return;
     }
 
@@ -4198,13 +4254,10 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       navigator.clipboard.writeText(orderId).then(() => {
         const span = checkoutCopyIdBtn.querySelector('span');
         if (span) span.textContent = 'ORDER ID COPIED! ✓';
-        showToast('COPIED ORDER ID', orderId, 'info');
         setTimeout(() => {
           if (span) span.textContent = 'COPY ORDER ID';
         }, 2200);
-      }).catch(() => {
-        showToast('ORDER ID', orderId, 'info');
-      });
+      }).catch(() => {});
     });
   }
 
@@ -4926,7 +4979,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     iconSvg: `<svg viewBox="0 0 40 40" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="20" cy="20" r="14" stroke="var(--blood-hot)"/><text x="20" y="25" text-anchor="middle" font-family="sans-serif" font-size="12" fill="var(--bone)">閃</text></svg>`
   };
 
-  let collectionsData = [ZOHO_INITIAL_ITEM, ...CANONICAL_RELICS];
+  let collectionsData = [ZOHO_INITIAL_ITEM];
   window.collectionsData = collectionsData;
 
   const collectionsPage = document.getElementById('collectionsPage');
@@ -7944,12 +7997,22 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
         submitBtn.innerHTML = '<span>ALERT SET ✓</span>';
       }
 
-      // Trigger confirmation toast
+      // Trigger confirmation toast and Bell Notification for Item Alert
       showToast(
-        'PRICE DROP ALERT',
-        'Alert active for when price drops',
+        'ITEM ALERT SET',
+        `Price drop alert active for ${activeGalleryItem.name}`,
         'price-drop'
       );
+      if (typeof window.pushStoreNotification === 'function') {
+        window.pushStoreNotification({
+          id: `alert_${sku}_${Date.now()}`,
+          title: `Price Drop Alert Active`,
+          body: `Tracking price drops for ${activeGalleryItem.name}. Alerts will be sent to ${email}.`,
+          tag: 'ITEM ALERT SET',
+          iconEmoji: '🔔',
+          timestamp: Date.now()
+        });
+      }
 
       // Smoothly hide the email form after 2.2 seconds, keeping the button visible with ALERT ACTIVE ✓
       setTimeout(() => {
@@ -8643,7 +8706,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
         if (!rawEmail || !emailRegex.test(rawEmail)) {
           if (newsletterStatus) {
             newsletterStatus.className = 'footer__newsletter-status error';
-            newsletterStatus.textContent = '⚠ Please enter a valid safehouse email address.';
+            newsletterStatus.textContent = 'Please enter a valid email address.';
           }
           newsletterEmail.focus();
           return;
@@ -8651,10 +8714,10 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
 
         const originalBtnContent = newsletterBtn.innerHTML;
         newsletterBtn.disabled = true;
-        newsletterBtn.innerHTML = `<span>INITIATING...</span>`;
+        newsletterBtn.innerHTML = `<span>SUBSCRIBING...</span>`;
         if (newsletterStatus) {
           newsletterStatus.className = 'footer__newsletter-status';
-          newsletterStatus.textContent = 'Transmitting frequency coordinates to the Raven Network...';
+          newsletterStatus.textContent = '';
         }
 
         try {
@@ -8671,10 +8734,21 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
           });
           const result = await resp.json();
 
-            if (result && result.success) {
+          if (result && result.success) {
             if (newsletterStatus) {
-              newsletterStatus.className = 'footer__newsletter-status success';
-              newsletterStatus.textContent = `✓ ${result.message}`;
+              newsletterStatus.className = 'footer__newsletter-status';
+              newsletterStatus.textContent = '';
+            }
+            const toastMsg = result.isNew === false
+              ? `${rawEmail} is already subscribed to drop alerts`
+              : `Subscribed ${rawEmail} to limited drop & restock alerts`;
+            showToast('NEWSLETTER SUBSCRIBED', toastMsg, 'info');
+            if (typeof window.pushStoreNotification === 'function') {
+              window.pushStoreNotification(
+                'NEWSLETTER SUBSCRIBED',
+                result.isNew === false ? 'Newsletter Already Active' : 'Newsletter Subscribed',
+                toastMsg
+              );
             }
             if (typeof window.trackGAEvent === 'function') {
               window.trackGAEvent('newsletter_subscribe', {
@@ -8690,10 +8764,14 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
             throw new Error(result?.error || 'Subscription failed');
           }
         } catch (err) {
-          // Even on offline or transient network issue, provide resilient fallback feedback
           if (newsletterStatus) {
-            newsletterStatus.className = 'footer__newsletter-status success';
-            newsletterStatus.textContent = `✓ Subscription recorded locally. Updates enabled for ${rawEmail}.`;
+            newsletterStatus.className = 'footer__newsletter-status';
+            newsletterStatus.textContent = '';
+          }
+          const fallbackMsg = `Subscribed ${rawEmail} to limited drop & restock alerts`;
+          showToast('NEWSLETTER SUBSCRIBED', fallbackMsg, 'info');
+          if (typeof window.pushStoreNotification === 'function') {
+            window.pushStoreNotification('NEWSLETTER SUBSCRIBED', 'Newsletter Subscribed', fallbackMsg);
           }
           try {
             localStorage.setItem('the_street_co_newsletter_email', rawEmail);
@@ -8703,7 +8781,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
           setTimeout(() => {
             newsletterBtn.disabled = false;
             newsletterBtn.innerHTML = originalBtnContent;
-          }, 1500);
+          }, 1200);
         }
       });
     }
@@ -9250,6 +9328,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     updateNotificationCountBadge();
     renderNotificationsFeed();
   }
+  window.pushStoreNotification = addLocalNotification;
 
   function removeLocalNotification(id) {
     const list = getLocalNotifications().filter(n => n.id !== id);
@@ -10025,9 +10104,6 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       });
       renderLookbook(activeLookId);
       window.closeFitFinderModal();
-      if (typeof window.streetCoShowToast === 'function') {
-        window.streetCoShowToast('FIT PROFILE APPLIED', `Size ${latestRecommendedSize} selected across storefront & lookbook`);
-      }
     });
   }
 
@@ -10203,6 +10279,19 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           <strong style="display:block;color:#0e0e11;font-size:0.88rem;">✓ Priority Pass Reserved: ${passCode}</strong>
           <p style="margin:0.3rem 0 0;font-size:0.78rem;color:#52525b;">We have registered <strong>${email}</strong> for Size <strong>${preferredSize}</strong>. Early-access link dispatches 30 minutes prior to drop.</p>
         `;
+      }
+      if (typeof window.streetCoShowToast === 'function') {
+        window.streetCoShowToast('ITEM ALERT SET', `Waitlist alert active for ${drop.title} (Size ${preferredSize})`, 'price-drop');
+      }
+      if (typeof window.pushStoreNotification === 'function') {
+        window.pushStoreNotification({
+          id: `waitlist_${dropId}_${Date.now()}`,
+          title: `Waitlist Alert Active (${passCode})`,
+          body: `${drop.title} · Size ${preferredSize}. Early-access link dispatches to ${email}.`,
+          tag: 'ITEM ALERT SET',
+          iconEmoji: '🔔',
+          timestamp: Date.now()
+        });
       }
       if (submitBtn) {
         submitBtn.disabled = false;
@@ -12189,7 +12278,17 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     switchAccountTab('personal');
 
     if (window.streetCoShowToast) {
-      window.streetCoShowToast('Logged out successfully.');
+      window.streetCoShowToast('ACCOUNT LOGOUT', 'You have been logged out safely', 'info');
+    }
+    if (typeof window.pushStoreNotification === 'function') {
+      window.pushStoreNotification({
+        id: `logout_${Date.now()}`,
+        title: `Signed Out of Account`,
+        body: `Your session has been closed safely on this device.`,
+        tag: 'ACCOUNT LOGOUT',
+        iconEmoji: '🔒',
+        timestamp: Date.now()
+      });
     }
   };
 
@@ -12215,10 +12314,6 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           orders: mergedOrders
         });
         renderAccountOrdersUI();
-        if (showToastFeedback && window.streetCoShowToast) {
-          const sourceLabel = isZohoSynced ? 'Zoho Inventory' : 'Storefront';
-          window.streetCoShowToast(`Synced ${mergedOrders.length} order${mergedOrders.length === 1 ? '' : 's'} from ${sourceLabel}.`);
-        }
       }
     } catch (_) {
       // Silently ignore transient background fetch interruptions
@@ -12575,15 +12670,10 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(idText).then(() => {
         if (span) span.textContent = 'REQUEST ID COPIED! ✓';
-        if (typeof showToast === 'function') showToast('COPIED REQUEST ID', idText, 'info');
         setTimeout(() => {
           if (span) span.textContent = 'COPY REQUEST ID';
         }, 2200);
-      }).catch(() => {
-        if (typeof showToast === 'function') showToast('REQUEST ID', idText, 'info');
-      });
-    } else if (typeof showToast === 'function') {
-      showToast('REQUEST ID', idText, 'info');
+      }).catch(() => {});
     }
   };
 
@@ -13106,12 +13196,23 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       saveLocalAccount({ orders: [ord, ...currentAccOrders] });
     }
 
+    const returnTopic = type === 'exchange' ? 'EXCHANGE REQUESTED' : 'RETURN REQUESTED';
     if (typeof showToast === 'function') {
       showToast(
-        type === 'exchange' ? 'EXCHANGE REQUEST SUBMITTED' : 'RETURN REQUEST SUBMITTED',
+        returnTopic,
         `Order #${cleanCode}${req.salesreturn_number ? ` · Zoho RMA #${req.salesreturn_number}` : ''} · Free reverse pickup scheduled.`,
         'cart'
       );
+    }
+    if (typeof window.pushStoreNotification === 'function') {
+      window.pushStoreNotification({
+        id: `return_${cleanCode}_${Date.now()}`,
+        title: `${type === 'exchange' ? 'Size Exchange' : 'Refund Return'} Scheduled — Order #${cleanCode}`,
+        body: `${req.itemNames || 'Selected item'}${req.salesreturn_number ? ` · RMA #${req.salesreturn_number}` : ''}. Free Delhivery doorstep pickup scheduled.`,
+        tag: returnTopic,
+        iconEmoji: '🔄',
+        timestamp: Date.now()
+      });
     }
 
     if (typeof renderAccountOrdersUI === 'function') renderAccountOrdersUI();
@@ -13298,9 +13399,6 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     saveLocalOrder(sampleOrder);
     accountState.orders = [sampleOrder, ...(accountState.orders || [])];
     saveLocalAccount({ orders: accountState.orders });
-    if (typeof showToast === 'function') {
-      showToast('SAMPLE ORDER CREATED', 'Previewing order card in your order history.', 'info');
-    }
     renderAccountOrdersUI();
   };
 
@@ -13540,29 +13638,33 @@ window.openDelhiveryTracker = openDelhiveryTracker;
 
   function showFlowFeedback(elId, message, isError = false) {
     const el = document.getElementById(elId);
-    if (el) {
-      el.style.display = 'none';
-      el.textContent = '';
+    if (!message) {
+      if (el) {
+        el.style.display = 'none';
+        el.textContent = '';
+      }
+      return;
     }
-    if (!message) return;
-    const cleanMsg = String(message).replace(/^[❌⚠️✓ℹ️]\s*/, '').trim();
-    const toastFn = window.streetCoShowToast || window.showToast;
-    if (typeof toastFn === 'function') {
-      toastFn(isError ? 'Notice' : 'Success', cleanMsg, isError ? 'error' : 'success');
+    if (el) {
+      el.style.display = 'block';
+      el.style.color = isError ? '#dc2626' : '#16a34a';
+      el.textContent = String(message).trim();
     }
   }
 
   function showAccountFeedback(message, isError = false) {
     const el = document.getElementById('accountSaveFeedbackBox');
-    if (el) {
-      el.style.display = 'none';
-      el.textContent = '';
+    if (!message) {
+      if (el) {
+        el.style.display = 'none';
+        el.textContent = '';
+      }
+      return;
     }
-    if (!message) return;
-    const cleanMsg = String(message).replace(/^[❌⚠️✓ℹ️]\s*/, '').trim();
-    const toastFn = window.streetCoShowToast || window.showToast;
-    if (typeof toastFn === 'function') {
-      toastFn(isError ? 'Notice' : 'Changes Saved', cleanMsg, isError ? 'error' : 'success');
+    if (el) {
+      el.style.display = 'block';
+      el.style.color = isError ? '#dc2626' : '#16a34a';
+      el.textContent = String(message).trim();
     }
   }
 
@@ -14084,6 +14186,9 @@ window.openDelhiveryTracker = openDelhiveryTracker;
         phone: phoneDigits,
         instantOtpCode: !data.smsDispatched ? data.otpCode : null
       });
+      if (window.streetCoShowToast) {
+        window.streetCoShowToast('SMS OTP SENT', `6-digit verification code sent to +91 ${phoneDigits}`, 'info');
+      }
     } catch (err) {
       showFlowFeedback('phoneLoginFeedbackMsg', err.message || 'Could not send OTP. Please try again.', true);
     } finally {
@@ -14185,7 +14290,17 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           refreshAccountOrdersFromMongo(false);
           showAccountFeedback(`✓ Mobile number successfully changed to +91 ${newPhone}!`, false);
           if (window.streetCoShowToast) {
-            window.streetCoShowToast(`✓ Mobile number changed to +91 ${newPhone}`);
+            window.streetCoShowToast('PHONE CHANGED', `Mobile number updated to +91 ${newPhone}`, 'success');
+          }
+          if (typeof window.pushStoreNotification === 'function') {
+            window.pushStoreNotification({
+              id: `phone_changed_${Date.now()}`,
+              title: `Mobile Number Updated`,
+              body: `Your registered account number has been changed to +91 ${newPhone}.`,
+              tag: 'PHONE CHANGED',
+              iconEmoji: '📱',
+              timestamp: Date.now()
+            });
           }
         } else if (activeOtpContext.mode === 'change_email') {
           const res = await fetch('/api/account/change-email/verify-otp', {
@@ -14220,7 +14335,17 @@ window.openDelhiveryTracker = openDelhiveryTracker;
             window.syncStreetCashFromBackend();
           }
           if (window.streetCoShowToast) {
-            window.streetCoShowToast(`✓ Email address changed to ${newEmail}`);
+            window.streetCoShowToast('EMAIL CHANGED', `Email address updated to ${newEmail}`, 'success');
+          }
+          if (typeof window.pushStoreNotification === 'function') {
+            window.pushStoreNotification({
+              id: `email_changed_${Date.now()}`,
+              title: `Email Address Updated`,
+              body: `Your verified account email has been changed to ${newEmail}.`,
+              tag: 'EMAIL CHANGED',
+              iconEmoji: '✉️',
+              timestamp: Date.now()
+            });
           }
         } else if (activeOtpContext.mode === 'phone') {
           const res = await fetch('/api/account/verify-phone-otp', {
@@ -14270,13 +14395,23 @@ window.openDelhiveryTracker = openDelhiveryTracker;
             restorePreviousContextAfterAuth(ctxToRestore);
             if (window.streetCoShowToast) {
               const targetLabel = ctxToRestore.type === 'cart' ? 'Cart' : 'Product page';
-              window.streetCoShowToast(`Logged in with +91 ${activeOtpContext.targetPhone} · Returned to your ${targetLabel}`);
+              window.streetCoShowToast('ACCOUNT LOGIN', `Signed in with +91 ${activeOtpContext.targetPhone} · Returned to ${targetLabel}`, 'info');
             }
           } else {
             window.openAccountPage();
             if (window.streetCoShowToast) {
-              window.streetCoShowToast(`Logged in with +91 ${activeOtpContext.targetPhone}`);
+              window.streetCoShowToast('ACCOUNT LOGIN', `Signed in with +91 ${activeOtpContext.targetPhone}`, 'info');
             }
+          }
+          if (typeof window.pushStoreNotification === 'function') {
+            window.pushStoreNotification({
+              id: `login_${Date.now()}`,
+              title: `Signed In Successfully`,
+              body: `Logged into your account with +91 ${activeOtpContext.targetPhone}.`,
+              tag: 'ACCOUNT LOGIN',
+              iconEmoji: '👤',
+              timestamp: Date.now()
+            });
           }
         } else {
           // Email OTP verification using the exact same 6-digit OTP Popup/Page
@@ -14313,7 +14448,17 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           renderAccountPageUI();
           showAccountFeedback(`✓ Email (${activeOtpContext.targetEmail}) verified with 6-digit OTP and saved to your account!`, false);
           if (window.streetCoShowToast) {
-            window.streetCoShowToast(`Email verified & saved: ${activeOtpContext.targetEmail}`);
+            window.streetCoShowToast('EMAIL VERIFIED', `Verified & saved ${activeOtpContext.targetEmail}`, 'success');
+          }
+          if (typeof window.pushStoreNotification === 'function') {
+            window.pushStoreNotification({
+              id: `email_verified_${Date.now()}`,
+              title: `Email Verified & Saved`,
+              body: `${activeOtpContext.targetEmail} is now verified on your account.`,
+              tag: 'EMAIL VERIFIED',
+              iconEmoji: '✉️',
+              timestamp: Date.now()
+            });
           }
         }
       } catch (err) {
@@ -14563,6 +14708,9 @@ window.openDelhiveryTracker = openDelhiveryTracker;
             subTitle: data.message,
             instantOtpCode: (!data.smsDispatched && !data.emailDispatched) ? data.otpCode : null
           });
+          if (window.streetCoShowToast) {
+            window.streetCoShowToast('SMS OTP SENT', data.message || `6-digit authorization OTP sent to +91 ${currentPhone}`, 'info');
+          }
         } else {
           const emailInput = document.getElementById('changeCredentialEmailInput');
           const newEmail = String(emailInput ? emailInput.value : '').trim().toLowerCase();
@@ -14591,6 +14739,9 @@ window.openDelhiveryTracker = openDelhiveryTracker;
             subTitle: data.message,
             instantOtpCode: (!data.smsDispatched && !data.emailDispatched) ? data.otpCode : null
           });
+          if (window.streetCoShowToast) {
+            window.streetCoShowToast('EMAIL OTP SENT', data.message || `6-digit authorization OTP sent to your email`, 'info');
+          }
         }
       } catch (err) {
         showFlowFeedback('changeCredentialFeedbackMsg', err.message || 'Operation failed. Please try again.', true);
@@ -14685,6 +14836,9 @@ window.openDelhiveryTracker = openDelhiveryTracker;
         firstName: fName,
         lastName: lName
       });
+      if (window.streetCoShowToast) {
+        window.streetCoShowToast('EMAIL OTP SENT', `6-digit verification code sent to ${cleanEmail}`, 'info');
+      }
     } catch (err) {
       showAccountFeedback(err.message || 'Failed to send verification email.', true);
     } finally {
@@ -14838,7 +14992,17 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       }
       const toastFn = window.streetCoShowToast || window.showToast;
       if (typeof toastFn === 'function') {
-        toastFn('Changes Saved', 'Your account profile has been saved.', 'success');
+        toastFn('ACCOUNT SAVED', 'Your account profile details have been saved.', 'success');
+      }
+      if (typeof window.pushStoreNotification === 'function') {
+        window.pushStoreNotification({
+          id: `profile_saved_${Date.now()}`,
+          title: `Account Profile Saved`,
+          body: `Updated profile details for ${[fName, lName].filter(Boolean).join(' ')}.`,
+          tag: 'ACCOUNT SAVED',
+          iconEmoji: '✓',
+          timestamp: Date.now()
+        });
       }
     });
   }

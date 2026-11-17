@@ -438,10 +438,10 @@ function renderMinimalEmailShell({
                 <div class="email-subtle-text" style="margin-top:20px;font-size:10px;font-weight:600;letter-spacing:0.22em;text-transform:uppercase;color:#78716c;line-height:1.6;">
                   TIMELESS STREETWEAR CULTURE // ARCHIVE COLLECTION
                 </div>
-                <div class="email-muted-text" style="margin-top:8px;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#52525b;line-height:1.5;">
+                <div class="email-subtle-text" style="margin-top:8px;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#78716c;line-height:1.5;">
                   &copy; 2026 THE STREET CO ALL RIGHTS RESERVED.
                 </div>
-                <div class="email-subtle-text" style="margin-top:2px;font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:#a8a29e;line-height:1.5;">
+                <div class="email-subtle-text" style="margin-top:2px;font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:#78716c;line-height:1.5;">
                   ELEVATED STYLE &middot; MODERN ESSENTIALS
                 </div>
 
@@ -929,5 +929,153 @@ TIMELESS STREETWEAR CULTURE // ARCHIVE COLLECTION
 © 2026 THE STREET CO ALL RIGHTS RESERVED.`;
 
   return { subject, html, text, cleanOrderNumber, cidAttachments };
+}
+
+export function renderEmailOtpEmail({
+  otpCode = '849201',
+  recipientName = 'Customer',
+  recipientEmail = '',
+  heading = 'Email Verification',
+  bodyLineHtml = '',
+  codeLabel = 'Verification OTP',
+  validityNote = 'This verification code is valid for 10 minutes. If you did not request this verification, you can safely ignore this email.',
+  subject = '',
+  supportEmail = DEFAULT_SUPPORT_EMAIL,
+  websiteHref = DEFAULT_WEBSITE_URL,
+  websiteLabel = DEFAULT_WEBSITE_LABEL
+} = {}) {
+  const firstName = String(recipientName || 'Customer').trim().split(/\s+/)[0] || 'Customer';
+  const cleanCode = String(otpCode || '849201').trim();
+  const resolvedSubject = subject || `${cleanCode} is your 6-Digit Email Verification OTP — The Street Co`;
+  const defaultBodyHtml = recipientEmail
+    ? `Use the 6-digit verification code below to verify and save your email address (<strong style="color:#171717;font-weight:600;">${escapeHtml(recipientEmail)}</strong>) on your The Street Co account.`
+    : `Use the 6-digit verification code below to verify your email address on your The Street Co account.`;
+  const messageHtml = bodyLineHtml || defaultBodyHtml;
+
+  const html = `<!doctype html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light only">
+    <meta name="supported-color-schemes" content="light only">
+    <title>${escapeHtml(resolvedSubject)}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style type="text/css">
+      :root { color-scheme: light only; supported-color-schemes: light only; }
+      html, body { margin:0;padding:0;background-color:#FAF8F5 !important;color:#171717 !important;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;color-scheme:light only; }
+      table, td { border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt; }
+      @media (prefers-color-scheme: dark) {
+        html, body, .email-light-bg, .email-light-table { background-color:#FAF8F5 !important;background-image:linear-gradient(#FAF8F5,#FAF8F5) !important;color:#171717 !important; }
+        .email-dark-text, h1, h2, h3, strong { color:#171717 !important; }
+        .email-muted-text { color:#52525b !important; }
+        .email-subtle-text, .email-subtle-link { color:#78716c !important; }
+      }
+      [data-ogsb] .email-light-bg, [data-ogsb] body { background-color:#FAF8F5 !important; }
+      [data-ogsc] .email-dark-text, [data-ogsc] body { color:#171717 !important; }
+      [data-ogsc] .email-subtle-text, [data-ogsc] .email-subtle-link { color:#78716c !important; }
+      u + .body .email-light-bg { background-color:#FAF8F5 !important;background-image:linear-gradient(#FAF8F5,#FAF8F5) !important;color:#171717 !important; }
+    </style>
+  </head>
+  <body class="body email-light-bg" bgcolor="#FAF8F5" style="margin:0;padding:0;background-color:#FAF8F5;background-image:linear-gradient(#FAF8F5,#FAF8F5);color:#171717;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#FAF8F5" class="email-light-bg" style="width:100%;background-color:#FAF8F5;background-image:linear-gradient(#FAF8F5,#FAF8F5);">
+      <tr>
+        <td align="center" bgcolor="#FAF8F5" class="email-light-bg" style="padding:40px 16px 48px 16px;background-color:#FAF8F5;background-image:linear-gradient(#FAF8F5,#FAF8F5);">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#FAF8F5" class="email-light-table" style="width:100%;max-width:560px;background-color:#FAF8F5;background-image:linear-gradient(#FAF8F5,#FAF8F5);">
+            <!-- Centered Brand Wordmark -->
+            <tr>
+              <td align="center" style="padding:0 0 28px 0;">
+                <a href="${escapeHtml(websiteHref)}" target="_blank" class="email-dark-text" style="text-decoration:none;color:#000000;font-size:20px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;">
+                  THE STREET CO
+                </a>
+              </td>
+            </tr>
+
+            <!-- Main Heading -->
+            <tr>
+              <td align="center" style="padding:0 0 20px 0;">
+                <h1 class="email-dark-text" style="margin:0;font-size:28px;font-weight:500;line-height:1.25;letter-spacing:-0.02em;color:#111111;">
+                  ${escapeHtml(heading)}
+                </h1>
+              </td>
+            </tr>
+
+            <!-- Greeting & Body Copy (Text Only) -->
+            <tr>
+              <td align="center" class="email-muted-text" style="padding:0 12px 28px 12px;font-size:14px;line-height:1.65;color:#52525b;">
+                <div class="email-dark-text" style="margin:0 0 16px 0;color:#404040;">Hey ${escapeHtml(firstName)},</div>
+                <div style="margin:0 0 26px 0;">
+                  ${messageHtml}
+                </div>
+                <div style="font-size:11px;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;color:#78716c;margin:0 0 8px 0;">
+                  ${escapeHtml(codeLabel)}
+                </div>
+                <div class="email-dark-text" style="font-size:34px;font-weight:600;letter-spacing:0.26em;color:#111111;line-height:1.2;margin:0 0 26px 0;">
+                  ${escapeHtml(cleanCode)}
+                </div>
+                <div style="margin:0;font-size:13px;line-height:1.6;color:#52525b;">
+                  ${escapeHtml(validityNote)}
+                </div>
+              </td>
+            </tr>
+
+            <!-- Subtle Brand & Storefront Footer (Text Only, Uniform Bottom Colour #78716c) -->
+            <tr>
+              <td align="center" style="padding:28px 0 0 0;border-top:1px solid #e5dfd5;">
+                <div class="email-subtle-text" style="font-size:12px;color:#78716c;line-height:1.7;padding-top:6px;">
+                  Questions? Contact us at
+                  <a href="mailto:${escapeHtml(supportEmail)}" class="email-subtle-link" style="color:#78716c;text-decoration:underline;">${escapeHtml(supportEmail)}</a>
+                  <br>
+                  <a href="${escapeHtml(websiteHref)}" target="_blank" rel="noopener noreferrer" class="email-subtle-link" style="color:#78716c;text-decoration:underline;">${escapeHtml(websiteLabel)}</a> &middot; The Street Co
+                </div>
+
+                <!-- Brand Heritage Tagline (Uniform Colour #78716c) -->
+                <div class="email-subtle-text" style="margin-top:20px;font-size:10px;font-weight:600;letter-spacing:0.22em;text-transform:uppercase;color:#78716c;line-height:1.6;">
+                  TIMELESS STREETWEAR CULTURE // ARCHIVE COLLECTION
+                </div>
+                <div class="email-subtle-text" style="margin-top:8px;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#78716c;line-height:1.5;">
+                  &copy; 2026 THE STREET CO ALL RIGHTS RESERVED.
+                </div>
+                <div class="email-subtle-text" style="margin-top:2px;font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:#78716c;line-height:1.5;">
+                  ELEVATED STYLE &middot; MODERN ESSENTIALS
+                </div>
+
+                <!-- Legal Footer Links (Uniform Colour #78716c) -->
+                <div class="email-subtle-text" style="margin-top:16px;font-size:11px;color:#78716c;letter-spacing:0.04em;line-height:1.6;">
+                  <a href="${escapeHtml(websiteHref.replace(/\/$/, ''))}/#terms" target="_blank" rel="noopener noreferrer" class="email-subtle-link" style="color:#78716c;text-decoration:underline;">Terms</a>
+                  <span style="margin:0 6px;color:#78716c;">&middot;</span>
+                  <a href="${escapeHtml(websiteHref.replace(/\/$/, ''))}/#privacy" target="_blank" rel="noopener noreferrer" class="email-subtle-link" style="color:#78716c;text-decoration:underline;">Privacy</a>
+                  <span style="margin:0 6px;color:#78716c;">&middot;</span>
+                  <a href="${escapeHtml(websiteHref.replace(/\/$/, ''))}/#refund" target="_blank" rel="noopener noreferrer" class="email-subtle-link" style="color:#78716c;text-decoration:underline;">Refunds</a>
+                  <span style="margin:0 6px;color:#78716c;">&middot;</span>
+                  <a href="${escapeHtml(websiteHref.replace(/\/$/, ''))}/#shipping" target="_blank" rel="noopener noreferrer" class="email-subtle-link" style="color:#78716c;text-decoration:underline;">Shipping</a>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+
+  const text = `${heading}
+
+Hey ${firstName},
+
+${recipientEmail ? `Use the 6-digit verification code below to verify and save your email address (${recipientEmail}) on your The Street Co account.` : 'Use the 6-digit verification code below on your The Street Co account.'}
+
+${codeLabel}: ${cleanCode}
+
+${validityNote}
+
+Questions? Contact us at ${supportEmail}
+${websiteLabel} · The Street Co
+TIMELESS STREETWEAR CULTURE // ARCHIVE COLLECTION
+© 2026 THE STREET CO ALL RIGHTS RESERVED.
+ELEVATED STYLE · MODERN ESSENTIALS
+Terms · Privacy · Refunds · Shipping`;
+
+  return { subject: resolvedSubject, html, text, otpCode: cleanCode };
 }
 

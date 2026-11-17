@@ -718,7 +718,7 @@ NODE_ENV=production
           email,
           istDateTime: `${istString} IST`,
           savedToDatabase: true,
-          message: 'Subscription complete. You have been enrolled into the VIP Network. ₹500 welcome credit activated!'
+          message: `Subscribed ${email} to limited drop & restock alerts.`
         })
       };
     }
@@ -1675,35 +1675,78 @@ NODE_ENV=production
         lastName: String(body.lastName || '').trim()
       });
 
-      const fullName = [String(body.firstName || '').trim(), String(body.lastName || '').trim()].filter(Boolean).join(' ') || 'Valued Member';
+      const firstName = String(body.firstName || '').trim() || 'Customer';
       const gmail = getGmailTransporter();
       let emailDispatched = false;
       if (gmail) {
         try {
           const senderUser = (process.env.GMAIL_SMTP_USER || GMAIL_SMTP_USER).trim();
+          const supportEmail = (process.env.GMAIL_REPLY_TO || 'support@thestreetco.zohodesk.in').trim();
           await gmail.sendMail({
             from: `"${GMAIL_SENDER_NAME}" <${senderUser}>`,
             to: cleanEmail,
             subject: `${otpCode} is your 6-Digit Email Verification OTP — The Street Co`,
-            html: `
-              <div style="font-family:'Plus Jakarta Sans',sans-serif;max-width:540px;margin:0 auto;background:#faf8f5;border:1px solid #e8e2d8;border-radius:12px;overflow:hidden;color:#0e0e11;">
-                <div style="background:#0e0e11;color:#ffffff;padding:24px;text-align:center;">
-                  <div style="font-family:Georgia,serif;font-size:22px;letter-spacing:0.18em;font-weight:600;">THE STREET CO</div>
-                  <div style="font-size:11px;letter-spacing:0.14em;color:#c5a880;margin-top:6px;">EMAIL VERIFICATION · SECURITY CODE</div>
+            html: `<!doctype html>
+<html lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light only">
+    <meta name="supported-color-schemes" content="light only">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      :root { color-scheme: light only; supported-color-schemes: light only; }
+      html, body { margin:0;padding:0;background-color:#FAF8F5 !important;color:#171717 !important;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;-webkit-font-smoothing:antialiased; }
+      table, td { border-collapse:collapse; }
+    </style>
+  </head>
+  <body bgcolor="#FAF8F5" style="margin:0;padding:0;background-color:#FAF8F5;color:#171717;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:#FAF8F5;">
+      <tr>
+        <td align="center" style="padding:40px 16px 48px 16px;background-color:#FAF8F5;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:560px;background-color:#FAF8F5;">
+            <tr>
+              <td align="center" style="padding:0 0 28px 0;">
+                <a href="https://thestreetco.com" target="_blank" style="text-decoration:none;color:#000000;font-size:20px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;">THE STREET CO</a>
+              </td>
+            </tr>
+            <tr>
+              <td align="center" style="padding:0 0 20px 0;">
+                <h1 style="margin:0;font-size:28px;font-weight:500;line-height:1.25;letter-spacing:-0.02em;color:#111111;">Email Verification</h1>
+              </td>
+            </tr>
+            <tr>
+              <td align="center" style="padding:0 12px 28px 12px;font-size:14px;line-height:1.65;color:#52525b;">
+                <div style="margin:0 0 16px 0;color:#404040;">Hey ${firstName},</div>
+                <div style="margin:0 0 26px 0;">Use the 6-digit verification code below to verify and save your email address (<strong style="color:#171717;font-weight:600;">${cleanEmail}</strong>) on your The Street Co account.</div>
+                <div style="font-size:11px;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;color:#78716c;margin:0 0 8px 0;">Verification OTP</div>
+                <div style="font-size:34px;font-weight:600;letter-spacing:0.26em;color:#111111;line-height:1.2;margin:0 0 26px 0;">${otpCode}</div>
+                <div style="margin:0;font-size:13px;line-height:1.6;color:#52525b;">This verification code is valid for 10 minutes. If you did not request this verification, you can safely ignore this email.</div>
+              </td>
+            </tr>
+            <tr>
+              <td align="center" style="padding:28px 0 0 0;border-top:1px solid #e5dfd5;">
+                <div style="font-size:12px;color:#78716c;line-height:1.7;padding-top:6px;">Questions? Contact us at <a href="mailto:${supportEmail}" style="color:#78716c;text-decoration:underline;">${supportEmail}</a><br><a href="https://thestreetco.com" target="_blank" rel="noopener noreferrer" style="color:#78716c;text-decoration:underline;">thestreetco.com</a> &middot; The Street Co</div>
+                <div style="margin-top:20px;font-size:10px;font-weight:600;letter-spacing:0.22em;text-transform:uppercase;color:#78716c;">TIMELESS STREETWEAR CULTURE // ARCHIVE COLLECTION</div>
+                <div style="margin-top:8px;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#78716c;">&copy; 2026 THE STREET CO ALL RIGHTS RESERVED.</div>
+                <div style="margin-top:2px;font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:#78716c;">ELEVATED STYLE &middot; MODERN ESSENTIALS</div>
+                <div style="margin-top:16px;font-size:11px;color:#78716c;">
+                  <a href="https://thestreetco.com/#terms" target="_blank" rel="noopener noreferrer" style="color:#78716c;text-decoration:underline;">Terms</a>
+                  <span style="margin:0 6px;color:#78716c;">&middot;</span>
+                  <a href="https://thestreetco.com/#privacy" target="_blank" rel="noopener noreferrer" style="color:#78716c;text-decoration:underline;">Privacy</a>
+                  <span style="margin:0 6px;color:#78716c;">&middot;</span>
+                  <a href="https://thestreetco.com/#refund" target="_blank" rel="noopener noreferrer" style="color:#78716c;text-decoration:underline;">Refunds</a>
+                  <span style="margin:0 6px;color:#78716c;">&middot;</span>
+                  <a href="https://thestreetco.com/#shipping" target="_blank" rel="noopener noreferrer" style="color:#78716c;text-decoration:underline;">Shipping</a>
                 </div>
-                <div style="padding:32px 28px;background:#ffffff;">
-                  <p style="font-size:15px;margin:0 0 12px;color:#18181b;">Hello <strong>${fullName}</strong>,</p>
-                  <p style="font-size:14px;line-height:1.6;color:#52525b;margin:0 0 24px;">
-                    Use the 6-digit verification code below to verify and save your email address (<strong>${cleanEmail}</strong>) on your The Street Co account:
-                  </p>
-                  <div style="background:#faf8f5;border:2px dashed #0e0e11;border-radius:12px;padding:20px;text-align:center;margin:0 0 24px;">
-                    <span style="font-size:11px;letter-spacing:0.14em;color:#71717a;display:block;margin-bottom:8px;font-weight:700;">YOUR 6-DIGIT VERIFICATION OTP</span>
-                    <div style="font-size:34px;font-weight:800;letter-spacing:0.28em;color:#0e0e11;font-family:monospace;">${otpCode}</div>
-                  </div>
-                  <p style="font-size:12px;color:#71717a;line-height:1.5;margin:0;">This code is valid for 10 minutes.</p>
-                </div>
-              </div>
-            `
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`
           });
           emailDispatched = true;
         } catch (err) {

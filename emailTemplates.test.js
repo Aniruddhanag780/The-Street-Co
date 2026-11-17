@@ -9,6 +9,7 @@ import {
   renderReturnConfirmationEmail,
   renderShipmentFulfilledEmail
 } from './emailTemplates.js';
+import { renderGstInvoiceHtml } from './zohoInventory.js';
 
 test('formatInrCurrency formats Indian Rupees with ₹ symbol and commas', () => {
   assert.equal(formatInrCurrency(1599), '₹1,599.00');
@@ -75,7 +76,7 @@ test('renderOrderConfirmationEmail renders clean #FAF8F5 layout with ₹, Englis
   assert.doesNotMatch(result.html, /or by using the button below\./);
   assert.match(result.html, /View Your Invoice/);
   assert.match(result.html, /https:\/\/thestreetco\.com\/invoice\/214822/);
-  assert.match(result.html, /Order No\. #214822/);
+  assert.match(result.html, /Reference #214822/);
   assert.match(result.html, /src="\/product-minato\.jpg"/);
   assert.match(result.html, /width="96" height="96"/);
   assert.match(result.html, /Obsidian Black · Size L/);
@@ -143,7 +144,7 @@ test('renderReturnConfirmationEmail uses matching minimal format and enriches it
   assert.match(result.html, /background-color:#FAF8F5/);
   assert.match(result.html, /Return Request Confirmation/);
   assert.match(result.html, /Return No\. #RET-23665/);
-  assert.match(result.html, /Order No\. #214822/);
+  assert.match(result.html, /Reference #214822/);
   assert.match(result.html, /View Return Status/);
   assert.match(result.html, /src="\/product-ts-min-001\.jpg"/);
   assert.match(result.html, /₹1,599\.00/);
@@ -157,20 +158,41 @@ test('renderReturnConfirmationEmail uses matching minimal format and enriches it
   assert.doesNotMatch(result.html, /<svg\b/i);
 });
 
-test('renderOrderConfirmationEmail uses trimmed zoho_invoice_url for View Your Invoice CTA when available', () => {
-  const zohoUrl = 'https://zohosecurepay.in/inventory/thestreetco/secure?CInvoiceID=2-test123';
+test('renderOrderConfirmationEmail routes View Your Invoice to Reference#-based storefront invoice and attaches no PDFs', () => {
   const result = renderOrderConfirmationEmail({
     order: {
       orderCode: '998877',
-      zoho_invoice_url: ` ${zohoUrl} `,
+      invoice_number: 'INV-000012',
+      zoho_salesorder_number: 'SO-00041',
+      zoho_invoice_url: 'https://zohosecurepay.in/inventory/thestreetco/secure?CInvoiceID=2-test123',
       shippingAddress: { fullName: 'Aniruddha Nag' },
       grandTotalInr: 1599,
       items: [{ title: 'Minato Tee', size: 'L', sku: 'TS-MIN-001', qty: 1, priceInr: 1599 }]
-    }
+    },
+    useCidAssets: true
   });
 
-  assert.match(result.html, /href="https:\/\/zohosecurepay\.in\/inventory\/thestreetco\/secure\?CInvoiceID=2-test123"[^>]*>\s*View Your Invoice/);
-  assert.match(result.text, /https:\/\/zohosecurepay\.in\/inventory\/thestreetco\/secure\?CInvoiceID=2-test123/);
+  assert.match(result.html, /href="https:\/\/thestreetco\.com\/invoice\/998877"[^>]*>\s*View Your Invoice/);
+  assert.match(result.text, /https:\/\/thestreetco\.com\/invoice\/998877/);
+  assert.match(result.html, /Reference #998877/);
+  assert.doesNotMatch(result.html, /INV-000012|SO-00041/);
+  assert.equal(result.cidAttachments.some(a => /\.pdf$/i.test(a.filename || '') || a.contentType === 'application/pdf'), false);
+});
+
+test('renderGstInvoiceHtml uses Reference# instead of Invoice# INV-000012 and Sales Order# and hides Zoho PDF download', () => {
+  const html = renderGstInvoiceHtml({
+    orderCode: '512515',
+    reference_number: '512515',
+    invoice_number: 'INV-000012',
+    zoho_invoice_id: '4226403000000368099',
+    zoho_salesorder_number: 'SO-00041',
+    grandTotalInr: 1599,
+    shippingAddress: { fullName: 'Aniruddha Nag', city: 'Thakurnagar', state: 'West Bengal', pincode: '743287' },
+    items: [{ name: 'Minato Tee', sku: 'TS-MIN-001', size: 'M', quantity: 1, priceInr: 1599 }]
+  });
+
+  assert.match(html, /<strong>Reference#:<\/strong>\s*512515/);
+  assert.doesNotMatch(html, /INV-000012|SO-00041|Invoice No:|DOWNLOAD OFFICIAL ZOHO PDF|\?pdf=true/);
 });
 
 test('useCidAssets attaches inline CID PNGs and product image without SVG tags', () => {

@@ -1,4 +1,9 @@
 import { MongoClient } from 'mongodb';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+
+const ACCOUNTS_CACHE_FILE = path.join(os.tmpdir(), 'thestreetco_accounts_cache.json');
 
 const DEFAULT_MONGODB_URI = 'mongodb+srv://aniruddhanag780_db_user:MIHtGOi9FH6Wgzd1@cluster-1.torqvts.mongodb.net/thestreetco?retryWrites=true&w=majority&appName=Cluster-1';
 const DEFAULT_DB_NAME = 'thestreetco';
@@ -11,9 +16,161 @@ let connectionStatus = {
   cluster: 'cluster-1.torqvts.mongodb.net',
   dbName: DEFAULT_DB_NAME,
   user: 'aniruddhanag780_db_user',
+  collections: ['newsletter_subscribers', 'coupons'],
   lastConnectedAt: null,
   lastError: null
 };
+
+const INITIAL_ACCOUNT_SEEDS = {
+  '6296731835': {
+    phone: '6296731835',
+    phoneWithCountryCode: '+91 6296731835',
+    phoneVerified: true,
+    firstName: 'Aniruddha',
+    lastName: 'Nag',
+    fullName: 'Aniruddha Nag',
+    email: 'aniruddhanag780@gmail.com',
+    emailVerified: true,
+    addresses: [
+      {
+        id: 'addr_1_1794593258741',
+        label: 'Home',
+        name: 'Aniruddha Nag',
+        fullName: 'Aniruddha Nag',
+        phone: '6296731835',
+        email: 'aniruddhanag780@gmail.com',
+        address1: 'Thakurnagar Hazratala',
+        houseFlat: 'Thakurnagar Hazratala',
+        address2: 'Shimulpur Road',
+        streetRoad: 'Shimulpur Road',
+        landmark: '',
+        city: 'Thakurnagar',
+        state: 'West Bengal',
+        pincode: '743287',
+        type: 'Home',
+        addressType: 'Home',
+        fullAddress: 'Thakurnagar Hazratala, Shimulpur Road, Thakurnagar, West Bengal - 743287',
+        isDefault: true,
+        createdAt: '2026-11-13T18:07:38.741Z'
+      }
+    ],
+    defaultAddressId: 'addr_1_1794593258741',
+    streetCashBalance: 113,
+    streetCashEarnedTotal: 612,
+    streetCashSpentTotal: 499,
+    streetCashHistory: [
+      {
+        id: 'redeem_1794851154497_NSRPBW',
+        type: 'REDEEMED',
+        points: -499,
+        discountInr: 499,
+        couponCode: 'STREETCASH-499-NSRPBW',
+        date: '2026-11-16T17:45:54.426Z',
+        label: 'Redeemed 499 Street Cash for ₹499 Voucher'
+      },
+      {
+        id: 'bonus_profile_email_1794851152760',
+        type: 'EARNED',
+        points: 35,
+        bonusKey: 'profile_email',
+        date: '2026-11-16T17:45:52.760Z',
+        label: 'Email Added to Account (+35 pts)'
+      },
+      {
+        id: 'bonus_profile_name_1794851152760',
+        type: 'EARNED',
+        points: 25,
+        bonusKey: 'profile_name',
+        date: '2026-11-16T17:45:52.760Z',
+        label: 'Name Uploaded in Profile (+25 pts)'
+      },
+      {
+        id: 'bonus_account_creation_1794851152759',
+        type: 'EARNED',
+        points: 75,
+        bonusKey: 'account_creation',
+        date: '2026-11-16T17:45:52.759Z',
+        label: 'New Account Creation (+75 pts)'
+      }
+    ],
+    streetCashCoupons: [
+      {
+        code: 'STREETCASH-499-NSRPBW',
+        couponName: '₹499 The Street Cash VIP Voucher',
+        couponText: 'Exclusive VIP Loyalty Reward: ₹499 Flat Discount. One-time use only.',
+        couponSubText: 'Applicable on all orders (No minimum order value)',
+        title: '₹499 The Street Cash VIP Voucher',
+        desc: 'Exclusive VIP Loyalty Reward: ₹499 Flat Discount. One-time use only.',
+        subText: 'Applicable on all orders (No minimum order value)',
+        group: 'flat',
+        type: 'flat',
+        value: 499,
+        discountInr: 499,
+        minOrderValue: 0,
+        maxOrderValue: null,
+        maxDiscount: 499,
+        isPublic: true,
+        isOneTimeUse: true,
+        isRedeemed: false,
+        usageLimit: 1,
+        userPhone: '6296731835',
+        redeemedAt: null,
+        redeemedByOrder: null,
+        badge: 'FLAT ₹499 OFF',
+        status: 'active',
+        createdAt: '2026-11-16T17:45:54.426Z',
+        source: 'the_street_cash_loyalty'
+      }
+    ],
+    streetCashBonuses: {
+      account_creation: true,
+      account_creationAt: '2026-11-16T17:45:52.759Z',
+      profile_name: true,
+      profile_nameAt: '2026-11-16T17:45:52.760Z',
+      profile_email: true,
+      profile_emailAt: '2026-11-16T17:45:52.760Z'
+    },
+    createdAt: '2026-11-13T18:07:38.741Z',
+    lastLoginAt: '2026-11-16T17:45:52.760Z',
+    updatedAt: '2026-11-16T17:45:54.497Z'
+  }
+};
+
+// In-memory customer session/address/loyalty store persisted only in OS temp dir (Orders & Customer CRM live in Zoho Inventory; MongoDB stores ONLY newsletter & coupons)
+const inMemoryAccounts = new Map();
+function loadLocalAccountsCache() {
+  for (const [phone, doc] of Object.entries(INITIAL_ACCOUNT_SEEDS)) {
+    inMemoryAccounts.set(phone, { ...doc });
+  }
+  try {
+    if (fs.existsSync(ACCOUNTS_CACHE_FILE)) {
+      const parsed = JSON.parse(fs.readFileSync(ACCOUNTS_CACHE_FILE, 'utf8'));
+      if (parsed && typeof parsed === 'object') {
+        for (const [phone, doc] of Object.entries(parsed)) {
+          const clean = String(phone || '').replace(/\D/g, '').slice(-10);
+          if (clean.length === 10 && doc && typeof doc === 'object') {
+            inMemoryAccounts.set(clean, { ...doc, phone: clean });
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[Accounts Session] Load notice:', err.message);
+  }
+}
+loadLocalAccountsCache();
+
+function persistLocalAccountsCache() {
+  try {
+    const out = {};
+    for (const [phone, doc] of inMemoryAccounts.entries()) {
+      out[phone] = doc;
+    }
+    fs.writeFileSync(ACCOUNTS_CACHE_FILE, JSON.stringify(out, null, 2), 'utf8');
+  } catch (err) {
+    console.warn('[Accounts Cache] Save notice:', err.message);
+  }
+}
 
 export function getMongoUri() {
   const raw = (process.env.MONGODB_URI || DEFAULT_MONGODB_URI).trim();
@@ -47,11 +204,8 @@ export async function connectMongoDb() {
       await client.connect();
       dbInstance = client.db(dbName);
 
-      // Ensure indexes for fast account & order lookups
+      // Keep indexes strictly for coupons and newsletter_subscribers
       await Promise.allSettled([
-        dbInstance.collection('users').createIndex({ phone: 1 }, { unique: true }),
-        dbInstance.collection('orders').createIndex({ orderCode: 1 }, { unique: true }),
-        dbInstance.collection('orders').createIndex({ accountPhone: 1 }),
         dbInstance.collection('coupons').createIndex({ code: 1 }, { unique: true }),
         dbInstance.collection('newsletter_subscribers').createIndex({ email: 1 }, { unique: true })
       ]);
@@ -61,10 +215,11 @@ export async function connectMongoDb() {
         cluster: 'cluster-1.torqvts.mongodb.net',
         dbName,
         user: 'aniruddhanag780_db_user',
+        collections: ['newsletter_subscribers', 'coupons'],
         lastConnectedAt: new Date().toISOString(),
         lastError: null
       };
-      console.log(`[MongoDB Atlas] Connected to ${connectionStatus.cluster} (DB: ${dbName})`);
+      console.log(`[MongoDB Atlas] Connected to ${connectionStatus.cluster} (DB: ${dbName} · Newsletter & Coupons)`);
       return dbInstance;
     } catch (err) {
       connectionStatus.connected = false;
@@ -89,7 +244,7 @@ export async function getCollection(name) {
   return db.collection(name);
 }
 
-// Normalize and sequentially label user addresses as Address-1, Address-2, etc.
+// Normalize user delivery addresses
 export function normalizeUserAddresses(rawAddresses = [], preferredDefaultId = '') {
   if (!Array.isArray(rawAddresses)) return { addresses: [], defaultAddressId: '' };
 
@@ -138,13 +293,11 @@ export function normalizeUserAddresses(rawAddresses = [], preferredDefaultId = '
       };
     });
 
-  // Determine which address is default
   let resolvedDefaultId = String(preferredDefaultId || '').trim();
   if (resolvedDefaultId && !cleaned.some(a => a.id === resolvedDefaultId)) {
     resolvedDefaultId = '';
   }
   if (!resolvedDefaultId) {
-    // Check if any item has isDefault: true (prefer the last one marked isDefault if multiple)
     for (let i = cleaned.length - 1; i >= 0; i--) {
       if (cleaned[i].isDefault) {
         resolvedDefaultId = cleaned[i].id;
@@ -165,349 +318,143 @@ export function normalizeUserAddresses(rawAddresses = [], preferredDefaultId = '
   };
 }
 
-// ── User Account Profile Helpers (MongoDB 'users' collection) ──
+// ── Customer Account Profile Helpers (Local file store + Zoho Inventory CRM — NOT MongoDB) ──
 export async function findUserByPhone(phone) {
   const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
   if (cleanPhone.length !== 10) return null;
-  try {
-    const col = await getCollection('users');
-    if (!col) return null;
-    const doc = await col.findOne({ phone: cleanPhone }, { projection: { _id: 0 } });
-    if (!doc) return null;
-    const { addresses, defaultAddressId } = normalizeUserAddresses(doc.addresses || [], doc.defaultAddressId || '');
-    return {
-      ...doc,
-      addresses,
-      defaultAddressId
-    };
-  } catch (err) {
-    console.warn('[MongoDB users.findOne]:', err.message);
-    return null;
-  }
+  const doc = inMemoryAccounts.get(cleanPhone) || null;
+  if (!doc) return null;
+  const { addresses, defaultAddressId } = normalizeUserAddresses(doc.addresses || [], doc.defaultAddressId || '');
+  return {
+    ...doc,
+    addresses,
+    defaultAddressId
+  };
 }
 
 export async function upsertUserByPhone(phone, updates = {}) {
   const cleanPhone = String(phone || updates.phone || '').replace(/\D/g, '').slice(-10);
   if (cleanPhone.length !== 10) return null;
 
-  try {
-    const col = await getCollection('users');
-    if (!col) return null;
+  const existing = inMemoryAccounts.get(cleanPhone) || {};
+  const nowIso = new Date().toISOString();
 
-    const existing = (await col.findOne({ phone: cleanPhone }, { projection: { _id: 0 } })) || {};
-    const nowIso = new Date().toISOString();
+  const firstName = updates.firstName !== undefined
+    ? String(updates.firstName || '').trim()
+    : String(existing.firstName || '').trim();
+  const lastName = updates.lastName !== undefined
+    ? String(updates.lastName || '').trim()
+    : String(existing.lastName || '').trim();
+  const fullName = [firstName, lastName].filter(Boolean).join(' ').trim();
 
-    const firstName = updates.firstName !== undefined
-      ? String(updates.firstName || '').trim()
-      : String(existing.firstName || '').trim();
-    const lastName = updates.lastName !== undefined
-      ? String(updates.lastName || '').trim()
-      : String(existing.lastName || '').trim();
-    const fullName = [firstName, lastName].filter(Boolean).join(' ').trim();
+  const email = updates.email !== undefined
+    ? String(updates.email || '').trim().toLowerCase()
+    : String(existing.email || '').trim().toLowerCase();
 
-    const email = updates.email !== undefined
-      ? String(updates.email || '').trim().toLowerCase()
-      : String(existing.email || '').trim().toLowerCase();
+  const emailVerified = updates.emailVerified !== undefined
+    ? Boolean(updates.emailVerified && email)
+    : Boolean(existing.emailVerified && email);
 
-    const emailVerified = updates.emailVerified !== undefined
-      ? Boolean(updates.emailVerified && email)
-      : Boolean(existing.emailVerified && email);
+  const phoneVerified = updates.phoneVerified !== undefined
+    ? Boolean(updates.phoneVerified)
+    : (existing.phoneVerified !== undefined ? Boolean(existing.phoneVerified) : true);
 
-    const phoneVerified = updates.phoneVerified !== undefined
-      ? Boolean(updates.phoneVerified)
-      : (existing.phoneVerified !== undefined ? Boolean(existing.phoneVerified) : true);
+  const rawAddresses = updates.addresses !== undefined
+    ? updates.addresses
+    : (Array.isArray(existing.addresses) ? existing.addresses : []);
+  const rawDefaultId = updates.defaultAddressId !== undefined
+    ? updates.defaultAddressId
+    : (existing.defaultAddressId || '');
 
-    const firebaseUid = String(updates.firebaseUid || existing.firebaseUid || '').trim();
+  const { addresses, defaultAddressId } = normalizeUserAddresses(rawAddresses, rawDefaultId);
 
-    const rawAddresses = updates.addresses !== undefined
-      ? updates.addresses
-      : (Array.isArray(existing.addresses) ? existing.addresses : []);
-    const rawDefaultId = updates.defaultAddressId !== undefined
-      ? updates.defaultAddressId
-      : (existing.defaultAddressId || '');
+  const streetCashBalance = updates.streetCashBalance !== undefined
+    ? Math.max(0, Number(updates.streetCashBalance) || 0)
+    : Math.max(0, Number(existing.streetCashBalance) || 0);
 
-    const { addresses, defaultAddressId } = normalizeUserAddresses(rawAddresses, rawDefaultId);
+  const streetCashEarnedTotal = updates.streetCashEarnedTotal !== undefined
+    ? Math.max(0, Number(updates.streetCashEarnedTotal) || 0)
+    : Math.max(0, Number(existing.streetCashEarnedTotal) || 0);
 
-    const orders = Array.isArray(updates.orders)
-      ? updates.orders
-      : (Array.isArray(existing.orders) ? existing.orders : []);
+  const streetCashSpentTotal = updates.streetCashSpentTotal !== undefined
+    ? Math.max(0, Number(updates.streetCashSpentTotal) || 0)
+    : Math.max(0, Number(existing.streetCashSpentTotal) || 0);
 
-    const streetCashBalance = updates.streetCashBalance !== undefined
-      ? Math.max(0, Number(updates.streetCashBalance) || 0)
-      : Math.max(0, Number(existing.streetCashBalance) || 0);
+  const streetCashHistory = Array.isArray(updates.streetCashHistory)
+    ? updates.streetCashHistory
+    : (Array.isArray(existing.streetCashHistory) ? existing.streetCashHistory : []);
 
-    const streetCashEarnedTotal = updates.streetCashEarnedTotal !== undefined
-      ? Math.max(0, Number(updates.streetCashEarnedTotal) || 0)
-      : Math.max(0, Number(existing.streetCashEarnedTotal) || 0);
+  const streetCashCoupons = Array.isArray(updates.streetCashCoupons)
+    ? updates.streetCashCoupons
+    : (Array.isArray(existing.streetCashCoupons) ? existing.streetCashCoupons : []);
 
-    const streetCashSpentTotal = updates.streetCashSpentTotal !== undefined
-      ? Math.max(0, Number(updates.streetCashSpentTotal) || 0)
-      : Math.max(0, Number(existing.streetCashSpentTotal) || 0);
+  const streetCashBonuses = updates.streetCashBonuses && typeof updates.streetCashBonuses === 'object'
+    ? updates.streetCashBonuses
+    : (existing.streetCashBonuses || {});
 
-    const streetCashHistory = Array.isArray(updates.streetCashHistory)
-      ? updates.streetCashHistory
-      : (Array.isArray(existing.streetCashHistory) ? existing.streetCashHistory : []);
+  const mergedDoc = {
+    phone: cleanPhone,
+    phoneWithCountryCode: `+91 ${cleanPhone}`,
+    phoneVerified,
+    firstName,
+    lastName,
+    fullName,
+    email,
+    emailVerified,
+    addresses,
+    defaultAddressId,
+    streetCashBalance,
+    streetCashEarnedTotal,
+    streetCashSpentTotal,
+    streetCashHistory,
+    streetCashCoupons,
+    streetCashBonuses,
+    createdAt: existing.createdAt || nowIso,
+    lastLoginAt: updates.lastLoginAt || existing.lastLoginAt || nowIso,
+    updatedAt: nowIso
+  };
 
-    const streetCashCoupons = Array.isArray(updates.streetCashCoupons)
-      ? updates.streetCashCoupons
-      : (Array.isArray(existing.streetCashCoupons) ? existing.streetCashCoupons : []);
-
-    const mergedDoc = {
-      phone: cleanPhone,
-      phoneWithCountryCode: `+91 ${cleanPhone}`,
-      phoneVerified,
-      firstName,
-      lastName,
-      fullName,
-      email,
-      emailVerified,
-      addresses,
-      defaultAddressId,
-      orders,
-      streetCashBalance,
-      streetCashEarnedTotal,
-      streetCashSpentTotal,
-      streetCashHistory,
-      streetCashCoupons,
-      ...(firebaseUid ? { firebaseUid } : {}),
-      createdAt: existing.createdAt || nowIso,
-      lastLoginAt: updates.lastLoginAt || existing.lastLoginAt || nowIso,
-      updatedAt: nowIso
-    };
-
-    await col.updateOne(
-      { phone: cleanPhone },
-      { $set: mergedDoc },
-      { upsert: true }
-    );
-
-    return mergedDoc;
-  } catch (err) {
-    console.warn('[MongoDB users.upsert]:', err.message);
-    return null;
-  }
+  inMemoryAccounts.set(cleanPhone, mergedDoc);
+  persistLocalAccountsCache();
+  return mergedDoc;
 }
 
-// Migrate user profile and associated orders from old phone to new phone
 export async function changeUserPhone(oldPhone, newPhone) {
   const cleanOld = String(oldPhone || '').replace(/\D/g, '').slice(-10);
   const cleanNew = String(newPhone || '').replace(/\D/g, '').slice(-10);
   if (cleanOld.length !== 10 || cleanNew.length !== 10) return null;
 
-  try {
-    const col = await getCollection('users');
-    if (!col) return null;
+  const existing = inMemoryAccounts.get(cleanOld) || {};
+  const nowIso = new Date().toISOString();
 
-    const existing = (await col.findOne({ phone: cleanOld }, { projection: { _id: 0 } })) || {};
-    const nowIso = new Date().toISOString();
+  const updatedDoc = {
+    ...existing,
+    phone: cleanNew,
+    phoneWithCountryCode: `+91 ${cleanNew}`,
+    phoneVerified: true,
+    updatedAt: nowIso
+  };
 
-    const updatedDoc = {
-      ...existing,
-      phone: cleanNew,
-      phoneWithCountryCode: `+91 ${cleanNew}`,
-      phoneVerified: true,
-      updatedAt: nowIso
-    };
-
-    // Remove old document and store with new phone key
-    await col.deleteOne({ phone: cleanOld });
-    await col.updateOne({ phone: cleanNew }, { $set: updatedDoc }, { upsert: true });
-
-    // Migrate all associated orders
-    const ordersCol = await getCollection('orders');
-    if (ordersCol) {
-      await ordersCol.updateMany({ accountPhone: cleanOld }, { $set: { accountPhone: cleanNew } }).catch(() => {});
-    }
-
-    return updatedDoc;
-  } catch (err) {
-    console.warn('[MongoDB changeUserPhone error]:', err.message);
-    return null;
-  }
+  inMemoryAccounts.delete(cleanOld);
+  inMemoryAccounts.set(cleanNew, updatedDoc);
+  persistLocalAccountsCache();
+  return updatedDoc;
 }
 
-export async function appendOrderToUserAccount(accountPhone, orderDocument) {
-  const cleanPhone = String(
-    accountPhone ||
-    orderDocument?.accountPhone ||
-    orderDocument?.contactDetails?.phone ||
-    orderDocument?.shippingAddress?.phone ||
-    orderDocument?.user?.phone ||
-    ''
-  ).replace(/\D/g, '').slice(-10);
-
-  if (cleanPhone.length !== 10 || !orderDocument) return null;
-
-  try {
-    const col = await getCollection('users');
-    if (!col) return null;
-
-    const existing = (await col.findOne({ phone: cleanPhone }, { projection: { _id: 0 } })) || {};
-    const currentOrders = Array.isArray(existing.orders) ? existing.orders : [];
-
-    const rawItems = orderDocument.items || orderDocument.products || orderDocument.productDetails || [];
-    const normalizedItems = Array.isArray(rawItems) ? rawItems.map(it => {
-      const img = it.image || it.imageUrl || it.img || (Array.isArray(it.images) ? it.images[0] : '') || '';
-      return {
-        id: it.id || it.sku || '',
-        sku: it.sku || it.id || '',
-        name: it.name || it.title || 'Streetwear Apparel',
-        title: it.title || it.name || 'Streetwear Apparel',
-        priceInr: Number(it.priceInr ?? it.price ?? 0),
-        price: Number(it.priceInr ?? it.price ?? 0),
-        qty: Math.max(1, parseInt(it.qty || it.quantity, 10) || 1),
-        quantity: Math.max(1, parseInt(it.qty || it.quantity, 10) || 1),
-        totalItemPriceInr: Number(it.totalItemPriceInr ?? ((it.priceInr ?? it.price ?? 0) * (it.qty || it.quantity || 1))),
-        size: it.size || 'M',
-        finish: it.finish || 'Classic Black',
-        image: img,
-        imageUrl: img
-      };
-    }) : [];
-
-    const orderSummary = {
-      orderCode: orderDocument.orderCode,
-      orderId: orderDocument.orderId,
-      accountPhone: cleanPhone,
-      status: orderDocument.status || 'CONFIRMED',
-      orderDate: orderDocument.orderDate || new Date().toISOString(),
-      orderDateFormatted: orderDocument.orderDateFormatted || '',
-      grandTotalInr: Number(orderDocument.grandTotalInr || orderDocument.totalInr || 0),
-      totalInr: Number(orderDocument.grandTotalInr || orderDocument.totalInr || 0),
-      subtotalInr: Number(orderDocument.subtotalInr || 0),
-      discountInr: Number(orderDocument.discountInr || 0),
-      deliveryFeeInr: Number(orderDocument.deliveryFeeInr || orderDocument.delivery?.cost || 0),
-      paymentMethod: orderDocument.paymentMethod || orderDocument.payment?.method || 'COD',
-      paymentStatus: orderDocument.paymentStatus || 'CONFIRMED',
-      shippingAddress: orderDocument.shippingAddress || orderDocument.address || orderDocument.customer || {},
-      deliveryDetails: orderDocument.deliveryDetails || orderDocument.delivery || {},
-      items: normalizedItems,
-      products: normalizedItems,
-      zoho_salesorder_id: orderDocument.zoho_salesorder_id || '',
-      zoho_salesorder_number: orderDocument.zoho_salesorder_number || '',
-      zoho_invoice_url: orderDocument.zoho_invoice_url || orderDocument.invoiceUrl || '',
-      ...(orderDocument.returnStatus ? { returnStatus: orderDocument.returnStatus } : {}),
-      ...(orderDocument.returnRequest ? { returnRequest: orderDocument.returnRequest } : {})
-    };
-
-    const filtered = currentOrders.filter(o => o && o.orderCode !== orderSummary.orderCode && o.orderId !== orderSummary.orderId);
-    const updatedOrders = [orderSummary, ...filtered].slice(0, 50);
-
-    return await upsertUserByPhone(cleanPhone, {
-      phone: cleanPhone,
-      orders: updatedOrders
-    });
-  } catch (err) {
-    console.warn('[MongoDB appendOrderToUserAccount]:', err.message);
-    return null;
-  }
+// Orders live in Zoho Inventory (not stored in MongoDB or user profile documents)
+export async function appendOrderToUserAccount() {
+  return null;
 }
 
-export async function findOrdersByAccountPhone(phone) {
-  const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
-  if (cleanPhone.length !== 10) return [];
-  try {
-    const col = await getCollection('orders');
-    let docs = [];
-    if (col) {
-      docs = await col
-        .find(
-          {
-            $or: [
-              { accountPhone: cleanPhone },
-              { 'contactDetails.phone': { $regex: `${cleanPhone}$` } },
-              { 'shippingAddress.phone': { $regex: `${cleanPhone}$` } },
-              { 'user.phone': { $regex: `${cleanPhone}$` } },
-              { 'customer.phone': { $regex: `${cleanPhone}$` } }
-            ]
-          },
-          { projection: { _id: 0 } }
-        )
-        .sort({ createdAt: -1 })
-        .limit(50)
-        .toArray();
-    }
-
-    // Also merge with orders inside the 'users' collection document for this phone
-    const userCol = await getCollection('users');
-    let userOrders = [];
-    if (userCol) {
-      const u = await userCol.findOne({ phone: cleanPhone }, { projection: { _id: 0, orders: 1 } });
-      if (u && Array.isArray(u.orders)) {
-        userOrders = u.orders;
-      }
-    }
-
-    // Also fetch any active returns from the 'returns' collection for this customer phone
-    const returnsCol = await getCollection('returns');
-    const returnsByOrderCode = new Map();
-    if (returnsCol) {
-      const retDocs = await returnsCol
-        .find(
-          {
-            status: { $ne: 'CANCELLED' },
-            $or: [
-              { customerPhone: { $regex: `${cleanPhone}$` } },
-              { orderCode: { $in: [...(docs || []), ...userOrders].map(o => o?.orderCode).filter(Boolean) } }
-            ]
-          },
-          { projection: { _id: 0 } }
-        )
-        .toArray()
-        .catch(() => []);
-      for (const r of retDocs) {
-        if (r && r.orderCode) {
-          returnsByOrderCode.set(String(r.orderCode).replace(/^#/, '').trim().toUpperCase(), r);
-        }
-      }
-    }
-
-    const seen = new Map();
-    for (const ord of [...(docs || []), ...userOrders]) {
-      if (!ord) continue;
-      const key = String(ord.orderCode || ord.orderId || '').replace(/^#/, '').trim().toUpperCase();
-      if (!key) continue;
-
-      const items = ord.items || ord.products || [];
-      const normalizedItems = Array.isArray(items) ? items.map(it => ({
-        ...it,
-        image: it.image || it.imageUrl || it.img || (Array.isArray(it.images) ? it.images[0] : '') || '',
-        imageUrl: it.imageUrl || it.image || it.img || (Array.isArray(it.images) ? it.images[0] : '') || ''
-      })) : [];
-
-      const matchedReturn = returnsByOrderCode.get(key) || ord.returnRequest || null;
-      const matchedReturnStatus = matchedReturn
-        ? (ord.returnStatus || (matchedReturn.type === 'exchange' ? 'EXCHANGE REQUESTED' : 'RETURN REQUESTED'))
-        : (ord.returnStatus || undefined);
-
-      if (!seen.has(key)) {
-        seen.set(key, {
-          ...ord,
-          items: normalizedItems,
-          products: normalizedItems,
-          ...(matchedReturn ? { returnRequest: matchedReturn } : {}),
-          ...(matchedReturnStatus ? { returnStatus: matchedReturnStatus } : {})
-        });
-      } else {
-        const existing = seen.get(key);
-        if (!existing.returnRequest && matchedReturn) {
-          existing.returnRequest = matchedReturn;
-          existing.returnStatus = matchedReturnStatus;
-        }
-      }
-    }
-
-    return Array.from(seen.values());
-  } catch (err) {
-    console.warn('[MongoDB findOrdersByAccountPhone]:', err.message);
-    return [];
-  }
+export async function findOrdersByAccountPhone() {
+  return [];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // THE STREET CASH — VIP LOYALTY POINTS SYSTEM
 // Rate: Per 1,000 Rs spent will give you 199 The Street Cash (0.199 pts/Rs)
 // Minimum points to redeem: 499 The Street Cash = ₹499 OFF Coupon (One-Time Use)
+// Redeemed coupons are persisted in MongoDB 'coupons' collection
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function getUserStreetCash(phone) {
@@ -524,75 +471,56 @@ export async function getUserStreetCash(phone) {
     };
   }
 
+  let user = await findUserByPhone(cleanPhone);
+  if (!user) {
+    user = await upsertUserByPhone(cleanPhone, {
+      phone: cleanPhone,
+      streetCashBalance: 0,
+      streetCashEarnedTotal: 0,
+      streetCashSpentTotal: 0,
+      streetCashHistory: [],
+      streetCashCoupons: []
+    });
+  }
+
+  // Look up coupons minted for this phone from MongoDB 'coupons' collection
+  let dbCoupons = [];
   try {
-    const col = await getCollection('users');
-    let user = null;
-    if (col) {
-      user = await col.findOne({ phone: cleanPhone }, { projection: { _id: 0 } });
-    }
-
-    if (!user) {
-      user = await upsertUserByPhone(cleanPhone, {
-        phone: cleanPhone,
-        streetCashBalance: 0,
-        streetCashEarnedTotal: 0,
-        streetCashSpentTotal: 0,
-        streetCashHistory: [],
-        streetCashCoupons: []
-      });
-    }
-
-    // Look up any coupons minted for this phone from MongoDB 'coupons' collection
     const couponsCol = await getCollection('coupons');
-    let dbCoupons = [];
     if (couponsCol) {
       dbCoupons = await couponsCol
         .find({ userPhone: cleanPhone }, { projection: { _id: 0 } })
         .sort({ createdAt: -1 })
         .toArray();
     }
+  } catch (_) {}
 
-    const userCoupons = Array.isArray(user?.streetCashCoupons) ? user.streetCashCoupons : [];
-    const couponMap = new Map();
-    for (const c of [...dbCoupons, ...userCoupons]) {
-      if (c && c.code && !couponMap.has(c.code)) {
-        couponMap.set(c.code, c);
-      }
+  const userCoupons = Array.isArray(user?.streetCashCoupons) ? user.streetCashCoupons : [];
+  const couponMap = new Map();
+  for (const c of [...dbCoupons, ...userCoupons]) {
+    if (c && c.code && !couponMap.has(c.code)) {
+      couponMap.set(c.code, c);
     }
-
-    const balance = Math.max(0, Number(user?.streetCashBalance) || 0);
-    const earned = Math.max(0, Number(user?.streetCashEarnedTotal) || 0);
-    const spent = Math.max(0, Number(user?.streetCashSpentTotal) || 0);
-    const history = Array.isArray(user?.streetCashHistory) ? user.streetCashHistory : [];
-
-    return {
-      phone: cleanPhone,
-      streetCashBalance: balance,
-      streetCashEarnedTotal: earned,
-      streetCashSpentTotal: spent,
-      streetCashHistory: history,
-      streetCashCoupons: Array.from(couponMap.values()),
-      streetCashBonuses: user?.streetCashBonuses || {},
-      canRedeem: balance >= 499,
-      minRedemptionPoints: 499,
-      minRedemptionInr: 499,
-      displayRateNotice: 'Per 1,000 Rs spent will give you 199 The Street Cash'
-    };
-  } catch (err) {
-    console.warn('[MongoDB getUserStreetCash error]:', err.message);
-    return {
-      phone: cleanPhone,
-      streetCashBalance: 0,
-      streetCashEarnedTotal: 0,
-      streetCashSpentTotal: 0,
-      streetCashHistory: [],
-      streetCashCoupons: [],
-      canRedeem: false,
-      minRedemptionPoints: 499,
-      minRedemptionInr: 499,
-      displayRateNotice: 'Per 1,000 Rs spent will give you 199 The Street Cash'
-    };
   }
+
+  const balance = Math.max(0, Number(user?.streetCashBalance) || 0);
+  const earned = Math.max(0, Number(user?.streetCashEarnedTotal) || 0);
+  const spent = Math.max(0, Number(user?.streetCashSpentTotal) || 0);
+  const history = Array.isArray(user?.streetCashHistory) ? user.streetCashHistory : [];
+
+  return {
+    phone: cleanPhone,
+    streetCashBalance: balance,
+    streetCashEarnedTotal: earned,
+    streetCashSpentTotal: spent,
+    streetCashHistory: history,
+    streetCashCoupons: Array.from(couponMap.values()),
+    streetCashBonuses: user?.streetCashBonuses || {},
+    canRedeem: balance >= 499,
+    minRedemptionPoints: 499,
+    minRedemptionInr: 499,
+    displayRateNotice: 'Per 1,000 Rs spent will give you 199 The Street Cash'
+  };
 }
 
 export const STREET_CASH_BONUS_CONFIG = {
@@ -624,142 +552,102 @@ export async function awardStreetCashBonus(phone, bonusKey) {
   const config = STREET_CASH_BONUS_CONFIG[bonusKey];
   if (!config) return null;
 
-  try {
-    const col = await getCollection('users');
-    if (!col) return null;
-
-    const existing = (await col.findOne({ phone: cleanPhone }, { projection: { _id: 0 } })) || {};
-    const bonuses = existing.streetCashBonuses || {};
-    if (bonuses[bonusKey]) {
-      return {
-        alreadyAwarded: true,
-        bonusKey,
-        currentBalance: Math.max(0, Number(existing.streetCashBalance) || 0)
-      };
-    }
-
-    const currentBalance = Math.max(0, Number(existing.streetCashBalance) || 0);
-    const currentEarned = Math.max(0, Number(existing.streetCashEarnedTotal) || 0);
-    const newBalance = currentBalance + config.points;
-    const newEarned = currentEarned + config.points;
-
-    const historyEntry = {
-      id: `bonus_${bonusKey}_${Date.now()}`,
-      type: 'EARNED',
-      points: config.points,
-      bonusKey,
-      date: new Date().toISOString(),
-      label: config.label
-    };
-
-    const currentHistory = Array.isArray(existing.streetCashHistory) ? existing.streetCashHistory : [];
-    const updatedHistory = [historyEntry, ...currentHistory].slice(0, 100);
-    const updatedBonuses = { ...bonuses, [bonusKey]: true, [`${bonusKey}At`]: new Date().toISOString() };
-
-    await col.updateOne(
-      { phone: cleanPhone },
-      {
-        $set: {
-          streetCashBalance: newBalance,
-          streetCashEarnedTotal: newEarned,
-          streetCashBonuses: updatedBonuses,
-          streetCashHistory: updatedHistory,
-          updatedAt: new Date().toISOString()
-        }
-      },
-      { upsert: true }
-    );
-
-    console.log(`[The Street Cash Bonus] Credited ${config.points} pts (${bonusKey}) to ${cleanPhone}. New Balance: ${newBalance}`);
+  const existing = inMemoryAccounts.get(cleanPhone) || {};
+  const bonuses = existing.streetCashBonuses || {};
+  if (bonuses[bonusKey]) {
     return {
-      awarded: true,
+      alreadyAwarded: true,
       bonusKey,
-      points: config.points,
-      label: config.label,
-      reason: config.reason,
-      newBalance,
-      historyEntry
+      currentBalance: Math.max(0, Number(existing.streetCashBalance) || 0)
     };
-  } catch (err) {
-    console.warn('[MongoDB awardStreetCashBonus error]:', err.message);
-    return null;
   }
+
+  const currentBalance = Math.max(0, Number(existing.streetCashBalance) || 0);
+  const currentEarned = Math.max(0, Number(existing.streetCashEarnedTotal) || 0);
+  const newBalance = currentBalance + config.points;
+  const newEarned = currentEarned + config.points;
+
+  const historyEntry = {
+    id: `bonus_${bonusKey}_${Date.now()}`,
+    type: 'EARNED',
+    points: config.points,
+    bonusKey,
+    date: new Date().toISOString(),
+    label: config.label
+  };
+
+  const currentHistory = Array.isArray(existing.streetCashHistory) ? existing.streetCashHistory : [];
+  const updatedHistory = [historyEntry, ...currentHistory].slice(0, 100);
+  const updatedBonuses = { ...bonuses, [bonusKey]: true, [`${bonusKey}At`]: new Date().toISOString() };
+
+  await upsertUserByPhone(cleanPhone, {
+    streetCashBalance: newBalance,
+    streetCashEarnedTotal: newEarned,
+    streetCashBonuses: updatedBonuses,
+    streetCashHistory: updatedHistory
+  });
+
+  console.log(`[The Street Cash Bonus] Credited ${config.points} pts (${bonusKey}) to ${cleanPhone}. New Balance: ${newBalance}`);
+  return {
+    awarded: true,
+    bonusKey,
+    points: config.points,
+    label: config.label,
+    reason: config.reason,
+    newBalance,
+    historyEntry
+  };
 }
 
-export async function syncUserOnboardingBonuses(phone) {
+export async function syncUserOnboardingBonuses(phone, hasOrder = false) {
   const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
   if (cleanPhone.length !== 10) return { bonuses: {}, awardedList: [], totalAwarded: 0 };
 
-  try {
-    const usersCol = await getCollection('users');
-    if (!usersCol) return { bonuses: {}, awardedList: [], totalAwarded: 0 };
+  const user = (await findUserByPhone(cleanPhone)) || {};
+  const bonuses = { ...(user.streetCashBonuses || {}) };
+  const awardedList = [];
 
-    const user = (await usersCol.findOne({ phone: cleanPhone }, { projection: { _id: 0 } })) || {};
-    const bonuses = { ...(user.streetCashBonuses || {}) };
-    const awardedList = [];
-
-    // 1. Account creation bonus (75 pts) - Automatically awarded if user has created an account / logged in
-    if (!bonuses.account_creation && cleanPhone.length === 10) {
-      const res = await awardStreetCashBonus(cleanPhone, 'account_creation');
-      if (res && res.awarded) {
-        awardedList.push(res);
-        bonuses.account_creation = true;
-      }
+  if (!bonuses.account_creation && cleanPhone.length === 10) {
+    const res = await awardStreetCashBonus(cleanPhone, 'account_creation');
+    if (res && res.awarded) {
+      awardedList.push(res);
+      bonuses.account_creation = true;
     }
-
-    // 2. Name uploaded in My Account (25 pts)
-    const hasName = Boolean((user.firstName && user.firstName.trim()) || (user.lastName && user.lastName.trim()) || (user.name && user.name.trim()));
-    if (!bonuses.profile_name && hasName) {
-      const res = await awardStreetCashBonus(cleanPhone, 'profile_name');
-      if (res && res.awarded) {
-        awardedList.push(res);
-        bonuses.profile_name = true;
-      }
-    }
-
-    // 3. Email added in My Account (35 pts)
-    const hasEmail = Boolean(user.email && String(user.email).includes('@'));
-    if (!bonuses.profile_email && hasEmail) {
-      const res = await awardStreetCashBonus(cleanPhone, 'profile_email');
-      if (res && res.awarded) {
-        awardedList.push(res);
-        bonuses.profile_email = true;
-      }
-    }
-
-    // 4. Check if user already placed an order (49 pts for 1st order)
-    if (!bonuses.first_order) {
-      const ordersCol = await getCollection('orders');
-      if (ordersCol) {
-        const orderCount = await ordersCol.countDocuments({
-          $or: [
-            { 'contactDetails.phone': cleanPhone },
-            { 'shippingAddress.phone': cleanPhone },
-            { accountPhone: cleanPhone },
-            { phone: cleanPhone }
-          ]
-        });
-        if (orderCount > 0) {
-          const res = await awardStreetCashBonus(cleanPhone, 'first_order');
-          if (res && res.awarded) {
-            awardedList.push(res);
-            bonuses.first_order = true;
-          }
-        }
-      }
-    }
-
-    const latestUser = (await usersCol.findOne({ phone: cleanPhone }, { projection: { _id: 0 } })) || {};
-    return {
-      bonuses: latestUser.streetCashBonuses || bonuses,
-      awardedList,
-      totalAwarded: awardedList.reduce((acc, curr) => acc + (curr.points || 0), 0),
-      currentBalance: Math.max(0, Number(latestUser.streetCashBalance) || 0)
-    };
-  } catch (err) {
-    console.warn('[MongoDB syncUserOnboardingBonuses error]:', err.message);
-    return { bonuses: {}, awardedList: [], totalAwarded: 0 };
   }
+
+  const hasName = Boolean((user.firstName && user.firstName.trim()) || (user.lastName && user.lastName.trim()) || (user.name && user.name.trim()));
+  if (!bonuses.profile_name && hasName) {
+    const res = await awardStreetCashBonus(cleanPhone, 'profile_name');
+    if (res && res.awarded) {
+      awardedList.push(res);
+      bonuses.profile_name = true;
+    }
+  }
+
+  const hasEmail = Boolean(user.email && String(user.email).includes('@'));
+  if (!bonuses.profile_email && hasEmail) {
+    const res = await awardStreetCashBonus(cleanPhone, 'profile_email');
+    if (res && res.awarded) {
+      awardedList.push(res);
+      bonuses.profile_email = true;
+    }
+  }
+
+  if (!bonuses.first_order && hasOrder) {
+    const res = await awardStreetCashBonus(cleanPhone, 'first_order');
+    if (res && res.awarded) {
+      awardedList.push(res);
+      bonuses.first_order = true;
+    }
+  }
+
+  const latestUser = (await findUserByPhone(cleanPhone)) || {};
+  return {
+    bonuses: latestUser.streetCashBonuses || bonuses,
+    awardedList,
+    totalAwarded: awardedList.reduce((acc, curr) => acc + (curr.points || 0), 0),
+    currentBalance: Math.max(0, Number(latestUser.streetCashBalance) || 0)
+  };
 }
 
 export async function awardStreetCashForOrder(phone, grandTotalInr, orderCode) {
@@ -767,80 +655,108 @@ export async function awardStreetCashForOrder(phone, grandTotalInr, orderCode) {
   if (cleanPhone.length !== 10) return null;
 
   const total = Math.max(0, Number(grandTotalInr) || 0);
-  // Rate: 0.199 points per 1 Rs (Per 1,000 Rs spent = 199 The Street Cash)
   let standardPoints = Math.floor(total * 0.199);
   if (standardPoints <= 0 && total > 0) standardPoints = 1;
 
-  try {
-    const col = await getCollection('users');
-    if (!col) return null;
+  const existing = inMemoryAccounts.get(cleanPhone) || {};
+  const bonuses = existing.streetCashBonuses || {};
+  const isFirstOrder = !bonuses.first_order;
+  const firstOrderBonusPts = isFirstOrder ? 49 : 0;
+  const totalPointsAwarded = standardPoints + firstOrderBonusPts;
 
-    const existing = (await col.findOne({ phone: cleanPhone }, { projection: { _id: 0 } })) || {};
-    const bonuses = existing.streetCashBonuses || {};
-    const isFirstOrder = !bonuses.first_order;
-    const firstOrderBonusPts = isFirstOrder ? 49 : 0;
-    const totalPointsAwarded = standardPoints + firstOrderBonusPts;
+  const currentBalance = Math.max(0, Number(existing.streetCashBalance) || 0);
+  const currentEarned = Math.max(0, Number(existing.streetCashEarnedTotal) || 0);
+  const newBalance = currentBalance + totalPointsAwarded;
+  const newEarned = currentEarned + totalPointsAwarded;
 
-    const currentBalance = Math.max(0, Number(existing.streetCashBalance) || 0);
-    const currentEarned = Math.max(0, Number(existing.streetCashEarnedTotal) || 0);
-    const newBalance = currentBalance + totalPointsAwarded;
-    const newEarned = currentEarned + totalPointsAwarded;
-
-    const historyEntries = [];
-    if (standardPoints > 0) {
-      historyEntries.push({
-        id: `earn_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-        type: 'EARNED',
-        points: standardPoints,
-        inrSpent: total,
-        orderCode: orderCode || '',
-        date: new Date().toISOString(),
-        label: `Order #${orderCode} Street Cash Bonus (+${standardPoints} pts)`
-      });
-    }
-
-    if (isFirstOrder) {
-      historyEntries.push({
-        id: `bonus_first_order_${Date.now()}`,
-        type: 'EARNED',
-        points: 49,
-        bonusKey: 'first_order',
-        date: new Date().toISOString(),
-        label: 'First Order Street Cash Bonus (+49 pts)'
-      });
-    }
-
-    const currentHistory = Array.isArray(existing.streetCashHistory) ? existing.streetCashHistory : [];
-    const updatedHistory = [...historyEntries, ...currentHistory].slice(0, 100);
-    const updatedBonuses = isFirstOrder ? { ...bonuses, first_order: true, first_orderAt: new Date().toISOString() } : bonuses;
-
-    await col.updateOne(
-      { phone: cleanPhone },
-      {
-        $set: {
-          streetCashBalance: newBalance,
-          streetCashEarnedTotal: newEarned,
-          streetCashBonuses: updatedBonuses,
-          streetCashHistory: updatedHistory,
-          updatedAt: new Date().toISOString()
-        }
-      },
-      { upsert: true }
-    );
-
-    console.log(`[The Street Cash] Awarded ${totalPointsAwarded} pts (${standardPoints} standard + ${firstOrderBonusPts} first order bonus) to ${cleanPhone} for order #${orderCode} (New balance: ${newBalance})`);
-    return {
-      pointsAwarded: totalPointsAwarded,
-      standardPoints,
-      firstOrderBonusPts,
-      isFirstOrder,
-      newBalance,
-      historyEntry: historyEntries[0]
-    };
-  } catch (err) {
-    console.warn('[MongoDB awardStreetCashForOrder error]:', err.message);
-    return null;
+  const historyEntries = [];
+  if (standardPoints > 0) {
+    historyEntries.push({
+      id: `earn_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      type: 'EARNED',
+      points: standardPoints,
+      inrSpent: total,
+      orderCode: orderCode || '',
+      date: new Date().toISOString(),
+      label: `Order #${orderCode} Street Cash Bonus (+${standardPoints} pts)`
+    });
   }
+
+  if (isFirstOrder) {
+    historyEntries.push({
+      id: `bonus_first_order_${Date.now()}`,
+      type: 'EARNED',
+      points: 49,
+      bonusKey: 'first_order',
+      date: new Date().toISOString(),
+      label: 'First Order Street Cash Bonus (+49 pts)'
+    });
+  }
+
+  const currentHistory = Array.isArray(existing.streetCashHistory) ? existing.streetCashHistory : [];
+  const updatedHistory = [...historyEntries, ...currentHistory].slice(0, 100);
+  const updatedBonuses = isFirstOrder ? { ...bonuses, first_order: true, first_orderAt: new Date().toISOString() } : bonuses;
+
+  await upsertUserByPhone(cleanPhone, {
+    streetCashBalance: newBalance,
+    streetCashEarnedTotal: newEarned,
+    streetCashBonuses: updatedBonuses,
+    streetCashHistory: updatedHistory
+  });
+
+  console.log(`[The Street Cash] Awarded ${totalPointsAwarded} pts (${standardPoints} standard + ${firstOrderBonusPts} first order bonus) to ${cleanPhone} for order #${orderCode} (New balance: ${newBalance})`);
+  return {
+    pointsAwarded: totalPointsAwarded,
+    standardPoints,
+    firstOrderBonusPts,
+    isFirstOrder,
+    newBalance,
+    historyEntry: historyEntries[0]
+  };
+}
+
+export async function earnCustomStreetCashBonus(phone, { actionId, label, points = 50 }) {
+  const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
+  if (cleanPhone.length !== 10) {
+    return { success: false, error: 'Valid phone required to claim The Street Cash bonus.' };
+  }
+  const existing = inMemoryAccounts.get(cleanPhone) || {};
+  const history = Array.isArray(existing.streetCashHistory) ? existing.streetCashHistory : [];
+
+  if (actionId && history.some(h => h.id === actionId)) {
+    return {
+      success: false,
+      alreadyClaimed: true,
+      message: 'Bonus points for this activity have already been claimed.',
+      streetCashBalance: existing.streetCashBalance || 0
+    };
+  }
+
+  const ptsToAdd = Math.max(10, Math.min(250, Number(points) || 50));
+  const newBalance = (Number(existing.streetCashBalance) || 0) + ptsToAdd;
+  const newEarned = (Number(existing.streetCashEarnedTotal) || 0) + ptsToAdd;
+
+  const entry = {
+    id: actionId || `bonus_${Date.now()}`,
+    type: 'EARNED',
+    points: ptsToAdd,
+    date: new Date().toISOString(),
+    label: label || 'VIP Community Street Cash Bonus'
+  };
+
+  await upsertUserByPhone(cleanPhone, {
+    streetCashBalance: newBalance,
+    streetCashEarnedTotal: newEarned,
+    streetCashHistory: [entry, ...history].slice(0, 100)
+  });
+
+  return {
+    success: true,
+    pointsAwarded: ptsToAdd,
+    streetCashBalance: newBalance,
+    streetCashEarnedTotal: newEarned,
+    entry
+  };
 }
 
 export async function redeemStreetCashCoupon(phone, requestedPoints = 499) {
@@ -850,117 +766,101 @@ export async function redeemStreetCashCoupon(phone, requestedPoints = 499) {
   }
 
   const pointsToRedeem = Math.max(499, Math.floor(Number(requestedPoints) || 499));
+  const existing = inMemoryAccounts.get(cleanPhone) || {};
+  const currentBalance = Math.max(0, Number(existing.streetCashBalance) || 0);
 
-  try {
-    const col = await getCollection('users');
-    if (!col) return { success: false, error: 'Database service unavailable. Please try again.' };
-
-    const existing = (await col.findOne({ phone: cleanPhone }, { projection: { _id: 0 } })) || {};
-    const currentBalance = Math.max(0, Number(existing.streetCashBalance) || 0);
-
-    if (currentBalance < pointsToRedeem) {
-      return {
-        success: false,
-        error: `Insufficient Street Cash. You need at least ${pointsToRedeem} points to redeem (Current balance: ${currentBalance} The Street Cash). Remember: Per 1,000 Rs spent will give you 199 The Street Cash!`,
-        currentBalance,
-        requiredPoints: pointsToRedeem
-      };
-    }
-
-    // Minimum redemption is 499 The Street Cash = ₹499 OFF!
-    const discountInr = pointsToRedeem;
-    const newBalance = currentBalance - pointsToRedeem;
-    const currentSpent = Math.max(0, Number(existing.streetCashSpentTotal) || 0);
-    const newSpent = currentSpent + pointsToRedeem;
-
-    // Generate unique, premium uppercase coupon code
-    const uniqueSuffix = Math.random().toString(36).substring(2, 8).toUpperCase();
-    const couponCode = `STREETCASH-${discountInr}-${uniqueSuffix}`;
-    const nowIso = new Date().toISOString();
-
-    const voucherName = `₹${discountInr} The Street Cash VIP Voucher`;
-    const voucherText = `Exclusive VIP Loyalty Reward: ₹${discountInr} Flat Discount. One-time use only.`;
-    const voucherSubText = 'Applicable on all orders (No minimum order value)';
-
-    const couponDocument = {
-      code: couponCode,
-      couponName: voucherName,
-      couponText: voucherText,
-      couponSubText: voucherSubText,
-      title: voucherName,
-      desc: voucherText,
-      subText: voucherSubText,
-      group: 'flat',
-      type: 'flat',
-      value: discountInr,
-      discountInr: discountInr,
-      minOrderValue: 0,
-      maxOrderValue: null,
-      maxDiscount: discountInr,
-      isPublic: true,
-      isOneTimeUse: true,
-      isRedeemed: false,
-      usageLimit: 1,
-      userPhone: cleanPhone,
-      redeemedAt: null,
-      redeemedByOrder: null,
-      badge: `FLAT ₹${discountInr} OFF`,
-      status: 'active',
-      createdAt: nowIso,
-      source: 'the_street_cash_loyalty'
+  if (currentBalance < pointsToRedeem) {
+    return {
+      success: false,
+      error: `Insufficient Street Cash. You need at least ${pointsToRedeem} points to redeem (Current balance: ${currentBalance} The Street Cash). Remember: Per 1,000 Rs spent will give you 199 The Street Cash!`,
+      currentBalance,
+      requiredPoints: pointsToRedeem
     };
+  }
 
-    // 1. Save coupon in MongoDB 'coupons' collection
+  const discountInr = pointsToRedeem;
+  const newBalance = currentBalance - pointsToRedeem;
+  const currentSpent = Math.max(0, Number(existing.streetCashSpentTotal) || 0);
+  const newSpent = currentSpent + pointsToRedeem;
+
+  const uniqueSuffix = Math.random().toString(36).substring(2, 8).toUpperCase();
+  const couponCode = `STREETCASH-${discountInr}-${uniqueSuffix}`;
+  const nowIso = new Date().toISOString();
+
+  const voucherName = `₹${discountInr} The Street Cash VIP Voucher`;
+  const voucherText = `Exclusive VIP Loyalty Reward: ₹${discountInr} Flat Discount. One-time use only.`;
+  const voucherSubText = 'Applicable on all orders (No minimum order value)';
+
+  const couponDocument = {
+    code: couponCode,
+    couponName: voucherName,
+    couponText: voucherText,
+    couponSubText: voucherSubText,
+    title: voucherName,
+    desc: voucherText,
+    subText: voucherSubText,
+    group: 'flat',
+    type: 'flat',
+    value: discountInr,
+    discountInr: discountInr,
+    minOrderValue: 0,
+    maxOrderValue: null,
+    maxDiscount: discountInr,
+    isPublic: true,
+    isOneTimeUse: true,
+    isRedeemed: false,
+    usageLimit: 1,
+    userPhone: cleanPhone,
+    redeemedAt: null,
+    redeemedByOrder: null,
+    badge: `FLAT ₹${discountInr} OFF`,
+    status: 'active',
+    createdAt: nowIso,
+    source: 'the_street_cash_loyalty'
+  };
+
+  // Persist redeemed coupon in MongoDB 'coupons' collection
+  try {
     const couponsCol = await getCollection('coupons');
     if (couponsCol) {
       await couponsCol.updateOne({ code: couponCode }, { $set: couponDocument }, { upsert: true });
     }
-
-    // 2. Record in user's Street Cash history and coupons list
-    const historyEntry = {
-      id: `redeem_${Date.now()}_${uniqueSuffix}`,
-      type: 'REDEEMED',
-      points: -pointsToRedeem,
-      discountInr: discountInr,
-      couponCode: couponCode,
-      date: nowIso,
-      label: `Redeemed ${pointsToRedeem} Street Cash for ₹${discountInr} Voucher`
-    };
-
-    const currentHistory = Array.isArray(existing.streetCashHistory) ? existing.streetCashHistory : [];
-    const updatedHistory = [historyEntry, ...currentHistory].slice(0, 100);
-
-    const currentCoupons = Array.isArray(existing.streetCashCoupons) ? existing.streetCashCoupons : [];
-    const updatedCoupons = [couponDocument, ...currentCoupons];
-
-    await col.updateOne(
-      { phone: cleanPhone },
-      {
-        $set: {
-          streetCashBalance: newBalance,
-          streetCashSpentTotal: newSpent,
-          streetCashHistory: updatedHistory,
-          streetCashCoupons: updatedCoupons,
-          updatedAt: nowIso
-        }
-      },
-      { upsert: true }
-    );
-
-    console.log(`[The Street Cash] User ${cleanPhone} redeemed ${pointsToRedeem} pts. Minted coupon: ${couponCode}. Remaining balance: ${newBalance}`);
-
-    return {
-      success: true,
-      coupon: couponDocument,
-      remainingBalance: newBalance,
-      pointsRedeemed: pointsToRedeem,
-      discountInr: discountInr,
-      message: `Success! ${pointsToRedeem} The Street Cash redeemed. Your ₹${discountInr} OFF voucher (${couponCode}) is ready to use.`
-    };
   } catch (err) {
-    console.warn('[MongoDB redeemStreetCashCoupon error]:', err.message);
-    return { success: false, error: err.message };
+    console.warn('[MongoDB coupons.upsert notice]:', err.message);
   }
+
+  const historyEntry = {
+    id: `redeem_${Date.now()}_${uniqueSuffix}`,
+    type: 'REDEEMED',
+    points: -pointsToRedeem,
+    discountInr: discountInr,
+    couponCode: couponCode,
+    date: nowIso,
+    label: `Redeemed ${pointsToRedeem} Street Cash for ₹${discountInr} Voucher`
+  };
+
+  const currentHistory = Array.isArray(existing.streetCashHistory) ? existing.streetCashHistory : [];
+  const updatedHistory = [historyEntry, ...currentHistory].slice(0, 100);
+  const currentCoupons = Array.isArray(existing.streetCashCoupons) ? existing.streetCashCoupons : [];
+  const updatedCoupons = [couponDocument, ...currentCoupons];
+
+  await upsertUserByPhone(cleanPhone, {
+    streetCashBalance: newBalance,
+    streetCashSpentTotal: newSpent,
+    streetCashHistory: updatedHistory,
+    streetCashCoupons: updatedCoupons
+  });
+
+  console.log(`[The Street Cash] User ${cleanPhone} redeemed ${pointsToRedeem} pts. Minted coupon: ${couponCode}. Remaining balance: ${newBalance}`);
+
+  return {
+    success: true,
+    coupon: couponDocument,
+    remainingBalance: newBalance,
+    pointsRedeemed: pointsToRedeem,
+    discountInr: discountInr,
+    message: `Success! ${pointsToRedeem} The Street Cash redeemed. Your ₹${discountInr} OFF voucher (${couponCode}) is ready to use.`
+  };
 }
 
 export async function findCouponInMongo(code) {
@@ -994,25 +894,32 @@ export async function burnOneTimeCoupon(code, orderCode) {
         }
       ).catch(() => {});
     }
-    const userCol = await getCollection('users');
-    if (userCol) {
-      await userCol.updateMany(
-        { 'streetCashCoupons.code': cleanCode },
-        {
-          $set: {
-            'streetCashCoupons.$.isRedeemed': true,
-            'streetCashCoupons.$.status': 'used',
-            'streetCashCoupons.$.redeemedAt': new Date().toISOString(),
-            'streetCashCoupons.$.redeemedByOrder': orderCode || ''
+
+    for (const [phone, doc] of inMemoryAccounts.entries()) {
+      if (Array.isArray(doc?.streetCashCoupons)) {
+        let changed = false;
+        const nextCoupons = doc.streetCashCoupons.map(c => {
+          if (c && String(c.code || '').toUpperCase() === cleanCode) {
+            changed = true;
+            return {
+              ...c,
+              isRedeemed: true,
+              status: 'used',
+              redeemedAt: new Date().toISOString(),
+              redeemedByOrder: orderCode || ''
+            };
           }
+          return c;
+        });
+        if (changed) {
+          inMemoryAccounts.set(phone, { ...doc, streetCashCoupons: nextCoupons });
         }
-      ).catch(() => {});
+      }
     }
+    persistLocalAccountsCache();
     return true;
   } catch (err) {
     console.warn('[burnOneTimeCoupon notice]:', err.message);
     return false;
   }
 }
-
-

@@ -32,24 +32,16 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Cinzel:wght@400;700&family=Space+Grotesk:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20261115_otp_v11" />
-<link rel="manifest" href="/manifest.json" />
-<meta name="theme-color" content="#ffffff" />
+<link rel="stylesheet" href="style.css?v=20261116_mob_v15" />
+<link rel="manifest" href="/manifest.json" crossorigin="use-credentials" />
+<meta name="application-name" content="The Street Co" />
+<meta name="theme-color" content="#FAF8F5" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
 <meta name="apple-mobile-web-app-title" content="The Street Co" />
 <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 <link rel="icon" type="image/png" sizes="192x192" href="/pwa-192x192.png" />
-<script type="importmap">
-{
-  "imports": {
-    "firebase/app": "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js",
-    "firebase/auth": "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js",
-    "firebase/firestore": "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js"
-  }
-}
-</script>
 <script>
   window.renderVipUI = function() {
     if (typeof window.renderStreetCashUI === 'function') {
@@ -722,8 +714,8 @@
     <div class="pillar-card">
       <div class="pillar-card__icon">🔒</div>
       <div class="pillar-card__info">
-        <strong>SECURE PAYMENTS</strong>
-        <small>UPI, Cards, NetBanking &amp; COD</small>
+        <strong>CASH ON DELIVERY</strong>
+        <small>Pay securely with cash upon delivery</small>
       </div>
     </div>
   </div>
@@ -2295,46 +2287,14 @@
           </div>
 
           <div class="checkout-payment-methods" id="checkoutPaymentMethods">
-            <!-- Official UPI Instant Payment Option -->
-            <!-- Official UPI Instant Payment Option -->
-            <div class="checkout-pay-option" data-method="upi" id="checkoutPayOptionUpi" style="cursor: pointer;">
-              <div class="checkout-pay-header" role="button" tabindex="0" aria-expanded="true">
-                <div class="checkout-pay-title-group">
-                  <span class="checkout-pay-icon checkout-pay-icon--upi" aria-label="UPI Logo">
-                    <img src="/img/upi.svg" alt="UPI" width="34" height="18" style="object-fit:contain;" />
-                  </span>
-                  <div class="checkout-pay-info">
-                    <div class="checkout-pay-title-row">
-                      <strong>UPI (Google Pay / PhonePe / Paytm / Any UPI App)</strong>
-                      <span class="pay-chip pay-chip--green">⚡ INSTANT</span>
-                    </div>
-                    <small>Review order next, then pay in any UPI app or scan QR</small>
-                  </div>
-                </div>
-                <div class="checkout-pay-badges">
-                  <span class="upi-mini-pill" style="background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;font-weight:700;">6296731835@fam</span>
-                </div>
-              </div>
-              <div class="checkout-pay-body" style="display:block;">
-                <div class="checkout-upi-box">
-                  <div class="checkout-upi-box-header">
-                    <div class="upi-box-badge">⚡ SECURE UPI PAYMENT</div>
-                    <p class="checkout-upi-info">
-                      Select UPI and continue to review your order. Once you confirm, you can pay directly in Google Pay, PhonePe, Paytm, or FamPay with your exact order amount pre-filled, or scan the QR code.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Simple Clean COD Option -->
+            <!-- Cash on Delivery (COD) Only -->
             <div class="checkout-pay-option active" data-method="cod" id="checkoutPayOptionCod">
               <div class="checkout-pay-header" role="button" tabindex="0" aria-expanded="true">
                 <div class="checkout-pay-title-group">
                   <span class="checkout-pay-icon">📦</span>
                   <div class="checkout-pay-info">
                     <strong>Cash on Delivery (COD)</strong>
-                    <small>Pay with cash or scan UPI QR code upon arrival at your doorstep</small>
+                    <small>Pay with cash upon doorstep arrival</small>
                   </div>
                 </div>
                 <div class="checkout-pay-badges">
@@ -2342,7 +2302,7 @@
                 </div>
               </div>
               <div class="checkout-pay-body" style="display:block;">
-                <p class="checkout-cod-info">Pay conveniently at your doorstep via Cash or Google Pay / PhonePe / Paytm / UPI QR upon arrival.</p>
+                <p class="checkout-cod-info">Pay conveniently with cash upon arrival at your doorstep.</p>
               </div>
             </div>
           </div>
@@ -2403,7 +2363,7 @@
               <div class="checkout-review-card__body">
                 <div class="checkout-review-pay-selected" id="reviewPaymentSelected">
                   <strong>Cash on Delivery (COD)</strong>
-                  <span id="reviewPaymentDetail">Pay upon arrival via Cash or UPI QR scan</span>
+                  <span id="reviewPaymentDetail">Pay with cash upon doorstep arrival</span>
                 </div>
               </div>
             </div>
@@ -2585,64 +2545,7 @@
   </div>
 </div>
 
-<!-- ══════════ UPI PAYMENT PAGE (EXACT SCREENSHOT LAYOUT & STYLING) ══════════ -->
-<div class="upi-page-overlay" id="upiPaymentGatewayModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="upierAmountDisplay">
-  <div class="upi-page-container">
-    
-    <!-- Center White Card matching screenshot exactly -->
-    <div class="upier-card" id="upierMainCard">
-      <!-- Big bold amount at top -->
-      <div class="upier-amount" id="upierAmountDisplay">₹200</div>
-
-      <!-- Order ID -->
-      <div class="upier-order-id" id="upierOrderIdDisplay">Order ID: 169396</div>
-
-      <!-- Valid for 04:00 auto-verify timer pill -->
-      <div class="upier-timer-pill">
-        <svg class="upier-clock-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"></circle>
-          <polyline points="12 6 12 12 16 14"></polyline>
-        </svg>
-        <span>Valid for <strong id="upierTimerClock">04:00</strong></span>
-      </div>
-
-      <!-- QR Code with rounded border -->
-      <div class="upier-qr-wrap" id="upierQrWrap">
-        <div class="upier-qr-skeleton">Generating QR...</div>
-      </div>
-
-      <!-- Solid Black Button: Pay with UPI App -->
-      <a href="#" class="upier-pay-button" id="upierPayButton">
-        Pay with UPI App
-      </a>
-
-      <!-- Live Checking / Polling Status Indicator (Hidden during listening, shows only when confirmed) -->
-      <div class="upier-poll-status" id="upierPollStatus" style="display: none !important;">
-        <span class="upier-poll-dot" id="upierPollDot"></span>
-        <span class="upier-poll-text" id="upierPollStatusText"></span>
-      </div>
-
-      <!-- Text Link: Paid from another app? Enter 12-digit UTR manually -->
-      <button type="button" class="upier-utr-toggle-btn" id="upierUtrToggleBtn">
-        Paid from another app? Enter 12-digit UTR manually
-      </button>
-
-      <!-- Inline UTR Input Drawer (Shown only when user clicks UTR link) -->
-      <div class="upier-utr-form" id="upierUtrForm" style="display: none !important;">
-        <input type="text" id="upierUtrInput" maxlength="12" placeholder="Enter 12-digit UPI Ref / UTR" class="upier-utr-input" />
-        <button type="button" id="upierUtrSubmitBtn" class="upier-utr-submit">Submit UTR</button>
-      </div>
-    </div>
-
-    <!-- Below Card: UPI logo -->
-    <div class="upier-footer-section">
-      <div class="upier-logo-row">
-        <img src="/img/upi.svg" alt="UPI" width="56" height="28" class="upier-upi-img" />
-      </div>
-    </div>
-
-  </div>
-</div>
+<!-- UPI Payment Overlay Permanently Removed (COD Only) -->
 
 <!-- ══════════ MERCHANT GMAIL & INTEGRATION SETUP MODAL ══════════ -->
 <div class="merchant-modal-overlay" id="merchantGmailSetupModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="merchantModalTitle">
@@ -3021,24 +2924,52 @@
       </div>
 
       <!-- MINTED STREET CASH COUPON CARD (Shown when user has active Street Cash coupon) -->
-      <div id="streetCashMintedCouponCard" style="display:none;background:#FAF8F5;border:1.5px dashed #0E0E11;border-radius:10px;padding:16px 20px;margin-bottom:18px;cursor:pointer;transition:all 0.16s;" onclick="if(window.copyActiveStreetCashCoupon){window.copyActiveStreetCashCoupon();}" title="Click to copy coupon code">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;">
-          <div>
-            <div style="display:flex;align-items:center;gap:8px;">
-              <span style="font-size:1.05rem;">🎟️</span>
-              <span style="font-size:0.68rem;letter-spacing:0.14em;text-transform:uppercase;color:#0E0E11;font-weight:800;">ACTIVE STORE VOUCHER</span>
-              <span style="background:#0E0E11;color:#FFFFFF;font-size:0.62rem;font-weight:700;padding:2px 7px;border-radius:4px;">SAVED TO ACCOUNT</span>
+      <div id="streetCashMintedCouponCard" class="streetcash-voucher-card" style="display:none;background:#FFFFFF;border:1px solid #E5DEC9;border-radius:12px;padding:18px 20px;margin-bottom:18px;cursor:pointer;transition:transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;box-shadow:0 4px 16px rgba(14,14,17,0.04);position:relative;overflow:hidden;" onclick="if(window.copyActiveStreetCashCoupon){window.copyActiveStreetCashCoupon();}" title="Click to copy voucher code">
+        <!-- Top Row: Title & Saved Status -->
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px;">
+          <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+            <div style="width:36px;height:36px;border-radius:8px;background:#FAF8F5;border:1px solid #EAE6DF;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#9A7B4F;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/>
+                <path d="M13 5v2"/><path d="M13 17v2"/><path d="M13 11v2"/>
+              </svg>
             </div>
-            <div style="font-size:1.35rem;font-weight:800;color:#0E0E11;font-family:monospace;letter-spacing:0.08em;margin-top:4px;" id="streetCashMintedCodeDisplay">
-              STREETCASH-XXXX
-            </div>
-            <div style="font-size:0.75rem;color:#52525B;margin-top:2px;">
-              ₹499 Flat Discount · Auto-applies to your bag · Click card to copy code
+            <div style="min-width:0;">
+              <div style="font-size:0.64rem;letter-spacing:0.12em;text-transform:uppercase;color:#71717A;font-weight:700;line-height:1.2;white-space:nowrap;">
+                Active Store Voucher
+              </div>
+              <div style="font-size:0.98rem;font-weight:800;color:#0E0E11;margin-top:3px;line-height:1.25;white-space:nowrap;">
+                ₹499 Flat Discount
+              </div>
             </div>
           </div>
-          <button type="button" onclick="event.stopPropagation();if(window.copyActiveStreetCashCoupon){window.copyActiveStreetCashCoupon();}" style="padding:8px 16px;background:#0E0E11;border:none;border-radius:6px;font-size:0.75rem;font-weight:700;color:#FFFFFF;display:flex;align-items:center;gap:6px;cursor:pointer;transition:all 0.16s;">
-            <span>Copy Code</span>
+          <div style="text-align:right;flex-shrink:0;">
+            <div style="font-size:0.72rem;font-weight:700;color:#15803D;line-height:1.2;white-space:nowrap;">✓ Saved to Account</div>
+            <div style="font-size:0.68rem;color:#71717A;font-weight:500;margin-top:4px;white-space:nowrap;">Single-Use Reward</div>
+          </div>
+        </div>
+
+        <!-- Code Bar & Copy Action -->
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:#FAF8F5;border:1px solid #EAE6DF;border-radius:8px;padding:10px 12px 10px 14px;">
+          <div style="min-width:0;flex:1 1 auto;overflow:hidden;">
+            <div style="font-size:0.6rem;letter-spacing:0.12em;text-transform:uppercase;color:#71717A;font-weight:600;margin-bottom:2px;white-space:nowrap;">Voucher Code</div>
+            <div id="streetCashMintedCodeDisplay" style="font-size:0.92rem;font-weight:700;color:#0E0E11;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;letter-spacing:0.04em;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;">
+              STREETCASH-XXXX
+            </div>
+          </div>
+          <button type="button" id="streetCashCopyCodeBtn" onclick="event.stopPropagation();if(window.copyActiveStreetCashCoupon){window.copyActiveStreetCashCoupon();}" style="padding:8px 14px;background:#0E0E11;border:none;border-radius:6px;font-size:0.74rem;font-weight:600;color:#FFFFFF;display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;transition:background 0.16s ease, transform 0.16s ease;white-space:nowrap;flex-shrink:0;" onmouseover="this.style.background='#27272A'" onmouseout="this.style.background='#0E0E11'">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            <span id="streetCashCopyCodeBtnLabel">Copy Code</span>
           </button>
+        </div>
+
+        <!-- Footer Info Line -->
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:11px;padding-top:10px;border-top:1px solid #F4F4F5;font-size:0.72rem;color:#52525B;line-height:1.35;">
+          <span style="white-space:nowrap;">Auto-applies to your bag at checkout</span>
+          <span style="color:#71717A;font-size:0.68rem;white-space:nowrap;">Click card to copy</span>
         </div>
       </div>
 
@@ -3682,7 +3613,7 @@
                 <div id="accountOrdersContainer" class="account-orders-list-wrap">
                   <div class="account-orders-loading-state">
                     <div class="account-orders-spinner"></div>
-                    <p>Loading order history from MongoDB Atlas...</p>
+                    <p>Loading order history from Zoho Inventory...</p>
                   </div>
                 </div>
               </section>
@@ -3708,12 +3639,12 @@
                     <div class="account-logout-profile-info">
                       <div class="account-logout-profile-name" id="accountLogoutUserNameDisplay">Account User</div>
                       <div class="account-logout-profile-phone" id="accountLogoutUserPhoneDisplay">+91 ••••••••••</div>
-                      <div class="account-logout-profile-meta" id="accountLogoutUserEmailDisplay">Synced with MongoDB Cloud</div>
+                      <div class="account-logout-profile-meta" id="accountLogoutUserEmailDisplay">Synced with Zoho Inventory</div>
                     </div>
                   </div>
 
                   <p class="account-logout-guidance">
-                    Ready to leave? Logging out will sign you out on this device. All your saved addresses, verified email, and orders will remain securely backed up in MongoDB Atlas for your next visit.
+                    Ready to leave? Logging out will sign you out on this device. Your saved addresses, verified email, and Zoho-synced order history will remain ready for your next visit.
                   </p>
 
                   <div class="account-logout-cta-wrap">
@@ -3758,7 +3689,7 @@
     <h3 class="logout-confirm-modal__title">Log Out of Your Account?</h3>
     
     <p class="logout-confirm-modal__message" id="accountLogoutConfirmMessage">
-      Are you sure you want to log out? You will be signed out of your account on this device. Your cart, saved addresses, and orders are securely backed up in MongoDB and will be ready when you return.
+      Are you sure you want to log out? You will be signed out of your account on this device. Your cart, saved addresses, and Zoho-synced order history will be ready when you return.
     </p>
 
     <div class="logout-confirm-modal__user-card" id="accountLogoutConfirmUserCard">
@@ -3862,7 +3793,6 @@
   </div>
 </div>
 
-<script type="module" src="firebase-auth.js?v=20261101_fb2"></script>
 <script>
   window.renderVipUI = function() {
     if (typeof window.renderStreetCashUI === 'function') {
@@ -3875,7 +3805,7 @@
   import * as upiIntentHelper from '/upiIntentHelper.js';
   window.streetCoUpiHelper = upiIntentHelper;
 </script>
-<script src="main.js?v=20261115_ret_v13"></script>
+<script src="main.js?v=20261116_zoho_v19"></script>
 
 <!-- Guaranteed Header & Step Button Sync (Overrides any browser cache) -->
 <script>

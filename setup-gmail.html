@@ -349,27 +349,7 @@
     </center>
   </div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
-    import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
-
-    let authInstance = null;
-    let currentToken = null;
-
-    async function initAuth() {
-      try {
-        const res = await fetch("/firebase-applet-config.json");
-        if (res.ok) {
-          const cfg = await res.json();
-          const app = initializeApp(cfg, "setup-page-auth");
-          authInstance = getAuth(app);
-        }
-      } catch (err) {
-        console.error("Config load error:", err);
-      }
-    }
-    initAuth();
-
+  <script>
     const statusIndicator = document.getElementById("statusIndicator");
     const statusText = document.getElementById("statusText");
     const emailDisplay = document.getElementById("emailDisplay");
@@ -395,16 +375,16 @@
             statusText.textContent = data.mode === "gmail_imap" ? "Connected via Gmail IMAP (Active)" : "Connected & Active";
             emailDisplay.textContent = data.email || "thestreetco.official@gmail.com";
             timeDisplay.textContent = data.mode === "gmail_imap"
-              ? "Auto-verifying incoming FamPay/UPI receipts over TLS IMAP (imap.gmail.com:993)"
+              ? "Auto-verifying via TLS IMAP / SMTP (imap.gmail.com:993)"
               : `Connected at: ${new Date(data.connectedAt).toLocaleString('en-IN')}`;
-            btnConnectGoogleText.textContent = "Reconnect / Switch Google Account";
-            btnDisconnect.style.display = "block";
+            btnConnectGoogleText.textContent = "Refresh Connection Status";
+            btnDisconnect.style.display = "none";
           } else {
             statusIndicator.className = "status-indicator";
             statusText.textContent = "Not Connected";
             emailDisplay.textContent = data.email || "thestreetco.official@gmail.com";
-            timeDisplay.textContent = "Waiting for Gmail IMAP or Google authorization";
-            btnConnectGoogleText.textContent = "Sign In with Google to Connect Gmail";
+            timeDisplay.textContent = "Configure Gmail App Password in environment variables";
+            btnConnectGoogleText.textContent = "Refresh Connection Status";
             btnDisconnect.style.display = "none";
           }
         }
@@ -413,60 +393,23 @@
       }
     }
 
-    btnConnectGoogle.onclick = async () => {
-      showFeedback("info", "Opening official Google Sign-In popup...");
-      try {
-        if (!authInstance) await initAuth();
-        const provider = new GoogleAuthProvider();
-        provider.addScope("https://www.googleapis.com/auth/gmail.readonly");
-        provider.setCustomParameters({ prompt: "select_account" });
-
-        const result = await signInWithPopup(authInstance, provider);
-        const credential = GoogleAuthProvider.credentialFromResult(result);
-        const token = credential?.accessToken;
-
-        if (!token) throw new Error("Could not retrieve access token from Google.");
-
-        currentToken = token;
-
-        // Save token to server
-        const saveRes = await fetch("/api/merchant/set-gmail-token", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            token,
-            email: result.user.email
-          })
-        });
-
-        if (saveRes.ok) {
-          showFeedback("success", `✓ Successfully linked ${result.user.email}! Automated FamPay receipt detection is now LIVE.`);
-          refreshStatus();
-        } else {
-          throw new Error("Failed to register token with server.");
-        }
-      } catch (err) {
-        showFeedback("error", "Sign-In cancelled or error: " + err.message);
-      }
+    btnConnectGoogle.onclick = () => {
+      showFeedback("info", "Refreshing Gmail connection status...");
+      refreshStatus();
     };
 
     btnTestScan.onclick = async () => {
-      showFeedback("info", "Scanning Gmail inbox for recent FamPay/UPI messages...");
+      showFeedback("info", "Scanning Gmail inbox...");
       try {
-        const headers = currentToken ? { Authorization: `Bearer ${currentToken}` } : {};
-        const res = await fetch("/api/verify-payment?amount=0", { headers });
+        const res = await fetch("/api/verify-payment?amount=0");
         const data = await res.json();
 
-        if (data.reason === "no_token") {
-          showFeedback("error", "Gmail not connected yet. Click <strong>Sign In with Google</strong> above or configure IMAP.");
-        } else if (data.reason === "token_expired") {
-          showFeedback("error", "Session expired. Please click <strong>Reconnect</strong> above.");
-        } else if (data.reason === "imap_error") {
+        if (data.reason === "imap_error") {
           showFeedback("error", data.message || "Gmail IMAP connection failed.");
         } else {
           showFeedback("success", data.imapConnected
             ? `✓ Gmail IMAP verified for <strong>${data.email || "thestreetco.official@gmail.com"}</strong>! Scanned ${data.checkedCount ?? 0} recent message(s) cleanly without errors.`
-            : "✓ Gmail connection verified successfully! Scanned recent messages without errors. System is actively listening for customer receipts.");
+            : "✓ Gmail connection verified cleanly without errors.");
         }
       } catch (err) {
         showFeedback("error", "Scan test error: " + err.message);
@@ -476,7 +419,6 @@
     btnDisconnect.onclick = async () => {
       try {
         await fetch("/api/merchant/disconnect-gmail", { method: "POST" });
-        currentToken = null;
         showFeedback("info", "Disconnected Gmail token.");
         refreshStatus();
       } catch (_) {}

@@ -1,14 +1,14 @@
 {
   "id": "/",
-  "name": "The Street Co — Premium Streetwear Essentials",
+  "name": "The Street Co",
   "short_name": "TheStreetCo",
   "description": "Explore our exclusive collection of premium apparel and limited-edition essentials designed with exceptional quality.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#060609",
-  "theme_color": "#0b0a0f",
-  "orientation": "any",
+  "background_color": "#FAF8F5",
+  "theme_color": "#FAF8F5",
+  "orientation": "portrait-primary",
   "prefer_related_applications": false,
   "icons": [
     {

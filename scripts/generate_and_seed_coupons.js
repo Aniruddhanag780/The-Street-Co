@@ -1,11 +1,4 @@
 import { connectMongoDb, getCollection } from '../mongoDb.js';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const CACHE_FILE = path.join(__dirname, '..', 'coupons_cache.json');
 
 function formatCouponSubText(minOrderValue, maxOrderValue) {
   const min = Number(minOrderValue) || 0;
@@ -302,9 +295,7 @@ async function seed() {
   await col.bulkWrite(bulkOps);
   console.log('Bulk write completed successfully in MongoDB Atlas.');
 
-  // Update coupons_cache.json
-  fs.writeFileSync(CACHE_FILE, JSON.stringify(allDocuments, null, 2), 'utf8');
-  console.log(`Saved ${allDocuments.length} coupons to ${CACHE_FILE}`);
+  // Synced exclusively to MongoDB Atlas
 
   const flatCount = allDocuments.filter(c => c.group === 'flat' && !c.isOneTimeUse).length;
   const percentCount = allDocuments.filter(c => c.group === 'percentage').length;

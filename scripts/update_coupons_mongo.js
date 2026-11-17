@@ -1,11 +1,4 @@
 import { connectMongoDb, getCollection } from '../mongoDb.js';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const CACHE_FILE = path.join(__dirname, '..', 'coupons_cache.json');
 
 function formatCouponSubText(minOrderValue, maxOrderValue) {
   const min = Number(minOrderValue) || 0;
@@ -313,10 +306,7 @@ async function run() {
     console.log(`Updated in MongoDB: [${doc.group.toUpperCase()}] ${doc.code} -> "${doc.couponName}" | SubText: "${doc.couponSubText}"`);
   }
 
-  // Update local coupons_cache.json
-  fs.writeFileSync(CACHE_FILE, JSON.stringify(enrichedCoupons, null, 2), 'utf8');
-  console.log(`Saved ${enrichedCoupons.length} coupons to ${CACHE_FILE}`);
-
+  console.log(`Synced ${enrichedCoupons.length} coupons directly to MongoDB Atlas.`);
   process.exit(0);
 }
 

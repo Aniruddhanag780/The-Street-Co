@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "node server.js",
     "build": "node -e \"require('fs').mkdirSync('dist', { recursive: true })\" && node --check server.js",
-    "lint": "node -c server.js",
+    "lint": "node -c server.js && node -c main.js && node -c mongoDb.js && node -c zohoInventory.js && node -c netlify/functions/api.js",
     "start": "node server.js"
   },
   "dependencies": {

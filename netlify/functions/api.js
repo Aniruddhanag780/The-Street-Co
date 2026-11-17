@@ -1582,7 +1582,7 @@ NODE_ENV=production
       const twilioClient = typeof getTwilioClient === 'function' ? getTwilioClient() : null;
       if (twilioClient) {
         try {
-          const fromNumber = (process.env.TWILIO_PHONE_NUMBER || TWILIO_PHONE_NUMBER || '').trim();
+          const fromNumber = (process.env.TWILIO_PHONE_NUMBER || '+14356605689').trim();
           await twilioClient.messages.create({
             body: `${otpCode} is your 6-digit login verification OTP for The Street Co. Valid for 10 minutes.`,
             from: fromNumber,
@@ -1834,7 +1834,7 @@ NODE_ENV=production
           productsCount: pList.length,
           ordersCount: inMemoryOrders.size,
           subscribersCount: inMemorySubscribers.size,
-          couponsCount: DEFAULT_COUPONS.length
+          couponsCount: 0
         })
       };
     }

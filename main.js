@@ -12,11 +12,25 @@ window.trackGAEvent = function(eventName, eventParams = {}) {
   try {
     if (typeof window.gtag === "function") {
       window.gtag("event", eventName, eventParams);
-    } else if (typeof gtag === "function") {
-      gtag("event", eventName, eventParams);
     }
   } catch (_) {}
 };
+
+// Safe JSON response parser (guards against HTML proxy/fallback responses)
+window.safeParseJsonResponse = async function(res) {
+  if (!res || !res.ok) return null;
+  try {
+    const contentType = (res.headers && res.headers.get && res.headers.get('content-type') || '').toLowerCase();
+    const rawText = await res.text();
+    if (!rawText || contentType.includes('text/html') || /^\s*</.test(rawText)) {
+      return null;
+    }
+    return JSON.parse(rawText);
+  } catch (_) {
+    return null;
+  }
+};
+var safeParseJsonResponse = window.safeParseJsonResponse;
 
 // VIP & Street Cash UI Global Fallback (prevents any ReferenceError across scopes)
 window.renderVipUI = function() {
@@ -403,8 +417,8 @@ document.addEventListener("DOMContentLoaded", () => {
       e.preventDefault();
       lockNavScrollSync(1200);
       setActiveBottomNav(mobileNavCart);
-      if (typeof openCart === "function") {
-        openCart("bag");
+      if (typeof window.openCart === "function") {
+        window.openCart("bag");
       } else {
         const cartBtn = document.getElementById("shopCartBtn");
         if (cartBtn) cartBtn.click();
@@ -518,8 +532,10 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
   } catch (e) {
     cart = [];
   }
+  window.cart = cart;
 
   function saveCart() {
+    window.cart = cart;
     try {
       localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
     } catch (e) {
@@ -1076,9 +1092,10 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     const cartStreetCashCard = document.getElementById('cartStreetCashAppliedCard');
     const cartStreetCashCodeBadge = document.getElementById('cartStreetCashCodeBadge');
     const appliedCode = (appliedCartCoupon && appliedCartCoupon.code) || '';
+    const scState = window.streetCashState;
     const isStreetCashCode = appliedCode && (
       appliedCode.startsWith('STREETCASH-') ||
-      (typeof streetCashState !== 'undefined' && Array.isArray(streetCashState.streetCashCoupons) && streetCashState.streetCashCoupons.some(c => c.code === appliedCode))
+      (scState && Array.isArray(scState.streetCashCoupons) && scState.streetCashCoupons.some(c => c.code === appliedCode))
     );
     if (cartStreetCashCard) {
       if (isStreetCashCode && discount > 0) {
@@ -1347,16 +1364,17 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
   // Automatically apply active Street Cash coupon to bag
   async function autoApplyStreetCashCouponIfAvailable() {
     let activeCode = window.activeStreetCashCouponCode;
-    if (!activeCode && typeof streetCashState !== 'undefined' && Array.isArray(streetCashState.streetCashCoupons)) {
-      const activeC = streetCashState.streetCashCoupons.find(c => !c.isRedeemed && c.status === 'active');
+    const scState = window.streetCashState;
+    if (!activeCode && scState && Array.isArray(scState.streetCashCoupons)) {
+      const activeC = scState.streetCashCoupons.find(c => !c.isRedeemed && c.status === 'active');
       if (activeC) activeCode = activeC.code;
     }
     if (!activeCode) {
       try { activeCode = localStorage.getItem('the_street_cash_active_coupon'); } catch(_) {}
     }
-    if (activeCode && (!appliedCartCoupon || !appliedCartCoupon.code)) {
+    if (activeCode && (!appliedCartCoupon || !appliedCartCoupon.code) && typeof window.applyCouponCode === 'function') {
       try {
-        await applyCouponCode(activeCode);
+        await window.applyCouponCode(activeCode);
       } catch (_) {}
     }
   }
@@ -1392,6 +1410,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       } catch (_) {}
     }
   }
+  window.openCart = openCart;
   function closeCart(skipHistoryBack = false) {
     if (cartDrawer) {
       cartDrawer.classList.remove('open');
@@ -1740,8 +1759,10 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       if (savedAddrRaw) {
         const lastSavedAddr = JSON.parse(savedAddrRaw);
         if (lastSavedAddr && (lastSavedAddr.name || lastSavedAddr.fullName) && (lastSavedAddr.address1 || lastSavedAddr.houseFlat)) {
-          applyAddressToCheckoutInputs(lastSavedAddr);
-          hasPrefilled = true;
+          if (typeof window.applyAddressToCheckoutInputs === 'function') {
+            window.applyAddressToCheckoutInputs(lastSavedAddr);
+            hasPrefilled = true;
+          }
         }
       }
     } catch (_) {}
@@ -1971,27 +1992,25 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       if (viewsWrap) viewsWrap.scrollTop = 0;
     }
 
-    // On step 2 (Payment page), select UPI by default (or preserve chosen method)
+    // On step 2 (Payment page), only Cash on Delivery (COD) is active
     if (stepNumber === 2) {
-      const activeMethod = checkoutSession.payment.method || 'upi';
+      const activeMethod = 'cod';
       payOptions.forEach(opt => {
         if (opt.dataset.method === activeMethod) {
           opt.classList.add('active');
           const hdr = opt.querySelector('.checkout-pay-header');
           if (hdr) hdr.setAttribute('aria-expanded', 'true');
-          checkoutSession.payment.method = activeMethod;
-          checkoutSession.payment.detail = activeMethod === 'upi'
-            ? 'UPI Payment (Google Pay / PhonePe / Paytm / QR) · Pay after confirming order'
-            : 'Cash on Delivery (COD) · Pay upon doorstep arrival';
-          checkoutSession.payment.status = activeMethod === 'upi'
-            ? (checkoutSession.payment.status === 'PAID' ? 'PAID' : 'PENDING')
-            : 'COD';
         } else {
           opt.classList.remove('active');
           const hdr = opt.querySelector('.checkout-pay-header');
           if (hdr) hdr.setAttribute('aria-expanded', 'false');
         }
       });
+      checkoutSession.payment = {
+        method: 'cod',
+        detail: 'Pay with cash upon doorstep arrival',
+        status: 'COD'
+      };
     }
 
     // Populate review cards on Step 3 ("Conform Order")
@@ -2148,27 +2167,15 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
   window.streetCoProceedToPaymentStep = handleAddressStepSubmit;
   window.handleAddressStepSubmit = handleAddressStepSubmit;
 
-  // Step 2 Validation & Proceed (Always goes to Step 3 Review & Confirm first)
-  function handlePaymentStepSubmit(chosenMethod) {
-    let activeMethod = (typeof chosenMethod === 'string' && chosenMethod) ? chosenMethod : (checkoutSession.payment?.method || 'upi');
-    if (activeMethod === 'upi') {
-      const existingPaid = checkoutSession.payment?.method === 'upi' && checkoutSession.payment?.status === 'PAID';
-      checkoutSession.payment = existingPaid
-        ? checkoutSession.payment
-        : {
-            method: 'upi',
-            detail: 'UPI Payment (Google Pay / PhonePe / Paytm / QR) · Pay after confirming order',
-            status: 'PENDING'
-          };
-    } else {
-      checkoutSession.payment = {
-        method: 'cod',
-        detail: 'Cash on Delivery (COD) · Pay upon doorstep arrival',
-        status: 'COD'
-      };
-    }
+  // Step 2 Validation & Proceed (COD Only -> advances to Step 3 Review & Confirm)
+  function handlePaymentStepSubmit(_chosenMethod) {
+    checkoutSession.payment = {
+      method: 'cod',
+      detail: 'Pay with cash upon doorstep arrival',
+      status: 'COD'
+    };
 
-    // Always advance to Step 3: Review & Confirm Order first
+    // Advance to Step 3: Review & Confirm Order
     goToCheckoutStep(3);
   }
 
@@ -2562,72 +2569,9 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
   }
   window.completeUpiPayment = completeUpiPayment;
 
+  // UPI Return Callback disabled (COD Only)
   function handleUpiReturnCallbackOnBoot() {
-    const returnCheck = window.streetCoUpiHelper?.shouldConfirmUpiAppReturn
-      ? window.streetCoUpiHelper.shouldConfirmUpiAppReturn({
-          urlSearch: window.location.search,
-          urlHash: window.location.hash
-        })
-      : {
-          shouldConfirm: new URLSearchParams(window.location.search).get('upi_return') === '1' || window.location.hash === '#upi-confirmed',
-          via: 'url_callback'
-        };
-
-    if (!returnCheck.shouldConfirm) return;
-
-    const pending = readPendingUpiIntentStorage();
-    if (!pending) return;
-
-    if (pending.checkoutSnapshot && typeof checkoutSession === 'object') {
-      if (Array.isArray(pending.checkoutSnapshot.items) && pending.checkoutSnapshot.items.length > 0) {
-        checkoutSession.items = pending.checkoutSnapshot.items;
-      } else if (typeof cart !== 'undefined' && Array.isArray(cart) && cart.length > 0) {
-        checkoutSession.items = cart.map(it => ({ ...it, qty: it.qty || 1 }));
-      } else if (Number(pending.totalInr) > 0) {
-        const fallbackTotal = Number(pending.totalInr);
-        checkoutSession.items = [{
-          sku: 'TSC-UPI-ORDER',
-          id: 'TSC-UPI-ORDER',
-          name: 'The Street Co Order',
-          priceInr: fallbackTotal,
-          priceRyo: Math.round(fallbackTotal * 1.54),
-          qty: 1,
-          size: 'Standard',
-          finish: 'Official Drop'
-        }];
-      }
-      if (pending.checkoutSnapshot.address) checkoutSession.address = pending.checkoutSnapshot.address;
-      if (pending.checkoutSnapshot.delivery) checkoutSession.delivery = pending.checkoutSnapshot.delivery;
-      if (pending.checkoutSnapshot.promoCode !== undefined) checkoutSession.promoCode = pending.checkoutSnapshot.promoCode;
-      if (pending.checkoutSnapshot.discount !== undefined) checkoutSession.discount = pending.checkoutSnapshot.discount;
-      if (pending.checkoutSnapshot.source) checkoutSession.source = pending.checkoutSnapshot.source;
-    }
-
-    const loaderEl = document.getElementById('loader');
-    if (loaderEl) {
-      loaderEl.classList.add('done');
-      loaderEl.style.display = 'none';
-      document.body.classList.add('ready');
-    }
-
-    if (checkoutFlowModal && !checkoutFlowModal.classList.contains('open')) {
-      checkoutFlowModal.classList.add('open');
-      checkoutFlowModal.setAttribute('aria-hidden', 'false');
-      document.body.classList.add('bag-open', 'checkout-open');
-    }
-
-    try {
-      const cleanUrl = window.location.pathname || '/';
-      window.history.replaceState(null, '', cleanUrl);
-    } catch (_) {}
-
-    completeUpiPayment(pending.totalInr, pending.refNum, `Paid via UPI App (TSC${pending.refNum})`);
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', handleUpiReturnCallbackOnBoot);
-  } else {
-    setTimeout(handleUpiReturnCallbackOnBoot, 0);
+    return;
   }
 
   // ══════════ MERCHANT GMAIL SETUP MODAL CONTROLLER ══════════
@@ -2882,31 +2826,16 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     if (checkoutConfirmOrderBtn) {
       const textEl = checkoutConfirmOrderBtn.querySelector('.confirm-text');
       const subEl = checkoutConfirmOrderBtn.querySelector('.confirm-sub');
-      if (checkoutSession.payment?.method === 'upi' && checkoutSession.payment?.status !== 'PAID') {
-        if (textEl) textEl.textContent = 'CONFIRM & PAY VIA UPI';
-        if (subEl) subEl.textContent = 'Open UPI Payment Page';
-      } else {
-        if (textEl) textEl.textContent = 'CONFIRM & PLACE ORDER';
-        if (subEl) subEl.textContent = 'Place Your Order';
-      }
+      if (textEl) textEl.textContent = 'CONFIRM & PLACE ORDER';
+      if (subEl) subEl.textContent = 'Place Your Order';
     }
   }
 
-  // Step 3 -> 4: Place & Confirm Order Action
+  // Step 3 -> 4: Place & Confirm Order Action (COD Only)
   function handleConfirmAndPlaceOrder() {
     if (!checkoutConfirmOrderBtn) return;
 
-    // For UPI orders, confirm first on Step 3 and then open the UPI Payment Page until paid
-    if (checkoutSession.payment?.method === 'upi' && checkoutSession.payment?.status !== 'PAID') {
-      openUpiPaymentGateway();
-      return;
-    }
-
-    // Preserve 6-digit UPI reference when paid via UPI so Order ID matches UPI app details, else generate 6-digit ID
-    const upiTxnId = String(checkoutSession.payment?.txnId || '').trim();
-    const generatedId = (checkoutSession.payment?.method === 'upi' && /^\d{6}$/.test(upiTxnId))
-      ? upiTxnId
-      : String(Math.floor(111111 + Math.random() * 888889));
+    const generatedId = String(Math.floor(111111 + Math.random() * 888889));
     checkoutSession.orderCode = generatedId;
     checkoutSession.orderId = generatedId;
 
@@ -2936,10 +2865,15 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       state ? `${state} - ${pincode}` : pincode
     ].filter(Boolean).join(', ');
 
+    const acctState = typeof window.getAccountState === 'function' ? window.getAccountState() : null;
+    const acctPhone = (typeof window.streetCoGetAccountPhone === 'function' ? window.streetCoGetAccountPhone() : '') ||
+      String(acctState?.phone || localStorage.getItem('the_street_co_user_phone') || '').replace(/\D/g, '').slice(-10);
+    const acctEmail = String(acctState?.email || localStorage.getItem('the_street_co_user_email') || '').trim().toLowerCase();
+
     const userDetails = {
-      fullName: (addr.name || 'Customer').trim(),
-      phone: (addr.phone || '').trim(),
-      email: (addr.email || '').trim(),
+      fullName: (addr.name || [acctState?.firstName, acctState?.lastName].filter(Boolean).join(' ') || 'Customer').trim(),
+      phone: (addr.phone || acctPhone || '').trim(),
+      email: (addr.email || acctEmail || '').trim(),
       pincode: pincode,
       houseFlat: houseFlat,
       streetRoad: streetRoad,
@@ -2992,13 +2926,13 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       estimatedDelivery: estimatedDeliveryFormatted
     };
 
-    // 4. Payment Details
-    const paymentMethod = checkoutSession.payment?.method || 'cod';
+    // 4. Payment Details (COD Only)
+    const paymentMethod = 'cod';
     const paymentDetails = {
-      method: paymentMethod,
-      detail: checkoutSession.payment?.detail || (paymentMethod === 'cod' ? 'Cash on Delivery · Pay upon arrival' : 'Verified Electronic Transfer'),
-      bank: checkoutSession.payment?.bank || '',
-      status: paymentMethod === 'cod' ? 'PENDING_ON_DELIVERY' : 'CONFIRMED',
+      method: 'cod',
+      detail: 'Pay with cash upon doorstep arrival',
+      bank: '',
+      status: 'PENDING_ON_DELIVERY',
       paidAt: new Date().toISOString()
     };
 
@@ -3014,14 +2948,15 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       totalItems: productDetails.reduce((sum, it) => sum + it.qty, 0)
     };
 
-    // Complete Order Record (linked to user's account phone for MongoDB Atlas)
-    const loggedAccountPhone = (typeof window.streetCoGetAccountPhone === 'function' ? window.streetCoGetAccountPhone() : '') ||
-      String(userDetails.phone || '').replace(/\D/g, '').slice(-10);
+    // Complete Order Record (linked to user's account phone & email for MongoDB Atlas & Zoho Inventory)
+    const loggedAccountPhone = acctPhone || String(userDetails.phone || '').replace(/\D/g, '').slice(-10);
+    const loggedAccountEmail = acctEmail || String(userDetails.email || '').trim().toLowerCase();
 
     const fullOrderRecord = {
       orderCode: generatedId,
       orderId: generatedId,
       accountPhone: loggedAccountPhone,
+      accountEmail: loggedAccountEmail,
       status: 'CONFIRMED',
       source: checkoutSession.source || 'cart',
 
@@ -3054,8 +2989,8 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     };
 
     saveLocalOrder(fullOrderRecord);
-    if (typeof renderRecentOrderChips === 'function') {
-      renderRecentOrderChips();
+    if (typeof window.renderRecentOrderChips === 'function') {
+      window.renderRecentOrderChips();
     }
 
     // Save complete order details asynchronously in the background (non-blocking)
@@ -3070,7 +3005,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
 
         // Update View Invoice button on confirmation modal
         const invoiceBtn = document.getElementById('checkoutViewInvoiceBtn');
-        const zohoUrl = result?.order?.zoho_invoice_url || result?.zohoInvoice?.invoice_url || result?.invoiceUrl;
+        const zohoUrl = result?.invoiceUrl || (fullOrderRecord?.orderCode ? `/invoice/${fullOrderRecord.orderCode}` : '') || result?.order?.zoho_invoice_url;
         if (invoiceBtn && zohoUrl) {
           invoiceBtn.href = zohoUrl;
           invoiceBtn.style.display = 'inline-flex';
@@ -3106,6 +3041,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     // If order was placed from cart, clear the bag!
     if (checkoutSession.source === 'cart') {
       cart = [];
+      window.cart = cart;
       updateCartUI();
     }
 
@@ -3377,42 +3313,30 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
 
       const isAlreadyActive = opt.classList.contains('active');
 
-      // Close all payment options
+      // Keep COD selected permanently
       payOptions.forEach(o => {
-        o.classList.remove('active');
-        const h = o.querySelector('.checkout-pay-header');
-        if (h) h.setAttribute('aria-expanded', 'false');
+        if (o.dataset.method === 'cod') {
+          o.classList.add('active');
+          const h = o.querySelector('.checkout-pay-header');
+          if (h) h.setAttribute('aria-expanded', 'true');
+        } else {
+          o.classList.remove('active');
+        }
       });
-
-      // Keep COD active
-      if (isAlreadyActive && opt.dataset.method === 'cod') {
-        opt.classList.add('active');
-        if (header) header.setAttribute('aria-expanded', 'true');
-        checkoutSession.payment.method = 'cod';
-        return;
-      }
-
-      // Keep selected option highlighted cleanly
-      opt.classList.add('active');
-      if (header) header.setAttribute('aria-expanded', 'true');
-      checkoutSession.payment.method = opt.dataset.method;
-      if (opt.dataset.method === 'upi') {
-        checkoutSession.payment.detail = 'UPI Payment (Google Pay / PhonePe / Paytm / QR) · Pay after confirming order';
-        checkoutSession.payment.status = 'PENDING';
-      } else {
-        checkoutSession.payment.detail = 'Cash on Delivery (COD) · Pay upon doorstep arrival';
-        checkoutSession.payment.status = 'COD';
-      }
+      checkoutSession.payment = {
+        method: 'cod',
+        detail: 'Pay with cash upon doorstep arrival',
+        status: 'COD'
+      };
     });
 
-    // Right-aligned continue button under each payment option
+    // Right-aligned continue button under payment option
     const continueBtn = opt.querySelector('.checkout-pay-continue-btn');
     if (continueBtn) {
       continueBtn.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        const method = continueBtn.dataset.payMethod || opt.dataset.method;
-        handlePaymentStepSubmit(method);
+        handlePaymentStepSubmit('cod');
       });
     }
   });
@@ -4529,6 +4453,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       return [];
     }
   }
+  window.getSavedLocalOrders = getSavedLocalOrders;
 
   function saveLocalOrder(order) {
     try {
@@ -4644,7 +4569,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
         'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=800&q=80',
         'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=800&q=80',
         'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=800&q=80',
-        'https://images.unsplash.com/photo-1528164344705-475426879c0d?w=800&q=80',
+        'https://images.unsplash.com/photo-1589256469067-ea99122bbdc4?w=800&q=80',
         'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=800&q=80'
       ],
       imageUrl: 'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=800&q=80'
@@ -4715,13 +4640,13 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       desc: 'Museum-grade 3-phase lenticular print transitioning between 3-Tomoe Sharingan and Itachi’s triangular pinwheel Mangekyo depending on viewer angle.',
       specs: 'Archival 380gsm Paper · 18 × 24 in · Foil Stamped Certificate',
       images: [
-        'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=800&q=80',
+        'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=800&q=80',
         'https://images.unsplash.com/photo-1541701494587-cb58502866ab?w=800&q=80',
         'https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=800&q=80',
         'https://images.unsplash.com/photo-1577083552431-6e5fd01aa342?w=800&q=80',
         'https://images.unsplash.com/photo-1563089145-599997674d42?w=800&q=80'
       ],
-      imageUrl: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=800&q=80'
+      imageUrl: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=800&q=80'
     },
     {
       sku: 'uchiha-wax-seal',
@@ -4741,7 +4666,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       images: [
         'https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=800&q=80',
         'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800&q=80',
-        'https://images.unsplash.com/photo-1607344645866-009c320c5ab8?w=800&q=80',
+        'https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=800&q=80',
         'https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?w=800&q=80',
         'https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?w=800&q=80'
       ],
@@ -4764,7 +4689,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       specs: 'Forged High-Carbon Steel · Waxed Canvas · 11.5 in Folded',
       images: [
         'https://images.unsplash.com/photo-1582738411706-bfc8e691d1c2?w=800&q=80',
-        'https://images.unsplash.com/photo-1528164344705-475426879c0d?w=800&q=80',
+        'https://images.unsplash.com/photo-1589256469067-ea99122bbdc4?w=800&q=80',
         'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&q=80',
         'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=800&q=80',
         'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=800&q=80'
@@ -4814,7 +4739,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       specs: '8mm Natural Volcanic Stone · Crimson Silk · Laser-Etched Guru Bead',
       images: [
         'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=800&q=80',
-        'https://images.unsplash.com/photo-1611591475837-775107936a18?w=800&q=80',
+        'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=800&q=80',
         'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=800&q=80',
         'https://images.unsplash.com/photo-1598560917505-59a3ad559071?w=800&q=80',
         'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=800&q=80'
@@ -4911,13 +4836,13 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       desc: 'Straight-edge display replica dagger featuring black ray-skin handle wrap, blackened brass habaki collar, and matte wooden scabbard.',
       specs: '1045 Carbon Steel (Unsharpened) · Ray Skin Wrap · 11 in',
       images: [
-        'https://images.unsplash.com/photo-1590422749897-478a87679905?w=800&q=80',
+        'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=800&q=80',
         'https://images.unsplash.com/photo-1589256469067-ea99122bbdc4?w=800&q=80',
         'https://images.unsplash.com/photo-1595590424283-b8f17842773f?w=800&q=80',
         'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=800&q=80',
         'https://images.unsplash.com/photo-1533158307587-828f0a76ef46?w=800&q=80'
       ],
-      imageUrl: 'https://images.unsplash.com/photo-1590422749897-478a87679905?w=800&q=80'
+      imageUrl: 'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=800&q=80'
     },
     {
       sku: 'wire-trap-reel',
@@ -5002,6 +4927,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
   };
 
   let collectionsData = [ZOHO_INITIAL_ITEM, ...CANONICAL_RELICS];
+  window.collectionsData = collectionsData;
 
   const collectionsPage = document.getElementById('collectionsPage');
   const openCollectionsBtn = document.getElementById('openCollectionsBtn');
@@ -5345,6 +5271,11 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       renderCollections();
     });
   }
+
+  window.applyCollectionSearchQuery = function(q) {
+    currentSearchQuery = String(q || '').trim().toLowerCase();
+    renderCollections();
+  };
 
   function renderCollections() {
     if (!collectionsGrid) return;
@@ -6477,7 +6408,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     // Populate recent orders in tracking modal if any exist
     const recentOrdersContainer = document.getElementById('delhiveryRecentOrders');
     if (recentOrdersContainer) {
-      const orders = (typeof getSavedOrders === 'function') ? getSavedOrders() : [];
+      const orders = (typeof window.getSavedLocalOrders === 'function') ? window.getSavedLocalOrders() : [];
       if (orders && orders.length > 0) {
         recentOrdersContainer.innerHTML = `
           <span class="delhivery-recent-title">YOUR RECENT ORDERS:</span>
@@ -6548,11 +6479,16 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
 
   // ═══════════ ZOHO INVENTORY REAL-TIME SYNCHRONIZATION ═══════════
   async function syncProductsFromDb(shouldRender = true) {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+    if (!shouldRender && typeof document !== 'undefined' && document.hidden) return;
     try {
-      const res = await fetch('/api/products?fresh=1&t=' + Date.now());
-      if (!res.ok) return;
-      const data = await res.json();
-      const rawProducts = (data && Array.isArray(data.products)) ? data.products : [];
+      const res = await fetch('/api/products?fresh=1&t=' + Date.now(), {
+        headers: { Accept: 'application/json' },
+        cache: 'no-store'
+      });
+      const data = await safeParseJsonResponse(res);
+      if (!data || !Array.isArray(data.products)) return;
+      const rawProducts = data.products;
       
       collectionsData = rawProducts.map(p => {
         const sku = p.sku || p.id || '';
@@ -6594,6 +6530,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
           iconSvg
         };
       });
+      window.collectionsData = collectionsData;
 
       const syncBadgeEl = document.getElementById('shopSyncLabel');
       if (syncBadgeEl) {
@@ -6676,8 +6613,8 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
         renderShopGrid();
         renderCollections();
       }
-    } catch (err) {
-      console.warn('[Sync] Notice:', err.message);
+    } catch (_) {
+      // Silently ignore transient network/background-tab fetch interruptions
     }
   }
 
@@ -8654,9 +8591,9 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
   if (collectionSearchSubmitBtn) {
     collectionSearchSubmitBtn.addEventListener('click', () => {
       if (collecSearchRecentDropdown) collecSearchRecentDropdown.style.display = 'none';
-      if (collectionSearchInput) {
-        currentCollectionSearchQuery = collectionSearchInput.value.trim();
-        renderCollections();
+      const searchInput = document.getElementById('collecSearchInput');
+      if (searchInput && typeof window.applyCollectionSearchQuery === 'function') {
+        window.applyCollectionSearchQuery(searchInput.value.trim());
       }
       const grid = document.getElementById('collectionsGrid');
       if (grid) grid.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -8827,8 +8764,8 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
           openCart('wishlist');
         } else if (action === 'open-delhivery' || action === 'open-tracking') {
           e.preventDefault();
-          if (typeof openDelhiveryTrackingModal === 'function') {
-            openDelhiveryTrackingModal();
+          if (typeof window.openDelhiveryTrackingModal === 'function') {
+            window.openDelhiveryTrackingModal();
           } else {
             const modal = document.getElementById('delhiveryTrackModal');
             if (modal) {
@@ -9067,9 +9004,11 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
   initSiteFooter();
   initContactSupport();
   syncProductsFromDb();
-  // Real-time synchronization: poll every 15 seconds to sync catalog changes made in Zoho Inventory
+  // Real-time synchronization: poll every 15 seconds while tab is active & online
   setInterval(() => {
-    syncProductsFromDb(false);
+    if (!document.hidden && navigator.onLine !== false) {
+      syncProductsFromDb(false);
+    }
   }, 15000);
 })();
 
@@ -9117,8 +9056,8 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('appinstalled', () => {
     deferredPwaPrompt = null;
     if (pwaInstallBtn) pwaInstallBtn.style.display = 'none';
-    if (typeof showToast === 'function') {
-      showToast('APP INSTALLED', 'The Street Co was successfully installed on your device!', 'bag');
+    if (typeof window.showToast === 'function') {
+      window.showToast('APP INSTALLED', 'The Street Co was successfully installed on your device!', 'bag');
     }
   });
 
@@ -9134,12 +9073,12 @@ if ('serviceWorker' in navigator) {
       } else {
         const isIOS = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
         if (isIOS) {
-          if (typeof showToast === 'function') {
-            showToast('INSTALL ON IOS', 'Tap the Share icon in Safari, then tap "Add to Home Screen".', 'bag');
+          if (typeof window.showToast === 'function') {
+            window.showToast('INSTALL ON IOS', 'Tap the Share icon in Safari, then tap "Add to Home Screen".', 'bag');
           }
         } else {
-          if (typeof showToast === 'function') {
-            showToast('INSTALL APP', 'Click the 3 dots (⋮) in Chrome and select "Install The Street Co".', 'bag');
+          if (typeof window.showToast === 'function') {
+            window.showToast('INSTALL APP', 'Click the 3 dots (⋮) in Chrome and select "Install The Street Co".', 'bag');
           }
         }
       }
@@ -9624,6 +9563,38 @@ window.openDelhiveryTracker = openDelhiveryTracker;
   const FIT_STORAGE_KEY = 'the_street_co_fit_profile_v1';
   const VIP_STORAGE_KEY = 'the_street_co_vip_profile_v1';
   const WAITLIST_STORAGE_KEY = 'the_street_co_drop_waitlist_v1';
+
+  function awardVipPoints(actionId, label, points = 50) {
+    try {
+      const profile = JSON.parse(localStorage.getItem(VIP_STORAGE_KEY) || '{}');
+      const claimed = Array.isArray(profile.claimed) ? profile.claimed : [];
+      if (claimed.includes(actionId)) return;
+      claimed.push(actionId);
+      profile.claimed = claimed;
+      localStorage.setItem(VIP_STORAGE_KEY, JSON.stringify(profile));
+    } catch (_) {}
+
+    const activePhone = (typeof window.streetCoGetAccountPhone === 'function' ? window.streetCoGetAccountPhone() : '') || '';
+    if (activePhone && activePhone.length === 10) {
+      fetch('/api/loyalty/earn', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: activePhone, actionId, label, points })
+      })
+        .then(r => r.json())
+        .then(data => {
+          if (data && data.success && window.streetCashState) {
+            window.streetCashState.streetCashBalance = Number(data.newBalance ?? data.streetCashBalance ?? window.streetCashState.streetCashBalance);
+            if (typeof window.renderStreetCashUI === 'function') window.renderStreetCashUI();
+          }
+        })
+        .catch(() => {});
+    }
+
+    if (typeof window.streetCoShowToast === 'function') {
+      window.streetCoShowToast(`+${points} The Street Cash`, label || 'VIP Milestone Unlocked');
+    }
+  }
 
   // ── 1. CURATED LOOKBOOK ENSEMBLES ──
   const LOOKBOOK_DATA = {
@@ -10285,11 +10256,13 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     displayRateNotice: 'Per 1,000 Rs spent will give you 199 The Street Cash',
     isLoading: false
   };
+  window.streetCashState = streetCashState;
 
   try {
     const cachedSc = JSON.parse(localStorage.getItem(STREET_CASH_STORAGE_KEY) || 'null');
     if (cachedSc && typeof cachedSc.streetCashBalance === 'number') {
       streetCashState = { ...streetCashState, ...cachedSc };
+      window.streetCashState = streetCashState;
     }
   } catch (_) {}
 
@@ -10310,8 +10283,8 @@ window.openDelhiveryTracker = openDelhiveryTracker;
         if (acc && acc.phone) p = acc.phone;
       } catch (_) {}
     }
-    if (!p && typeof accountState !== 'undefined' && accountState && accountState.phone) {
-      p = accountState.phone;
+    if (!p && window.accountState && window.accountState.phone) {
+      p = window.accountState.phone;
     }
     if (!p) {
       try {
@@ -10340,8 +10313,8 @@ window.openDelhiveryTracker = openDelhiveryTracker;
         if (acc && (acc.phone || acc.firstName || acc.email)) return acc;
       } catch (_) {}
     }
-    if (typeof accountState !== 'undefined' && accountState && (accountState.phone || accountState.firstName)) {
-      return accountState;
+    if (window.accountState && (window.accountState.phone || window.accountState.firstName)) {
+      return window.accountState;
     }
     try {
       const saved = JSON.parse(localStorage.getItem('the_street_co_account_v2') || 'null');
@@ -10366,8 +10339,11 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     const phone = phoneToFetch || getActiveUserPhone();
     try {
       const url = phone ? `/api/loyalty/status?phone=${phone}` : `/api/loyalty/status`;
-      const res = await fetch(url);
-      const data = await res.json();
+      const res = await fetch(url, {
+        headers: { Accept: 'application/json' },
+        cache: 'no-store'
+      });
+      const data = await safeParseJsonResponse(res);
       if (data && data.success) {
         streetCashState = {
           ...streetCashState,
@@ -10383,6 +10359,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           minRedemptionPoints: data.minRedemptionPoints || 499,
           displayRateNotice: data.displayRateNotice || 'Per 1,000 Rs spent will give you 199 The Street Cash'
         };
+        window.streetCashState = streetCashState;
         saveStreetCashCache();
         renderStreetCashUI();
 
@@ -10393,8 +10370,8 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           });
         }
       }
-    } catch (err) {
-      console.warn('[The Street Cash sync notice]:', err.message);
+    } catch (_) {
+      // Silently ignore transient background fetch interruptions
     }
   }
 
@@ -10602,6 +10579,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
 
     const inrEl = document.getElementById('streetCashInrValueDisplay');
     if (inrEl) inrEl.textContent = inrValueStr;
+    window.streetCashState = streetCashState;
 
     // Topbar Street Cash Button sync (Mobile & Desktop)
     const headerScBtn = document.getElementById('headerStreetCashBtn');
@@ -10733,6 +10711,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     const isOrderDone = Boolean(bonuses.first_order);
     updateMissionUI('first_order', isOrderDone);
   }
+  window.renderStreetCashUI = renderStreetCashUI;
 
   // Window actions
   window.openVipLoyaltyModal = function() {
@@ -10828,8 +10807,8 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       }
 
       // Auto-apply this coupon to cart immediately
-      if (couponCode && typeof applyCouponCode === 'function') {
-        applyCouponCode(couponCode).catch(() => {});
+      if (couponCode && typeof window.applyCouponCode === 'function') {
+        window.applyCouponCode(couponCode).catch(() => {});
       }
     } catch (err) {
       if (window.streetCoShowToast) {
@@ -10850,13 +10829,25 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       localStorage.getItem('the_street_cash_active_coupon');
 
     if (code && !code.includes('XXXX')) {
+      const btnLabel = document.getElementById('streetCashCopyCodeBtnLabel');
+      const setCopiedFeedback = () => {
+        if (btnLabel) {
+          btnLabel.textContent = 'Copied';
+          setTimeout(() => {
+            btnLabel.textContent = 'Copy Code';
+          }, 2000);
+        }
+      };
+
       navigator.clipboard.writeText(code).then(() => {
+        setCopiedFeedback();
         if (window.streetCoShowToast) {
-          window.streetCoShowToast('Coupon Copied!', `${code} copied to clipboard! Auto-applied in bag.`);
+          window.streetCoShowToast('Voucher Code Copied', `${code} is copied and automatically applied at checkout.`);
         }
       }).catch(() => {
+        setCopiedFeedback();
         if (window.streetCoShowToast) {
-          window.streetCoShowToast('Coupon Code', `${code} saved to your account and applied in bag.`);
+          window.streetCoShowToast('Voucher Ready', `${code} is saved to your account and applied at checkout.`);
         }
       });
     }
@@ -11176,6 +11167,96 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     if (typeof fn === 'function') return fn(...args);
   }
 
+  const syncedZohoPhones = window._streetCoSyncedZohoPhones || (window._streetCoSyncedZohoPhones = new Set());
+
+  function normPhone10Local(raw) {
+    return String(raw || '').replace(/\D/g, '').slice(-10);
+  }
+
+  function normOrderCodeLocal(raw) {
+    return String(raw || '').replace(/^#/, '').trim().toUpperCase();
+  }
+
+  function pruneLocalOrdersForZohoSync(cleanPhone, zohoOrders = []) {
+    const targetPhone = normPhone10Local(cleanPhone);
+    if (!targetPhone) return;
+    try {
+      const current = getSavedLocalOrders();
+      const zohoCodes = new Set(
+        (Array.isArray(zohoOrders) ? zohoOrders : [])
+          .flatMap(o => [normOrderCodeLocal(o?.orderCode), normOrderCodeLocal(o?.orderId), normOrderCodeLocal(o?.zoho_salesorder_number)])
+          .filter(Boolean)
+      );
+      const zohoSoIds = new Set(
+        (Array.isArray(zohoOrders) ? zohoOrders : [])
+          .map(o => String(o?.zoho_salesorder_id || '').trim())
+          .filter(Boolean)
+      );
+
+      // Keep orders belonging to other accounts untouched, drop stale/deleted orders for targetPhone
+      const untouchedOtherPhones = (Array.isArray(current) ? current : []).filter(o => {
+        if (!o) return false;
+        const oPhone = normPhone10Local(o.accountPhone || o.shippingAddress?.phone || o.user?.phone || o.contactDetails?.phone);
+        return oPhone && oPhone !== targetPhone;
+      });
+
+      const pruned = [];
+      const seenCodes = new Set();
+      for (const zo of (Array.isArray(zohoOrders) ? zohoOrders : [])) {
+        const code = normOrderCodeLocal(zo?.orderCode || zo?.orderId);
+        if (code && !seenCodes.has(code)) {
+          seenCodes.add(code);
+          pruned.push(zo);
+        }
+      }
+      for (const other of untouchedOtherPhones) {
+        const code = normOrderCodeLocal(other?.orderCode || other?.orderId);
+        const soId = String(other?.zoho_salesorder_id || '').trim();
+        if ((code && zohoCodes.has(code)) || (soId && zohoSoIds.has(soId))) continue;
+        if (code && !seenCodes.has(code)) {
+          seenCodes.add(code);
+          pruned.push(other);
+        }
+      }
+      localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(pruned.slice(0, 24)));
+      try { localStorage.removeItem('the_street_co_orders'); } catch (_) {}
+    } catch (e) {
+      console.warn('Failed to prune local orders after Zoho sync:', e);
+    }
+  }
+
+  function reconcileSyncedOrders(rawOrders = [], cleanPhone = '', isZohoSynced = false) {
+    const localReturnReqs = getSavedReturnExchangeRequests();
+    const mapped = (Array.isArray(rawOrders) ? rawOrders : []).map(ord => {
+      if (!ord) return ord;
+      if (ord.returnRequest && ord.returnRequest.status !== 'CANCELLED') {
+        saveReturnExchangeRequest(ord.returnRequest);
+        return ord;
+      }
+      const oCode = String(ord.orderCode || ord.orderId || '').replace(/^#/, '').trim();
+      const oDigits = oCode.replace(/\D/g, '');
+      const matchedLocalReq = localReturnReqs.find(r => {
+        if (!r || !r.orderCode || r.status === 'CANCELLED') return false;
+        const rCode = String(r.orderCode).replace(/^#/, '').trim();
+        return rCode === oCode || (oDigits && rCode.replace(/\D/g, '') === oDigits);
+      });
+      if (matchedLocalReq) {
+        return {
+          ...ord,
+          returnRequest: matchedLocalReq,
+          returnStatus: matchedLocalReq.type === 'exchange' ? 'EXCHANGE REQUESTED' : 'RETURN REQUESTED'
+        };
+      }
+      return ord;
+    }).filter(Boolean);
+
+    if (isZohoSynced && cleanPhone && cleanPhone.length === 10) {
+      syncedZohoPhones.add(cleanPhone);
+      pruneLocalOrdersForZohoSync(cleanPhone, mapped);
+    }
+    return mapped;
+  }
+
   function normalizeClientAddresses(rawAddresses = [], preferredDefaultId = '') {
     if (!Array.isArray(rawAddresses)) return { addresses: [], defaultAddressId: '' };
 
@@ -11282,6 +11363,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
   }
 
   let accountState = loadLocalAccount();
+  window.accountState = accountState;
   let selectedCheckoutAddressId = accountState.defaultAddressId || (accountState.addresses[0] && accountState.addresses[0].id) || '';
 
   // Active OTP state: mode is 'phone' or 'email'
@@ -11589,6 +11671,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       if (el) { el.textContent = ''; el.classList.remove('show'); }
     });
   }
+  window.applyAddressToCheckoutInputs = applyAddressToCheckoutInputs;
 
   function prefillAddressFormWithAccountDefaults(prefix) {
     const fullName = [accountState.firstName, accountState.lastName].filter(Boolean).join(' ').trim();
@@ -11868,8 +11951,8 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       if (addresses.length === 0) {
         if (typeof window.streetCoProceedToPaymentStep === 'function') {
           window.streetCoProceedToPaymentStep();
-        } else {
-          handleAddressStepSubmit();
+        } else if (typeof window.handleAddressStepSubmit === 'function') {
+          window.handleAddressStepSubmit();
         }
         return;
       }
@@ -11885,7 +11968,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
             if (r.checked) selectedSpeed = r.value;
           });
         }
-        const cs = (typeof checkoutSession !== 'undefined' && checkoutSession) ? checkoutSession : window.checkoutSession;
+        const cs = window.checkoutSession;
         if (cs) {
           cs.delivery = {
             speed: selectedSpeed,
@@ -11912,7 +11995,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
 
           // Ensure checkoutSession items are populated from cart
           if (!cs.items || cs.items.length === 0) {
-            const activeCart = (typeof cart !== 'undefined' && cart.length > 0) ? cart : (window.cart || []);
+            const activeCart = Array.isArray(window.cart) ? window.cart : [];
             if (activeCart.length > 0) {
               cs.items = activeCart.map(it => ({ ...it, qty: it.qty || 1 }));
             }
@@ -11923,17 +12006,15 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           } catch (_) {}
         }
 
-        if (typeof goToCheckoutStep === 'function') {
-          goToCheckoutStep(2);
-        } else if (typeof window.goToCheckoutStep === 'function') {
+        if (typeof window.goToCheckoutStep === 'function') {
           window.goToCheckoutStep(2);
         }
         return;
       }
       if (typeof window.streetCoProceedToPaymentStep === 'function') {
         window.streetCoProceedToPaymentStep();
-      } else {
-        handleAddressStepSubmit();
+      } else if (typeof window.handleAddressStepSubmit === 'function') {
+        window.handleAddressStepSubmit();
       }
     });
   }
@@ -12112,7 +12193,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     }
   };
 
-  // ── ORDER HISTORY (MONGODB ATLAS SYNCED) ──
+  // ── ORDER HISTORY (ZOHO INVENTORY AUTHORITATIVE SYNC) ──
   async function refreshAccountOrdersFromMongo(showToastFeedback = false) {
     accountState = loadLocalAccount();
     const cleanPhone = String(accountState.phone || '').replace(/\D/g, '').slice(-10);
@@ -12122,46 +12203,30 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     if (refreshBtn) refreshBtn.classList.add('is-refreshing');
 
     try {
-      const res = await fetch(`/api/account/orders?phone=${encodeURIComponent(cleanPhone)}`);
-      const data = await res.json();
+      const res = await fetch(`/api/account/orders?phone=${encodeURIComponent(cleanPhone)}`, {
+        headers: { Accept: 'application/json' },
+        cache: 'no-store'
+      });
+      const data = await safeParseJsonResponse(res);
       if (data && data.success && Array.isArray(data.orders)) {
-        const localReturnReqs = getSavedReturnExchangeRequests();
-        const mergedOrders = data.orders.map(ord => {
-          if (!ord) return ord;
-          if (ord.returnRequest && ord.returnRequest.status !== 'CANCELLED') {
-            saveReturnExchangeRequest(ord.returnRequest);
-            return ord;
-          }
-          const oCode = String(ord.orderCode || ord.orderId || '').replace(/^#/, '').trim();
-          const oDigits = oCode.replace(/\D/g, '');
-          const matchedLocalReq = localReturnReqs.find(r => {
-            if (!r || !r.orderCode || r.status === 'CANCELLED') return false;
-            const rCode = String(r.orderCode).replace(/^#/, '').trim();
-            return rCode === oCode || (oDigits && rCode.replace(/\D/g, '') === oDigits);
-          });
-          if (matchedLocalReq) {
-            return {
-              ...ord,
-              returnRequest: matchedLocalReq,
-              returnStatus: matchedLocalReq.type === 'exchange' ? 'EXCHANGE REQUESTED' : 'RETURN REQUESTED'
-            };
-          }
-          return ord;
-        });
+        const isZohoSynced = Boolean(data.zohoSynced);
+        const mergedOrders = reconcileSyncedOrders(data.orders, cleanPhone, isZohoSynced);
         saveLocalAccount({
           orders: mergedOrders
         });
         renderAccountOrdersUI();
         if (showToastFeedback && window.streetCoShowToast) {
-          window.streetCoShowToast(`Synced ${mergedOrders.length} order${mergedOrders.length === 1 ? '' : 's'} from MongoDB Atlas.`);
+          const sourceLabel = isZohoSynced ? 'Zoho Inventory' : 'Storefront';
+          window.streetCoShowToast(`Synced ${mergedOrders.length} order${mergedOrders.length === 1 ? '' : 's'} from ${sourceLabel}.`);
         }
       }
-    } catch (err) {
-      console.warn('[MongoDB orders fetch error]:', err);
+    } catch (_) {
+      // Silently ignore transient background fetch interruptions
     } finally {
       if (refreshBtn) refreshBtn.classList.remove('is-refreshing');
     }
   }
+  window.refreshAccountOrdersFromMongo = refreshAccountOrdersFromMongo;
 
   function renderAccountOrdersUI() {
     const container = document.getElementById('accountOrdersContainer');
@@ -12169,20 +12234,28 @@ window.openDelhiveryTracker = openDelhiveryTracker;
 
     accountState = loadLocalAccount();
     const cleanPhone = String(accountState.phone || '').replace(/\D/g, '').slice(-10);
+    const isAuthoritativeZoho = Boolean(cleanPhone && syncedZohoPhones.has(cleanPhone));
 
-    // Combine orders from accountState.orders with local browser orders matching this account
-    const memoryOrders = Array.isArray(accountState.orders) ? accountState.orders : [];
-    const localOrders = typeof getSavedLocalOrders === 'function' ? getSavedLocalOrders() : [];
+    // When Zoho Inventory sync has succeeded for this customer phone, render strictly Zoho's live customer orders
+    const memoryOrders = (Array.isArray(accountState.orders) ? accountState.orders : []).filter(o => {
+      if (!o) return false;
+      if (!cleanPhone) return true;
+      const oPhone = normPhone10Local(o.accountPhone || o.shippingAddress?.phone || o.user?.phone || o.contactDetails?.phone);
+      return !oPhone || oPhone === cleanPhone;
+    });
+
+    const localOrders = (!isAuthoritativeZoho && typeof getSavedLocalOrders === 'function') ? getSavedLocalOrders() : [];
     const matchedLocal = localOrders.filter(o => {
       if (!o) return false;
-      const orderPhone = String(o.accountPhone || o.shippingAddress?.phone || o.user?.phone || o.contactDetails?.phone || '').replace(/\D/g, '').slice(-10);
+      const orderPhone = normPhone10Local(o.accountPhone || o.shippingAddress?.phone || o.user?.phone || o.contactDetails?.phone);
       return orderPhone === cleanPhone;
     });
 
     const orderMap = new Map();
-    for (const ord of [...memoryOrders, ...matchedLocal]) {
+    const sourceList = isAuthoritativeZoho ? memoryOrders : [...memoryOrders, ...matchedLocal];
+    for (const ord of sourceList) {
       if (!ord) continue;
-      const code = ord.orderCode || ord.orderId;
+      const code = normOrderCodeLocal(ord.orderCode || ord.orderId);
       if (code && !orderMap.has(code)) {
         orderMap.set(code, ord);
       }
@@ -12319,8 +12392,8 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       const remainingItemCount = items.length - displayedItems.length;
       const thumbsHtml = displayedItems.map(it => {
         const sku = it.sku || it.id || '';
-        const relic = (typeof collectionsData !== 'undefined' && Array.isArray(collectionsData))
-          ? collectionsData.find(c => (c.sku || c.id) === sku)
+        const relic = Array.isArray(window.collectionsData)
+          ? window.collectionsData.find(c => (c.sku || c.id) === sku)
           : null;
 
         const itemImg = it.image || it.imageUrl || it.img || (Array.isArray(it.images) ? it.images[0] : '') ||
@@ -12408,13 +12481,15 @@ window.openDelhiveryTracker = openDelhiveryTracker;
                 <span class="account-order-short__label">Total:</span>
                 <strong class="account-order-short__total-val">₹${grandTotal.toLocaleString('en-IN')}</strong>
               </div>
-              <button type="button" class="account-order-return-btn ${returnReq ? 'account-order-return-btn--active' : ''}" onclick="event.stopPropagation(); if(window.openReturnExchangeModal){window.openReturnExchangeModal('${orderCode}');}" title="Return or exchange items for Order #${orderCode}">
+              ${!returnReq ? `
+              <button type="button" class="account-order-return-btn" onclick="event.stopPropagation(); if(window.openReturnExchangeModal){window.openReturnExchangeModal('${orderCode}');}" title="Return or exchange items for Order #${orderCode}">
                 <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <path d="M1 4v6h6"></path>
                   <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
                 </svg>
-                <span>${returnReq ? 'Track Return / Exchange' : 'Return or Exchange'}</span>
+                <span>Return or Exchange</span>
               </button>
+              ` : ''}
             </div>
           </div>
         </article>
@@ -12427,221 +12502,6 @@ window.openDelhiveryTracker = openDelhiveryTracker;
   // ── FULL ORDER HISTORY PERMANENTLY REMOVED ──
   window.openFullOrderModal = function(_orderCode) {
     return false;
-  };
-
-  function _disabledFullOrderModal(orderCode) {
-
-    const modal = document.getElementById('accountFullOrderModal');
-    const titleEl = document.getElementById('fullOrderModalCode');
-    const dateEl = document.getElementById('fullOrderModalDate');
-    const bodyEl = document.getElementById('fullOrderModalBody');
-    if (!modal || !bodyEl) return;
-
-    const code = ord.orderCode || ord.orderId || orderCode;
-    const returnReqs = typeof getSavedReturnExchangeRequests === 'function' ? getSavedReturnExchangeRequests() : [];
-    const returnReq = returnReqs.find(r => r && (String(r.orderCode) === String(code) || String(r.orderCode) === String(orderCode))) || ord.returnRequest || null;
-
-    const orderDateStr = ord.orderDateFormatted || (ord.orderDate ? new Date(ord.orderDate).toLocaleString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    }) : 'Recently Placed');
-
-    if (titleEl) titleEl.textContent = `Order #${code}`;
-    if (dateEl) dateEl.textContent = orderDateStr;
-
-    const paymentMethod = String(ord.paymentMethod || ord.payment?.method || 'COD').toUpperCase();
-    const payLabel = paymentMethod === 'COD' ? 'Cash on Delivery' : (paymentMethod === 'UPI' ? 'UPI' : (paymentMethod === 'CARD' ? 'Credit / Debit Card' : paymentMethod));
-
-    const shipAddr = ord.shippingAddress || ord.address || ord.user || ord.contactDetails || {};
-    const shipName = shipAddr.fullName || shipAddr.name || accountState.firstName || 'Customer';
-    const shipPhone = String(shipAddr.phone || ord.contactDetails?.phone || accountState.phone || '').replace(/\D/g, '').slice(-10);
-    const line1 = shipAddr.houseFlat || shipAddr.address1 || '';
-    const line2 = shipAddr.streetRoad || shipAddr.address2 || '';
-    const landmark = shipAddr.landmark || '';
-    const city = shipAddr.city || '';
-    const state = shipAddr.state || '';
-    const pincode = shipAddr.pincode || '';
-    const fullAddrParts = [line1, line2, landmark ? `(Landmark: ${landmark})` : '', city, state ? `${state} - ${pincode}` : pincode].filter(Boolean);
-    const fullDeliveryAddress = shipAddr.fullAddress || fullAddrParts.join(', ') || 'Address on file';
-
-    const items = Array.isArray(ord.items) && ord.items.length > 0
-      ? ord.items
-      : (Array.isArray(ord.products) ? ord.products : (Array.isArray(ord.productDetails) ? ord.productDetails : []));
-
-    const subtotal = Number(ord.subtotalInr || items.reduce((sum, it) => sum + (Number(it.totalItemPriceInr) || ((Number(it.priceInr || it.price) || 0) * (it.qty || it.quantity || 1))), 0));
-    const discount = Number(ord.discountInr || ord.discount || 0);
-    const shippingFee = Number(ord.deliveryFeeInr || ord.delivery?.cost || (ord.delivery?.speed === 'express' ? 149 : 0));
-    const grandTotal = Number(ord.grandTotalInr || ord.totalInr || (subtotal + shippingFee - discount));
-
-    const itemsHtml = items.map(it => {
-      const sku = it.sku || it.id || '';
-      const relic = (typeof collectionsData !== 'undefined' && Array.isArray(collectionsData))
-        ? collectionsData.find(c => (c.sku || c.id) === sku)
-        : null;
-
-      let itemImg = it.image || it.imageUrl || it.img || (Array.isArray(it.images) ? it.images[0] : '') ||
-        (relic && (relic.image || relic.imageUrl || (Array.isArray(relic.images) ? relic.images[0] : ''))) ||
-        'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=200&auto=format&fit=crop&q=80';
-
-      const itemName = it.name || it.title || (relic && relic.name) || 'The Street Co Apparel';
-      const itemQty = Math.max(1, parseInt(it.qty || it.quantity, 10) || 1);
-      const itemPrice = Number(it.priceInr || it.price || (relic && relic.priceInr) || 0);
-      const itemTotal = Number(it.totalItemPriceInr || (itemPrice * itemQty));
-      const itemSize = it.size || 'M';
-      const itemFinish = it.finish || (relic && relic.finish) || '';
-
-      return `
-        <div class="full-order-item-card">
-          <div class="full-order-item__pic-wrap">
-            <img src="${itemImg}" alt="${itemName}" class="full-order-item__pic" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=200&auto=format&fit=crop&q=80';" />
-          </div>
-          <div class="full-order-item__details">
-            <h5 class="full-order-item__title">${itemName}</h5>
-            <div class="full-order-item__meta-tags">
-              <span class="full-order-item__tag">Size: ${itemSize}</span>
-              ${itemFinish ? `<span class="full-order-item__tag">${itemFinish}</span>` : ''}
-              <span class="full-order-item__tag full-order-item__tag--qty">Quantity: ${itemQty}</span>
-            </div>
-            <div class="full-order-item__price-calc">
-              <span>₹${itemPrice.toLocaleString('en-IN')} × ${itemQty}</span>
-              <strong>= ₹${itemTotal.toLocaleString('en-IN')}</strong>
-            </div>
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    const isAwaitingZoho = ord.status === 'AWAITING_ZOHO_CONFIRMATION' || ord.zoho_status === 'pending_confirmation';
-    const isDelivered = ord.status === 'DELIVERED' || ord.deliveryStatus === 'DELIVERY_DONE';
-    const isConfirmed = ord.status === 'CONFIRMED' || isDelivered;
-
-    bodyEl.innerHTML = `
-      <div class="full-order-modal-sections">
-        <!-- Live Status Timeline Tracker (Synced with Zoho Inventory & Delhivery) -->
-        <div class="full-order-tracker">
-          <div class="full-order-tracker__step is-done">
-            <span class="full-order-tracker__dot">✓</span>
-            <span>Order Placed</span>
-          </div>
-          <div class="full-order-tracker__step ${isConfirmed ? 'is-done' : (isAwaitingZoho ? 'is-active' : '')}">
-            <span class="full-order-tracker__dot">${isConfirmed ? '✓' : (isAwaitingZoho ? '●' : '○')}</span>
-            <span>Order Confirmed</span>
-          </div>
-          <div class="full-order-tracker__step ${isDelivered ? 'is-done' : (isConfirmed ? 'is-active' : '')}">
-            <span class="full-order-tracker__dot">${isDelivered ? '✓' : (isConfirmed ? '●' : '○')}</span>
-            <span>Dispatched</span>
-          </div>
-          <div class="full-order-tracker__step ${isDelivered ? 'is-done' : ''}">
-            <span class="full-order-tracker__dot">${isDelivered ? '✓' : '○'}</span>
-            <span>Delivered</span>
-          </div>
-        </div>
-
-        ${isAwaitingZoho ? `
-          <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.28); border-radius: 8px; padding: 12px 16px; margin-bottom: 14px; font-size: 12.5px; color: #d97706; line-height: 1.5;">
-            ⏳ <strong>Order Processing:</strong> Your order has been registered and is being prepared. Your confirmation SMS and email will be dispatched as soon as confirmed.
-          </div>
-        ` : ''}
-
-        ${isConfirmed && !isDelivered ? `
-          <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.28); border-radius: 8px; padding: 12px 16px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-            <div>
-              <div style="font-size: 12px; font-weight: 700; color: #10b981;">✓ ORDER CONFIRMED</div>
-              <div style="font-size: 11.5px; color: #71717a; margin-top: 2px;">Official Invoice: <strong>#${ord.invoice_number || 'INV'}</strong></div>
-            </div>
-            <a href="/invoice/${code}" target="_blank" rel="noopener noreferrer" class="lookbook-piece-single-btn" style="text-decoration:none; padding: 6px 12px; font-size: 11px;">
-              View Official Invoice ↗
-            </a>
-          </div>
-        ` : ''}
-
-        ${isDelivered ? `
-          <div style="background: rgba(6, 182, 212, 0.08); border: 1px solid rgba(6, 182, 212, 0.28); border-radius: 8px; padding: 12px 16px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-            <div>
-              <div style="font-size: 12px; font-weight: 700; color: #0891b2;">✓ DELIVERED VIA DELHIVERY EXPRESS</div>
-              <div style="font-size: 11.5px; color: #71717a; margin-top: 2px;">Delhivery Done email sent · 7-Day Free Size Exchange / Return Eligible</div>
-            </div>
-            <a href="/invoice/${code}" target="_blank" rel="noopener noreferrer" class="lookbook-piece-single-btn" style="text-decoration:none; padding: 6px 12px; font-size: 11px;">
-              View Zoho Invoice ↗
-            </a>
-          </div>
-        ` : ''}
-
-        <!-- 1. Purchased Items with Full Pictures -->
-        <div class="full-order-section">
-          <h4 class="full-order-section-title">Purchased Items (${items.length})</h4>
-          <div class="full-order-items-grid">
-            ${itemsHtml || '<p>No item details.</p>'}
-          </div>
-        </div>
-
-        <!-- 2. Full Delivery Address -->
-        <div class="full-order-section">
-          <h4 class="full-order-section-title">Full Delivery Address</h4>
-          <div class="full-order-address-box">
-            <div class="full-order-address-name">
-              <strong>${shipName}</strong>
-              ${shipPhone ? `<span class="full-order-address-phone">· Mobile: +91 ${shipPhone}</span>` : ''}
-            </div>
-            <div class="full-order-address-full">${fullDeliveryAddress}</div>
-          </div>
-        </div>
-
-        <!-- 3. Payment Method & Price Breakdown -->
-        <div class="full-order-section">
-          <h4 class="full-order-section-title">Payment &amp; Price Breakdown</h4>
-          <div class="full-order-pricing-box">
-            <div class="full-order-payment-banner">
-              <span>Payment Method:</span>
-              <strong>${payLabel}</strong>
-            </div>
-            <div class="full-order-price-lines">
-              <div class="full-order-price-line">
-                <span>Full Price (Subtotal):</span>
-                <span>₹${subtotal.toLocaleString('en-IN')}</span>
-              </div>
-              <div class="full-order-price-line">
-                <span>Discount:</span>
-                <span class="${discount > 0 ? 'text-discount' : ''}">${discount > 0 ? `-₹${discount.toLocaleString('en-IN')}` : '₹0'}</span>
-              </div>
-              <div class="full-order-price-line">
-                <span>Shipping Price:</span>
-                <span>${shippingFee > 0 ? `₹${shippingFee.toLocaleString('en-IN')}` : 'FREE (₹0)'}</span>
-              </div>
-              <div class="full-order-price-line full-order-price-line--total">
-                <strong>Grand Total:</strong>
-                <strong>₹${grandTotal.toLocaleString('en-IN')}</strong>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 4. Return or Exchange Action Section -->
-        <div class="full-order-section">
-          <div class="full-order-actions-bar">
-            <div class="full-order-actions-info">
-              <span class="full-order-actions-kicker">7-DAY RETURN &amp; EXCHANGE POLICY</span>
-              <p class="full-order-actions-note">${returnReq ? `Reverse pickup active (${returnReq.id}) · Scheduled within 48h` : 'Free doorstep size exchange or return eligible within 7 days of delivery.'}</p>
-            </div>
-            <button type="button" class="full-order-return-btn" onclick="if(window.openReturnExchangeModal){window.openReturnExchangeModal('${code}');}">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M1 4v6h6"></path>
-                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
-              </svg>
-              <span>${returnReq ? 'Track Return / Exchange Status' : 'Return or Exchange'}</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    `;
-
-    modal.classList.add('open');
-    modal.setAttribute('aria-hidden', 'false');
-    document.body.classList.add('order-modal-open');
   };
 
   // ═══════════ RETURN & EXCHANGE CONTROLLERS ═══════════
@@ -12707,12 +12567,172 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     };
   }
 
+  window.copyReturnExchangeId = function(requestId) {
+    const idText = String(requestId || '').trim();
+    if (!idText) return;
+    const btn = document.getElementById('returnCopyIdBtn');
+    const span = btn ? btn.querySelector('span') : null;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(idText).then(() => {
+        if (span) span.textContent = 'REQUEST ID COPIED! ✓';
+        if (typeof showToast === 'function') showToast('COPIED REQUEST ID', idText, 'info');
+        setTimeout(() => {
+          if (span) span.textContent = 'COPY REQUEST ID';
+        }, 2200);
+      }).catch(() => {
+        if (typeof showToast === 'function') showToast('REQUEST ID', idText, 'info');
+      });
+    } else if (typeof showToast === 'function') {
+      showToast('REQUEST ID', idText, 'info');
+    }
+  };
+
+  window.renderReturnExchangeConfirmationPage = function(req, ord) {
+    const modal = document.getElementById('returnExchangeModal');
+    const bodyEl = document.getElementById('returnExchangeModalBody');
+    if (!modal || !bodyEl || !req) return;
+
+    const isEx = req.type === 'exchange';
+    const cleanCode = String(req.orderCode || ord?.orderCode || ord?.orderId || '').replace(/^#/, '').trim();
+    const reqId = String(req.id || '').trim() || ('RET-' + Math.floor(10000 + Math.random() * 90000));
+    const items = Array.isArray(req.items) && req.items.length > 0
+      ? req.items
+      : (Array.isArray(ord?.items) && ord.items.length > 0 ? ord.items : []);
+
+    const totalQty = items.reduce((sum, it) => sum + (Math.max(1, parseInt(it.qty || it.quantity, 10) || 1)), 0) || 1;
+    const itemsTotalInr = items.reduce((sum, it) => {
+      const qty = Math.max(1, parseInt(it.qty || it.quantity, 10) || 1);
+      const unitPrice = Number(it.priceInr || it.price || 0);
+      return sum + (Number(it.totalItemPriceInr) || (unitPrice * qty));
+    }, 0);
+
+    const escapeHtml = (val) => String(val || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+
+    const itemsListHtml = items.map(it => {
+      const itemImg = it.image || it.imageUrl || it.img || '/product-minato.jpg';
+      const itemName = escapeHtml(it.name || it.title || 'The Street Co Apparel');
+      const itemSize = escapeHtml(it.size || 'M');
+      const itemFinish = escapeHtml(it.finish || 'Classic Black');
+      const itemQty = Math.max(1, parseInt(it.qty || it.quantity, 10) || 1);
+      const itemPrice = Number(it.priceInr || it.price || 0);
+      const itemLineTotal = Number(it.totalItemPriceInr) || (itemPrice * itemQty);
+      const replacementMeta = isEx && req.requestedSize ? ` → New Size: ${escapeHtml(req.requestedSize)}` : '';
+      return `
+        <div class="checkout-review-item-row">
+          <div class="checkout-review-thumb">
+            <img src="${escapeHtml(itemImg)}" alt="${itemName}" loading="lazy" onerror="this.onerror=null;this.src='/product-minato.jpg';">
+          </div>
+          <div class="checkout-review-info">
+            <strong>${itemName}</strong>
+            <small>Size: ${itemSize}${replacementMeta} · Finish: ${itemFinish} · Qty: ${itemQty}</small>
+          </div>
+          <div class="checkout-review-price">₹${itemLineTotal.toLocaleString('en-IN')}</div>
+        </div>
+      `;
+    }).join('');
+
+    modal.classList.add('open', 'is-confirmation');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('order-modal-open', 'return-modal-open');
+    document.documentElement.classList.add('order-modal-open', 'return-modal-open');
+
+    bodyEl.innerHTML = `
+      <div class="checkout-step-view checkout-step-view--confirmed return-confirmed-view">
+        <div class="checkout-confirmed-hero" style="text-align: center; margin-bottom: 1.4rem;">
+          <h3 class="checkout-confirmed-title" style="margin-bottom: 0.35rem;">${isEx ? 'EXCHANGE CONFIRMATION' : 'RETURN CONFIRMATION'}</h3>
+          <p class="checkout-confirmed-sub">${isEx
+            ? 'Thank you! Your size exchange request has been confirmed and scheduled for free doorstep pickup.'
+            : 'Thank you! Your return request has been confirmed and scheduled for free doorstep pickup.'}</p>
+        </div>
+
+        <div class="checkout-single-confirmed-card">
+          <div class="confirmed-card-id-row">
+            <div class="confirmed-id-meta">
+              <span class="confirmed-id-label">${isEx ? 'EXCHANGE ID' : 'RETURN ID'}</span>
+              <strong class="confirmed-id-val" id="confirmedReturnRequestId">${escapeHtml(reqId)}</strong>
+            </div>
+            <button type="button" class="checkout-copy-id-btn" id="returnCopyIdBtn" title="Copy Request ID" onclick="if(window.copyReturnExchangeId){window.copyReturnExchangeId('${escapeHtml(reqId)}');}">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              <span>COPY REQUEST ID</span>
+            </button>
+          </div>
+
+          <div class="confirmed-card-section">
+            <div class="confirmed-card-section__header">
+              <span class="section-title">PRODUCT SUMMARY</span>
+              <span class="section-count">${totalQty} Item${totalQty > 1 ? 's' : ''}</span>
+            </div>
+            <div class="confirmed-items-list">
+              ${itemsListHtml}
+            </div>
+          </div>
+
+          <div class="confirmed-card-calc">
+            <div class="confirmed-calc-row">
+              <span>Request Type</span>
+              <strong>${isEx ? 'Size Exchange' : 'Return (Full Refund)'}</strong>
+            </div>
+            ${cleanCode ? `
+              <div class="confirmed-calc-row">
+                <span>Order ID</span>
+                <strong>#${escapeHtml(cleanCode)}</strong>
+              </div>
+            ` : ''}
+            ${req.salesreturn_number ? `
+              <div class="confirmed-calc-row">
+                <span>Zoho RMA Number</span>
+                <strong>#${escapeHtml(req.salesreturn_number)}</strong>
+              </div>
+            ` : ''}
+            ${isEx && req.requestedSize ? `
+              <div class="confirmed-calc-row">
+                <span>Replacement Size</span>
+                <strong>${escapeHtml(req.requestedSize)}</strong>
+              </div>
+            ` : ''}
+            <div class="confirmed-calc-row">
+              <span>Doorstep Pickup Fee</span>
+              <strong class="text-free">FREE</strong>
+            </div>
+            ${req.pickupAddress ? `
+              <div class="confirmed-calc-row confirmed-calc-row--address">
+                <span>Pickup Address</span>
+                <strong>${escapeHtml(req.pickupAddress)}</strong>
+              </div>
+            ` : ''}
+            <div class="confirmed-calc-divider"></div>
+            <div class="confirmed-calc-row confirmed-calc-row--total">
+              <div class="calc-total-label-wrap">
+                <strong class="calc-total-title">${isEx ? 'Exchange Value' : 'Estimated Refund'}</strong>
+              </div>
+              <div class="calc-total-amount-wrap">
+                <strong class="confirmed-calc-total-inr">₹${itemsTotalInr.toLocaleString('en-IN')} INR</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="confirmed-card-action" style="display:block !important; margin-top: 1.8rem; text-align: center;">
+            <button type="button" class="checkout-btn-track" id="returnConfirmedDoneBtn" onclick="if(window.closeReturnExchangeModal){window.closeReturnExchangeModal();}">
+              <span>CONTINUE TO ORDER HISTORY</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  };
+
   window.openReturnExchangeModal = function(orderCode) {
     const modal = document.getElementById('returnExchangeModal');
     const titleEl = document.getElementById('returnExchangeModalTitle');
     const subtitleEl = document.getElementById('returnExchangeModalSubtitle');
     const bodyEl = document.getElementById('returnExchangeModalBody');
     if (!modal || !bodyEl) return;
+
+    modal.classList.remove('is-confirmation');
 
     accountState = typeof loadLocalAccount === 'function' ? loadLocalAccount() : {};
     const ord = findOrderForReturn(orderCode);
@@ -12726,6 +12746,11 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       return rCode === String(code).trim() || (codeNum && rCode.replace(/\D/g, '') === codeNum);
     }) || ord?.returnRequest;
     const existingReq = (rawReq && rawReq.status !== 'CANCELLED') ? rawReq : null;
+
+    if (existingReq) {
+      window.renderReturnExchangeConfirmationPage(existingReq, ord);
+      return;
+    }
 
     if (titleEl) titleEl.textContent = `Return or Exchange — Order #${code}`;
 
@@ -12760,87 +12785,13 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       ];
     }
 
-    if (existingReq) {
-      if (subtitleEl) subtitleEl.textContent = `Active Request: ${existingReq.id} · Free Doorstep Courier`;
-      const isEx = existingReq.type === 'exchange';
-      bodyEl.innerHTML = `
-        <div class="return-tracking-card">
-          <div class="return-tracking-header">
-            <div>
-              <span class="return-tracking-badge">${isEx ? 'EXCHANGE IN PROGRESS' : 'RETURN IN PROGRESS'}</span>
-              <h4 style="margin: 0.45rem 0 0.15rem; font-size: 1.05rem; font-weight: 700; color: #0E0E11;">
-                ${isEx ? `Replacement Size: ${existingReq.requestedSize || 'Selected Size'}` : 'Refund Scheduled'}
-              </h4>
-              <p style="margin: 0; font-size: 0.8rem; color: #71717A;">
-                Reference ID: <strong>${existingReq.id}</strong>${existingReq.salesreturn_number ? ` · Zoho RMA: <strong>#${existingReq.salesreturn_number}</strong>` : ''} · Placed on ${new Date(existingReq.createdAt || Date.now()).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-              </p>
-            </div>
-            <div style="text-align: right;">
-              <span style="font-size: 0.72rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #8C857B;">REVERSE LOGISTICS</span>
-              <div style="font-size: 0.88rem; font-weight: 700; color: #0E0E11;">Delhivery Express</div>
-            </div>
-          </div>
-
-          <div class="return-tracking-steps">
-            <div class="return-tracking-step">
-              <span class="return-tracking-step-dot">✓</span>
-              <div class="return-tracking-step-body">
-                <span class="return-tracking-step-title">Request Approved</span>
-                <span class="return-tracking-step-desc">Your ${isEx ? 'size exchange' : 'return'} request has been automatically validated under our 7-day policy.</span>
-              </div>
-            </div>
-            <div class="return-tracking-step">
-              <span class="return-tracking-step-dot">✓</span>
-              <div class="return-tracking-step-body">
-                <span class="return-tracking-step-title">Reverse Courier Assigned</span>
-                <span class="return-tracking-step-desc">Tracking AWB #${existingReq.reverseAwb || `STC-REV-${existingReq.id.replace(/\D/g, '') || '98214'}`} created.</span>
-              </div>
-            </div>
-            <div class="return-tracking-step">
-              <span class="return-tracking-step-dot return-tracking-step-dot--pending">●</span>
-              <div class="return-tracking-step-body">
-                <span class="return-tracking-step-title">Doorstep Reverse Pickup</span>
-                <span class="return-tracking-step-desc">Our courier partner will collect the packed garments within 24–48 hours.</span>
-              </div>
-            </div>
-            <div class="return-tracking-step">
-              <span class="return-tracking-step-dot return-tracking-step-dot--pending">○</span>
-              <div class="return-tracking-step-body">
-                <span class="return-tracking-step-title">${isEx ? 'Replacement Garment Dispatched' : 'Refund Credited'}</span>
-                <span class="return-tracking-step-desc">${isEx ? 'Your replacement size will be dispatched immediately once pickup is scanned.' : 'Amount credited to original payment method or UPI within 2 business days.'}</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="return-pickup-box">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-              <circle cx="12" cy="10" r="3"></circle>
-            </svg>
-            <div class="return-pickup-info">
-              <span class="return-pickup-title">Pickup Address</span>
-              <span class="return-pickup-address">${existingReq.pickupAddress || fullDeliveryAddress}</span>
-              <span class="return-pickup-note">Please keep the item in original condition with brand tags attached.</span>
-            </div>
-          </div>
-
-          <div class="return-modal-actions">
-            <button type="button" class="return-btn-cancel" onclick="window.cancelReturnExchangeRequest('${code}');">
-              Cancel Request
-            </button>
-            <button type="button" class="return-btn-submit" onclick="window.closeReturnExchangeModal();">
-              Done
-            </button>
-          </div>
-        </div>
-      `;
-    } else {
+    if (true) {
       if (subtitleEl) subtitleEl.textContent = 'Choose items to exchange for a different size or return for a refund';
 
       const itemsListHtml = items.map((it, idx) => {
         const sku = it.sku || it.id || 'TS-MIN-001';
-        const relic = (typeof collectionsData !== 'undefined' && Array.isArray(collectionsData))
-          ? collectionsData.find(c => (c.sku || c.id) === sku)
+        const relic = Array.isArray(window.collectionsData)
+          ? window.collectionsData.find(c => (c.sku || c.id) === sku)
           : null;
         let itemImg = it.image || it.imageUrl || it.img || (Array.isArray(it.images) ? it.images[0] : '') ||
           (relic && (relic.image || relic.imageUrl || (Array.isArray(relic.images) ? relic.images[0] : ''))) ||
@@ -13164,7 +13115,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     }
 
     if (typeof renderAccountOrdersUI === 'function') renderAccountOrdersUI();
-    window.openReturnExchangeModal(cleanCode);
+    window.renderReturnExchangeConfirmationPage(req, ord);
   };
 
   window.cancelReturnExchangeRequest = async function(orderCode) {
@@ -13281,7 +13232,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
   window.closeReturnExchangeModal = function() {
     const modal = document.getElementById('returnExchangeModal');
     if (modal) {
-      modal.classList.remove('open');
+      modal.classList.remove('open', 'is-confirmation');
       modal.setAttribute('aria-hidden', 'true');
     }
     document.body.classList.remove('return-modal-open');
@@ -13688,74 +13639,62 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     updateLogoutPageSummary();
   }
 
-  async function fetchFirebaseAccountByPhone(phone) {
+  async function fetchAccountByPhone(phone) {
     const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
     if (cleanPhone.length !== 10) return;
 
-    // 1. Load from MongoDB Atlas backend (/api/account/profile)
+    // Load account profile & live Zoho Inventory customer orders (/api/account/profile)
     try {
       const res = await fetch(`/api/account/profile?phone=${encodeURIComponent(cleanPhone)}`);
       const data = await res.json();
-      if (data && data.success && data.account) {
-        const mongoAddresses = Array.isArray(data.account.addresses) && data.account.addresses.length > 0
-          ? data.account.addresses
-          : accountState.addresses;
-        const mongoDefaultId = data.account.defaultAddressId || accountState.defaultAddressId || '';
-        const mongoOrders = Array.isArray(data.orders) && data.orders.length > 0
+      if (data && data.success) {
+        const isZohoSynced = Boolean(data.zohoSynced);
+        const rawServerOrders = Array.isArray(data.orders)
           ? data.orders
-          : (Array.isArray(data.account.orders) ? data.account.orders : (accountState.orders || []));
+          : (Array.isArray(data.account?.orders) ? data.account.orders : []);
+        const reconciledOrders = reconcileSyncedOrders(rawServerOrders, cleanPhone, isZohoSynced);
 
-        saveLocalAccount({
-          firstName: data.account.firstName || accountState.firstName || '',
-          lastName: data.account.lastName || accountState.lastName || '',
-          phone: cleanPhone,
-          phoneVerified: true,
-          email: data.account.email || accountState.email || '',
-          emailVerified: Boolean(data.account.emailVerified),
-          addresses: mongoAddresses,
-          defaultAddressId: mongoDefaultId,
-          orders: mongoOrders
-        });
+        if (data.account) {
+          const syncedAddresses = Array.isArray(data.account.addresses) && data.account.addresses.length > 0
+            ? data.account.addresses
+            : accountState.addresses;
+          const syncedDefaultId = data.account.defaultAddressId || accountState.defaultAddressId || '';
+          const nextOrders = isZohoSynced
+            ? reconciledOrders
+            : (reconciledOrders.length > 0 ? reconciledOrders : (accountState.orders || []));
 
-        // If user had local addresses that weren't in MongoDB yet, sync them up
-        if ((!Array.isArray(data.account.addresses) || data.account.addresses.length === 0) && accountState.addresses.length > 0) {
-          syncAddressesToMongo(accountState.addresses, accountState.defaultAddressId);
+          saveLocalAccount({
+            firstName: data.account.firstName || accountState.firstName || '',
+            lastName: data.account.lastName || accountState.lastName || '',
+            phone: cleanPhone,
+            phoneVerified: true,
+            email: data.account.email || accountState.email || '',
+            emailVerified: Boolean(data.account.emailVerified),
+            addresses: syncedAddresses,
+            defaultAddressId: syncedDefaultId,
+            orders: nextOrders
+          });
+
+          if ((!Array.isArray(data.account.addresses) || data.account.addresses.length === 0) && accountState.addresses.length > 0) {
+            syncAddressesToMongo(accountState.addresses, accountState.defaultAddressId);
+          }
+        } else if (isZohoSynced) {
+          saveLocalAccount({
+            phone: cleanPhone,
+            phoneVerified: true,
+            orders: reconciledOrders
+          });
         }
 
         renderAccountPageUI();
       }
     } catch (_) {}
-
-    // 2. Also check Firebase Auth user record if available
-    if (window.streetCoFirebaseAuth && typeof window.streetCoFirebaseAuth.loadUserAuthDetails === 'function') {
-      try {
-        const fbAccount = await window.streetCoFirebaseAuth.loadUserAuthDetails(cleanPhone);
-        if (fbAccount) {
-          saveLocalAccount({
-            firstName: fbAccount.firstName || accountState.firstName || '',
-            lastName: fbAccount.lastName || accountState.lastName || '',
-            phone: cleanPhone,
-            phoneVerified: true,
-            email: fbAccount.email || accountState.email || '',
-            emailVerified: Boolean(fbAccount.emailVerified)
-          });
-          renderAccountPageUI();
-        }
-      } catch (_) {}
-    }
   }
-
-  window.addEventListener('streetco:firebase-auth-ready', () => {
-    const cleanPhone = String(accountState.phone || '').replace(/\D/g, '').slice(-10);
-    if (cleanPhone.length === 10 && accountState.phoneVerified) {
-      fetchFirebaseAccountByPhone(cleanPhone);
-    }
-  });
 
   // Initial render of checkout addresses on startup
   renderCheckoutAddressesUI();
   if (accountState.phone && accountState.phoneVerified) {
-    fetchFirebaseAccountByPhone(accountState.phone);
+    fetchAccountByPhone(accountState.phone);
   }
 
   // ── Checkout Auth Gate Popup Notification & Return-to-Previous-Page Restoration ──
@@ -14080,7 +14019,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     modal.classList.add('open');
     modal.setAttribute('aria-hidden', 'false');
     renderAccountPageUI();
-    fetchFirebaseAccountByPhone(cleanPhone);
+    fetchAccountByPhone(cleanPhone);
   };
 
   window.closeAccountPage = function() {
@@ -14241,19 +14180,6 @@ window.openDelhiveryTracker = openDelhiveryTracker;
             localStorage.setItem('the_street_co_user_phone', newPhone);
           } catch (_) {}
 
-          if (window.streetCoFirebaseAuth && typeof window.streetCoFirebaseAuth.saveUserAuthDetails === 'function') {
-            try {
-              await window.streetCoFirebaseAuth.saveUserAuthDetails({
-                phone: newPhone,
-                phoneVerified: true,
-                firstName: accountState.firstName || '',
-                lastName: accountState.lastName || '',
-                email: accountState.email || '',
-                emailVerified: Boolean(accountState.emailVerified)
-              });
-            } catch (_) {}
-          }
-
           window.closeUnifiedOtpModal();
           renderAccountPageUI();
           refreshAccountOrdersFromMongo(false);
@@ -14284,19 +14210,6 @@ window.openDelhiveryTracker = openDelhiveryTracker;
             localStorage.setItem('the_street_co_user_email', newEmail);
           } catch (_) {}
 
-          if (window.streetCoFirebaseAuth && typeof window.streetCoFirebaseAuth.saveUserAuthDetails === 'function') {
-            try {
-              await window.streetCoFirebaseAuth.saveUserAuthDetails({
-                phone: accountState.phone,
-                phoneVerified: true,
-                firstName: accountState.firstName || '',
-                lastName: accountState.lastName || '',
-                email: newEmail,
-                emailVerified: true
-              });
-            } catch (_) {}
-          }
-
           window.closeUnifiedOtpModal();
           renderAccountPageUI();
           showAccountFeedback(`✓ Email address successfully changed to ${newEmail}!`, false);
@@ -14323,29 +14236,14 @@ window.openDelhiveryTracker = openDelhiveryTracker;
             throw new Error(data.error || 'Invalid 6-digit OTP.');
           }
 
-          let fbSaved = null;
-          if (window.streetCoFirebaseAuth && typeof window.streetCoFirebaseAuth.saveUserAuthDetails === 'function') {
-            try {
-              fbSaved = await window.streetCoFirebaseAuth.saveUserAuthDetails({
-                phone: activeOtpContext.targetPhone,
-                phoneVerified: true,
-                firstName: accountState.firstName || '',
-                lastName: accountState.lastName || '',
-                email: accountState.email || '',
-                emailVerified: Boolean(accountState.emailVerified),
-                lastLoginAt: new Date().toISOString()
-              });
-            } catch (_) {}
-          }
-
           const serverAccount = data.account || {};
           saveLocalAccount({
             phone: activeOtpContext.targetPhone,
             phoneVerified: true,
-            firstName: serverAccount.firstName || (fbSaved && fbSaved.firstName) || accountState.firstName || '',
-            lastName: serverAccount.lastName || (fbSaved && fbSaved.lastName) || accountState.lastName || '',
-            email: serverAccount.email || (fbSaved && fbSaved.email) || accountState.email || '',
-            emailVerified: Boolean(serverAccount.emailVerified || (fbSaved && fbSaved.emailVerified) || accountState.emailVerified),
+            firstName: serverAccount.firstName || accountState.firstName || '',
+            lastName: serverAccount.lastName || accountState.lastName || '',
+            email: serverAccount.email || accountState.email || '',
+            emailVerified: Boolean(serverAccount.emailVerified || accountState.emailVerified),
             addresses: Array.isArray(serverAccount.addresses) && serverAccount.addresses.length > 0
               ? serverAccount.addresses
               : accountState.addresses,
@@ -14364,7 +14262,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           }
 
           window.closeUnifiedOtpModal();
-          fetchFirebaseAccountByPhone(activeOtpContext.targetPhone);
+          fetchAccountByPhone(activeOtpContext.targetPhone);
 
           if (pendingAuthReturnContext) {
             const ctxToRestore = pendingAuthReturnContext;
@@ -14403,19 +14301,6 @@ window.openDelhiveryTracker = openDelhiveryTracker;
 
           const nextFirstName = activeOtpContext.firstName || accountState.firstName;
           const nextLastName = activeOtpContext.lastName || accountState.lastName;
-
-          if (window.streetCoFirebaseAuth && typeof window.streetCoFirebaseAuth.saveUserAuthDetails === 'function') {
-            try {
-              await window.streetCoFirebaseAuth.saveUserAuthDetails({
-                phone: accountState.phone,
-                phoneVerified: true,
-                firstName: nextFirstName,
-                lastName: nextLastName,
-                email: activeOtpContext.targetEmail,
-                emailVerified: true
-              });
-            } catch (_) {}
-          }
 
           saveLocalAccount({
             firstName: nextFirstName,
@@ -14721,12 +14606,9 @@ window.openDelhiveryTracker = openDelhiveryTracker;
   // ── 5. Change / Logout Mobile Number Button on Account Page ──
   const switchPhoneBtn = document.getElementById('accountSwitchPhoneBtn');
   if (switchPhoneBtn) {
-    switchPhoneBtn.addEventListener('click', async () => {
+    switchPhoneBtn.addEventListener('click', () => {
       const emailInput = document.getElementById('accountEmailInput');
       if (emailInput) delete emailInput.dataset.userEditing;
-      if (window.streetCoFirebaseAuth && typeof window.streetCoFirebaseAuth.signOutUserAuth === 'function') {
-        await window.streetCoFirebaseAuth.signOutUserAuth();
-      }
       saveLocalAccount({
         phone: '',
         phoneVerified: false
@@ -14818,7 +14700,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     sendOtpBtn.addEventListener('click', requestEmailOtpPopup);
   }
 
-  // ── 8. Real-Time & Fast Account Profile Saving (Saves to Local, Firebase & MongoDB in Real-Time) ──
+  // ── 8. Real-Time & Fast Account Profile Saving (Syncs to Local Account & Zoho Inventory) ──
   let profileSaveDebounceTimer = null;
 
   async function executeProfileSaveRealTime(isExplicitSave = false) {
@@ -14826,7 +14708,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     const lName = lastNameEl ? lastNameEl.value.trim() : (accountState.lastName || '');
     const emailInput = document.getElementById('accountEmailInput');
     const typedEmail = String(emailInput ? emailInput.value : (accountState.email || '')).trim().toLowerCase();
-    const phoneToSave = accountState.phone || getActiveUserPhone();
+    const phoneToSave = accountState.phone || (typeof window.streetCoGetAccountPhone === 'function' ? window.streetCoGetAccountPhone() : '');
 
     // Instant local optimistic save - 0ms latency
     const isEmailVerifiedMatch = Boolean(
@@ -14850,36 +14732,20 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     });
     renderAccountPageUI();
 
-    // "Don't show this after saving account details": Keep feedback box hidden
     const feedbackBox = document.getElementById('accountSaveFeedbackBox');
     if (feedbackBox) {
       feedbackBox.style.display = 'none';
       feedbackBox.textContent = '';
     }
 
-    // Award VIP Member Mission for Name Upload (+25 pts) ONLY after user explicitly saves account details
     if (isExplicitSave && (fName || lName)) {
       if (typeof window.claimMissionPoints === 'function') {
         window.claimMissionPoints('profile_name', { firstName: fName, lastName: lName });
       }
     }
 
-    // Background asynchronous network sync without blocking UI
+    // Background network sync without blocking UI
     try {
-      let firebaseUid = '';
-      if (window.streetCoFirebaseAuth && typeof window.streetCoFirebaseAuth.saveUserAuthDetails === 'function') {
-        window.streetCoFirebaseAuth.saveUserAuthDetails({
-          phone: phoneToSave,
-          phoneVerified: true,
-          firstName: fName,
-          lastName: lName,
-          email: typedEmail || accountState.email || '',
-          emailVerified: isEmailVerifiedMatch || Boolean(accountState.emailVerified)
-        }).then(res => {
-          if (res && res.firebaseUid) firebaseUid = res.firebaseUid;
-        }).catch(() => {});
-      }
-
       if (phoneToSave) {
         fetch('/api/account/profile', {
           method: 'POST',
@@ -14890,7 +14756,6 @@ window.openDelhiveryTracker = openDelhiveryTracker;
             lastName: lName,
             email: typedEmail || accountState.email || '',
             emailVerified: isEmailVerifiedMatch || Boolean(accountState.emailVerified),
-            firebaseUid,
             addresses: accountState.addresses || [],
             defaultAddressId: accountState.defaultAddressId || '',
             isExplicitSave: Boolean(isExplicitSave)

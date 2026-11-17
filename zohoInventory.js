@@ -532,43 +532,198 @@ export async function fetchZohoCategories() {
   }
 }
 
+function buildContactPersonPayload(fullName, email, cleanPhone) {
+  const parts = String(fullName || 'Storefront Customer').trim().split(/\s+/);
+  const firstName = parts[0] || 'Customer';
+  const lastName = parts.slice(1).join(' ') || '';
+  const person = {
+    first_name: firstName,
+    last_name: lastName,
+    is_primary_contact: true
+  };
+  if (email) person.email = email;
+  if (cleanPhone) {
+    person.phone = cleanPhone;
+    person.mobile = cleanPhone;
+  }
+  return { firstName, lastName, person };
+}
+
+async function ensureZohoContactUpdated(contactId, details, token) {
+  if (!contactId) return contactId;
+  try {
+    const base = getApiBaseUrl();
+    const orgId = config.orgId;
+    const getRes = await fetch(`${base}/contacts/${contactId}?organization_id=${orgId}`, {
+      headers: { Authorization: `Zoho-oauthtoken ${token}` }
+    });
+    const getData = await getRes.json();
+    const existing = getData?.contact;
+    if (!getRes.ok || !existing) return contactId;
+
+    const desiredEmail = String(details.email || '').trim().toLowerCase();
+    const desiredPhone = String(details.phone || '').replace(/[^\d+]/g, '').trim();
+    const desiredPhone10 = desiredPhone.replace(/\D/g, '').slice(-10);
+    const fullName = String(details.fullName || existing.contact_name || 'Storefront Customer').trim();
+    const { firstName, lastName, person: desiredPerson } = buildContactPersonPayload(fullName, desiredEmail, desiredPhone);
+
+    const existingEmail = String(existing.email || '').trim().toLowerCase();
+    const existingPhone10 = String(existing.phone || '').replace(/\D/g, '').slice(-10);
+    const existingMobile10 = String(existing.mobile || '').replace(/\D/g, '').slice(-10);
+    const persons = Array.isArray(existing.contact_persons) ? existing.contact_persons : [];
+    const primaryPerson = persons.find(p => p && p.is_primary_contact) || persons[0] || null;
+    const primaryEmail = String(primaryPerson?.email || '').trim().toLowerCase();
+    const primaryPhone10 = String(primaryPerson?.phone || '').replace(/\D/g, '').slice(-10);
+    const primaryMobile10 = String(primaryPerson?.mobile || '').replace(/\D/g, '').slice(-10);
+
+    const needsEmailUpdate = Boolean(desiredEmail && (existingEmail !== desiredEmail || primaryEmail !== desiredEmail));
+    const needsPhoneUpdate = Boolean(
+      desiredPhone10 &&
+      (existingPhone10 !== desiredPhone10 || existingMobile10 !== desiredPhone10 ||
+       primaryPhone10 !== desiredPhone10 || primaryMobile10 !== desiredPhone10)
+    );
+    const needsPersonCreated = persons.length === 0 && Boolean(desiredEmail || desiredPhone);
+
+    if (!needsEmailUpdate && !needsPhoneUpdate && !needsPersonCreated) {
+      return contactId;
+    }
+
+    const updatePayload = {
+      contact_name: existing.contact_name || fullName,
+      first_name: existing.first_name || firstName,
+      last_name: existing.last_name || lastName
+    };
+    if (desiredEmail) updatePayload.email = desiredEmail;
+    else if (existingEmail) updatePayload.email = existingEmail;
+
+    if (desiredPhone) {
+      updatePayload.phone = desiredPhone;
+      updatePayload.mobile = desiredPhone;
+    }
+
+    if (persons.length > 0) {
+      updatePayload.contact_persons = persons.map((p, idx) => {
+        if (idx === 0 || p.is_primary_contact) {
+          return {
+            contact_person_id: p.contact_person_id,
+            first_name: p.first_name || firstName,
+            last_name: p.last_name || lastName,
+            email: desiredEmail || p.email || '',
+            phone: desiredPhone || p.phone || '',
+            mobile: desiredPhone || p.mobile || '',
+            is_primary_contact: true
+          };
+        }
+        return p;
+      });
+    } else {
+      updatePayload.contact_persons = [desiredPerson];
+    }
+
+    const putRes = await fetch(`${base}/contacts/${contactId}?organization_id=${orgId}`, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Zoho-oauthtoken ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(updatePayload)
+    });
+    const putData = await putRes.json();
+
+    // If contact still has 0 contact_persons after PUT, explicitly attach a primary contact person
+    const updatedPersons = putData?.contact?.contact_persons;
+    if (needsPersonCreated && (!Array.isArray(updatedPersons) || updatedPersons.length === 0)) {
+      await fetch(`${base}/contacts/contactpersons?organization_id=${orgId}`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Zoho-oauthtoken ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          contact_id: contactId,
+          ...desiredPerson
+        })
+      }).catch(() => {});
+    }
+  } catch (err) {
+    console.warn('[Zoho Inventory Contact Sync Notice]', err.message);
+  }
+  return contactId;
+}
+
 /**
- * Find or create customer contact in Zoho Inventory
+ * Find or create customer contact in Zoho Inventory (always syncs user's phone & email)
  */
 export async function findOrCreateContact(shippingInfo) {
   if (!isZohoConfigured()) return null;
 
   try {
     const token = await getAccessToken();
+    const base = getApiBaseUrl();
+    const orgId = config.orgId;
     const email = (shippingInfo.email || '').trim().toLowerCase();
     const fullName = (shippingInfo.fullName || shippingInfo.name || 'Storefront Customer').trim();
-    const phone = (shippingInfo.phone || '').trim();
+    const rawPhone = (shippingInfo.phone || '').trim();
+    const cleanPhone = rawPhone.replace(/[^\d+]/g, '');
+    const cleanPhone10 = cleanPhone.replace(/\D/g, '').slice(-10);
 
-    // 1. Search for existing contact by email
+    // 1. Search existing customer contacts by email, phone, or exact name
     if (email) {
       try {
-        const searchUrl = `${getApiBaseUrl()}/contacts?organization_id=${config.orgId}&email=${encodeURIComponent(email)}`;
+        const searchUrl = `${base}/contacts?organization_id=${orgId}&email=${encodeURIComponent(email)}`;
         const searchRes = await fetch(searchUrl, {
           headers: { Authorization: `Zoho-oauthtoken ${token}` }
         });
         const searchData = await searchRes.json();
-        if (searchRes.ok && searchData.contacts && searchData.contacts.length > 0) {
-          return searchData.contacts[0].contact_id;
+        if (searchRes.ok && Array.isArray(searchData.contacts) && searchData.contacts.length > 0) {
+          return await ensureZohoContactUpdated(searchData.contacts[0].contact_id, { fullName, email, phone: cleanPhone }, token);
         }
       } catch (_) {}
     }
 
-    // 2. Create new contact
-    const createUrl = `${getApiBaseUrl()}/contacts?organization_id=${config.orgId}`;
-    const cleanPhone = phone.replace(/[^\d+]/g, '') || '9876543210';
+    if (cleanPhone10.length >= 10) {
+      try {
+        const listRes = await fetch(`${base}/contacts?organization_id=${orgId}&contact_type=customer&per_page=200`, {
+          headers: { Authorization: `Zoho-oauthtoken ${token}` }
+        });
+        const listData = await listRes.json();
+        if (listRes.ok && Array.isArray(listData.contacts)) {
+          const phoneMatch = listData.contacts.find(c => {
+            const cPhone = String(c.phone || '').replace(/\D/g, '').slice(-10);
+            const cMobile = String(c.mobile || '').replace(/\D/g, '').slice(-10);
+            const cEmail = String(c.email || '').trim().toLowerCase();
+            return (cPhone && cPhone === cleanPhone10) ||
+              (cMobile && cMobile === cleanPhone10) ||
+              (email && cEmail && cEmail === email);
+          });
+          if (phoneMatch && phoneMatch.contact_id) {
+            return await ensureZohoContactUpdated(phoneMatch.contact_id, { fullName, email, phone: cleanPhone }, token);
+          }
+
+          const exactNameMatch = listData.contacts.find(c =>
+            String(c.contact_name || '').trim().toLowerCase() === fullName.toLowerCase()
+          );
+          if (exactNameMatch && exactNameMatch.contact_id) {
+            return await ensureZohoContactUpdated(exactNameMatch.contact_id, { fullName, email, phone: cleanPhone }, token);
+          }
+        }
+      } catch (_) {}
+    }
+
+    // 2. Create new contact with user phone & email
+    const createUrl = `${base}/contacts?organization_id=${orgId}`;
+    const resolvedPhone = cleanPhone || '';
+    const { firstName, lastName, person } = buildContactPersonPayload(fullName, email, resolvedPhone);
     const payload = {
       contact_name: fullName,
+      first_name: firstName,
+      last_name: lastName,
       company_name: shippingInfo.isB2B && shippingInfo.gstin ? (shippingInfo.companyName || 'Business Client') : '',
       contact_type: 'customer',
       customer_sub_type: 'individual',
-      email: email || `customer.${Date.now()}@thestreetco.in`,
-      phone: cleanPhone,
-      mobile: cleanPhone,
+      ...(email ? { email } : {}),
+      ...(resolvedPhone ? { phone: resolvedPhone, mobile: resolvedPhone } : {}),
+      contact_persons: [person],
       shipping_address: {
         attention: fullName,
         address: String(shippingInfo.address || shippingInfo.fullAddress || '').slice(0, 99),
@@ -576,7 +731,7 @@ export async function findOrCreateContact(shippingInfo) {
         state: shippingInfo.state || '',
         zip: shippingInfo.pincode || '',
         country: 'India',
-        phone: cleanPhone
+        ...(resolvedPhone ? { phone: resolvedPhone } : {})
       },
       billing_address: {
         attention: fullName,
@@ -585,7 +740,7 @@ export async function findOrCreateContact(shippingInfo) {
         state: shippingInfo.state || '',
         zip: shippingInfo.pincode || '',
         country: 'India',
-        phone: cleanPhone
+        ...(resolvedPhone ? { phone: resolvedPhone } : {})
       }
     };
 
@@ -601,23 +756,23 @@ export async function findOrCreateContact(shippingInfo) {
     const createData = await createRes.json();
     if (createRes.ok && createData.contact && createData.contact.contact_id) {
       console.log(`[Zoho Inventory] Created new contact ID ${createData.contact.contact_id} for ${fullName}`);
-      return createData.contact.contact_id;
+      return await ensureZohoContactUpdated(createData.contact.contact_id, { fullName, email, phone: resolvedPhone }, token);
     }
 
     // If contact already exists or creation failed, search by name
     try {
-      const searchByNameUrl = `${getApiBaseUrl()}/contacts?organization_id=${config.orgId}&search_text=${encodeURIComponent(fullName)}`;
+      const searchByNameUrl = `${base}/contacts?organization_id=${orgId}&search_text=${encodeURIComponent(fullName)}`;
       const searchByNameRes = await fetch(searchByNameUrl, {
         headers: { Authorization: `Zoho-oauthtoken ${token}` }
       });
       const searchByNameData = await searchByNameRes.json();
       if (searchByNameData.contacts && searchByNameData.contacts.length > 0) {
-        return searchByNameData.contacts[0].contact_id;
+        return await ensureZohoContactUpdated(searchByNameData.contacts[0].contact_id, { fullName, email, phone: resolvedPhone }, token);
       }
     } catch (_) {}
 
     // 3. Fallback: Fetch first available customer contact in Zoho
-    const fallbackRes = await fetch(`${getApiBaseUrl()}/contacts?organization_id=${config.orgId}&contact_type=customer`, {
+    const fallbackRes = await fetch(`${base}/contacts?organization_id=${orgId}&contact_type=customer`, {
       headers: { Authorization: `Zoho-oauthtoken ${token}` }
     });
     const fallbackData = await fallbackRes.json();
@@ -695,12 +850,14 @@ export async function createSalesOrder(orderRecord) {
   try {
     const token = await getAccessToken();
 
-    // 1. Resolve customer contact info
+    // 1. Resolve customer contact info (prefer user's account phone & email for Zoho Customer Contact)
     const contactObj = orderRecord.shippingAddress || orderRecord.shipping || orderRecord.contactDetails || orderRecord.user || orderRecord.customer || {};
+    const accountPhone = String(orderRecord.accountPhone || orderRecord.userAccountPhone || '').trim();
+    const accountEmail = String(orderRecord.accountEmail || orderRecord.userAccountEmail || '').trim();
     const mergedShipping = {
       fullName: orderRecord.contactDetails?.fullName || contactObj.fullName || contactObj.name || 'Storefront Customer',
-      phone: orderRecord.contactDetails?.phone || contactObj.phone || '',
-      email: orderRecord.contactDetails?.email || contactObj.email || '',
+      phone: accountPhone || orderRecord.contactDetails?.phone || contactObj.phone || '',
+      email: accountEmail || orderRecord.contactDetails?.email || contactObj.email || '',
       address: contactObj.address || contactObj.fullAddress || `${contactObj.houseFlat || ''}, ${contactObj.streetRoad || ''}`,
       city: contactObj.city || '',
       state: contactObj.state || '',
@@ -786,7 +943,7 @@ export async function createSalesOrder(orderRecord) {
       line_items: lineItems,
       shipping_charge: Number(orderRecord.deliveryFeeInr ?? orderRecord.delivery?.cost ?? orderRecord.shippingCost ?? 0),
       discount: Number(orderRecord.discountInr ?? orderRecord.discount ?? 0),
-      notes: `Storefront Order #${cleanCode}\nPayment: ${(orderRecord.paymentMethod || orderRecord.payment?.method || 'COD').toUpperCase()}\nRecipient: ${mergedShipping.fullName} (${mergedShipping.phone})\nDelivery Address: ${mergedShipping.address}, ${mergedShipping.city}, ${mergedShipping.state} - ${mergedShipping.pincode}`,
+      notes: '',
       terms: 'The Street Co 7-Day Replacement & Return Policy.'
     };
 
@@ -933,8 +1090,8 @@ export async function createGstInvoice(orderRecord) {
     gstin: customerGstin
   });
 
-  // Make Invoice ID / Invoice Number identical to the Order ID
-  const orderIdNumber = orderRecord.orderCode || orderRecord.orderId || `${Date.now()}`;
+  // Make Invoice Number & Reference identical to the order's Reference#
+  const orderIdNumber = String(orderRecord.reference_number || orderRecord.orderCode || orderRecord.orderId || `${Date.now()}`).replace(/^#/, '').trim();
   const invoiceNumber = orderIdNumber;
   const invoiceDate = getIstDateString();
 
@@ -964,12 +1121,13 @@ export async function createGstInvoice(orderRecord) {
       const invoicePayload = {
         customer_id: contactId,
         invoice_number: invoiceNumber,
+        reference_number: invoiceNumber,
         template_id: config.invoiceTemplateId || '4226403000000039050',
         date: invoiceDate,
         due_date: invoiceDate,
         line_items: lineItems,
         discount: Number(orderRecord.discountInr || orderRecord.discount || 0),
-        notes: `Official GST Tax Invoice - The Street Co\nOrder #${orderIdNumber}`,
+        notes: '',
         terms: '7-Day Free Size Exchange Policy. Goods once sold are non-refundable except defective transit items.'
       };
 
@@ -1096,7 +1254,8 @@ export async function convertSalesOrderToInvoice(salesOrderId, orderRecord = {})
   if (isZohoConfigured() && salesOrderId) {
     try {
       const token = await getAccessToken();
-      const fromSoUrl = `${getApiBaseUrl()}/invoices/fromsalesorder?salesorder_id=${salesOrderId}&organization_id=${config.orgId}`;
+      const cleanRef = String(orderRecord.reference_number || orderRecord.orderCode || orderRecord.orderId || `${Date.now()}`).replace(/^#/, '').trim();
+      const fromSoUrl = `${getApiBaseUrl()}/invoices/fromsalesorder?salesorder_id=${salesOrderId}&organization_id=${config.orgId}&ignore_auto_number_generation=true`;
       const res = await fetch(fromSoUrl, {
         method: 'POST',
         headers: {
@@ -1104,8 +1263,10 @@ export async function convertSalesOrderToInvoice(salesOrderId, orderRecord = {})
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
+          invoice_number: cleanRef,
+          reference_number: cleanRef,
           template_id: config.invoiceTemplateId || '4226403000000039050',
-          notes: `Official GST Tax Invoice - The Street Co\nConverted from Zoho Sales Order #${orderRecord.zoho_salesorder_number || salesOrderId}`,
+          notes: '',
           terms: '7-Day Free Size Exchange Policy. Goods once sold are non-refundable except defective transit items.'
         })
       });
@@ -1383,7 +1544,7 @@ export async function fetchRecentSalesOrdersFromZoho() {
   if (!isZohoConfigured()) return [];
   try {
     const token = await getAccessToken();
-    const res = await fetch(`${getApiBaseUrl()}/salesorders?organization_id=${config.orgId}&sort_column=created_time&sort_order=D`, {
+    const res = await fetch(`${getApiBaseUrl()}/salesorders?organization_id=${config.orgId}&sort_column=created_time&sort_order=D&per_page=200`, {
       headers: { Authorization: `Zoho-oauthtoken ${token}` }
     });
     const data = await res.json();
@@ -1394,6 +1555,149 @@ export async function fetchRecentSalesOrdersFromZoho() {
     console.warn('[Zoho fetchRecentSalesOrders Error]:', err.message);
   }
   return [];
+}
+
+/**
+ * Fetch detailed Zoho Inventory Sales Orders and matching customer contact IDs
+ * so Account Order History renders strictly what exists in Zoho Inventory.
+ */
+export async function fetchCustomerSalesOrders(phone = '', email = '') {
+  if (!isZohoConfigured()) {
+    return { zohoSynced: false, salesorders: [], matchedCustomerIds: [], error: 'Zoho Inventory not configured' };
+  }
+  try {
+    const token = await getAccessToken();
+    const base = getApiBaseUrl();
+    const orgId = config.orgId;
+    const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
+    const cleanEmail = String(email || '').trim().toLowerCase();
+
+    const listRes = await fetch(`${base}/salesorders?organization_id=${orgId}&sort_column=created_time&sort_order=D&per_page=200`, {
+      headers: { Authorization: `Zoho-oauthtoken ${token}` }
+    });
+    const listData = await listRes.json();
+    if (!listRes.ok || listData.code !== 0) {
+      throw new Error(listData.message || `Zoho API returned HTTP ${listRes.status}`);
+    }
+
+    const rawList = Array.isArray(listData.salesorders) ? listData.salesorders : [];
+    const matchedCustomerIds = new Set();
+
+    try {
+      const contactsRes = await fetch(`${base}/contacts?organization_id=${orgId}&per_page=200`, {
+        headers: { Authorization: `Zoho-oauthtoken ${token}` }
+      });
+      const contactsData = await contactsRes.json();
+      if (contactsRes.ok && contactsData.code === 0 && Array.isArray(contactsData.contacts)) {
+        for (const c of contactsData.contacts) {
+          const cPhone = String(c.phone || '').replace(/\D/g, '').slice(-10);
+          const cMobile = String(c.mobile || '').replace(/\D/g, '').slice(-10);
+          const cEmail = String(c.email || '').trim().toLowerCase();
+          if ((cleanPhone && (cPhone === cleanPhone || cMobile === cleanPhone)) ||
+              (cleanEmail && cEmail && cEmail === cleanEmail)) {
+            matchedCustomerIds.add(c.contact_id);
+          }
+        }
+      }
+    } catch (_) {}
+
+    if (rawList.length === 0) {
+      return { zohoSynced: true, salesorders: [], matchedCustomerIds: Array.from(matchedCustomerIds) };
+    }
+
+    const detailedList = await Promise.all(
+      rawList.map(async (so) => {
+        const det = await getSalesOrderFromZoho(so.salesorder_id);
+        return det || so;
+      })
+    );
+
+    return {
+      zohoSynced: true,
+      salesorders: detailedList,
+      matchedCustomerIds: Array.from(matchedCustomerIds)
+    };
+  } catch (err) {
+    console.warn('[Zoho fetchCustomerSalesOrders Error]:', err.message);
+    return { zohoSynced: false, salesorders: [], matchedCustomerIds: [], error: err.message };
+  }
+}
+
+/**
+ * Fetch a customer's profile & address directly from Zoho Inventory Contacts by 10-digit phone.
+ */
+export async function fetchCustomerProfileFromZoho(phone = '') {
+  const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
+  if (cleanPhone.length !== 10 || !isZohoConfigured()) return null;
+
+  try {
+    const token = await getAccessToken();
+    const base = getApiBaseUrl();
+    const orgId = config.orgId;
+
+    const listRes = await fetch(`${base}/contacts?organization_id=${orgId}&contact_type=customer&per_page=200`, {
+      headers: { Authorization: `Zoho-oauthtoken ${token}` }
+    });
+    const listData = await listRes.json();
+    if (!listRes.ok || listData.code !== 0 || !Array.isArray(listData.contacts)) return null;
+
+    const match = listData.contacts.find(c => {
+      const cPhone = String(c.phone || '').replace(/\D/g, '').slice(-10);
+      const cMobile = String(c.mobile || '').replace(/\D/g, '').slice(-10);
+      return cPhone === cleanPhone || cMobile === cleanPhone;
+    });
+    if (!match || !match.contact_id) return null;
+
+    const detRes = await fetch(`${base}/contacts/${match.contact_id}?organization_id=${orgId}`, {
+      headers: { Authorization: `Zoho-oauthtoken ${token}` }
+    });
+    const detData = await detRes.json();
+    const c = (detRes.ok && detData.contact) ? detData.contact : match;
+
+    const fullName = String(c.contact_name || [c.first_name, c.last_name].filter(Boolean).join(' ') || '').trim();
+    const nameParts = fullName.split(/\s+/).filter(Boolean);
+    const firstName = String(c.first_name || nameParts[0] || '').trim();
+    const lastName = String(c.last_name || nameParts.slice(1).join(' ') || '').trim();
+    const email = String(c.email || c.contact_persons?.[0]?.email || '').trim().toLowerCase();
+
+    const ship = c.shipping_address || c.billing_address || {};
+    const addresses = [];
+    if (ship && (ship.address || ship.city || ship.zip)) {
+      addresses.push({
+        id: `zoho_addr_${c.contact_id}`,
+        name: fullName || 'Customer',
+        fullName: fullName || 'Customer',
+        phone: cleanPhone,
+        email,
+        address1: String(ship.address || '').trim(),
+        houseFlat: String(ship.address || '').trim(),
+        address2: String(ship.street2 || '').trim(),
+        streetRoad: String(ship.street2 || '').trim(),
+        city: String(ship.city || '').trim(),
+        state: String(ship.state || '').trim(),
+        pincode: String(ship.zip || '').replace(/\D/g, '').slice(0, 6),
+        type: 'Home',
+        addressType: 'Home',
+        isDefault: true
+      });
+    }
+
+    return {
+      zoho_customer_id: c.contact_id,
+      phone: cleanPhone,
+      phoneVerified: true,
+      firstName,
+      lastName,
+      fullName,
+      email,
+      emailVerified: Boolean(email),
+      addresses,
+      defaultAddressId: addresses[0]?.id || ''
+    };
+  } catch (err) {
+    console.warn('[Zoho fetchCustomerProfileFromZoho Notice]:', err.message);
+    return null;
+  }
 }
 
 /**
@@ -1543,7 +1847,7 @@ export async function createSalesReturnInZoho(returnRecord, salesOrder = {}) {
           date: soDetail.date || getIstDateString(),
           reference_number: returnId,
           reason: returnRecord.reason || 'Fit / Size Adjustment',
-          notes: `[The Street Co] ${returnRecord.type === 'exchange' ? 'Size Exchange Request' : 'Return for Refund'}\nCustomer: ${returnRecord.customerName || 'Customer'} (${returnRecord.customerPhone || ''})\nPickup Address: ${returnRecord.pickupAddress || ''}\n${returnRecord.requestedSize ? `Requested Replacement Size: ${returnRecord.requestedSize}\n` : ''}Notes: ${returnRecord.notes || 'None'}`,
+          notes: '',
           line_items: zohoLineItems
         };
 
@@ -1662,8 +1966,8 @@ export function renderGstInvoiceHtml(orderRecord) {
     gstin: customerGstin
   });
 
-  const invoiceNo = orderRecord.invoice_number || orderRecord.orderCode || orderRecord.orderId || 'ORDER';
-  const invoiceDate = new Date(orderRecord.createdAt || Date.now()).toLocaleDateString('en-IN', {
+  const referenceNo = String(orderRecord.reference_number || orderRecord.orderCode || orderRecord.orderId || 'ORDER').replace(/^#/, '').trim();
+  const invoiceDate = new Date(orderRecord.createdAt || orderRecord.orderDate || Date.now()).toLocaleDateString('en-IN', {
     day: '2-digit',
     month: 'short',
     year: 'numeric'
@@ -1706,7 +2010,7 @@ export function renderGstInvoiceHtml(orderRecord) {
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>GST Tax Invoice — ${invoiceNo} — The Street Co</title>
+  <title>GST Tax Invoice — Reference #${referenceNo} — The Street Co</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -1866,12 +2170,6 @@ export function renderGstInvoiceHtml(orderRecord) {
 <body>
 
   <div class="action-bar" style="max-width: 850px; margin: 0 auto 15px; display: flex; gap: 10px; justify-content: flex-end; align-items: center;">
-    ${orderRecord.zoho_invoice_id ? `
-      <a href="?pdf=true" class="btn" style="background:#0b0a0f;" download="TheStreetCo-Invoice-${orderRecord.orderCode || 'relic'}.pdf">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        DOWNLOAD OFFICIAL ZOHO PDF
-      </a>
-    ` : ''}
     <button class="btn" onclick="window.print()">
       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
       PRINT / SAVE PDF
@@ -1892,9 +2190,8 @@ export function renderGstInvoiceHtml(orderRecord) {
       </div>
       <div class="invoice-tag">
         <h2>TAX INVOICE</h2>
-        <p><strong>Invoice No:</strong> ${invoiceNo}</p>
+        <p><strong>Reference#:</strong> ${referenceNo}</p>
         <p><strong>Invoice Date:</strong> ${invoiceDate}</p>
-        <p><strong>Order Ref:</strong> ${orderRecord.orderCode || 'N/A'}</p>
         <p><strong>Place of Supply:</strong> ${gst.placeOfSupply} (${gst.placeOfSupplyCode})</p>
       </div>
     </div>
@@ -1906,14 +2203,14 @@ export function renderGstInvoiceHtml(orderRecord) {
         ${orderRecord.customerEmail ? `Email: ${orderRecord.customerEmail}<br/>` : ''}
         ${shipping.phone ? `Phone: ${shipping.phone}<br/>` : ''}
         ${gst.isB2B ? `<strong>Buyer GSTIN:</strong> ${customerGstin}<br/>` : ''}
-        Address: ${shipping.address || 'Street Address'}, ${shipping.city || ''}<br/>
+        Address: ${shipping.address || shipping.address1 || shipping.houseFlat || shipping.fullAddress || 'Address on file'}${shipping.city ? `, ${shipping.city}` : ''}<br/>
         State: ${shipping.state || config.businessState} (Code: ${gst.placeOfSupplyCode})<br/>
         PIN: ${shipping.pincode || ''}
       </div>
       <div class="party-box">
         <h4>Shipping Details</h4>
         <strong>${shipping.fullName || shipping.name || 'Storefront Customer'}</strong><br/>
-        Address: ${shipping.address || 'Same as billing address'}<br/>
+        Address: ${shipping.address || shipping.address1 || shipping.houseFlat || shipping.fullAddress || 'Same as billing address'}<br/>
         City: ${shipping.city || ''}, State: ${shipping.state || config.businessState}<br/>
         PIN: ${shipping.pincode || ''}<br/>
         Dispatch Mode: <strong>Delhivery Express Courier</strong>

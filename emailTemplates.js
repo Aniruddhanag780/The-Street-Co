@@ -515,15 +515,10 @@ export function renderOrderConfirmationEmail({
   const shippingLabel = isExpressCourier ? 'Delhivery Express' : 'Delhivery';
 
   const accountStatusUrl = `${websiteHref.replace(/\/$/, '')}/#account`;
-  const zohoDirectInvoiceUrl = String(
-    order.zoho_invoice_url ||
-    order.invoice_url ||
-    (typeof order.invoiceUrl === 'string' && /^https?:\/\//i.test(order.invoiceUrl) ? order.invoiceUrl : '')
-  ).trim();
   const fallbackInvoiceBase = (!useRelativeAssets && hostOrigin && !/localhost|127\.0\.0\.1/i.test(hostOrigin))
     ? hostOrigin.replace(/\/$/, '')
     : websiteHref.replace(/\/$/, '');
-  const invoiceUrl = zohoDirectInvoiceUrl || `${fallbackInvoiceBase}/invoice/${encodeURIComponent(cleanOrderNumber)}`;
+  const invoiceUrl = `${fallbackInvoiceBase}/invoice/${encodeURIComponent(cleanOrderNumber)}`;
 
   const introHtml = `
     <div style="margin:0 0 18px 0;">
@@ -624,7 +619,7 @@ export function renderOrderConfirmationEmail({
     introHtml,
     ctaLabel: 'View Your Invoice',
     ctaHref: invoiceUrl,
-    referenceTitle: `Order No. #${cleanOrderNumber}`,
+    referenceTitle: `Reference #${cleanOrderNumber}`,
     referenceSubtitle: formattedDate,
     sectionLabel: 'Items ordered',
     itemsHtml,
@@ -650,7 +645,7 @@ Thank you for your purchase — this email confirms your order.
 You can follow your order status by logging into your account at ${websiteLabel}.
 You can see the invoice here: ${invoiceUrl}
 
-Order No. #${cleanOrderNumber}
+Reference #${cleanOrderNumber}
 ${formattedDate}
 
 Items ordered:
@@ -765,7 +760,7 @@ export function renderReturnConfirmationEmail({
     ctaLabel,
     ctaHref: accountStatusUrl,
     referenceTitle: `Return No. #${returnId}`,
-    referenceSubtitle: `Order No. #${cleanOrderNumber} · ${formattedDate}`,
+    referenceSubtitle: `Reference #${cleanOrderNumber} · ${formattedDate}`,
     sectionLabel,
     itemsHtml,
     summaryRowsHtml,
@@ -787,7 +782,7 @@ Thank you for reaching out — this email confirms your ${isExchange ? `size exc
 You can follow your status by logging into your account at ${websiteLabel} (${accountStatusUrl}).
 
 Return No. #${returnId}
-Order No. #${cleanOrderNumber} · ${formattedDate}
+Reference #${cleanOrderNumber} · ${formattedDate}
 
 ${sectionLabel}:
 ${plainItems}
@@ -894,7 +889,7 @@ export function renderShipmentFulfilledEmail({
     introHtml,
     ctaLabel: 'Request Exchange / Return',
     ctaHref: accountStatusUrl,
-    referenceTitle: `Order No. #${cleanOrderNumber}`,
+    referenceTitle: `Reference #${cleanOrderNumber}`,
     referenceSubtitle: `Delivered · ${deliveredAt}`,
     sectionLabel: 'Items delivered',
     itemsHtml,
@@ -919,7 +914,7 @@ Delivered To: ${fullName} — ${fullAddress}
 
 Need a different size or easy return? Visit ${accountStatusUrl} within 7 days.
 
-Order No. #${cleanOrderNumber}
+Reference #${cleanOrderNumber}
 Delivered · ${deliveredAt}
 
 Items delivered:

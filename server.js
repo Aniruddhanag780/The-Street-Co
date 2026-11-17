@@ -2,9 +2,11 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import os from 'os';
 import twilio from 'twilio';
 import nodemailer from 'nodemailer';
 import * as zohoInventory from './zohoInventory.js';
+import { doesZohoSalesOrderBelongToCustomer, mapZohoSalesOrderToAccountOrder } from './zohoOrderHelper.js';
 import { getProductImageBuffer } from './productImage.js';
 import { renderOrderConfirmationEmail, renderReturnConfirmationEmail, renderShipmentFulfilledEmail } from './emailTemplates.js';
 import { verifyUpiPaymentViaImap } from './imapPaymentVerifier.js';
@@ -20,6 +22,7 @@ import {
   normalizeUserAddresses,
   getUserStreetCash,
   awardStreetCashForOrder,
+  earnCustomStreetCashBonus,
   redeemStreetCashCoupon,
   findCouponInMongo,
   burnOneTimeCoupon,
@@ -328,23 +331,8 @@ async function sendOrderConfirmationEmailGmail(order, hostOrigin = '') {
     supportEmail
   });
 
-  // Official Zoho Tax Invoice PDF attachment when invoice has already been generated + inline CID assets
+  // Attach inline CID assets only (do not attach Zoho Invoice PDF to customer emails)
   const mailAttachments = [...cidAttachments];
-  const zohoInvoiceId = order.zoho_invoice_id || order.invoice_id;
-  if (zohoInvoiceId && !String(zohoInvoiceId).startsWith('LOCAL-')) {
-    try {
-      const pdfBuffer = await zohoInventory.fetchZohoInvoicePdf(zohoInvoiceId);
-      if (pdfBuffer && pdfBuffer.length > 0) {
-        mailAttachments.push({
-          filename: `TheStreetCo-Invoice-${order.invoice_number || cleanOrderNumber}.pdf`,
-          content: pdfBuffer,
-          contentType: 'application/pdf'
-        });
-      }
-    } catch (attErr) {
-      console.warn('[Confirmation Email] Could not fetch Zoho PDF attachment:', attErr.message);
-    }
-  }
 
   const gmail = getGmailTransporter();
   if (!gmail) {
@@ -406,16 +394,14 @@ async function sendGstTaxInvoiceEmail(order, hostOrigin = '') {
     return { success: false, error: 'No recipient email provided for invoice dispatch.' };
   }
 
-  const orderCode = order.orderCode || order.orderId || 'ORDER';
-  const invoiceNo = order.invoice_number || order.invoiceNumber || orderCode;
+  const orderCode = String(order.orderCode || order.orderId || 'ORDER').replace(/^#/, '').trim();
+  const referenceNo = String(order.reference_number || orderCode).replace(/^#/, '').trim();
   const customerName = order?.shippingAddress?.fullName || order?.contactDetails?.fullName || order?.userDetails?.name || 'Valued Customer';
   const storeName = 'The Street Co';
   const supportEmail = 'support@thestreetco.zohodesk.in';
 
-  const pdfFilename = `TheStreetCo-Invoice-${invoiceNo}.pdf`;
-
-  // Subject: Your Invoice Is Ready – [Invoice Number/order id]
-  const subject = `Your Invoice Is Ready – ${invoiceNo || orderCode}`;
+  // Subject: Your Invoice Is Ready – Reference #[referenceNo]
+  const subject = `Your Invoice Is Ready – Reference #${referenceNo}`;
 
   // Plain text draft matching user's exact specification
   const plainTextContent = `Hi ${customerName},
@@ -514,25 +500,7 @@ ${supportEmail}`;
 </html>
   `.trim();
 
-  // Fetch Official 100% compliant Zoho PDF to attach directly to the email
-  let pdfAttachment = null;
-  const zohoInvoiceId = order.zoho_invoice_id || order.invoice_id;
-  if (zohoInvoiceId && !String(zohoInvoiceId).startsWith('LOCAL-')) {
-    try {
-      const pdfBuffer = await zohoInventory.fetchZohoInvoicePdf(zohoInvoiceId);
-      if (pdfBuffer && pdfBuffer.length > 0) {
-        pdfAttachment = {
-          filename: `TheStreetCo-Invoice-${invoiceNo}.pdf`,
-          content: pdfBuffer,
-          contentType: 'application/pdf'
-        };
-      }
-    } catch (attErr) {
-      console.warn('[Invoice Email] Could not fetch Zoho PDF attachment:', attErr.message);
-    }
-  }
-
-  // 1. Attempt Native Google Gmail SMTP Delivery
+  // 1. Attempt Native Google Gmail SMTP Delivery (without attaching any Zoho PDF)
   const gmail = getGmailTransporter();
   if (gmail) {
     try {
@@ -545,25 +513,22 @@ ${supportEmail}`;
         text: plainTextContent,
         html: htmlContent
       };
-      if (pdfAttachment) {
-        mailOptions.attachments = [pdfAttachment];
-      }
       const info = await gmail.sendMail(mailOptions);
-      console.log(`[Gmail SMTP] Dedicated invoice email (with Zoho PDF attachment) delivered for #${orderCode} to ${recipientEmail}. MessageId:`, info.messageId);
+      console.log(`[Gmail SMTP] Dedicated invoice email delivered for Reference #${referenceNo} to ${recipientEmail}. MessageId:`, info.messageId);
       return {
         success: true,
         provider: 'gmail_smtp',
-        invoiceNo,
+        invoiceNo: referenceNo,
         messageId: info.messageId,
         recipient: recipientEmail,
-        hasPdfAttachment: Boolean(pdfAttachment)
+        hasPdfAttachment: false
       };
     } catch (gmailErr) {
       console.error('[Gmail SMTP] Invoice email delivery failed:', gmailErr.message);
       return {
         success: false,
         provider: 'gmail_smtp',
-        invoiceNo,
+        invoiceNo: referenceNo,
         error: gmailErr.message,
         recipient: recipientEmail
       };
@@ -573,7 +538,7 @@ ${supportEmail}`;
   return {
     success: false,
     provider: 'gmail_smtp',
-    invoiceNo,
+    invoiceNo: referenceNo,
     recipient: recipientEmail,
     error: 'Gmail SMTP not configured. Please set GMAIL_SMTP_USER and GMAIL_SMTP_PASS.'
   };
@@ -1848,7 +1813,7 @@ const DEFAULT_PRODUCTS = [
       'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=800&q=80',
       'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=800&q=80',
       'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=800&q=80',
-      'https://images.unsplash.com/photo-1528164344705-475426879c0d?w=800&q=80',
+      'https://images.unsplash.com/photo-1589256469067-ea99122bbdc4?w=800&q=80',
       'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=800&q=80'
     ],
     imageUrl: 'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=800&q=80'
@@ -1918,7 +1883,7 @@ const DEFAULT_PRODUCTS = [
     desc: 'Museum-grade 3-phase lenticular print transitioning between 3-Tomoe Sharingan and Itachi’s triangular pinwheel Mangekyo depending on viewer angle.',
     specs: 'Archival 380gsm Paper · 18 × 24 in · Foil Stamped Certificate',
     images: [
-      'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=800&q=80',
+      'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=800&q=80',
       'https://images.unsplash.com/photo-1541701494587-cb58502866ab?w=800&q=80',
       'https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=800&q=80',
       'https://images.unsplash.com/photo-1577083552431-6e5fd01aa342?w=800&q=80',
@@ -1942,7 +1907,7 @@ const DEFAULT_PRODUCTS = [
     images: [
       'https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=800&q=80',
       'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800&q=80',
-      'https://images.unsplash.com/photo-1607344645866-009c320c5ab8?w=800&q=80',
+      'https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=800&q=80',
       'https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?w=800&q=80',
       'https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?w=800&q=80'
     ]
@@ -1963,7 +1928,7 @@ const DEFAULT_PRODUCTS = [
     specs: 'Forged High-Carbon Steel · Waxed Canvas · 11.5 in Folded',
     images: [
       'https://images.unsplash.com/photo-1582738411706-bfc8e691d1c2?w=800&q=80',
-      'https://images.unsplash.com/photo-1528164344705-475426879c0d?w=800&q=80',
+      'https://images.unsplash.com/photo-1589256469067-ea99122bbdc4?w=800&q=80',
       'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&q=80',
       'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=800&q=80',
       'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=800&q=80'
@@ -2009,7 +1974,7 @@ const DEFAULT_PRODUCTS = [
     specs: '8mm Natural Volcanic Stone · Crimson Silk · Laser-Etched Guru Bead',
     images: [
       'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=800&q=80',
-      'https://images.unsplash.com/photo-1611591475837-775107936a18?w=800&q=80',
+      'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=800&q=80',
       'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=800&q=80',
       'https://images.unsplash.com/photo-1598560917505-59a3ad559071?w=800&q=80',
       'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=800&q=80'
@@ -2098,7 +2063,7 @@ const DEFAULT_PRODUCTS = [
     desc: 'Straight-edge display replica dagger featuring black ray-skin handle wrap, blackened brass habaki collar, and matte wooden scabbard.',
     specs: '1045 Carbon Steel (Unsharpened) · Ray Skin Wrap · 11 in',
     images: [
-      'https://images.unsplash.com/photo-1590422749897-478a87679905?w=800&q=80',
+      'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=800&q=80',
       'https://images.unsplash.com/photo-1589256469067-ea99122bbdc4?w=800&q=80',
       'https://images.unsplash.com/photo-1595590424283-b8f17842773f?w=800&q=80',
       'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=800&q=80',
@@ -2585,13 +2550,8 @@ function validateCouponLogic(coupon, subtotalInr) {
   };
 }
 
-// Local persistent coupons store
-const COUPONS_CACHE_FILE = path.join(__dirname, 'coupons_cache.json');
-let inMemoryCoupons = loadJsonCache(COUPONS_CACHE_FILE, null);
-if (!Array.isArray(inMemoryCoupons) || inMemoryCoupons.length === 0) {
-  inMemoryCoupons = [...DEFAULT_COUPONS];
-  saveJsonCache(COUPONS_CACHE_FILE, inMemoryCoupons);
-}
+// In-memory coupons store hydrated from MongoDB Atlas 'coupons' collection (with DEFAULT_COUPONS fallback)
+let inMemoryCoupons = [...DEFAULT_COUPONS];
 
 // ──────────────────────────────────────────
 // API ROUTES
@@ -2660,16 +2620,16 @@ app.get(['/api/db-status', '/api/mongodb-status'], async (req, res) => {
   const mongoStatus = getMongoStatus();
   res.json({
     status: mongoStatus.connected ? 'connected' : 'degraded',
-    engine: 'MongoDB Atlas + Firebase Auth + Zoho Inventory',
+    engine: 'Zoho Inventory (Orders & Customers) + MongoDB Atlas (Newsletter & Coupons)',
     mongodb: mongoStatus,
-    firebaseAuthProject: 'the-street-co-780',
+    mongodbCollections: ['newsletter_subscribers', 'coupons'],
     zohoConfigured: zohoStatus.configured,
     zohoCachedItems: zohoStatus.cachedItemsCount,
     ordersCount: inMemoryOrders.size,
     couponsCount: inMemoryCoupons.length,
     currency: 'INR',
     message: mongoStatus.connected
-      ? `Connected to MongoDB Atlas (${mongoStatus.cluster} / ${mongoStatus.dbName}) and Firebase Auth (the-street-co-780).`
+      ? `Connected to Zoho Inventory and MongoDB Atlas (${mongoStatus.cluster} / ${mongoStatus.dbName} — Newsletter & Coupons).`
       : `MongoDB Atlas connection pending (${mongoStatus.lastError || 'check Network Access IP whitelist'}).`
   });
 });
@@ -3084,7 +3044,6 @@ app.post('/api/coupons/validate', async (req, res) => {
         } else {
           inMemoryCoupons.push(matchedCoupon);
         }
-        saveJsonCache(COUPONS_CACHE_FILE, inMemoryCoupons);
       }
     } catch (_) {}
   }
@@ -3154,7 +3113,6 @@ app.post('/api/coupons', (req, res) => {
     } else {
       inMemoryCoupons.push(doc);
     }
-    saveJsonCache(COUPONS_CACHE_FILE, inMemoryCoupons);
 
     // Persist to MongoDB Atlas 'coupons' collection
     getCollection('coupons').then(col => {
@@ -3178,7 +3136,6 @@ app.delete('/api/coupons/:code', (req, res) => {
   try {
     const rawCode = (req.params.code || '').trim().toUpperCase();
     inMemoryCoupons = inMemoryCoupons.filter(c => c.code.toUpperCase() !== rawCode);
-    saveJsonCache(COUPONS_CACHE_FILE, inMemoryCoupons);
 
     // Delete from MongoDB Atlas 'coupons' collection
     getCollection('coupons').then(col => {
@@ -3294,8 +3251,8 @@ const handleDeleteProduct = async (req, res) => {
 app.delete('/api/products/:sku', handleDeleteProduct);
 app.delete('/api/shop/:sku', handleDeleteProduct);
 
-// Local file-backed orders cache
-const ORDERS_CACHE_FILE = path.join(__dirname, 'orders_cache.json');
+// Runtime session orders buffer in OS tmpdir (Zoho Inventory is authoritative)
+const ORDERS_CACHE_FILE = path.join(os.tmpdir(), 'thestreetco_orders_cache.json');
 const savedOrdersList = loadJsonCache(ORDERS_CACHE_FILE, []);
 const inMemoryOrders = new Map();
 if (Array.isArray(savedOrdersList)) {
@@ -3304,23 +3261,12 @@ if (Array.isArray(savedOrdersList)) {
     if (ord && ord.orderId) inMemoryOrders.set(ord.orderId, ord);
   }
 }
-function persistOrders(singleOrder = null) {
+function persistOrders() {
   saveJsonCache(ORDERS_CACHE_FILE, Array.from(new Set(inMemoryOrders.values())));
-  if (singleOrder && singleOrder.orderCode) {
-    getCollection('orders').then(col => {
-      if (col) {
-        const cleanDoc = { ...singleOrder };
-        delete cleanDoc._id;
-        col.updateOne({ orderCode: cleanDoc.orderCode }, { $set: cleanDoc }, { upsert: true }).catch(err => {
-          console.warn('[MongoDB orders.upsert]:', err.message);
-        });
-      }
-    });
-  }
 }
 
-// Local file-backed returns & exchanges cache
-const RETURNS_CACHE_FILE = path.join(__dirname, 'returns_cache.json');
+// Runtime session returns/exchanges buffer in OS tmpdir (Zoho Inventory is authoritative)
+const RETURNS_CACHE_FILE = path.join(os.tmpdir(), 'thestreetco_returns_cache.json');
 const savedReturnsList = loadJsonCache(RETURNS_CACHE_FILE, []);
 const inMemoryReturns = new Map();
 if (Array.isArray(savedReturnsList)) {
@@ -3329,19 +3275,8 @@ if (Array.isArray(savedReturnsList)) {
     if (ret && ret.orderCode) inMemoryReturns.set(`ORD_${ret.orderCode}`, ret);
   }
 }
-function persistReturn(singleReturn = null) {
+function persistReturn() {
   saveJsonCache(RETURNS_CACHE_FILE, Array.from(new Set(inMemoryReturns.values())));
-  if (singleReturn && singleReturn.id) {
-    getCollection('returns').then(col => {
-      if (col) {
-        const cleanDoc = { ...singleReturn };
-        delete cleanDoc._id;
-        col.updateOne({ id: cleanDoc.id }, { $set: cleanDoc }, { upsert: true }).catch(err => {
-          console.warn('[MongoDB returns.upsert]:', err.message);
-        });
-      }
-    });
-  }
 }
 
 // Orders: Save checkout order with complete user details, product details, delivery, and payment
@@ -3370,9 +3305,14 @@ app.post('/api/orders', async (req, res) => {
       state ? `${state} - ${pincode}` : pincode
     ].filter(Boolean).join(', ');
 
-    const fullName = (rawUser.fullName || rawUser.name || 'Valued Customer').trim();
-    const phone = (rawUser.phone || rawUser.phoneNumber || '').trim();
-    const email = (rawUser.email || '').trim();
+    const rawPhoneInput = (rawUser.phone || rawUser.phoneNumber || raw.accountPhone || raw.userAccountPhone || '').trim();
+    const accountPhone = String(raw.accountPhone || raw.userAccountPhone || rawPhoneInput || '').replace(/\D/g, '').slice(-10);
+    const mongoUser = accountPhone.length === 10 ? await findUserByPhone(accountPhone).catch(() => null) : null;
+    const accountEmail = String(raw.accountEmail || raw.userAccountEmail || raw.customerEmail || mongoUser?.email || rawUser.email || '').trim().toLowerCase();
+
+    const fullName = (rawUser.fullName || rawUser.name || [mongoUser?.firstName, mongoUser?.lastName].filter(Boolean).join(' ') || 'Valued Customer').trim();
+    const phone = (rawUser.phone || rawUser.phoneNumber || accountPhone || '').trim();
+    const email = (rawUser.email || accountEmail || '').trim().toLowerCase();
     const addressType = rawUser.addressType || rawUser.type || 'Home';
 
     const isB2BOrder = Boolean(raw.isB2B || rawUser.isB2B);
@@ -3456,36 +3396,21 @@ app.post('/api/orders', async (req, res) => {
       trackingCode: `ANBU-${Math.floor(100000 + Math.random() * 900000)}`
     };
 
-    // 4. Full Payment Details
-    const rawMethod = (raw.payment?.method || raw.paymentMethod || 'cod').toLowerCase();
-    let paymentMethod = 'COD';
-    let paymentMethodLabel = 'Cash on Safehouse Arrival (COD)';
-    let paymentStatus = 'PENDING_ON_DELIVERY';
+    // 4. Full Payment Details (Cash on Delivery only)
+    const paymentMethod = 'COD';
+    const paymentMethodLabel = 'Cash on Delivery (COD)';
+    const paymentStatus = 'PENDING_ON_DELIVERY';
 
-    if (rawMethod === 'upi') {
-      paymentMethod = 'UPI';
-      paymentMethodLabel = 'UPI (Google Pay / PhonePe / Paytm / BHIM)';
-      paymentStatus = 'PAID_CONFIRMED';
-    } else if (rawMethod === 'card') {
-      paymentMethod = 'CARD';
-      paymentMethodLabel = 'Credit / Debit Card (Visa, Mastercard, RuPay)';
-      paymentStatus = 'PAID_CONFIRMED';
-    } else if (rawMethod === 'netbanking') {
-      paymentMethod = 'NETBANKING';
-      paymentMethodLabel = 'Net Banking (Indian Banks)';
-      paymentStatus = 'PAID_CONFIRMED';
-    }
-
-    const transactionId = raw.payment?.transactionId || raw.transactionId || `TXN_${Date.now()}`;
+    const transactionId = raw.payment?.transactionId || raw.transactionId || `COD_${Date.now()}`;
     const paymentDetails = {
       method: paymentMethod,
       methodLabel: paymentMethodLabel,
-      detail: raw.payment?.detail || paymentMethodLabel,
-      bank: raw.payment?.bank || '',
-      status: raw.payment?.status || paymentStatus,
+      detail: 'Cash on Delivery (COD) · Pay with cash upon doorstep arrival',
+      bank: '',
+      status: paymentStatus,
       transactionId: transactionId,
       currency: 'INR (₹)',
-      paidAt: raw.payment?.paidAt || now.toISOString()
+      paidAt: now.toISOString()
     };
 
     // Indian Standard Time (IST) formatting
@@ -3500,16 +3425,13 @@ app.post('/api/orders', async (req, res) => {
       hour12: true
     }) + ' IST';
 
-    // Resolve logged-in user's account phone (or fallback to shipping phone)
-    const accountPhone = String(raw.accountPhone || raw.userAccountPhone || phone || '').replace(/\D/g, '').slice(-10);
-
-    // 5. Clean Order Document (Zero redundant duplicate keys)
     // 5. Clean Order Document (Initial status: AWAITING_ZOHO_CONFIRMATION)
     // Communications (SMS + email + invoice) are strictly deferred until merchant confirms in Zoho Inventory
     const orderDocument = {
       orderId,
       orderCode,
       accountPhone,
+      accountEmail,
       status: raw.status || 'AWAITING_ZOHO_CONFIRMATION',
       zoho_status: 'pending_confirmation',
       orderDate: now.toISOString(),
@@ -3548,13 +3470,10 @@ app.post('/api/orders', async (req, res) => {
       currency: 'INR'
     };
 
-    // Cache in memory, file, and MongoDB Atlas ('orders' collection + user's account in 'users' collection)
+    // Cache in runtime memory & local file fallback (authoritative storage is Zoho Inventory)
     inMemoryOrders.set(orderCode, orderDocument);
     inMemoryOrders.set(orderId, orderDocument);
     persistOrders(orderDocument);
-    if (accountPhone.length === 10) {
-      appendOrderToUserAccount(accountPhone, orderDocument).catch(() => {});
-    }
 
     // 1. Burn one-time Street Cash voucher if used on this order
     const appliedCouponCode = String(raw.promoCode || rawPricing.promoCode || raw.couponCode || '').trim().toUpperCase();
@@ -3586,55 +3505,32 @@ app.post('/api/orders', async (req, res) => {
       }
     }
 
-    // Automated Zoho Inventory Sales Order + Invoice Push upon checkout
+    // Automated Zoho Inventory Sales Order Push upon checkout (auto-confirmed, kept Confirmed — NOT Closed — until fulfilled/shipped)
     let zohoSalesOrderResult = null;
     try {
       zohoSalesOrderResult = await zohoInventory.createSalesOrder(orderDocument);
       if (zohoSalesOrderResult && zohoSalesOrderResult.success) {
         orderDocument.zoho_salesorder_id = zohoSalesOrderResult.zoho_salesorder_id;
         orderDocument.zoho_salesorder_number = zohoSalesOrderResult.zoho_salesorder_number;
+        orderDocument.zoho_status = 'confirmed';
+        orderDocument.zoho_order_status = 'confirmed';
+        orderDocument.invoiceUrl = `/invoice/${orderDocument.orderCode}`;
         delete orderDocument.zoho_sync_error;
         persistOrders(orderDocument);
       } else if (zohoSalesOrderResult && zohoSalesOrderResult.error) {
         orderDocument.zoho_sync_error = zohoSalesOrderResult.error;
+        orderDocument.invoiceUrl = `/invoice/${orderDocument.orderCode}`;
         persistOrders(orderDocument);
       }
     } catch (zohoOrderErr) {
       console.warn('[Zoho Inventory] Sales order sync notice:', zohoOrderErr.message);
       zohoSalesOrderResult = { success: false, error: zohoOrderErr.message };
       orderDocument.zoho_sync_error = zohoOrderErr.message;
+      orderDocument.invoiceUrl = `/invoice/${orderDocument.orderCode}`;
       persistOrders(orderDocument);
     }
 
-    // Create/convert Zoho Invoice immediately after order creation so View Your Invoice button links straight to Zoho
-    let zohoInvoiceResult = null;
-    try {
-      zohoInvoiceResult = orderDocument.zoho_salesorder_id
-        ? await zohoInventory.convertSalesOrderToInvoice(orderDocument.zoho_salesorder_id, orderDocument)
-        : await zohoInventory.createGstInvoice(orderDocument);
-      if (zohoInvoiceResult && zohoInvoiceResult.success) {
-        orderDocument.invoice_number = zohoInvoiceResult.invoice_number;
-        orderDocument.invoice_id = zohoInvoiceResult.invoice_id;
-        orderDocument.zoho_invoice_id = zohoInvoiceResult.zoho_invoice_id || zohoInvoiceResult.invoice_id;
-        orderDocument.zoho_invoice_url = String(zohoInvoiceResult.invoice_url || '').trim();
-        orderDocument.template_name = zohoInvoiceResult.template_name || 'The Street Co';
-        orderDocument.gstBreakdown = zohoInvoiceResult.gstBreakdown || orderDocument.gstBreakdown;
-        orderDocument.invoiceUrl = orderDocument.zoho_invoice_url || `/invoice/${orderDocument.orderCode}`;
-        persistOrders(orderDocument);
-        if (
-          orderDocument.zoho_invoice_id &&
-          !String(orderDocument.zoho_invoice_id).startsWith('LOCAL-') &&
-          String(orderDocument.paymentMethod || 'COD').toUpperCase() !== 'COD'
-        ) {
-          await zohoInventory.recordCustomerPaymentInZoho(orderDocument.zoho_invoice_id, orderDocument).catch(() => {});
-        }
-      }
-    } catch (zohoInvErr) {
-      console.warn('[Zoho Inventory] Immediate invoice creation notice:', zohoInvErr.message);
-      zohoInvoiceResult = { success: false, error: zohoInvErr.message };
-    }
-
-    // Dispatch Order Confirmation Email (with View Your Invoice linking to the Zoho invoice URL)
+    // Dispatch Order Confirmation Email (View Your Invoice links to storefront GST Tax Invoice until Zoho fulfillment invoice is issued)
     const reqHostOrigin = `${req.protocol}://${req.get('host')}`;
     let confirmationEmailResult = null;
     try {
@@ -3654,16 +3550,14 @@ app.post('/api/orders', async (req, res) => {
       orderId: orderDocument.orderId,
       order: orderDocument,
       zohoSalesOrder: zohoSalesOrderResult,
-      zohoInvoice: zohoInvoiceResult,
+      zohoInvoice: null,
       invoiceUrl: orderDocument.invoiceUrl || `/invoice/${orderDocument.orderCode}`,
       email: confirmationEmailResult,
       status: orderDocument.status,
       awaitingZohoConfirmation: false,
-      message: zohoInvoiceResult?.success
-        ? 'Order placed, Zoho Invoice created, and order confirmation email sent with invoice link.'
-        : (zohoSalesOrderResult?.success
-          ? 'Order placed and registered in Zoho Inventory. Order confirmation email sent.'
-          : `Order saved locally; Zoho sync notice: ${zohoSalesOrderResult?.error || 'Pending retry'}`)
+      message: zohoSalesOrderResult?.success
+        ? 'Order placed, confirmed in Zoho Inventory, and order confirmation email sent.'
+        : `Order saved locally; Zoho sync notice: ${zohoSalesOrderResult?.error || 'Pending retry'}`
     });
   } catch (err) {
     console.error('[Server] Order processing error:', err);
@@ -3718,43 +3612,21 @@ async function confirmOrderFromZoho(codeOrId, hostOrigin = '') {
     } catch (_) {}
   }
 
-  // 1. Mark confirmed in Zoho Inventory if salesorder_id exists
+  // 1. Mark confirmed in Zoho Inventory if salesorder_id exists (do NOT convert to Invoice yet so SO stays Confirmed, not Closed)
   if (order.zoho_salesorder_id) {
     await zohoInventory.confirmSalesOrderInZoho(order.zoho_salesorder_id).catch(() => {});
   }
-
-  // 2. Ensure Zoho Invoice exists if not already created during checkout
-  let zohoInvoiceResult = null;
-  if (order.zoho_invoice_id && !String(order.zoho_invoice_id).startsWith('LOCAL-')) {
-    zohoInvoiceResult = {
-      success: true,
-      alreadyCreated: true,
-      invoice_id: order.zoho_invoice_id,
-      zoho_invoice_id: order.zoho_invoice_id,
-      invoice_number: order.invoice_number,
-      invoice_url: String(order.zoho_invoice_url || '').trim()
-    };
-  } else {
-    try {
-      zohoInvoiceResult = order.zoho_salesorder_id
-        ? await zohoInventory.convertSalesOrderToInvoice(order.zoho_salesorder_id, order)
-        : await zohoInventory.createGstInvoice(order);
-      if (zohoInvoiceResult && zohoInvoiceResult.success) {
-        order.invoice_number = zohoInvoiceResult.invoice_number;
-        order.invoice_id = zohoInvoiceResult.invoice_id;
-        order.zoho_invoice_id = zohoInvoiceResult.zoho_invoice_id || zohoInvoiceResult.invoice_id;
-        order.zoho_invoice_url = String(zohoInvoiceResult.invoice_url || '').trim();
-        order.template_name = zohoInvoiceResult.template_name || 'The Street Co';
-        order.gstBreakdown = zohoInvoiceResult.gstBreakdown || order.gstBreakdown;
-        order.invoiceUrl = order.zoho_invoice_url || `/invoice/${order.orderCode}`;
-        if (order.zoho_invoice_id && !String(order.zoho_invoice_id).startsWith('LOCAL-') && String(order.paymentMethod || 'COD').toUpperCase() !== 'COD') {
-          await zohoInventory.recordCustomerPaymentInZoho(order.zoho_invoice_id, order).catch(() => {});
-        }
+  order.invoiceUrl = `/invoice/${order.orderCode}`;
+  let zohoInvoiceResult = order.zoho_invoice_id
+    ? {
+        success: true,
+        alreadyCreated: true,
+        invoice_id: order.zoho_invoice_id,
+        zoho_invoice_id: order.zoho_invoice_id,
+        invoice_number: order.reference_number || order.orderCode,
+        invoice_url: `/invoice/${order.orderCode}`
       }
-    } catch (invErr) {
-      console.warn('[Zoho Invoice Conversion Notice]', invErr.message);
-    }
-  }
+    : null;
 
   // 3. Update order state to CONFIRMED
   order.status = 'CONFIRMED';
@@ -3784,7 +3656,7 @@ async function confirmOrderFromZoho(codeOrId, hostOrigin = '') {
     zohoInvoice: zohoInvoiceResult,
     sms: smsResult,
     email: emailResult,
-    message: `Order #${order.orderCode} confirmed in Zoho Inventory (${order.invoice_number || 'INV'}) with confirmation email.`
+    message: `Order Reference #${order.orderCode} confirmed in Zoho Inventory with confirmation email.`
   };
 }
 
@@ -3817,11 +3689,24 @@ async function markOrderShipmentFulfilled(codeOrId, hostOrigin = '') {
 
   console.log(`[Zoho Order Lifecycle] Marking shipment fulfilled for #${order.orderCode} (Sales Order: ${order.zoho_salesorder_number || order.zoho_salesorder_id || 'N/A'})`);
 
-  // 1. Mark delivered in Zoho if salesorder_id exists
+  // 1. Mark delivered in Zoho if salesorder_id exists and generate final Zoho Invoice upon fulfillment
   let zohoFulfilledResult = null;
   if (order.zoho_salesorder_id) {
     try {
       zohoFulfilledResult = await zohoInventory.markShipmentFulfilledInZoho(order.zoho_salesorder_id);
+      if (!order.zoho_invoice_id || String(order.zoho_invoice_id).startsWith('LOCAL-')) {
+        const invRes = await zohoInventory.convertSalesOrderToInvoice(order.zoho_salesorder_id, order).catch(() => null);
+        if (invRes && invRes.success) {
+          order.invoice_number = order.reference_number || order.orderCode;
+          order.invoice_id = invRes.invoice_id;
+          order.zoho_invoice_id = invRes.zoho_invoice_id || invRes.invoice_id;
+          order.zoho_invoice_url = String(invRes.invoice_url || '').trim();
+          order.invoiceUrl = `/invoice/${order.orderCode}`;
+          if (order.zoho_invoice_id && !String(order.zoho_invoice_id).startsWith('LOCAL-') && String(order.paymentMethod || 'COD').toUpperCase() !== 'COD') {
+            await zohoInventory.recordCustomerPaymentInZoho(order.zoho_invoice_id, order).catch(() => {});
+          }
+        }
+      }
     } catch (_) {}
   }
 
@@ -3917,16 +3802,16 @@ async function checkZohoShipmentFulfillments(hostOrigin = '') {
         const rawOrderStat = String(so.order_status || '').toLowerCase();
         const rawInvoiced = String(so.invoiced_status || '').toLowerCase();
 
-        // Detect SO confirmed directly in Zoho Inventory UI and auto-convert to Invoice (Sale)
+        // Keep zoho_status synced without converting unshipped Sales Order to Invoice (prevents premature Closed status)
         const isConfirmedInZoho =
           rawStatus === 'confirmed' ||
           rawStatus === 'open' ||
-          rawOrderStat === 'confirmed' ||
-          rawInvoiced === 'invoiced';
+          rawOrderStat === 'confirmed';
 
-        if (isConfirmedInZoho && order.zoho_status !== 'confirmed' && !order.zoho_invoice_id) {
-          console.log(`[Automated Zoho Monitor] Order #${order.orderCode} (${so.salesorder_number || order.zoho_salesorder_id}) confirmed in Zoho! Converting to Invoice.`);
-          await confirmOrderFromZoho(order.orderCode, hostOrigin);
+        if (isConfirmedInZoho && order.zoho_status !== 'confirmed') {
+          order.zoho_status = 'confirmed';
+          order.status = order.status === 'AWAITING_ZOHO_CONFIRMATION' ? 'CONFIRMED' : order.status;
+          persistOrders(order);
         }
 
         const isFulfilledInZoho = 
@@ -4552,10 +4437,6 @@ app.post('/api/returns/create', async (req, res) => {
       order.returnStatus = type === 'exchange' ? 'EXCHANGE REQUESTED' : 'RETURN REQUESTED';
       order.returnRequest = returnRecord;
       persistOrders(order);
-      const targetPhone = String(customerPhone || order.accountPhone || order.shippingAddress?.phone || order.contactDetails?.phone || '').replace(/\D/g, '').slice(-10);
-      if (targetPhone.length === 10) {
-        await appendOrderToUserAccount(targetPhone, order).catch(() => {});
-      }
     }
 
     // 5 & 6. Dispatch Confirmation of Exchange or Confirmation of Return email to customer
@@ -4656,36 +4537,6 @@ app.post('/api/returns/cancel', async (req, res) => {
       }
       saveJsonCache(ORDERS_CACHE_FILE, Array.from(new Set(inMemoryOrders.values())));
     }
-
-    // 3. Clear from MongoDB Atlas ('orders' collection, 'users' collection, and 'returns' collection)
-    getCollection('orders').then(col => {
-      if (col && orderCode) {
-        col.updateMany(
-          { $or: [{ orderCode }, { orderId: orderCode }] },
-          { $unset: { returnRequest: '', returnStatus: '' } }
-        ).catch(() => {});
-      }
-    });
-
-    getCollection('users').then(userCol => {
-      if (userCol && orderCode) {
-        userCol.updateMany(
-          { 'orders.orderCode': orderCode },
-          { $unset: { 'orders.$.returnRequest': '', 'orders.$.returnStatus': '' } }
-        ).catch(() => {});
-      }
-    });
-
-    getCollection('returns').then(retCol => {
-      if (retCol) {
-        retCol.deleteMany({
-          $or: [
-            ...(orderCode ? [{ orderCode }] : []),
-            ...(returnId ? [{ id: returnId }] : [])
-          ]
-        }).catch(() => {});
-      }
-    });
 
     res.json({
       success: true,
@@ -5030,11 +4881,6 @@ app.post(['/api/contact', '/api/support', '/api/contact-support'], async (req, r
     inMemorySupportTickets.unshift(ticketRecord);
     if (inMemorySupportTickets.length > 500) inMemorySupportTickets.length = 500;
     persistSupportTickets(inMemorySupportTickets);
-    getCollection('support_tickets').then(col => {
-      if (col) {
-        col.updateOne({ ticketId: ticketRecord.ticketId }, { $set: ticketRecord }, { upsert: true }).catch(() => {});
-      }
-    });
 
     // Attempt sending notification email to desk and user via Google Gmail SMTP
     const gmail = getGmailTransporter();
@@ -5222,7 +5068,6 @@ for (const sc of SUITE_COUPONS) {
     inMemoryCoupons.push(sc);
   }
 }
-saveJsonCache(COUPONS_CACHE_FILE, inMemoryCoupons);
 
 // 1. Live Flash Drop Waitlist Vault Persistence
 const DROP_WAITLIST_FILE = path.join(__dirname, 'drop_waitlist.json');
@@ -5272,11 +5117,6 @@ app.post('/api/drop-waitlist', async (req, res) => {
 
     inMemoryDropWaitlist.push(record);
     saveJsonCache(DROP_WAITLIST_FILE, inMemoryDropWaitlist);
-    getCollection('drop_waitlist').then(col => {
-      if (col) {
-        col.insertOne({ ...record }).catch(() => {});
-      }
-    });
 
     // Non-blocking Email & SMS Waitlist Dispatch
     let emailDispatched = false;
@@ -5518,7 +5358,6 @@ app.post('/api/loyalty/redeem', async (req, res) => {
       } else {
         inMemoryCoupons.push(result.coupon);
       }
-      saveJsonCache(COUPONS_CACHE_FILE, inMemoryCoupons);
     }
 
     const tier = calculateStreetCashTier(result.remainingBalance);
@@ -5655,53 +5494,18 @@ app.post('/api/loyalty/earn', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Valid phone required to claim The Street Cash bonus.' });
     }
 
-    const col = await getCollection('users');
-    if (!col) return res.status(500).json({ success: false, error: 'Database unavailable' });
-
-    const existing = (await col.findOne({ phone: cleanPhone })) || {};
-    const history = Array.isArray(existing.streetCashHistory) ? existing.streetCashHistory : [];
-
-    if (actionId && history.some(h => h.id === actionId)) {
-      return res.json({
-        success: false,
-        alreadyClaimed: true,
-        message: 'Bonus points for this activity have already been claimed.',
-        streetCashBalance: existing.streetCashBalance || 0
-      });
+    const result = await earnCustomStreetCashBonus(cleanPhone, { actionId, label, points });
+    if (!result.success) {
+      return res.json(result);
     }
-
-    const ptsToAdd = Math.max(10, Math.min(250, Number(points) || 50));
-    const newBalance = (Number(existing.streetCashBalance) || 0) + ptsToAdd;
-    const newEarned = (Number(existing.streetCashEarnedTotal) || 0) + ptsToAdd;
-
-    const entry = {
-      id: actionId || `bonus_${Date.now()}`,
-      type: 'EARNED',
-      points: ptsToAdd,
-      date: new Date().toISOString(),
-      label: label || 'VIP Community Street Cash Bonus'
-    };
-
-    await col.updateOne(
-      { phone: cleanPhone },
-      {
-        $set: {
-          streetCashBalance: newBalance,
-          streetCashEarnedTotal: newEarned,
-          streetCashHistory: [entry, ...history].slice(0, 100),
-          updatedAt: new Date().toISOString()
-        }
-      },
-      { upsert: true }
-    );
 
     return res.json({
       success: true,
-      pointsAwarded: ptsToAdd,
-      newBalance,
-      tier: calculateStreetCashTier(newBalance),
+      pointsAwarded: result.pointsAwarded,
+      newBalance: result.streetCashBalance,
+      tier: calculateStreetCashTier(result.streetCashBalance),
       displayRateNotice: 'Per 1,000 Rs spent will give you 199 The Street Cash',
-      message: `+${ptsToAdd} The Street Cash credited to your VIP wallet!`
+      message: `+${result.pointsAwarded} The Street Cash credited to your VIP wallet!`
     });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
@@ -5896,11 +5700,6 @@ app.post('/api/exchanges/create', async (req, res) => {
 
     inMemoryExchanges.push(exchangeRecord);
     saveJsonCache(SIZE_EXCHANGES_FILE, inMemoryExchanges);
-    getCollection('size_exchanges').then(col => {
-      if (col) {
-        col.updateOne({ exchangeId: exchangeRecord.exchangeId }, { $set: exchangeRecord }, { upsert: true }).catch(() => {});
-      }
-    });
 
     // Send confirmation email if available
     const transporter = getGmailTransporter();
@@ -5951,11 +5750,6 @@ app.post('/api/fit-profile', (req, res) => {
     inMemoryFitProfiles.push(profile);
     if (inMemoryFitProfiles.length > 200) inMemoryFitProfiles.shift();
     saveJsonCache(FIT_PROFILES_FILE, inMemoryFitProfiles);
-    getCollection('fit_profiles').then(col => {
-      if (col) {
-        col.insertOne({ ...profile }).catch(() => {});
-      }
-    });
     res.json({ success: true, profile });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -5963,7 +5757,7 @@ app.post('/api/fit-profile', (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 5. 6-DIGIT PHONE / EMAIL OTP VERIFICATION ROUTES (USER DETAILS SAVED IN FIREBASE)
+// 5. 6-DIGIT PHONE / EMAIL OTP VERIFICATION ROUTES (CUSTOMERS SYNCED TO ZOHO INVENTORY)
 // ═══════════════════════════════════════════════════════════════════════════
 // Pending 6-digit Phone OTP store: Map<phone, { otp, expiresAt }>
 const pendingPhoneOtps = new Map();
@@ -6559,20 +6353,80 @@ app.post('/api/account/change-email/verify-otp', async (req, res) => {
   }
 });
 
-// Get or Save User Account Profile (including Delivery Addresses & Orders) in MongoDB Atlas 'users' collection
+// Get Customer Orders strictly from live Zoho Inventory Customer Orders
+async function getAuthoritativeAccountOrders(cleanPhone = '', cleanEmail = '') {
+  const localEnriched = enrichOrdersWithInMemoryState([], cleanPhone);
+
+  // Build lookup maps for enriching Zoho Sales Orders with storefront item photos & local return state
+  const localByZohoId = new Map();
+  const localByCode = new Map();
+  for (const memOrd of inMemoryOrders.values()) {
+    if (!memOrd) continue;
+    if (memOrd.zoho_salesorder_id && !localByZohoId.has(String(memOrd.zoho_salesorder_id).trim())) {
+      localByZohoId.set(String(memOrd.zoho_salesorder_id).trim(), memOrd);
+    }
+    const codeKey = String(memOrd.orderCode || memOrd.orderId || '').replace(/^#/, '').trim().toUpperCase();
+    if (codeKey && !localByCode.has(codeKey)) localByCode.set(codeKey, memOrd);
+  }
+
+  const zohoResult = await zohoInventory.fetchCustomerSalesOrders(cleanPhone, cleanEmail);
+  if (zohoResult && zohoResult.zohoSynced) {
+    const cachedItems = zohoInventory.tokenState?.cachedItems || [];
+    const matchedOrders = [];
+    for (const so of (zohoResult.salesorders || [])) {
+      const refCode = String(so.reference_number || '').replace(/^#/, '').trim().toUpperCase();
+      const baseLocal = localByZohoId.get(String(so.salesorder_id || '').trim()) || (refCode ? localByCode.get(refCode) : null) || null;
+      const belongs = doesZohoSalesOrderBelongToCustomer(so, {
+        cleanPhone,
+        cleanEmail,
+        matchedCustomerIds: zohoResult.matchedCustomerIds || [],
+        knownLocalOrder: baseLocal
+      });
+      if (!belongs) continue;
+
+      const resolvedCode = refCode || String(baseLocal?.orderCode || so.salesorder_number || '').replace(/^#/, '').trim().toUpperCase();
+      const memRet = (resolvedCode && inMemoryReturns.get(`ORD_${resolvedCode}`)) || null;
+      matchedOrders.push(
+        mapZohoSalesOrderToAccountOrder(so, {
+          baseLocal,
+          cachedItems,
+          inMemoryReturn: memRet,
+          cleanPhone
+        })
+      );
+    }
+    return { zohoSynced: true, orders: matchedOrders };
+  }
+
+  return { zohoSynced: false, orders: localEnriched };
+}
+
 app.get('/api/account/profile', async (req, res) => {
   try {
     const cleanPhone = String(req.query.phone || '').replace(/\D/g, '').slice(-10);
     if (cleanPhone.length !== 10) {
-      return res.json({ success: true, account: null });
+      return res.json({ success: true, account: null, orders: [], zohoSynced: false });
     }
-    const account = await findUserByPhone(cleanPhone);
-    const mongoOrders = await findOrdersByAccountPhone(cleanPhone);
-    const orders = enrichOrdersWithInMemoryState(mongoOrders, cleanPhone);
+    let account = await findUserByPhone(cleanPhone);
+    if (!account || (!account.email && (!account.addresses || account.addresses.length === 0))) {
+      const zohoProfile = await zohoInventory.fetchCustomerProfileFromZoho(cleanPhone).catch(() => null);
+      if (zohoProfile) {
+        account = await upsertUserByPhone(cleanPhone, {
+          firstName: account?.firstName || zohoProfile.firstName,
+          lastName: account?.lastName || zohoProfile.lastName,
+          email: account?.email || zohoProfile.email,
+          emailVerified: account?.emailVerified || Boolean(zohoProfile.email),
+          addresses: (account?.addresses && account.addresses.length > 0) ? account.addresses : zohoProfile.addresses,
+          defaultAddressId: account?.defaultAddressId || zohoProfile.defaultAddressId
+        });
+      }
+    }
+    const { zohoSynced, orders } = await getAuthoritativeAccountOrders(cleanPhone, account?.email || '');
     return res.json({
       success: true,
+      zohoSynced,
       account: account
-        ? { ...account, orders: orders.length > 0 ? orders : (account.orders || []) }
+        ? { ...account, orders }
         : null,
       orders
     });
@@ -6589,7 +6443,6 @@ app.post('/api/account/profile', async (req, res) => {
       phone,
       email,
       emailVerified,
-      firebaseUid,
       addresses,
       defaultAddressId
     } = req.body || {};
@@ -6604,10 +6457,24 @@ app.post('/api/account/profile', async (req, res) => {
       ...(lastName !== undefined ? { lastName: String(lastName || '').trim() } : {}),
       ...(email !== undefined ? { email: String(email || '').trim().toLowerCase() } : {}),
       ...(emailVerified !== undefined ? { emailVerified: Boolean(emailVerified) } : {}),
-      ...(firebaseUid ? { firebaseUid: String(firebaseUid).trim() } : {}),
       ...(Array.isArray(addresses) ? { addresses } : {}),
       ...(defaultAddressId !== undefined ? { defaultAddressId: String(defaultAddressId || '').trim() } : {})
     });
+
+    // Sync customer profile details to Zoho Inventory Customer Contact in background
+    if (saved) {
+      const defAddr = saved.addresses?.find(a => a.isDefault) || saved.addresses?.[0] || {};
+      zohoInventory.findOrCreateContact({
+        fullName: saved.fullName || defAddr.fullName || 'Storefront Customer',
+        phone: cleanPhone,
+        email: saved.email || defAddr.email || '',
+        address: defAddr.fullAddress || defAddr.address1 || '',
+        city: defAddr.city || '',
+        state: defAddr.state || '',
+        pincode: defAddr.pincode || ''
+      }).catch(() => {});
+    }
+
     // Check and award Account Creation (+75 pts), Name Upload (+25 pts) and Email Added (+35 pts) bonuses
     const newlyAwardedBonuses = [];
     try {
@@ -6644,14 +6511,14 @@ app.post('/api/account/profile', async (req, res) => {
       success: true,
       account: saved,
       newlyAwardedBonuses,
-      message: 'Account profile saved to MongoDB Atlas.'
+      message: 'Account profile saved and synced with Zoho Inventory.'
     });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// Save or Update User Delivery Addresses & Default Address in MongoDB Atlas 'users' collection
+// Save or Update User Delivery Addresses & Default Address (synced to Zoho Customer Contact)
 app.post('/api/account/addresses', async (req, res) => {
   try {
     const { phone, addresses, defaultAddressId } = req.body || {};
@@ -6667,9 +6534,20 @@ app.post('/api/account/addresses', async (req, res) => {
         addresses: normalized.addresses,
         defaultAddressId: normalized.defaultAddressId
       });
+      if (savedAccount) {
+        const defAddr = savedAccount.addresses?.find(a => a.isDefault) || savedAccount.addresses?.[0] || {};
+        zohoInventory.findOrCreateContact({
+          fullName: savedAccount.fullName || defAddr.fullName || 'Storefront Customer',
+          phone: cleanPhone,
+          email: savedAccount.email || defAddr.email || '',
+          address: defAddr.fullAddress || defAddr.address1 || '',
+          city: defAddr.city || '',
+          state: defAddr.state || '',
+          pincode: defAddr.pincode || ''
+        }).catch(() => {});
+      }
       return res.json({
         success: true,
-        savedToMongo: true,
         addresses: savedAccount ? savedAccount.addresses : normalized.addresses,
         defaultAddressId: savedAccount ? savedAccount.defaultAddressId : normalized.defaultAddressId,
         account: savedAccount
@@ -6678,7 +6556,6 @@ app.post('/api/account/addresses', async (req, res) => {
 
     return res.json({
       success: true,
-      savedToMongo: false,
       addresses: normalized.addresses,
       defaultAddressId: normalized.defaultAddressId
     });
@@ -6735,16 +6612,16 @@ function enrichOrdersWithInMemoryState(baseOrders = [], cleanPhone = '') {
   return Array.from(seen.values());
 }
 
-// Get User's Orders from MongoDB Atlas according to their account phone
+// Get User's Orders strictly from live Zoho Inventory Customer Orders (not stale/deleted local orders)
 app.get('/api/account/orders', async (req, res) => {
   try {
     const cleanPhone = String(req.query.phone || '').replace(/\D/g, '').slice(-10);
     if (cleanPhone.length !== 10) {
-      return res.json({ success: true, orders: [] });
+      return res.json({ success: true, zohoSynced: false, orders: [] });
     }
-    const mongoOrders = await findOrdersByAccountPhone(cleanPhone);
-    const orders = enrichOrdersWithInMemoryState(mongoOrders, cleanPhone);
-    return res.json({ success: true, phone: cleanPhone, count: orders.length, orders });
+    const account = await findUserByPhone(cleanPhone).catch(() => null);
+    const { zohoSynced, orders } = await getAuthoritativeAccountOrders(cleanPhone, account?.email || '');
+    return res.json({ success: true, zohoSynced, phone: cleanPhone, count: orders.length, orders });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
   }
@@ -6791,12 +6668,14 @@ app.post('/api/zoho/sync-pending', async (req, res) => {
           order.zoho_salesorder_number = soRes.zoho_salesorder_number;
           order.zoho_status = 'confirmed';
           await zohoInventory.confirmSalesOrderInZoho(soRes.zoho_salesorder_id).catch(() => {});
-          const invRes = await zohoInventory.convertSalesOrderToInvoice(soRes.zoho_salesorder_id, order).catch(() => null);
-          if (invRes && (invRes.zoho_invoice_id || invRes.invoice_id)) {
-            order.zoho_invoice_id = invRes.zoho_invoice_id || invRes.invoice_id;
-            order.zoho_invoice_number = invRes.invoice_number;
-            order.zoho_invoice_url = invRes.invoice_url || `/api/orders/${order.orderCode}/gst-invoice`;
-            results.invoicesSynced++;
+          if (order.status === 'DELIVERED' || order.fulfillment_status === 'fulfilled') {
+            const invRes = await zohoInventory.convertSalesOrderToInvoice(soRes.zoho_salesorder_id, order).catch(() => null);
+            if (invRes && (invRes.zoho_invoice_id || invRes.invoice_id)) {
+              order.zoho_invoice_id = invRes.zoho_invoice_id || invRes.invoice_id;
+              order.zoho_invoice_number = invRes.invoice_number;
+              order.zoho_invoice_url = invRes.invoice_url || `/invoice/${order.orderCode}`;
+              results.invoicesSynced++;
+            }
           }
           delete order.zoho_sync_error;
           persistOrders(order);
@@ -7023,36 +6902,44 @@ app.get('/api/invoices', (req, res) => {
   });
 });
 
-// View printable GST Tax Invoice HTML or stream official Zoho PDF for specific order
+// View printable GST Tax Invoice HTML using Reference# (Zoho Inventory live lookup)
 app.get(['/api/orders/:code/invoice', '/invoice/:code'], async (req, res) => {
-  const code = (req.params.code || '').trim().toUpperCase();
-  const order = inMemoryOrders.get(code);
+  const code = String(req.params.code || '').replace(/^#/, '').trim().toUpperCase();
+  let order = inMemoryOrders.get(code) || inMemoryOrders.get(`UCHIHA-${code}`) || null;
+
+  if (!order) {
+    for (const ord of inMemoryOrders.values()) {
+      if (ord && (
+        String(ord.orderCode || '').replace(/^#/, '').trim().toUpperCase() === code ||
+        String(ord.reference_number || '').replace(/^#/, '').trim().toUpperCase() === code ||
+        String(ord.orderId || '').replace(/^#/, '').trim().toUpperCase() === code
+      )) {
+        order = ord;
+        break;
+      }
+    }
+  }
+
+  if (!order && zohoInventory.isZohoConfigured()) {
+    try {
+      const existingSo = await zohoInventory.findSalesOrderByReference(code);
+      if (existingSo && existingSo.salesorder_id) {
+        const detailedSo = await zohoInventory.getSalesOrderFromZoho(existingSo.salesorder_id).catch(() => null);
+        order = mapZohoSalesOrderToAccountOrder(detailedSo || existingSo, {
+          cachedItems: zohoInventory.tokenState?.cachedItems || []
+        });
+      }
+    } catch (_) {}
+  }
 
   if (!order) {
     return res.status(404).send(`
       <div style="font-family:sans-serif; text-align:center; padding: 50px;">
-        <h2>Order #${code} Not Found</h2>
-        <p>The requested invoice could not be located. Please verify your order code.</p>
+        <h2>Reference #${code} Not Found</h2>
+        <p>The requested invoice could not be located. Please verify your reference number.</p>
         <a href="/" style="color:#c0121f; font-weight:bold;">Return to Storefront</a>
       </div>
     `);
-  }
-
-  // Stream Official Zoho PDF rendered with "The Street Co" template
-  if (req.query.pdf === 'true' || req.query.download === 'pdf' || req.headers.accept?.includes('application/pdf')) {
-    const zohoInvoiceId = order.zoho_invoice_id || order.invoice_id;
-    if (zohoInvoiceId && !String(zohoInvoiceId).startsWith('LOCAL-')) {
-      try {
-        const pdfBuf = await zohoInventory.fetchZohoInvoicePdf(zohoInvoiceId);
-        if (pdfBuf) {
-          res.setHeader('Content-Type', 'application/pdf');
-          res.setHeader('Content-Disposition', `inline; filename="TheStreetCo-Invoice-${code}.pdf"`);
-          return res.send(pdfBuf);
-        }
-      } catch (pdfErr) {
-        console.warn('[PDF Delivery Error]:', pdfErr.message);
-      }
-    }
   }
 
   const invoiceHtml = zohoInventory.renderGstInvoiceHtml(order);
@@ -7122,6 +7009,11 @@ app.get('/main.js', (req, res) => {
   res.sendFile(path.join(__dirname, 'main.js'));
 });
 
+// Ensure unmatched /api/* routes always return JSON (never HTML fallback)
+app.all('/api/*', (req, res) => {
+  res.status(404).json({ success: false, error: 'API endpoint not found' });
+});
+
 // Serve static files from root
 app.use(express.static(__dirname, { index: false }));
 
@@ -7135,26 +7027,7 @@ async function hydrateFromMongoDb() {
     const db = await connectMongoDb();
     if (!db) return;
 
-    // 1. Hydrate Orders from MongoDB Atlas
-    const ordersCol = db.collection('orders');
-    const mongoOrders = await ordersCol.find({}, { projection: { _id: 0 } }).toArray();
-    if (Array.isArray(mongoOrders) && mongoOrders.length > 0) {
-      for (const ord of mongoOrders) {
-        if (ord && ord.orderCode) inMemoryOrders.set(ord.orderCode, ord);
-        if (ord && ord.orderId) inMemoryOrders.set(ord.orderId, ord);
-      }
-    } else if (inMemoryOrders.size > 0) {
-      // Seed existing orders into MongoDB Atlas
-      for (const ord of new Set(inMemoryOrders.values())) {
-        if (ord && ord.orderCode) {
-          const cleanOrd = { ...ord };
-          delete cleanOrd._id;
-          await ordersCol.updateOne({ orderCode: cleanOrd.orderCode }, { $set: cleanOrd }, { upsert: true }).catch(() => {});
-        }
-      }
-    }
-
-    // 2. Hydrate & Seed Coupons from MongoDB Atlas
+    // 1. Hydrate & Seed Coupons from MongoDB Atlas
     const couponsCol = db.collection('coupons');
     const mongoCoupons = await couponsCol.find({}, { projection: { _id: 0 } }).toArray();
     if (Array.isArray(mongoCoupons) && mongoCoupons.length > 0) {
@@ -7170,7 +7043,6 @@ async function hydrateFromMongoDb() {
           mergedCount++;
         }
       }
-      saveJsonCache(COUPONS_CACHE_FILE, inMemoryCoupons);
       console.log(`[MongoDB Atlas] Hydrated ${mergedCount} coupons from MongoDB Atlas.`);
     } else if (inMemoryCoupons.length > 0) {
       for (const c of inMemoryCoupons) {
@@ -7181,26 +7053,14 @@ async function hydrateFromMongoDb() {
       console.log(`[MongoDB Atlas] Seeded ${inMemoryCoupons.length} coupons into MongoDB Atlas.`);
     }
 
-    // 3. Hydrate Newsletter Subscribers from MongoDB Atlas
+    // 2. Hydrate Newsletter Subscribers from MongoDB Atlas
     const subCol = db.collection('newsletter_subscribers');
     const mongoSubs = await subCol.find({}, { projection: { _id: 0 } }).toArray();
     for (const s of mongoSubs) {
       if (s && s.email) inMemorySubscribers.add(s.email.toLowerCase());
     }
 
-    // 4. Hydrate Support Tickets from MongoDB Atlas
-    const ticketsCol = db.collection('support_tickets');
-    const mongoTickets = await ticketsCol.find({}, { projection: { _id: 0 } }).sort({ createdAt: -1 }).limit(200).toArray();
-    if (Array.isArray(mongoTickets) && mongoTickets.length > 0) {
-      const seenTickets = new Set(inMemorySupportTickets.map(t => t.ticketId));
-      for (const t of mongoTickets) {
-        if (t && t.ticketId && !seenTickets.has(t.ticketId)) {
-          inMemorySupportTickets.push(t);
-        }
-      }
-    }
-
-    console.log(`[MongoDB Atlas] Hydrated ${inMemoryOrders.size} orders, ${inMemoryCoupons.length} coupons, ${inMemorySubscribers.size} subscribers.`);
+    console.log(`[MongoDB Atlas] Hydrated ${inMemoryCoupons.length} coupons and ${inMemorySubscribers.size} newsletter subscribers.`);
   } catch (err) {
     console.warn('[MongoDB Atlas] Hydration notice:', err.message);
   }

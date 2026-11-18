@@ -1011,8 +1011,8 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       return `
         <div class="wishlist-item" data-wishlist-item="${sku}">
           <div class="wishlist-item__thumb">
-            ${thumb 
-              ? `<img src="${thumb}" alt="${item.name}" loading="lazy" onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='/product-minato.jpg';}else{this.style.display='none';}" />` 
+            ${thumb
+              ? `<img src="${thumb}" alt="${item.name}" loading="lazy" onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='/api/product-image';}else{this.style.display='none';}" />`
               : `<span class="wishlist-thumb-ph"></span>`}
           </div>
           <div class="cart-item__info">
@@ -1218,11 +1218,11 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       const thumb = item.image || item.imageUrl || (Array.isArray(item.images) && item.images[0])
         || (relic && Array.isArray(relic.images) && relic.images[0])
         || (relic && relic.imageUrl)
-        || '/product-minato.jpg';
+        || '/api/product-image';
       return `
         <div class="cart-item">
           <div class="cart-item__thumb">
-            <img src="${thumb}" alt="${item.name}" loading="lazy" onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='/product-minato.jpg';}else{this.style.display='none';}" />
+            <img src="${thumb}" alt="${item.name}" loading="lazy" onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='/api/product-image';}else{this.style.display='none';}" />
           </div>
           <div class="cart-item__info">
             <h5>${item.name}</h5>
@@ -4489,405 +4489,6 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
   window.getSavedReturnExchangeRequests = getSavedReturnExchangeRequests;
   window.saveReturnExchangeRequest = saveReturnExchangeRequest;
 
-  // ═══════════ ALL COLLECTIONS CATALOG & VIEW ═══════════
-  // 16 Canonical Streetwear Products with complete gallery images, prices, specs & seals
-  const CANONICAL_RELICS = [
-    // Collection 1: Akatsuki Shadows
-    {
-      sku: 'akatsuki-cloak',
-      id: 'akatsuki-cloak',
-      isNew: true,
-      name: 'Akatsuki Cloud Trench Cloak',
-      collection: 'akatsuki',
-      collectionName: 'Akatsuki Shadows',
-      category: 'Apparel',
-      tag: 'LIMITED RE-ISSUE',
-      priceInr: 11999,
-      priceRyo: 18500,
-      priceUsd: 145,
-      stock: 12,
-      seal: '雲',
-      desc: 'Heavy structured obsidian twill trench with high-stand collar, crimson satin silk lining, and hand-embroidered vermilion clouds.',
-      specs: '100% Japanese Gabardine · Dry Clean Only · Tailored Fit',
-      images: [
-        'https://images.unsplash.com/photo-1544441893-675973e31985?w=800&q=80',
-        'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=800&q=80',
-        'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800&q=80',
-        'https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=800&q=80',
-        'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=800&q=80'
-      ],
-      imageUrl: 'https://images.unsplash.com/photo-1544441893-675973e31985?w=800&q=80'
-    },
-    {
-      sku: 'shu-ring',
-      id: 'shu-ring',
-      isNew: true,
-      name: 'Akatsuki "Shu" Signet Ring',
-      collection: 'akatsuki',
-      collectionName: 'Akatsuki Shadows',
-      category: 'Jewelry',
-      tag: '925 STERLING SILVER',
-      priceInr: 7999,
-      priceRyo: 12000,
-      priceUsd: 96,
-      stock: 24,
-      seal: '朱',
-      desc: 'Heavyweight oxidized .925 sterling silver band embedded with crimson carnelian stone bearing the "Shu" (Vermilion) kanji seal.',
-      specs: '.925 Sterling Silver · Natural Carnelian · Custom Sizes 7-12',
-      images: [
-        'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=800&q=80',
-        'https://images.unsplash.com/photo-1603561591411-07134e71a2a9?w=800&q=80',
-        'https://images.unsplash.com/photo-1598560917505-59a3ad559071?w=800&q=80',
-        'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=800&q=80',
-        'https://images.unsplash.com/photo-1573408301185-9146fe634ad0?w=800&q=80'
-      ],
-      imageUrl: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=800&q=80'
-    },
-    {
-      sku: 'akatsuki-kasa',
-      id: 'akatsuki-kasa',
-      isNew: true,
-      name: 'Straw Kasa Woven Hat with Veil',
-      collection: 'akatsuki',
-      collectionName: 'Akatsuki Shadows',
-      category: 'Apparel',
-      tag: 'HANDWOVEN BAMBOO',
-      priceInr: 5499,
-      priceRyo: 8600,
-      priceUsd: 66,
-      stock: 18,
-      seal: '笠',
-      desc: 'Traditional woven bamboo conical kasa with pendant brass chime bell and sheer shadow-veil curtains to conceal the sharingan gaze.',
-      specs: 'Handwoven Bamboo · Brass Ringing Chime · Removable Veil',
-      images: [
-        'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=800&q=80',
-        'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=800&q=80',
-        'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=800&q=80',
-        'https://images.unsplash.com/photo-1589256469067-ea99122bbdc4?w=800&q=80',
-        'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=800&q=80'
-      ],
-      imageUrl: 'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=800&q=80'
-    },
-    {
-      sku: 'shadow-holster',
-      id: 'shadow-holster',
-      name: 'Shadow Leather Kunai Leg Holster',
-      collection: 'akatsuki',
-      collectionName: 'Akatsuki Shadows',
-      category: 'Armory',
-      tag: 'FULL-GRAIN LEATHER',
-      priceInr: 4499,
-      priceRyo: 6900,
-      priceUsd: 54,
-      stock: 35,
-      seal: '鞘',
-      desc: 'Full-grain oiled black cowhide tactical thigh holster with reinforced quick-draw slots and matte black military alloy buckles.',
-      specs: 'Full-Grain Black Cowhide · Alloy Buckles · Adjustable Straps',
-      images: [
-        'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=800&q=80',
-        'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=800&q=80',
-        'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=800&q=80',
-        'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=800&q=80',
-        'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=800&q=80'
-      ],
-      imageUrl: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=800&q=80'
-    },
-
-    // Collection 2: Uchiha Heritage
-    {
-      sku: 'leaf-protector',
-      id: 'leaf-protector',
-      name: 'Rogue Leaf Forehead Protector',
-      collection: 'heritage',
-      collectionName: 'Uchiha Heritage',
-      category: 'Relics',
-      tag: 'COLD-FORGED STEEL',
-      priceInr: 5299,
-      priceRyo: 8200,
-      priceUsd: 64,
-      stock: 15,
-      seal: '護',
-      desc: 'Hand-carved stainless steel forehead protector bearing the engraved slash through the Leaf village crest on an obsidian fabric band.',
-      specs: 'Brushed Steel · Indigo Cotton Band · Battle Scored Finish',
-      images: [
-        'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=800&q=80',
-        'https://images.unsplash.com/photo-1533158307587-828f0a76ef46?w=800&q=80',
-        'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&q=80',
-        'https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=800&q=80',
-        'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?w=800&q=80'
-      ],
-      imageUrl: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=800&q=80'
-    },
-    {
-      sku: 'mangekyo-print',
-      id: 'mangekyo-print',
-      name: 'Mangekyo Optical Art Print',
-      collection: 'heritage',
-      collectionName: 'Uchiha Heritage',
-      category: 'Craft',
-      tag: 'ARCHIVAL LENTICULAR',
-      priceInr: 4299,
-      priceRyo: 6500,
-      priceUsd: 52,
-      stock: 22,
-      seal: '眼',
-      desc: 'Museum-grade 3-phase lenticular print transitioning between 3-Tomoe Sharingan and Itachi’s triangular pinwheel Mangekyo depending on viewer angle.',
-      specs: 'Archival 380gsm Paper · 18 × 24 in · Foil Stamped Certificate',
-      images: [
-        'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=800&q=80',
-        'https://images.unsplash.com/photo-1541701494587-cb58502866ab?w=800&q=80',
-        'https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=800&q=80',
-        'https://images.unsplash.com/photo-1577083552431-6e5fd01aa342?w=800&q=80',
-        'https://images.unsplash.com/photo-1563089145-599997674d42?w=800&q=80'
-      ],
-      imageUrl: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=800&q=80'
-    },
-    {
-      sku: 'uchiha-wax-seal',
-      id: 'uchiha-wax-seal',
-      name: 'Official Emblem Brass Wax Seal Kit',
-      collection: 'heritage',
-      collectionName: 'Uchiha Heritage',
-      category: 'Craft',
-      tag: 'SOLID MACHINED BRASS',
-      priceInr: 3199,
-      priceRyo: 4800,
-      priceUsd: 38,
-      stock: 30,
-      seal: '印',
-      desc: 'Solid machined brass sealing stamp bearing the iconic Uchiha paper fan crest. Includes 3 sticks of matte vermilion sealing wax.',
-      specs: 'Machined Solid Brass · 3 Vermilion Wax Sticks · Wooden Box',
-      images: [
-        'https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=800&q=80',
-        'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800&q=80',
-        'https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=800&q=80',
-        'https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?w=800&q=80',
-        'https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?w=800&q=80'
-      ],
-      imageUrl: 'https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=800&q=80'
-    },
-    {
-      sku: 'tessen-fan',
-      id: 'tessen-fan',
-      name: 'Fire Style Cold-Forged Iron Tessen',
-      collection: 'heritage',
-      collectionName: 'Uchiha Heritage',
-      category: 'Armory',
-      tag: 'WAR COMBAT FAN',
-      priceInr: 8999,
-      priceRyo: 14000,
-      priceUsd: 108,
-      stock: 8,
-      seal: '扇',
-      desc: 'Traditional war fan constructed from hardened black steel ribs and waxed heavyweight washi canvas depicting the Great Fireball.',
-      specs: 'Forged High-Carbon Steel · Waxed Canvas · 11.5 in Folded',
-      images: [
-        'https://images.unsplash.com/photo-1582738411706-bfc8e691d1c2?w=800&q=80',
-        'https://images.unsplash.com/photo-1589256469067-ea99122bbdc4?w=800&q=80',
-        'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&q=80',
-        'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=800&q=80',
-        'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=800&q=80'
-      ],
-      imageUrl: 'https://images.unsplash.com/photo-1582738411706-bfc8e691d1c2?w=800&q=80'
-    },
-
-    // Collection 3: Crow Genjutsu & Sagecraft
-    {
-      sku: 'crow-burner',
-      id: 'crow-burner',
-      name: 'Crow Genjutsu Incense Burner',
-      collection: 'genjutsu',
-      collectionName: 'Crow Genjutsu',
-      category: 'Craft',
-      tag: 'HANDCRAFTED CERAMIC',
-      priceInr: 6499,
-      priceRyo: 9800,
-      priceUsd: 78,
-      stock: 14,
-      seal: '鴉',
-      desc: 'Sculpted matte black stoneware crow burner. Backflow smoke pours down through the raven folded wings. Includes 20 cones of Hinoki cedar incense.',
-      specs: 'High-Fired Stoneware · Matte Carbon Finish · 20x Hinoki Cones',
-      images: [
-        'https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?w=800&q=80',
-        'https://images.unsplash.com/photo-1506157786151-b8491531f063?w=800&q=80',
-        'https://images.unsplash.com/photo-1516205651411-aef33a44f7c2?w=800&q=80',
-        'https://images.unsplash.com/photo-1528722828814-77b9b83aafb2?w=800&q=80',
-        'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?w=800&q=80'
-      ],
-      imageUrl: 'https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?w=800&q=80'
-    },
-    {
-      sku: 'amaterasu-beads',
-      id: 'amaterasu-beads',
-      name: 'Amaterasu Obsidian Prayer Beads',
-      collection: 'genjutsu',
-      collectionName: 'Crow Genjutsu',
-      category: 'Relics',
-      tag: 'VOLCANIC OBSIDIAN',
-      priceInr: 3499,
-      priceRyo: 5400,
-      priceUsd: 42,
-      stock: 28,
-      seal: '珠',
-      desc: '108 natural matte black volcanic obsidian beads strung on reinforced silk cord, accented with an engraved emblem marker and crimson tassel.',
-      specs: '8mm Natural Volcanic Stone · Crimson Silk · Laser-Etched Guru Bead',
-      images: [
-        'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=800&q=80',
-        'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=800&q=80',
-        'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=800&q=80',
-        'https://images.unsplash.com/photo-1598560917505-59a3ad559071?w=800&q=80',
-        'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=800&q=80'
-      ],
-      imageUrl: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=800&q=80'
-    },
-    {
-      sku: 'tsukuyomi-teacup',
-      id: 'tsukuyomi-teacup',
-      name: 'Tsukuyomi Midnight Ceramic Teacup',
-      collection: 'genjutsu',
-      collectionName: 'Crow Genjutsu',
-      category: 'Craft',
-      tag: 'WOOD-FIRED CERAMIC',
-      priceInr: 2999,
-      priceRyo: 4600,
-      priceUsd: 36,
-      stock: 19,
-      seal: '盃',
-      desc: 'Handmade Tenmoku glaze ceramic cup fired in wood kilns. Iridescent iron oil spots appear like red stars inside black genjutsu skies.',
-      specs: 'Kyoto Stoneware · Hand-Thrown · 180ml Capacity',
-      images: [
-        'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=800&q=80',
-        'https://images.unsplash.com/photo-1577968897966-3d4325b36b61?w=800&q=80',
-        'https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=800&q=80',
-        'https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=800&q=80',
-        'https://images.unsplash.com/photo-1528722828814-77b9b83aafb2?w=800&q=80'
-      ],
-      imageUrl: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=800&q=80'
-    },
-    {
-      sku: 'crow-quill',
-      id: 'crow-quill',
-      name: 'Crow Quill & Vermilion Ink Set',
-      collection: 'genjutsu',
-      collectionName: 'Crow Genjutsu',
-      category: 'Craft',
-      tag: 'NATURAL FEATHER QUILL',
-      priceInr: 2499,
-      priceRyo: 3700,
-      priceUsd: 30,
-      stock: 25,
-      seal: '筆',
-      desc: 'Natural iridescent black raven flight feather hand-cut for fine kanji calligraphy, paired with archival vermilion red mineral ink bottle.',
-      specs: 'Genuine Raven Quill · 30ml Vermilion Ink · Wax Stopper',
-      images: [
-        'https://images.unsplash.com/photo-1583485088034-697b5bc54ccd?w=800&q=80',
-        'https://images.unsplash.com/photo-1585776245991-cf89dd7fc73a?w=800&q=80',
-        'https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?w=800&q=80',
-        'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=800&q=80',
-        'https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=800&q=80'
-      ],
-      imageUrl: 'https://images.unsplash.com/photo-1583485088034-697b5bc54ccd?w=800&q=80'
-    },
-
-    // Collection 4: Shinobi Armory
-    {
-      sku: 'shadow-shuriken',
-      id: 'shadow-shuriken',
-      name: 'Shadow Windmill Shuriken (4-Pack)',
-      collection: 'armory',
-      collectionName: 'Shinobi Armory',
-      category: 'Armory',
-      tag: 'BLUED 440C STEEL',
-      priceInr: 3999,
-      priceRyo: 6100,
-      priceUsd: 48,
-      stock: 40,
-      seal: '手',
-      desc: 'Precision-balanced 4-point aerodynamic throwing stars machined from blued 440C stainless steel with matte glare-free finish.',
-      specs: '440C Stainless Steel · 4-Pack · Ballistic Nylon Case',
-      images: [
-        'https://images.unsplash.com/photo-1589256469067-ea99122bbdc4?w=800&q=80',
-        'https://images.unsplash.com/photo-1595590424283-b8f17842773f?w=800&q=80',
-        'https://images.unsplash.com/photo-1533158307587-828f0a76ef46?w=800&q=80',
-        'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=800&q=80',
-        'https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=800&q=80'
-      ],
-      imageUrl: 'https://images.unsplash.com/photo-1589256469067-ea99122bbdc4?w=800&q=80'
-    },
-    {
-      sku: 'spring-tanto',
-      id: 'spring-tanto',
-      name: 'Concealed Tanto Dagger Replica',
-      collection: 'armory',
-      collectionName: 'Shinobi Armory',
-      category: 'Armory',
-      tag: 'ANBU SHORT BLADE',
-      priceInr: 9999,
-      priceRyo: 15800,
-      priceUsd: 120,
-      stock: 10,
-      seal: '刀',
-      desc: 'Straight-edge display replica dagger featuring black ray-skin handle wrap, blackened brass habaki collar, and matte wooden scabbard.',
-      specs: '1045 Carbon Steel (Unsharpened) · Ray Skin Wrap · 11 in',
-      images: [
-        'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=800&q=80',
-        'https://images.unsplash.com/photo-1589256469067-ea99122bbdc4?w=800&q=80',
-        'https://images.unsplash.com/photo-1595590424283-b8f17842773f?w=800&q=80',
-        'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=800&q=80',
-        'https://images.unsplash.com/photo-1533158307587-828f0a76ef46?w=800&q=80'
-      ],
-      imageUrl: 'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=800&q=80'
-    },
-    {
-      sku: 'wire-trap-reel',
-      id: 'wire-trap-reel',
-      name: 'High-Tensile Steel Wire Trap Spool',
-      collection: 'armory',
-      collectionName: 'Shinobi Armory',
-      category: 'Armory',
-      tag: 'MICRO-BRAIDED WIRE',
-      priceInr: 2699,
-      priceRyo: 4100,
-      priceUsd: 32,
-      stock: 50,
-      seal: '線',
-      desc: '50-meter spool of ultra-thin micro-braided black stainless steel wire designed for shuriken trajectory guidance and perimeter rigging.',
-      specs: 'Micro-Braided Steel · 50m Length · Friction Reel Spool',
-      images: [
-        'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=800&q=80',
-        'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=800&q=80',
-        'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=800&q=80',
-        'https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=800&q=80',
-        'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&q=80'
-      ],
-      imageUrl: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=800&q=80'
-    },
-    {
-      sku: 'smoke-scroll',
-      id: 'smoke-scroll',
-      name: 'Crow Smoke Bomb Requisition',
-      collection: 'armory',
-      collectionName: 'Shinobi Armory',
-      category: 'Armory',
-      tag: 'SMOKE EXPLOSIVE CASK',
-      priceInr: 2799,
-      priceRyo: 4300,
-      priceUsd: 34,
-      stock: 35,
-      seal: '煙',
-      desc: 'Set of six sealed spherical clay cartridges filled with non-toxic black pine smoke powder and crow feather scent for genjutsu escape.',
-      specs: 'Clay Shells · 6 Cartridges · Sealed Wooden Cask',
-      images: [
-        'https://images.unsplash.com/photo-1516205651411-aef33a44f7c2?w=800&q=80',
-        'https://images.unsplash.com/photo-1506157786151-b8491531f063?w=800&q=80',
-        'https://images.unsplash.com/photo-1528722828814-77b9b83aafb2?w=800&q=80',
-        'https://images.unsplash.com/photo-1583485088034-697b5bc54ccd?w=800&q=80',
-        'https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?w=800&q=80'
-      ],
-      imageUrl: 'https://images.unsplash.com/photo-1516205651411-aef33a44f7c2?w=800&q=80'
-    }
-  ];
-
   let collectionsData = [];
   window.collectionsData = collectionsData;
 
@@ -5352,8 +4953,8 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
           </div>
         </div>
         <div class="collec-card__visual" data-gallery-open="${sku}" role="button" tabindex="0" title="Click to inspect multi-image gallery">
-          ${mainImg 
-            ? `<img src="${mainImg}" alt="${item.name}" loading="lazy" onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='/product-minato.jpg';}else{this.style.display='none'; if (this.nextElementSibling) this.nextElementSibling.style.display='grid';}" /><div class="shop-card__svg-fallback" style="display:none;">${item.iconSvg}</div>` 
+          ${mainImg
+            ? `<img src="${mainImg}" alt="${item.name}" loading="lazy" onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='/api/product-image';}else{this.style.display='none'; if (this.nextElementSibling) this.nextElementSibling.style.display='grid';}" /><div class="shop-card__svg-fallback" style="display:none;">${item.iconSvg}</div>`
             : `<div class="shop-card__svg-fallback">${item.iconSvg}</div>`}
         </div>
         <span class="collec-card__cat">${item.category} · SKU: ${sku}</span>
@@ -5590,42 +5191,42 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
         label: 'Minato Namikaze',
         subtitle: 'Yellow Flash',
         kanji: '閃',
-        img: '/product-minato.jpg'
+        img: '/api/product-image'
       },
       {
         id: 'Akatsuki Shadows',
         label: 'Akatsuki Shadows',
         subtitle: 'Crimson Cloud',
         kanji: '雲',
-        img: 'https://images.unsplash.com/photo-1544441893-675973e31985?w=400&q=80'
+        img: '/api/product-image'
       },
       {
         id: 'Uchiha Clan',
         label: 'Uchiha Clan',
         subtitle: 'Flame Legacy',
         kanji: '団',
-        img: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=400&q=80'
+        img: '/api/product-image'
       },
       {
         id: 'Crow Genjutsu',
         label: 'Crow Genjutsu',
         subtitle: 'Raven Mirage',
         kanji: '鴉',
-        img: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=400&q=80'
+        img: '/api/product-image'
       },
       {
         id: 'Street Core',
         label: 'Street Core',
         subtitle: 'Tokyo Shadow',
         kanji: '街',
-        img: 'https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=400&q=80'
+        img: '/api/product-image'
       },
       {
         id: 'Shinobi Armory',
         label: 'Shinobi Armory',
         subtitle: 'Tactical Steel',
         kanji: '刃',
-        img: 'https://images.unsplash.com/photo-1589256469067-ea99122bbdc4?w=400&q=80'
+        img: '/api/product-image'
       }
     ],
     size: [
@@ -5690,7 +5291,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
         listContainer.innerHTML = options.map((opt, idx) => {
           const isChecked = activeShopFilters.collection.has(opt.id);
           const count = getFilterMatchCount('collection', opt.id);
-          const bgImg = opt.img || '/product-minato.jpg';
+          const bgImg = opt.img || '/api/product-image';
           const kanji = opt.kanji || '忍';
           const sub = opt.subtitle || 'Collection';
           const idxStr = String(idx + 1).padStart(2, '0');
@@ -6221,7 +5822,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       const isWish = isWishlisted(sku);
       const priceInr = Number(item.priceInr) || 4999;
       const priceRyo = item.priceRyo ? Number(item.priceRyo) : Math.round(priceInr * 1.54);
-      const mainImg = (Array.isArray(item.images) && item.images.length > 0) ? item.images[0] : (item.imageUrl || '/product-minato.jpg');
+      const mainImg = (Array.isArray(item.images) && item.images.length > 0) ? item.images[0] : (item.imageUrl || '/api/product-image');
       const photosCount = (Array.isArray(item.images) && item.images.length > 0) ? item.images.length : (item.imageUrl ? 1 : 1);
       const hasDiscount = Boolean(item.hasDiscount || (item.originalMrp && item.originalMrp > priceInr));
       const discountPct = item.discountPercent || (hasDiscount ? Math.round(((item.originalMrp - priceInr) / item.originalMrp) * 100) : 0);
@@ -6245,7 +5846,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
           </div>
           <div class="shop-card__visual" data-gallery-open="${sku}" role="button" tabindex="0" title="Click to view full image gallery" style="aspect-ratio:1/1 !important; width:92% !important; max-width:92% !important; height:auto !important; margin:0.15rem auto 0.45rem !important; overflow:hidden !important; display:flex !important; align-items:center !important; justify-content:center !important;">
             ${mainImg 
-              ? `<img src="${mainImg}" alt="${item.name}" loading="lazy" style="width:100% !important; height:100% !important; object-fit:cover !important; object-position:center top !important; padding:0 !important; margin:0 !important; border:none !important; display:block !important;" onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='/product-minato.jpg';}else{this.style.display='none';}" />`
+              ? `<img src="${mainImg}" alt="${item.name}" loading="lazy" style="width:100% !important; height:100% !important; object-fit:cover !important; object-position:center top !important; padding:0 !important; margin:0 !important; border:none !important; display:block !important;" onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='/api/product-image';}else{this.style.display='none';}" />`
               : `<div class="shop-card__svg-fallback">${item.iconSvg || '👕'}</div>`}
           </div>
           <span class="shop-card__theme-tag">${item.collectionName || 'OFFICIAL STREETWEAR'}</span>
@@ -6457,7 +6058,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
         const iconSvg = p.iconSvg || `<svg viewBox="0 0 40 40" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="20" cy="20" r="14" stroke="var(--blood-hot)"/><text x="20" y="25" text-anchor="middle" font-family="sans-serif" font-size="12" fill="var(--bone)">${p.seal || '忍'}</text></svg>`;
         const images = (Array.isArray(p.images) && p.images.length > 0)
           ? p.images.filter(u => typeof u === 'string' && u.trim().length > 0)
-          : (p.imageUrl ? [p.imageUrl] : ['/product-minato.jpg']);
+          : (p.imageUrl ? [p.imageUrl] : ['/api/product-image']);
         const priceInr = Number(p.priceInr || p.price || 0);
         const originalMrp = (p.originalMrp && Number(p.originalMrp) > priceInr) ? Number(p.originalMrp) : null;
         const hasDiscount = Boolean(originalMrp && originalMrp > priceInr);
@@ -6487,8 +6088,8 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
           stock: p.stock !== undefined ? Number(p.stock) : 0,
           inStock: (p.stock !== undefined ? Number(p.stock) : 0) > 0,
           unit: p.unit || '',
-          images: images.length > 0 ? images : ['/product-minato.jpg'],
-          imageUrl: images[0] || '/product-minato.jpg',
+          images: images.length > 0 ? images : ['/api/product-image'],
+          imageUrl: images[0] || '/api/product-image',
           iconSvg
         };
       });
@@ -7501,7 +7102,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       relicGalleryMainImg.onerror = function() {
         if (!this.dataset.fb) {
           this.dataset.fb = '1';
-          this.src = '/product-minato.jpg';
+          this.src = '/api/product-image';
         }
       };
       relicGalleryMainImg.alt = `${activeGalleryItem ? activeGalleryItem.name : 'Relic'} angle ${activeGalleryImageIndex + 1}`;
@@ -7518,7 +7119,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     if (relicGalleryThumbs) {
       relicGalleryThumbs.innerHTML = activeGalleryImages.map((src, i) => `
         <div class="relic-gallery__thumb ${i === activeGalleryImageIndex ? 'active' : ''}" data-gallery-thumb="${i}" role="button" tabindex="0" title="Inspect Photo ${i + 1}">
-          <img src="${src}" alt="Angle ${i + 1}" loading="lazy" onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='/product-minato.jpg';}" />
+          <img src="${src}" alt="Angle ${i + 1}" loading="lazy" onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='/api/product-image';}" />
           <span class="relic-gallery__thumb-num">${i + 1}</span>
         </div>
       `).join('');
@@ -8057,8 +7658,8 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       return `
         <div class="pdp-cross-item" data-cross-open="${itemSku}">
           <div class="pdp-cross-item__thumb">
-            ${thumb 
-              ? `<img src="${thumb}" alt="${item.name}" loading="lazy" onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='/product-minato.jpg';}else{this.parentElement.innerHTML='${item.seal || '忍'}';}" />` 
+            ${thumb
+              ? `<img src="${thumb}" alt="${item.name}" loading="lazy" onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='/api/product-image';}else{this.parentElement.innerHTML='${item.seal || '忍'}';}" />`
               : `<div style="width:100%;height:100%;display:grid;place-items:center;color:var(--blood-hot);font-family:var(--mono);">${item.seal || '忍'}</div>`}
           </div>
           <div class="pdp-cross-item__info">
@@ -8369,7 +7970,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       return `
         <article class="recent-card product-card" data-recent-sku="${sku}">
           <div class="recent-card__thumb" data-recent-inspect="${sku}" role="button" tabindex="0" title="Inspect ${item.name.replace(/"/g, '&quot;')}">
-            ${img ? `<img src="${img}" alt="${item.name.replace(/"/g, '&quot;')}" loading="lazy" onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='/product-minato.jpg';}else{this.style.display='none';}" />` : ''}
+            ${img ? `<img src="${img}" alt="${item.name.replace(/"/g, '&quot;')}" loading="lazy" onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='/api/product-image';}else{this.style.display='none';}" />` : ''}
             <button type="button" class="recent-card__remove-btn" data-recent-remove="${sku}" title="Remove from recent views">✕</button>
           </div>
           <span class="recent-card__cat">${item.collectionName || item.category || 'THE STREET CO'}</span>
@@ -9558,7 +9159,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       title: 'Tokyo Shadow Ensemble',
       meta: 'Look 01 · Heavyweight Streetwear · 3 Curated Pieces',
       note: '480 GSM loopwheel cotton hoodie paired with articulated cargo trousers and a tactical utility bag.',
-      heroImage: '/product-minato.jpg',
+      heroImage: '/api/product-image',
       pieces: [
         {
           pin: '01',
@@ -9569,7 +9170,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           category: 'Oversized T-Shirts',
           fabric: '320 GSM Combed Cotton · Drop Shoulder',
           priceInr: 1999,
-          image: '/product-minato.jpg',
+          image: '/api/product-image',
           defaultSize: 'L'
         },
         {
@@ -9581,7 +9182,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           category: 'Cargo Pants & Joggers',
           fabric: 'Ripstop Cotton Twill · 6-Pocket Articulated Fit',
           priceInr: 2699,
-          image: '/product-ts-min-001.jpg',
+          image: '/api/product-image',
           defaultSize: 'L'
         },
         {
@@ -9593,7 +9194,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           category: 'Accessories & Bags',
           fabric: 'Ballistic Nylon · Matte Fidlock Buckle',
           priceInr: 1599,
-          image: '/og-preview.jpg',
+          image: '/api/product-image',
           defaultSize: 'M'
         }
       ]
@@ -9603,7 +9204,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       title: 'Tailored Archive Silhouette',
       meta: 'Look 02 · Structured Luxury Street · 3 Curated Pieces',
       note: 'Architectural double-breasted streetwear blazer layered over an ivory heavyweight tee and pleated wide trousers.',
-      heroImage: '/product-ts-min-001.jpg',
+      heroImage: '/api/product-image',
       pieces: [
         {
           pin: '01',
@@ -9614,7 +9215,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           category: 'Jackets & Outerwear',
           fabric: 'Japanese Gabardine Twill · Satin Lined',
           priceInr: 3999,
-          image: '/product-ts-min-001.jpg',
+          image: '/api/product-image',
           defaultSize: 'L'
         },
         {
@@ -9626,7 +9227,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           category: 'Classic T-Shirts',
           fabric: '280 GSM Organic Supima Cotton',
           priceInr: 1499,
-          image: '/product-minato.jpg',
+          image: '/api/product-image',
           defaultSize: 'M'
         },
         {
@@ -9638,7 +9239,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           category: 'Cargo Pants & Joggers',
           fabric: 'Structured Wool-Blend Drape',
           priceInr: 2899,
-          image: '/og-image.jpg',
+          image: '/api/product-image',
           defaultSize: 'L'
         }
       ]
@@ -9648,7 +9249,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       title: 'Utilitarian Street Armor',
       meta: 'Look 03 · All-Weather Capsule · 3 Curated Pieces',
       note: 'Heavyweight French terry hoodie paired with relaxed parachute joggers and brushed steel street hardware.',
-      heroImage: '/og-image.jpg',
+      heroImage: '/api/product-image',
       pieces: [
         {
           pin: '01',
@@ -9659,7 +9260,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           category: 'Hoodies & Sweatshirts',
           fabric: '480 GSM Heavyweight French Terry',
           priceInr: 3299,
-          image: '/og-image.jpg',
+          image: '/api/product-image',
           defaultSize: 'XL'
         },
         {
@@ -9671,7 +9272,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           category: 'Cargo Pants & Joggers',
           fabric: 'Water-Repellent Matte Nylon',
           priceInr: 2499,
-          image: '/product-minato.jpg',
+          image: '/api/product-image',
           defaultSize: 'L'
         },
         {
@@ -9683,7 +9284,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           category: 'Accessories & Jewelry',
           fabric: '316L Surgical Grade Stainless Steel',
           priceInr: 1299,
-          image: '/product-ts-min-001.jpg',
+          image: '/api/product-image',
           defaultSize: 'M'
         }
       ]
@@ -9720,7 +9321,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       stageImg.src = look.heroImage;
       stageImg.onerror = function() {
         this.onerror = null;
-        this.src = '/product-minato.jpg';
+        this.src = '/api/product-image';
       };
     }
     if (stageMeta) stageMeta.textContent = look.meta;
@@ -9757,7 +9358,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
         return `
           <div class="lookbook-piece-row ${idx === activePinIndex ? 'is-highlighted' : ''}" data-piece-row="${idx}">
             <div class="lookbook-piece-thumb">
-              <img src="${p.image}" alt="${p.name}" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/product-minato.jpg';" />
+              <img src="${p.image}" alt="${p.name}" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
             </div>
             <div class="lookbook-piece-info">
               <h4>${p.pin} · ${p.name}</h4>
@@ -9988,7 +9589,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       title: 'Obsidian Susanoo 500 GSM Armored Trench Hoodie',
       desc: 'Milled from custom 500 GSM heavyweight loopwheel cotton with embroidered metallic crest and storm-flap collar.',
       priceInr: 4299,
-      image: '/product-minato.jpg',
+      image: '/api/product-image',
       demandPct: 88
     },
     {
@@ -9997,7 +9598,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       title: 'Akatsuki Midnight Waxed Canvas Tactical Jacket',
       desc: 'Weatherproof Japanese waxed canvas shell with concealed magnetic utility pockets and vermilion satin lining.',
       priceInr: 5499,
-      image: '/product-ts-min-001.jpg',
+      image: '/api/product-image',
       demandPct: 79
     },
     {
@@ -10006,7 +9607,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       title: 'Shibuya Heavyweight Selvedge Cargo Denim',
       desc: '14oz raw selvedge black denim engineered with articulated knee pleats and custom brushed-steel hardware.',
       priceInr: 3699,
-      image: '/og-image.jpg',
+      image: '/api/product-image',
       demandPct: 93
     }
   ];
@@ -10033,7 +9634,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
         <article class="drop-vault-card">
           <div>
             <div class="drop-vault-card__media">
-              <img src="${d.image}" alt="${d.title}" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/product-minato.jpg';" />
+              <img src="${d.image}" alt="${d.title}" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
             </div>
             <div class="drop-vault-card__body">
               <div class="drop-vault-card__meta">${d.edition} · ₹${d.priceInr.toLocaleString('en-IN')} INR</div>
@@ -11695,10 +11296,10 @@ window.openDelhiveryTracker = openDelhiveryTracker;
 
         const itemImg = it.image || it.imageUrl || it.img || (Array.isArray(it.images) ? it.images[0] : '') ||
           (relic && (relic.image || relic.imageUrl || (Array.isArray(relic.images) ? relic.images[0] : ''))) ||
-          'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=200&auto=format&fit=crop&q=80';
+          '/api/product-image';
 
         const itemName = it.name || it.title || (relic && relic.name) || 'Streetwear Item';
-        return `<img src="${itemImg}" alt="${itemName}" class="account-order-short-thumb" loading="lazy" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=200&auto=format&fit=crop&q=80';" />`;
+        return `<img src="${itemImg}" alt="${itemName}" class="account-order-short-thumb" loading="lazy" onerror="this.onerror=null;this.src='/api/product-image';" />`;
       }).join('');
 
       const firstItemName = items[0]?.name || items[0]?.title || 'Streetwear Item';
@@ -11905,7 +11506,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       .replace(/"/g, '&quot;');
 
     const itemsListHtml = items.map(it => {
-      const itemImg = it.image || it.imageUrl || it.img || '/product-minato.jpg';
+      const itemImg = it.image || it.imageUrl || it.img || '/api/product-image';
       const itemName = escapeHtml(it.name || it.title || 'The Street Co Apparel');
       const itemSize = escapeHtml(it.size || 'M');
       const itemFinish = escapeHtml(it.finish || 'Classic Black');
@@ -11916,7 +11517,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       return `
         <div class="checkout-review-item-row">
           <div class="checkout-review-thumb">
-            <img src="${escapeHtml(itemImg)}" alt="${itemName}" loading="lazy" onerror="this.onerror=null;this.src='/product-minato.jpg';">
+            <img src="${escapeHtml(itemImg)}" alt="${itemName}" loading="lazy" onerror="this.onerror=null;this.src='/api/product-image';">
           </div>
           <div class="checkout-review-info">
             <strong>${itemName}</strong>
@@ -12099,7 +11700,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
         return `
           <label class="return-item-row ${idx === 0 ? 'is-selected' : ''}" id="returnItemRow_${idx}">
             <input type="checkbox" class="return-item-checkbox" name="returnItemCheckbox" value="${idx}" data-sku="${sku}" data-name="${safeName}" data-size="${itemSize}" data-finish="${itemFinish}" data-image="${safeImg}" data-price="${itemPrice}" data-qty="${itemQty}" ${idx === 0 ? 'checked' : ''} onchange="document.getElementById('returnItemRow_${idx}').classList.toggle('is-selected', this.checked);" />
-            <img src="${itemImg}" alt="${safeName}" class="return-item-thumb" onerror="this.onerror=null;this.src='/product-minato.jpg';" />
+            <img src="${itemImg}" alt="${safeName}" class="return-item-thumb" onerror="this.onerror=null;this.src='/api/product-image';" />
             <div class="return-item-meta">
               <div class="return-item-name">${itemName}</div>
               <div class="return-item-sub">
@@ -12281,7 +11882,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
         sku: cb.getAttribute('data-sku') || 'TS-MIN-001',
         size: cb.getAttribute('data-size') || 'M',
         finish: cb.getAttribute('data-finish') || 'Obsidian Black',
-        image: cb.getAttribute('data-image') || '/product-minato.jpg',
+        image: cb.getAttribute('data-image') || '/api/product-image',
         qty,
         priceInr,
         totalItemPriceInr: priceInr * qty
@@ -12567,7 +12168,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           qty: 1,
           priceInr: 2499,
           totalItemPriceInr: 2499,
-          image: 'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=500&auto=format&fit=crop&q=80'
+          image: '/api/product-image'
         },
         {
           id: 'sample-2',
@@ -12578,7 +12179,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           qty: 1,
           priceInr: 1499,
           totalItemPriceInr: 1499,
-          image: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=500&auto=format&fit=crop&q=80'
+          image: '/api/product-image'
         }
       ],
       shippingAddress: {

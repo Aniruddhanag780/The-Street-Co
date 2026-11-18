@@ -7,7 +7,6 @@ import twilio from 'twilio';
 import nodemailer from 'nodemailer';
 import * as zohoInventory from './zohoInventory.js';
 import { doesZohoSalesOrderBelongToCustomer, mapZohoSalesOrderToAccountOrder } from './zohoOrderHelper.js';
-import { getProductImageBuffer } from './productImage.js';
 import { renderOrderConfirmationEmail, renderReturnConfirmationEmail, renderShipmentFulfilledEmail, renderEmailOtpEmail } from './emailTemplates.js';
 import { verifyUpiPaymentViaImap } from './imapPaymentVerifier.js';
 import {
@@ -1525,598 +1524,6 @@ function saveJsonCache(filePath, data) {
   } catch (_) {}
 }
 
-// Initial Streetwear catalog (canonical products and apparel)
-// All products use:
-// 1. `sku`: Unique catalog SKU code (e.g. 'akatsuki-cloak')
-// 2. `priceInr`: Pricing in Indian Rupees (INR ₹)
-// 3. `images`: Array of 4-5 curated image URLs for multi-angle gallery view
-const DEFAULT_PRODUCTS = [
-  // Streetwear Apparel & Essentials
-  {
-    sku: 'TS-MIN-001',
-    id: 'TS-MIN-001',
-    name: 'Fourth Hokage Minato Inspired Oversized T-Shirt',
-    title: 'Fourth Hokage Minato Inspired Oversized T-Shirt - Premium Flame Print Anime Streetwear',
-    collection: 'minato',
-    collectionName: 'Minato Namikaze',
-    category: 'Oversized T-Shirts',
-    category_name: 'Oversized T-Shirts',
-    fit: 'Oversized Fit',
-    color: 'Ivory White',
-    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
-    tag: 'OFFICIAL DROP',
-    priceInr: 1599,
-    originalMrp: 1799,
-    hasDiscount: true,
-    discountPercent: 11,
-    stock: 98,
-    seal: '火',
-    desc: 'Unleash the spirit of the Hidden Leaf\'s fastest shinobi. Premium drop-shoulder oversized tee with iconic Hokage cloak burgundy fire print and heavy 240+ GSM combed cotton.',
-    specs: '240 GSM Combed Cotton · Drop Shoulder Boxy Fit · High Density Kanji Print',
-    images: [
-      '/product-minato.jpg',
-      'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=800&q=80',
-      'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=800&q=80',
-      'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=800&q=80'
-    ],
-    imageUrl: '/product-minato.jpg'
-  },
-  {
-    sku: 'susanoo-tee',
-    id: 'susanoo-tee',
-    name: 'Susanoo Armor Heavyweight Oversized T-Shirt',
-    title: 'Susanoo Spectral Ribcage Heavyweight Graphic Oversized T-Shirt',
-    collection: 'uchiha',
-    collectionName: 'Uchiha Clan',
-    category: 'Oversized T-Shirts',
-    category_name: 'Oversized T-Shirts',
-    fit: 'Oversized Fit',
-    color: 'Obsidian Black',
-    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
-    tag: 'BESTSELLER',
-    priceInr: 1499,
-    originalMrp: 1999,
-    hasDiscount: true,
-    discountPercent: 25,
-    stock: 54,
-    seal: '須',
-    desc: 'Deep obsidian heavyweight boxy streetwear tee featuring high-density vermilion and celestial violet Susanoo skeletal armor graphics on front and back.',
-    specs: '240 GSM Heavyweight Terry Cotton · Drop Shoulder · Ribbed Neck Collar',
-    images: [
-      'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=800&q=80',
-      'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=800&q=80',
-      'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=800&q=80',
-      'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=800&q=80'
-    ],
-    imageUrl: 'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=800&q=80'
-  },
-  {
-    sku: 'sharingan-hoodie',
-    id: 'sharingan-hoodie',
-    name: 'Sharingan Gaze Heavyweight Streetwear Hoodie',
-    title: 'Sharingan Gaze 380 GSM Heavy French Terry Streetwear Hoodie',
-    collection: 'uchiha',
-    collectionName: 'Uchiha Clan',
-    category: 'Hoodies & Sweatshirts',
-    category_name: 'Hoodies & Sweatshirts',
-    fit: 'Regular Fit',
-    color: 'Obsidian Black',
-    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
-    tag: 'NEW ARRIVAL',
-    priceInr: 2999,
-    originalMrp: 3999,
-    hasDiscount: true,
-    discountPercent: 25,
-    stock: 36,
-    seal: '瞳',
-    desc: 'Heavyweight 380 GSM brushed fleece streetwear hoodie with embroidered crimson tomoe eye seals on double-layered hood and front kangaroo pocket.',
-    specs: '380 GSM Heavy French Terry · Thermal Lined Hood · Custom Drawstrings',
-    images: [
-      'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=800&q=80',
-      'https://images.unsplash.com/photo-1509967419530-da38b4704bc6?w=800&q=80',
-      'https://images.unsplash.com/photo-1578587018452-892bacefd3f2?w=800&q=80',
-      'https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=800&q=80'
-    ],
-    imageUrl: 'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=800&q=80'
-  },
-  {
-    sku: 'akatsuki-bomber',
-    id: 'akatsuki-bomber',
-    name: 'Akatsuki Cloud Reversible Streetwear Bomber Jacket',
-    title: 'Akatsuki Cloud Reversible Streetwear Flight Bomber Jacket',
-    collection: 'akatsuki',
-    collectionName: 'Akatsuki Shadows',
-    category: 'Jackets & Outerwear',
-    category_name: 'Jackets & Outerwear',
-    fit: 'Regular Fit',
-    color: 'Obsidian Black',
-    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
-    tag: 'LIMITED EDITION',
-    priceInr: 4499,
-    originalMrp: 5999,
-    hasDiscount: true,
-    discountPercent: 25,
-    stock: 20,
-    seal: '雲',
-    desc: 'Reversible matte obsidian nylon MA-1 flight bomber with water-resistant shell, heavy ribbed cuffs, crimson silk lining, and vermilion cloud chest embroidery.',
-    specs: 'High-Density Matte Nylon · Heavy Brass Zippers · Reversible Silk Lining',
-    images: [
-      'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=800&q=80',
-      'https://images.unsplash.com/photo-1544441893-675973e31985?w=800&q=80',
-      'https://images.unsplash.com/photo-1495105787522-5334e3ffa0ef?w=800&q=80',
-      'https://images.unsplash.com/photo-1548883354-7622d03aca27?w=800&q=80'
-    ],
-    imageUrl: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=800&q=80'
-  },
-  {
-    sku: 'shinobi-cargo',
-    id: 'shinobi-cargo',
-    name: 'Tactical Multi-Pocket Shinobi Cargo Pants',
-    title: 'Tactical Multi-Pocket Shinobi Cargo Pants - Heavy Twill Streetwear',
-    collection: 'street-core',
-    collectionName: 'Street Core',
-    category: 'Cargo Pants & Joggers',
-    category_name: 'Cargo Pants & Joggers',
-    fit: 'Relaxed Fit',
-    color: 'Charcoal Grey',
-    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
-    tag: 'STREET CORE',
-    priceInr: 2499,
-    originalMrp: 3299,
-    hasDiscount: true,
-    discountPercent: 24,
-    stock: 42,
-    seal: '忍',
-    desc: 'Engineered heavy cotton twill utility cargo pants featuring 6 gusseted 3D tactical pockets, magnetic snap buckles, and adjustable cinch bungee ankle hems.',
-    specs: '100% Heavy Twill Cotton · 6 Modular Pockets · Adjustable Bungee Cuffs',
-    images: [
-      'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=800&q=80',
-      'https://images.unsplash.com/photo-1517445312882-bc9910d016b7?w=800&q=80',
-      'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=800&q=80',
-      'https://images.unsplash.com/photo-1506152983158-b4a74a01c721?w=800&q=80'
-    ],
-    imageUrl: 'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=800&q=80'
-  },
-  {
-    sku: 'itachi-dropcut-tee',
-    id: 'itachi-dropcut-tee',
-    name: 'Uchiha Clan Crimson Flame Drop-Cut T-Shirt',
-    title: 'Uchiha Clan Crimson Flame Drop-Cut Streetwear T-Shirt',
-    collection: 'uchiha',
-    collectionName: 'Uchiha Clan',
-    category: 'Classic T-Shirts',
-    category_name: 'Classic T-Shirts',
-    fit: 'Relaxed Fit',
-    color: 'Crimson Red',
-    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
-    tag: 'POPULAR',
-    priceInr: 1299,
-    originalMrp: 1699,
-    hasDiscount: true,
-    discountPercent: 23,
-    stock: 58,
-    seal: '炎',
-    desc: 'Signature curved-hem drop-cut streetwear tee in deep crimson dye wash, finished with minimalist Uchiha fan monochrome insignia on upper chest.',
-    specs: '210 GSM Bio-Washed Cotton · Curved Drop Hem · Silicon Wash Softness',
-    images: [
-      'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=800&q=80',
-      'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=800&q=80',
-      'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=800&q=80',
-      'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=800&q=80'
-    ],
-    imageUrl: 'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=800&q=80'
-  },
-  {
-    sku: 'shinobi-joggers',
-    id: 'shinobi-joggers',
-    name: 'Leaf Shinobi Heavyweight Terry Joggers',
-    title: 'Leaf Shinobi Heavyweight French Terry Streetwear Joggers',
-    collection: 'street-core',
-    collectionName: 'Street Core',
-    category: 'Cargo Pants & Joggers',
-    category_name: 'Cargo Pants & Joggers',
-    fit: 'Relaxed Fit',
-    color: 'Obsidian Black',
-    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
-    tag: 'COMFORT ESSENTIAL',
-    priceInr: 1899,
-    originalMrp: 2499,
-    hasDiscount: true,
-    discountPercent: 24,
-    stock: 45,
-    seal: '木',
-    desc: 'Relaxed-drape French terry streetwear joggers with deep zippered side stash pockets, elasticated drawstring waistband, and tailored ankle ribs.',
-    specs: '360 GSM French Terry · Concealed Zip Pockets · Reinforced Knee Stitching',
-    images: [
-      'https://images.unsplash.com/photo-1552902865-b72c031ac5ea?w=800&q=80',
-      'https://images.unsplash.com/photo-1517445312882-bc9910d016b7?w=800&q=80',
-      'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=800&q=80',
-      'https://images.unsplash.com/photo-1506152983158-b4a74a01c721?w=800&q=80'
-    ],
-    imageUrl: 'https://images.unsplash.com/photo-1552902865-b72c031ac5ea?w=800&q=80'
-  },
-  // Collection 1: Akatsuki Shadows
-  {
-    sku: 'akatsuki-cloak',
-    id: 'akatsuki-cloak',
-    name: 'Akatsuki Cloud Trench Cloak',
-    collection: 'akatsuki',
-    collectionName: 'Akatsuki Shadows',
-    category: 'Jackets & Outerwear',
-    category_name: 'Jackets & Outerwear',
-    fit: 'Oversized Fit',
-    color: 'Obsidian Black',
-    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
-    tag: 'LIMITED RE-ISSUE',
-    priceInr: 11999,
-    originalMrp: 14999,
-    hasDiscount: true,
-    discountPercent: 20,
-    priceRyo: 18500,
-    stock: 12,
-    seal: '雲',
-    desc: 'Heavy structured obsidian twill trench with high-stand collar, crimson satin silk lining, and hand-embroidered vermilion clouds.',
-    specs: '100% Japanese Gabardine · Dry Clean Only · Tailored Fit',
-    images: [
-      'https://images.unsplash.com/photo-1544441893-675973e31985?w=800&q=80',
-      'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=800&q=80',
-      'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800&q=80',
-      'https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=800&q=80',
-      'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=800&q=80'
-    ],
-    imageUrl: 'https://images.unsplash.com/photo-1544441893-675973e31985?w=800&q=80'
-  },
-  {
-    sku: 'shu-ring',
-    id: 'shu-ring',
-    name: 'Akatsuki "Shu" Signet Ring',
-    collection: 'akatsuki',
-    collectionName: 'Akatsuki Shadows',
-    category: 'Accessories & Jewelry',
-    category_name: 'Accessories & Jewelry',
-    color: 'Crimson Red',
-    sizes: ['7', '8', '9', '10', '11'],
-    tag: '925 STERLING SILVER',
-    priceInr: 7999,
-    priceRyo: 12000,
-    stock: 24,
-    seal: '朱',
-    desc: 'Heavyweight oxidized .925 sterling silver band embedded with crimson carnelian stone bearing the "Shu" (Vermilion) kanji seal.',
-    specs: '.925 Sterling Silver · Natural Carnelian · Custom Sizes 7-12',
-    images: [
-      'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=800&q=80',
-      'https://images.unsplash.com/photo-1603561591411-07134e71a2a9?w=800&q=80',
-      'https://images.unsplash.com/photo-1598560917505-59a3ad559071?w=800&q=80',
-      'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=800&q=80',
-      'https://images.unsplash.com/photo-1573408301185-9146fe634ad0?w=800&q=80'
-    ],
-    imageUrl: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=800&q=80'
-  },
-  {
-    sku: 'akatsuki-kasa',
-    id: 'akatsuki-kasa',
-    name: 'Straw Kasa Woven Hat with Veil',
-    collection: 'akatsuki',
-    collectionName: 'Akatsuki Shadows',
-    category: 'Accessories & Jewelry',
-    category_name: 'Accessories & Jewelry',
-    color: 'Ivory White',
-    sizes: ['Free Size'],
-    tag: 'HANDWOVEN BAMBOO',
-    priceInr: 5499,
-    priceRyo: 8600,
-    stock: 18,
-    seal: '笠',
-    desc: 'Traditional woven bamboo conical kasa with pendant brass chime bell and sheer shadow-veil curtains to conceal the sharingan gaze.',
-    specs: 'Handwoven Bamboo · Brass Ringing Chime · Removable Veil',
-    images: [
-      'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=800&q=80',
-      'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=800&q=80',
-      'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=800&q=80',
-      'https://images.unsplash.com/photo-1589256469067-ea99122bbdc4?w=800&q=80',
-      'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=800&q=80'
-    ],
-    imageUrl: 'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=800&q=80'
-  },
-  {
-    sku: 'shadow-holster',
-    id: 'shadow-holster',
-    name: 'Shadow Leather Kunai Leg Holster',
-    collection: 'akatsuki',
-    collectionName: 'Akatsuki Shadows',
-    category: 'Accessories & Jewelry',
-    category_name: 'Accessories & Jewelry',
-    color: 'Obsidian Black',
-    sizes: ['Free Size'],
-    tag: 'FULL-GRAIN LEATHER',
-    priceInr: 4499,
-    priceRyo: 6900,
-    stock: 35,
-    seal: '鞘',
-    desc: 'Full-grain oiled black cowhide tactical thigh holster with reinforced quick-draw slots and matte black military alloy buckles.',
-    specs: 'Full-Grain Black Cowhide · Alloy Buckles · Adjustable Straps',
-    images: [
-      'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=800&q=80',
-      'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=800&q=80',
-      'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=800&q=80',
-      'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=800&q=80',
-      'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=800&q=80'
-    ],
-    imageUrl: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=800&q=80'
-  },
-
-  // Collection 2: Uchiha Heritage
-  {
-    sku: 'leaf-protector',
-    id: 'leaf-protector',
-    name: 'Rogue Leaf Forehead Protector',
-    collection: 'heritage',
-    collectionName: 'Uchiha Heritage',
-    category: 'Relics',
-    tag: 'COLD-FORGED STEEL',
-    priceInr: 5299,
-    priceRyo: 8200,
-    stock: 15,
-    seal: '護',
-    desc: 'Hand-carved stainless steel forehead protector bearing the engraved slash through the Leaf village crest on an obsidian fabric band.',
-    specs: 'Brushed Steel · Indigo Cotton Band · Battle Scored Finish',
-    images: [
-      'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=800&q=80',
-      'https://images.unsplash.com/photo-1533158307587-828f0a76ef46?w=800&q=80',
-      'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&q=80',
-      'https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=800&q=80',
-      'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?w=800&q=80'
-    ]
-  },
-  {
-    sku: 'mangekyo-print',
-    id: 'mangekyo-print',
-    name: 'Mangekyo Optical Art Print',
-    collection: 'heritage',
-    collectionName: 'Uchiha Heritage',
-    category: 'Craft',
-    tag: 'ARCHIVAL LENTICULAR',
-    priceInr: 4299,
-    priceRyo: 6500,
-    stock: 22,
-    seal: '眼',
-    desc: 'Museum-grade 3-phase lenticular print transitioning between 3-Tomoe Sharingan and Itachi’s triangular pinwheel Mangekyo depending on viewer angle.',
-    specs: 'Archival 380gsm Paper · 18 × 24 in · Foil Stamped Certificate',
-    images: [
-      'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=800&q=80',
-      'https://images.unsplash.com/photo-1541701494587-cb58502866ab?w=800&q=80',
-      'https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=800&q=80',
-      'https://images.unsplash.com/photo-1577083552431-6e5fd01aa342?w=800&q=80',
-      'https://images.unsplash.com/photo-1563089145-599997674d42?w=800&q=80'
-    ]
-  },
-  {
-    sku: 'uchiha-wax-seal',
-    id: 'uchiha-wax-seal',
-    name: 'Official Emblem Brass Wax Seal Kit',
-    collection: 'heritage',
-    collectionName: 'Uchiha Heritage',
-    category: 'Craft',
-    tag: 'SOLID MACHINED BRASS',
-    priceInr: 3199,
-    priceRyo: 4800,
-    stock: 30,
-    seal: '印',
-    desc: 'Solid machined brass sealing stamp bearing the iconic Uchiha paper fan crest. Includes 3 sticks of matte vermilion sealing wax.',
-    specs: 'Machined Solid Brass · 3 Vermilion Wax Sticks · Wooden Box',
-    images: [
-      'https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=800&q=80',
-      'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800&q=80',
-      'https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=800&q=80',
-      'https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?w=800&q=80',
-      'https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?w=800&q=80'
-    ]
-  },
-  {
-    sku: 'tessen-fan',
-    id: 'tessen-fan',
-    name: 'Fire Style Cold-Forged Iron Tessen',
-    collection: 'heritage',
-    collectionName: 'Uchiha Heritage',
-    category: 'Armory',
-    tag: 'WAR COMBAT FAN',
-    priceInr: 8999,
-    priceRyo: 14000,
-    stock: 8,
-    seal: '扇',
-    desc: 'Traditional war fan constructed from hardened black steel ribs and waxed heavyweight washi canvas depicting the Great Fireball.',
-    specs: 'Forged High-Carbon Steel · Waxed Canvas · 11.5 in Folded',
-    images: [
-      'https://images.unsplash.com/photo-1582738411706-bfc8e691d1c2?w=800&q=80',
-      'https://images.unsplash.com/photo-1589256469067-ea99122bbdc4?w=800&q=80',
-      'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&q=80',
-      'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=800&q=80',
-      'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=800&q=80'
-    ]
-  },
-
-  // Collection 3: Crow Genjutsu & Sagecraft
-  {
-    sku: 'crow-burner',
-    id: 'crow-burner',
-    name: 'Crow Genjutsu Incense Burner',
-    collection: 'genjutsu',
-    collectionName: 'Crow Genjutsu',
-    category: 'Craft',
-    tag: 'HANDCRAFTED CERAMIC',
-    priceInr: 6499,
-    priceRyo: 9800,
-    stock: 14,
-    seal: '鴉',
-    desc: 'Sculpted matte black stoneware crow burner. Backflow smoke pours down through the raven folded wings. Includes 20 cones of Hinoki cedar incense.',
-    specs: 'High-Fired Stoneware · Matte Carbon Finish · 20x Hinoki Cones',
-    images: [
-      'https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?w=800&q=80',
-      'https://images.unsplash.com/photo-1506157786151-b8491531f063?w=800&q=80',
-      'https://images.unsplash.com/photo-1516205651411-aef33a44f7c2?w=800&q=80',
-      'https://images.unsplash.com/photo-1528722828814-77b9b83aafb2?w=800&q=80',
-      'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?w=800&q=80'
-    ]
-  },
-  {
-    sku: 'amaterasu-beads',
-    id: 'amaterasu-beads',
-    name: 'Amaterasu Obsidian Prayer Beads',
-    collection: 'genjutsu',
-    collectionName: 'Crow Genjutsu',
-    category: 'Relics',
-    tag: 'VOLCANIC OBSIDIAN',
-    priceInr: 3499,
-    priceRyo: 5400,
-    stock: 28,
-    seal: '珠',
-    desc: '108 natural matte black volcanic obsidian beads strung on reinforced silk cord, accented with an engraved emblem marker and crimson tassel.',
-    specs: '8mm Natural Volcanic Stone · Crimson Silk · Laser-Etched Guru Bead',
-    images: [
-      'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=800&q=80',
-      'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=800&q=80',
-      'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=800&q=80',
-      'https://images.unsplash.com/photo-1598560917505-59a3ad559071?w=800&q=80',
-      'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=800&q=80'
-    ]
-  },
-  {
-    sku: 'tsukuyomi-teacup',
-    id: 'tsukuyomi-teacup',
-    name: 'Tsukuyomi Midnight Ceramic Teacup',
-    collection: 'genjutsu',
-    collectionName: 'Crow Genjutsu',
-    category: 'Craft',
-    tag: 'WOOD-FIRED CERAMIC',
-    priceInr: 2999,
-    priceRyo: 4600,
-    stock: 19,
-    seal: '盃',
-    desc: 'Handmade Tenmoku glaze ceramic cup fired in wood kilns. Iridescent iron oil spots appear like red stars inside black genjutsu skies.',
-    specs: 'Kyoto Stoneware · Hand-Thrown · 180ml Capacity',
-    images: [
-      'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=800&q=80',
-      'https://images.unsplash.com/photo-1577968897966-3d4325b36b61?w=800&q=80',
-      'https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=800&q=80',
-      'https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=800&q=80',
-      'https://images.unsplash.com/photo-1528722828814-77b9b83aafb2?w=800&q=80'
-    ]
-  },
-  {
-    sku: 'crow-quill',
-    id: 'crow-quill',
-    name: 'Crow Quill & Vermilion Ink Set',
-    collection: 'genjutsu',
-    collectionName: 'Crow Genjutsu',
-    category: 'Craft',
-    tag: 'NATURAL FEATHER QUILL',
-    priceInr: 2499,
-    priceRyo: 3700,
-    stock: 25,
-    seal: '筆',
-    desc: 'Natural iridescent black raven flight feather hand-cut for fine kanji calligraphy, paired with archival vermilion red mineral ink bottle.',
-    specs: 'Genuine Raven Quill · 30ml Vermilion Ink · Wax Stopper',
-    images: [
-      'https://images.unsplash.com/photo-1583485088034-697b5bc54ccd?w=800&q=80',
-      'https://images.unsplash.com/photo-1585776245991-cf89dd7fc73a?w=800&q=80',
-      'https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?w=800&q=80',
-      'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=800&q=80',
-      'https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=800&q=80'
-    ]
-  },
-
-  // Collection 4: Shinobi Armory
-  {
-    sku: 'shadow-shuriken',
-    id: 'shadow-shuriken',
-    name: 'Shadow Windmill Shuriken (4-Pack)',
-    collection: 'armory',
-    collectionName: 'Shinobi Armory',
-    category: 'Armory',
-    tag: 'BLUED 440C STEEL',
-    priceInr: 3999,
-    priceRyo: 6100,
-    stock: 40,
-    seal: '手',
-    desc: 'Precision-balanced 4-point aerodynamic throwing stars machined from blued 440C stainless steel with matte glare-free finish.',
-    specs: '440C Stainless Steel · 4-Pack · Ballistic Nylon Case',
-    images: [
-      'https://images.unsplash.com/photo-1589256469067-ea99122bbdc4?w=800&q=80',
-      'https://images.unsplash.com/photo-1595590424283-b8f17842773f?w=800&q=80',
-      'https://images.unsplash.com/photo-1533158307587-828f0a76ef46?w=800&q=80',
-      'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=800&q=80',
-      'https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=800&q=80'
-    ]
-  },
-  {
-    sku: 'spring-tanto',
-    id: 'spring-tanto',
-    name: 'Concealed Tanto Dagger Replica',
-    collection: 'armory',
-    collectionName: 'Shinobi Armory',
-    category: 'Armory',
-    tag: 'ANBU SHORT BLADE',
-    priceInr: 9999,
-    priceRyo: 15800,
-    stock: 10,
-    seal: '刀',
-    desc: 'Straight-edge display replica dagger featuring black ray-skin handle wrap, blackened brass habaki collar, and matte wooden scabbard.',
-    specs: '1045 Carbon Steel (Unsharpened) · Ray Skin Wrap · 11 in',
-    images: [
-      'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=800&q=80',
-      'https://images.unsplash.com/photo-1589256469067-ea99122bbdc4?w=800&q=80',
-      'https://images.unsplash.com/photo-1595590424283-b8f17842773f?w=800&q=80',
-      'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=800&q=80',
-      'https://images.unsplash.com/photo-1533158307587-828f0a76ef46?w=800&q=80'
-    ]
-  },
-  {
-    sku: 'wire-trap-reel',
-    id: 'wire-trap-reel',
-    name: 'High-Tensile Steel Wire Trap Spool',
-    collection: 'armory',
-    collectionName: 'Shinobi Armory',
-    category: 'Armory',
-    tag: 'MICRO-BRAIDED WIRE',
-    priceInr: 2699,
-    priceRyo: 4100,
-    stock: 50,
-    seal: '線',
-    desc: '50-meter spool of ultra-thin micro-braided black stainless steel wire designed for shuriken trajectory guidance and perimeter rigging.',
-    specs: 'Micro-Braided Steel · 50m Length · Friction Reel Spool',
-    images: [
-      'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=800&q=80',
-      'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=800&q=80',
-      'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=800&q=80',
-      'https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=800&q=80',
-      'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&q=80'
-    ]
-  },
-  {
-    sku: 'smoke-scroll',
-    id: 'smoke-scroll',
-    name: 'Crow Smoke Bomb Requisition',
-    collection: 'armory',
-    collectionName: 'Shinobi Armory',
-    category: 'Armory',
-    tag: 'SMOKE EXPLOSIVE CASK',
-    priceInr: 2799,
-    priceRyo: 4300,
-    stock: 35,
-    seal: '煙',
-    desc: 'Set of six sealed spherical clay cartridges filled with non-toxic black pine smoke powder and crow feather scent for genjutsu escape.',
-    specs: 'Clay Shells · 6 Cartridges · Sealed Wooden Cask',
-    images: [
-      'https://images.unsplash.com/photo-1516205651411-aef33a44f7c2?w=800&q=80',
-      'https://images.unsplash.com/photo-1506157786151-b8491531f063?w=800&q=80',
-      'https://images.unsplash.com/photo-1528722828814-77b9b83aafb2?w=800&q=80',
-      'https://images.unsplash.com/photo-1583485088034-697b5bc54ccd?w=800&q=80',
-      'https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?w=800&q=80'
-    ]
-  }
-];
-
-// Helper to normalize product format (preserving strictly real Zoho inventory data)
 function normalizeProduct(p) {
   const sku = p.sku || p.id || '';
   let priceInr = Number(p.priceInr || p.price || p.rate || 0);
@@ -4154,7 +3561,7 @@ app.get('/api/email-preview/:type', (req, res) => {
         qty: 1,
         priceInr: 1599,
         totalItemPriceInr: 1599,
-        image: '/product-minato.jpg'
+        image: '/api/product-image'
       }
     ]
   };
@@ -4383,7 +3790,7 @@ app.post('/api/returns/create', async (req, res) => {
         qty,
         priceInr: unitPrice,
         totalItemPriceInr: Number(it?.totalItemPriceInr || (unitPrice * qty)),
-        image: it?.image || it?.imageUrl || matched?.image || matched?.imageUrl || '/product-minato.jpg'
+        image: it?.image || it?.imageUrl || matched?.image || matched?.imageUrl || '/api/product-image'
       };
     });
 
@@ -6268,7 +5675,25 @@ app.post('/api/zoho-inventory/sync', async (req, res) => {
 
 const zohoImageBufferCache = new Map();
 
-// Proxy Zoho Inventory Item Images with OAuth Token, Memory Cache & Guaranteed Fallback
+async function getCachedZohoProductImageUrl() {
+  let cachedItems = Array.isArray(zohoInventory.tokenState?.cachedItems) ? zohoInventory.tokenState.cachedItems : [];
+  if (!cachedItems.length && zohoInventory.isZohoConfigured()) {
+    const result = await zohoInventory.fetchZohoItems(false);
+    cachedItems = Array.isArray(result.items) ? result.items : [];
+  }
+  const product = cachedItems.find(item => String(item.sku || '').toUpperCase() === 'TS-MIN-001')
+    || cachedItems.find(item => item.imageUrl || (Array.isArray(item.images) && item.images.length));
+  return [product?.imageUrl, ...(Array.isArray(product?.images) ? product.images : [])]
+    .find(url => typeof url === 'string' && url && !/(?:^|\/)(?:api\/product-image|product-minato\.jpg)(?:[?#]|$)/i.test(url)) || '';
+}
+
+app.get(['/api/product-image', '/product-minato.jpg'], async (req, res) => {
+  const imageUrl = await getCachedZohoProductImageUrl();
+  if (!imageUrl) return res.status(404).send('No Zoho product image is available.');
+  return res.redirect(imageUrl);
+});
+
+// Proxy Zoho Inventory Item Images with OAuth Token & Memory Cache
 app.get('/api/zoho-inventory/items/:itemId/image', async (req, res) => {
   try {
     const { itemId } = req.params;
@@ -6299,13 +5724,11 @@ app.get('/api/zoho-inventory/items/:itemId/image', async (req, res) => {
     console.warn('[Server Zoho Item Image Proxy Note]:', err.message);
   }
 
-  res.setHeader('Content-Type', 'image/jpeg');
-  res.setHeader('Cache-Control', 'public, max-age=86400');
-  res.send(getProductImageBuffer());
+  res.status(404).json({ error: 'Zoho item image not found.' });
 });
 
-// Proxy Zoho Inventory Document Images, Memory Cache & Guaranteed Fallback
-app.get(['/api/zoho-inventory/documents/:docId', '/api/product-image'], async (req, res) => {
+// Proxy Zoho Inventory Document Images
+app.get('/api/zoho-inventory/documents/:docId', async (req, res) => {
   try {
     const { docId } = req.params;
     const cacheKey = `doc_${docId}`;
@@ -6335,9 +5758,7 @@ app.get(['/api/zoho-inventory/documents/:docId', '/api/product-image'], async (r
     console.warn('[Server Zoho Document Proxy Note]:', err.message);
   }
 
-  res.setHeader('Content-Type', 'image/jpeg');
-  res.setHeader('Cache-Control', 'public, max-age=86400');
-  res.send(getProductImageBuffer());
+  res.status(404).json({ error: 'Zoho document image not found.' });
 });
 
 // Update or test Zoho Inventory configuration dynamically

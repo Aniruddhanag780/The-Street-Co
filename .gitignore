@@ -6,5 +6,9 @@ dist/
 .DS_Store
 .aistudio/
 support_tickets.json
+/product-minato.jpg
+/product-ts-min-001.jpg
+/og-image.jpg
+/og-preview.jpg
 bun.lock
 

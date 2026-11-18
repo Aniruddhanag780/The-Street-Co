@@ -99,7 +99,6 @@ self.addEventListener('push', (event) => {
   const title = data.notification?.title || data.title || 'The Street Co';
   const options = {
     body: data.notification?.body || data.body || 'Elevated Style · Modern Essentials update',
-    icon: data.notification?.icon || data.icon || '/img/favicon.ico',
     data: data.data || { url: data.url || '/' },
     vibrate: [150, 80, 150]
   };

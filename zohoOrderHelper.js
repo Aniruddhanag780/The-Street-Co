@@ -124,7 +124,7 @@ export function mapZohoSalesOrderToAccountOrder(
         qty,
         priceInr: rate,
         totalItemPriceInr: Number(li.item_total || rate * qty),
-        image: matchedCatalog?.imageUrl || matchedCatalog?.images?.[0] || '/product-minato.jpg'
+        image: matchedCatalog?.imageUrl || matchedCatalog?.images?.[0] || '/api/product-image'
       };
     });
   }

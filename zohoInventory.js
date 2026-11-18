@@ -431,23 +431,6 @@ export async function fetchZohoItems(force = false) {
       const itemSku = (item.sku || '').trim();
       const nameLower = `${itemName} ${itemSku}`.toLowerCase();
 
-      // Provide accurate SKU/type fallback images when no image is uploaded in Zoho Inventory yet
-      if (docImages.length === 0) {
-        if (nameLower.includes('holster')) {
-          docImages = [
-            'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=800&q=80',
-            'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=800&q=80'
-          ];
-        } else if (nameLower.includes('jogger') || nameLower.includes('cargo') || nameLower.includes('ts-str-004')) {
-          docImages = [
-            'https://images.unsplash.com/photo-1517445312882-bc9910d016b7?w=800&q=80',
-            'https://images.unsplash.com/photo-1552902865-b72c031ac5ea?w=800&q=80'
-          ];
-        } else {
-          docImages = ['/product-minato.jpg'];
-        }
-      }
-
       // Infer clean category when category_name is blank in Zoho Inventory
       let resolvedCategoryName = (item.category_name || item.brand || '').trim();
       if (!resolvedCategoryName || resolvedCategoryName.toLowerCase() === 't-shirt') {

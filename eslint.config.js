@@ -10,7 +10,6 @@ export default [
       'emailTemplates.js',
       'upiIntentHelper.js',
       'zohoOrderHelper.js',
-      'productImage.js',
       'imapPaymentVerifier.js',
       'netlify/**/*.js',
       'scripts/**/*.js'

@@ -4,7 +4,7 @@
   functions = "netlify/functions"
 
 [functions]
-  included_files = ["*.jpg", "*.png", "public/assets/email/*.png", "zoho_inventory_cache.json", "productImage.js"]
+  included_files = ["*.jpg", "*.png", "public/assets/email/*.png", "zoho_inventory_cache.json"]
 
 [build.environment]
   SECRETS_SCAN_ENABLED = "false"
@@ -29,19 +29,9 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
 
-# Direct product image routes - routed to serverless function for guaranteed binary JPEG delivery
+# Preserve the email image URL while resolving it dynamically from Zoho.
 [[redirects]]
   from = "/product-minato.jpg"
-  to = "/.netlify/functions/api/product-minato.jpg"
-  status = 200
-
-[[redirects]]
-  from = "/product-ts-min-001.jpg"
-  to = "/.netlify/functions/api/product-ts-min-001.jpg"
-  status = 200
-
-[[redirects]]
-  from = "/product-image"
   to = "/.netlify/functions/api/product-image"
   status = 200
 

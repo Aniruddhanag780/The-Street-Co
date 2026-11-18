@@ -134,7 +134,7 @@ test('renderReturnConfirmationEmail uses matching minimal format and enriches it
           qty: 1,
           priceInr: 1599,
           totalItemPriceInr: 1599,
-          image: '/product-ts-min-001.jpg'
+          image: '/product-minato.jpg'
         }
       ]
     },

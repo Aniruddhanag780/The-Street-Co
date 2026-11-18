@@ -61,8 +61,7 @@
 
 ```
 the-street-co/
-├── public/                       # Static public assets, favicons, PWA icons
-│   └── img/                      # Brand, product, and partner icons
+├── public/                       # Transactional email payment and social icons
 ├── admin-og.html                 # Social preview & OpenGraph banner generator
 ├── admin-zoho.html               # Zoho Inventory synchronization dashboard
 ├── email-preview.html            # Transactional email template previewer

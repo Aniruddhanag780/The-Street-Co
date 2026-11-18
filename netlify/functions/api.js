@@ -3,7 +3,6 @@ import path from 'path';
 import twilio from 'twilio';
 import nodemailer from 'nodemailer';
 import * as zohoInventory from '../../zohoInventory.js';
-import { getProductImageBuffer } from '../../productImage.js';
 import { renderOrderConfirmationEmail, renderEmailOtpEmail } from '../../emailTemplates.js';
 import { verifyUpiPaymentViaImap } from '../../imapPaymentVerifier.js';
 
@@ -533,14 +532,30 @@ NODE_ENV=production
   }
 
   try {
-    // 0. PRODUCT IMAGES & ZOHO PROXY: /api/zoho-inventory/documents/:id, /api/zoho-inventory/items/:id/image, /api/product-image, /product-minato.jpg
+    // Product image requests resolve to a Zoho Inventory image.
+    if (rawPath.includes('product-image') || rawPath.includes('product-minato.jpg')) {
+      let cachedItems = Array.isArray(zohoInventory.tokenState?.cachedItems) ? zohoInventory.tokenState.cachedItems : [];
+      if (!cachedItems.length && zohoInventory.isZohoConfigured()) {
+        const result = await zohoInventory.fetchZohoItems(false);
+        cachedItems = Array.isArray(result.items) ? result.items : [];
+      }
+      const product = cachedItems.find(item => String(item.sku || '').toUpperCase() === 'TS-MIN-001')
+        || cachedItems.find(item => item.imageUrl || (Array.isArray(item.images) && item.images.length));
+      const imageUrl = [product?.imageUrl, ...(Array.isArray(product?.images) ? product.images : [])]
+        .find(url => typeof url === 'string' && url && !/(?:^|\/)(?:api\/product-image|product-minato\.jpg)(?:[?#]|$)/i.test(url));
+      if (imageUrl) {
+        return {
+          statusCode: 302,
+          headers: { ...CORS_HEADERS, Location: imageUrl, 'Cache-Control': 'public, max-age=300' },
+          body: ''
+        };
+      }
+      return { statusCode: 404, headers: CORS_HEADERS, body: JSON.stringify({ error: 'No Zoho product image is available.' }) };
+    }
+
+    // 0. ZOHO IMAGE PROXY: /api/zoho-inventory/documents/:id, /api/zoho-inventory/items/:id/image
     if (
       rawPath.includes('zoho-inventory') ||
-      rawPath.includes('product-image') ||
-      rawPath.includes('product-minato') ||
-      rawPath.includes('product-ts-min-001') ||
-      rawPath.endsWith('product-minato.jpg') ||
-      rawPath.endsWith('product-ts-min-001.jpg') ||
       (rawPath.includes('/products/') && rawPath.endsWith('/image'))
     ) {
       if (rawPath.includes('documents/')) {
@@ -605,20 +620,7 @@ NODE_ENV=production
         }
       }
 
-      // Guaranteed fallback to high-quality local product image
-      const fallbackBuf = getProductImageBuffer();
-      return {
-        statusCode: 200,
-        isBase64Encoded: true,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Key',
-          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-          'Content-Type': 'image/jpeg',
-          'Cache-Control': 'public, max-age=86400'
-        },
-        body: fallbackBuf.toString('base64')
-      };
+      return { statusCode: 404, headers: CORS_HEADERS, body: JSON.stringify({ error: 'Zoho product image not found.' }) };
     }
 
     // 1. PRODUCTS: GET /api/products

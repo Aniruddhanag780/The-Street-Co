@@ -420,7 +420,7 @@ const inMemoryOrders = new Map();
 const inMemorySubscribers = new Map();
 const inMemoryTickets = new Map();
 
-// Helper to load catalog products from zoho_inventory_cache.json or static fallback
+// Helper to load the last Zoho catalog snapshot if the Inventory request fails.
 function getCachedProducts() {
   const possiblePaths = [
     path.join(process.cwd(), 'zoho_inventory_cache.json'),
@@ -436,37 +436,7 @@ function getCachedProducts() {
       }
     } catch (_) {}
   }
-  return [
-    {
-      id: "TS-MIN-001",
-      zoho_item_id: "4226403000000037080",
-      sku: "TS-MIN-001",
-      title: "Fourth Hokage Minato Inspired Oversized T-Shirt - Premium Flame Print Anime Streetwear",
-      name: "Fourth Hokage Minato Inspired Oversized T-Shirt - Premium Flame Print Anime Streetwear",
-      price: 1599,
-      priceInr: 1599,
-      originalPrice: 1799,
-      originalMrp: 1799,
-      hasDiscount: true,
-      discountPercent: 11,
-      unit: "pcs",
-      stock: 100,
-      inStock: true,
-      category: "t-shirt",
-      category_name: "T-Shirt",
-      collection: "fourth hokage minato inspired oversized t-shirt - premium flame print anime streetwear",
-      collectionName: "Fourth Hokage Minato Inspired Oversized T-Shirt - Premium Flame Print Anime Streetwear",
-      description: "Product Overview\nUnleash the spirit of the Hidden Leaf's fastest shinobi. This premium drop-shoulder oversized tee brings the iconic aesthetic of the Fourth Hokage’s legendary cloak straight into modern streetwear.",
-      images: [
-        "/api/zoho-inventory/documents/4226403000000037086",
-        "/api/zoho-inventory/documents/4226403000000037088",
-        "/api/zoho-inventory/documents/4226403000000037090",
-        "/api/zoho-inventory/documents/4226403000000037092",
-        "/api/zoho-inventory/documents/4226403000000037094"
-      ],
-      imageUrl: "/api/zoho-inventory/documents/4226403000000037086"
-    }
-  ];
+  return [];
 }
 
 const CORS_HEADERS = {
@@ -653,7 +623,15 @@ NODE_ENV=production
 
     // 1. PRODUCTS: GET /api/products
     if (rawPath.includes('products') || rawPath.includes('shop')) {
-      const rawProducts = getCachedProducts();
+      let zohoCatalog;
+      try {
+        zohoCatalog = await zohoInventory.fetchZohoItems(false);
+      } catch (err) {
+        console.warn('[Zoho Inventory] Product request failed; serving cached catalog:', err.message);
+        zohoCatalog = { source: 'zoho_cache', items: getCachedProducts() };
+      }
+
+      const rawProducts = Array.isArray(zohoCatalog?.items) ? zohoCatalog.items : [];
       const products = rawProducts.map(p => {
         let tag = p.tag || '';
         if (/420\s*gsm|french\s*terry/i.test(tag)) tag = '';
@@ -665,7 +643,7 @@ NODE_ENV=production
         statusCode: 200,
         headers: CORS_HEADERS,
         body: JSON.stringify({
-          source: 'zoho_inventory',
+          source: zohoCatalog?.source || 'zoho_inventory',
           count: products.length,
           products
         })

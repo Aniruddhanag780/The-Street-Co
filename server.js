@@ -3158,14 +3158,16 @@ app.delete('/api/coupons/:code', (req, res) => {
 // Products: List all (powered in real-time by Zoho Inventory & Streetwear Catalog)
 const handleListProducts = async (req, res) => {
   let zohoItems = [];
+  let zohoSource = '';
   let zohoCats = { categories: [], collections: [] };
 
   if (zohoInventory.isZohoConfigured()) {
     try {
       const zohoResult = await zohoInventory.fetchZohoItems(false).catch(() => null);
 
-      if (zohoResult && Array.isArray(zohoResult.items) && zohoResult.items.length > 0) {
+      if (zohoResult && Array.isArray(zohoResult.items)) {
         zohoItems = zohoResult.items;
+        zohoSource = zohoResult.source || '';
       } else if (zohoInventory.tokenState && Array.isArray(zohoInventory.tokenState.cachedItems)) {
         zohoItems = zohoInventory.tokenState.cachedItems;
       }
@@ -3175,13 +3177,12 @@ const handleListProducts = async (req, res) => {
   }
 
   // Strictly serve only the active products present in Zoho Inventory
-  const combined = zohoItems.length > 0
-    ? [...zohoItems]
-    : (zohoInventory.tokenState && Array.isArray(zohoInventory.tokenState.cachedItems) && zohoInventory.tokenState.cachedItems.length > 0
-      ? [...zohoInventory.tokenState.cachedItems]
-      : [DEFAULT_PRODUCTS[0]]);
-
-  const normalized = combined.map(normalizeProduct);
+  const cachedZohoItems = zohoInventory.tokenState && Array.isArray(zohoInventory.tokenState.cachedItems)
+    ? zohoInventory.tokenState.cachedItems
+    : [];
+  const hasLiveZohoCatalog = zohoSource === 'zoho_inventory';
+  const catalogItems = hasLiveZohoCatalog || zohoItems.length > 0 ? zohoItems : cachedZohoItems;
+  const normalized = catalogItems.map(normalizeProduct);
 
   const categories = [
     { id: 'all', name: 'All Products' },
@@ -3203,7 +3204,7 @@ const handleListProducts = async (req, res) => {
   ];
 
   return res.json({
-    source: zohoItems.length > 0 ? 'zoho_inventory' : 'street_co_catalog',
+    source: hasLiveZohoCatalog ? 'zoho_inventory' : 'zoho_cache',
     organization_id: zohoInventory.config.orgId,
     count: normalized.length,
     products: normalized,

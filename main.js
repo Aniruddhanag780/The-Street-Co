@@ -4888,39 +4888,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     }
   ];
 
-  const ZOHO_INITIAL_ITEM = {
-    id: 'TS-MIN-001',
-    sku: 'TS-MIN-001',
-    isNew: true,
-    zoho_item_id: '4226403000000037080',
-    name: 'Fourth Hokage Minato Inspired Oversized T-Shirt - Premium Flame Print Anime Streetwear',
-    title: 'Fourth Hokage Minato Inspired Oversized T-Shirt - Premium Flame Print Anime Streetwear',
-    collectionName: 'Minato Namikaze',
-    collection: 'minato',
-    category: 'Oversized T-Shirts',
-    category_name: 'Oversized T-Shirts',
-    desc: 'Official Fourth Hokage Minato Namikaze inspired oversized streetwear t-shirt. Features iconic flame motifs, premium 240+ GSM heavyweight combed cotton, custom drop shoulder aesthetic, and high-density screen printing. Direct live inventory fulfillment.',
-    description: 'Official Fourth Hokage Minato Namikaze inspired oversized streetwear t-shirt. Features iconic flame motifs, premium 240+ GSM heavyweight combed cotton, custom drop shoulder aesthetic, and high-density screen printing. Direct live inventory fulfillment.',
-    priceInr: 1599,
-    price: 1599,
-    originalMrp: 1799,
-    originalPrice: 1799,
-    hasDiscount: true,
-    discountPercent: 11,
-    stock: 98,
-    inStock: true,
-    unit: 'pcs',
-    images: [
-      '/product-minato.jpg',
-      'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=800&q=80',
-      'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=800&q=80',
-      'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=800&q=80'
-    ],
-    imageUrl: '/product-minato.jpg',
-    iconSvg: `<svg viewBox="0 0 40 40" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="20" cy="20" r="14" stroke="var(--blood-hot)"/><text x="20" y="25" text-anchor="middle" font-family="sans-serif" font-size="12" fill="var(--bone)">閃</text></svg>`
-  };
-
-  let collectionsData = [ZOHO_INITIAL_ITEM];
+  let collectionsData = [];
   window.collectionsData = collectionsData;
 
   const collectionsPage = document.getElementById('collectionsPage');

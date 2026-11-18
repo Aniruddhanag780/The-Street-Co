@@ -7,7 +7,8 @@ import {
   resolveItemImageUrl,
   renderOrderConfirmationEmail,
   renderReturnConfirmationEmail,
-  renderShipmentFulfilledEmail
+  renderShipmentFulfilledEmail,
+  renderEmailOtpEmail
 } from './emailTemplates.js';
 import { renderGstInvoiceHtml } from './zohoInventory.js';
 
@@ -106,8 +107,8 @@ test('renderOrderConfirmationEmail renders clean #FAF8F5 layout with ₹, Englis
   assert.match(result.html, /\/public\/assets\/email\/pay-visa\.png/);
   assert.match(result.html, /\/public\/assets\/email\/social-instagram\.png/);
   assert.doesNotMatch(result.html, /<svg\b/i);
-  assert.match(result.html, /<a href="https:\/\/thestreetco\.com"[^>]*text-decoration:underline[^>]*>thestreetco\.com<\/a>\s*&middot;\s*The Street Co/);
-  assert.match(result.html, /<a href="https:\/\/thestreetco\.com\/#terms"[^>]*text-decoration:underline[^>]*>Terms<\/a>[\s\S]*<a href="https:\/\/thestreetco\.com\/#privacy"[^>]*text-decoration:underline[^>]*>Privacy<\/a>[\s\S]*<a href="https:\/\/thestreetco\.com\/#refund"[^>]*text-decoration:underline[^>]*>Refunds<\/a>[\s\S]*<a href="https:\/\/thestreetco\.com\/#shipping"[^>]*text-decoration:underline[^>]*>Shipping<\/a>/);
+  assert.match(result.html, /thestreetco\.com(?:<\/span>)?<\/a>\s*(?:<span[^>]*>)?&middot;\s*The Street Co/);
+  assert.match(result.html, /<a href="https:\/\/thestreetco\.com\/#terms"[^>]*text-decoration:underline[^>]*>(?:<span[^>]*>)?Terms(?:<\/span>)?<\/a>[\s\S]*<a href="https:\/\/thestreetco\.com\/#privacy"[^>]*text-decoration:underline[^>]*>(?:<span[^>]*>)?Privacy(?:<\/span>)?<\/a>[\s\S]*<a href="https:\/\/thestreetco\.com\/#refund"[^>]*text-decoration:underline[^>]*>(?:<span[^>]*>)?Refunds(?:<\/span>)?<\/a>[\s\S]*<a href="https:\/\/thestreetco\.com\/#shipping"[^>]*text-decoration:underline[^>]*>(?:<span[^>]*>)?Shipping(?:<\/span>)?<\/a>/);
   assert.doesNotMatch(result.html, /€|EUR/);
 });
 
@@ -279,6 +280,27 @@ test('renderShipmentFulfilledEmail renders #FAF8F5 layout with 96x96 product ima
   assert.match(result.html, /Items delivered/);
 });
 
+test('renderEmailOtpEmail includes social & payment CID icons and prevents faded blue links', () => {
+  const result = renderEmailOtpEmail({
+    otpCode: '849201',
+    recipientName: 'Aniruddha Nag',
+    recipientEmail: 'aniruddhanag780@gmail.com',
+    useCidAssets: true
+  });
 
-
-
+  assert.match(result.html, /849201/);
+  assert.match(result.html, /alt="Instagram"/);
+  assert.match(result.html, /alt="Twitter"/);
+  assert.match(result.html, /alt="Reddit"/);
+  assert.match(result.html, /alt="Visa"/);
+  assert.match(result.html, /alt="Mastercard"/);
+  assert.match(result.html, /alt="PayPal"/);
+  assert.match(result.html, /alt="Apple Pay"/);
+  assert.match(result.html, /alt="Stripe"/);
+  assert.match(result.html, /alt="Google Pay"/);
+  assert.match(result.html, /alt="Amazon Pay"/);
+  assert.match(result.html, /src="cid:social-instagram"/);
+  assert.match(result.html, /src="cid:pay-visa"/);
+  assert.doesNotMatch(result.html, /#2563eb/i);
+  assert.equal(result.cidAttachments.length, 10);
+});

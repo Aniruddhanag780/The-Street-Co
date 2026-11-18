@@ -4,7 +4,7 @@ import twilio from 'twilio';
 import nodemailer from 'nodemailer';
 import * as zohoInventory from '../../zohoInventory.js';
 import { getProductImageBuffer } from '../../productImage.js';
-import { renderOrderConfirmationEmail } from '../../emailTemplates.js';
+import { renderOrderConfirmationEmail, renderEmailOtpEmail } from '../../emailTemplates.js';
 import { verifyUpiPaymentViaImap } from '../../imapPaymentVerifier.js';
 
 // Direct Google Gmail SMTP Configuration (Guaranteed Primary Inbox Delivery)
@@ -1682,71 +1682,22 @@ NODE_ENV=production
         try {
           const senderUser = (process.env.GMAIL_SMTP_USER || GMAIL_SMTP_USER).trim();
           const supportEmail = (process.env.GMAIL_REPLY_TO || 'support@thestreetco.zohodesk.in').trim();
+          const { subject, html, text, cidAttachments } = renderEmailOtpEmail({
+            otpCode,
+            recipientName: firstName,
+            recipientEmail: cleanEmail,
+            heading: 'Email Verification',
+            codeLabel: 'Verification OTP',
+            useCidAssets: true,
+            supportEmail
+          });
           await gmail.sendMail({
             from: `"${GMAIL_SENDER_NAME}" <${senderUser}>`,
             to: cleanEmail,
-            subject: `${otpCode} is your 6-Digit Email Verification OTP — The Street Co`,
-            html: `<!doctype html>
-<html lang="en">
-  <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="color-scheme" content="light only">
-    <meta name="supported-color-schemes" content="light only">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-      :root { color-scheme: light only; supported-color-schemes: light only; }
-      html, body { margin:0;padding:0;background-color:#FAF8F5 !important;color:#171717 !important;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;-webkit-font-smoothing:antialiased; }
-      table, td { border-collapse:collapse; }
-    </style>
-  </head>
-  <body bgcolor="#FAF8F5" style="margin:0;padding:0;background-color:#FAF8F5;color:#171717;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:#FAF8F5;">
-      <tr>
-        <td align="center" style="padding:40px 16px 48px 16px;background-color:#FAF8F5;">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:560px;background-color:#FAF8F5;">
-            <tr>
-              <td align="center" style="padding:0 0 28px 0;">
-                <a href="https://thestreetco.com" target="_blank" style="text-decoration:none;color:#000000;font-size:20px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;">THE STREET CO</a>
-              </td>
-            </tr>
-            <tr>
-              <td align="center" style="padding:0 0 20px 0;">
-                <h1 style="margin:0;font-size:28px;font-weight:500;line-height:1.25;letter-spacing:-0.02em;color:#111111;">Email Verification</h1>
-              </td>
-            </tr>
-            <tr>
-              <td align="center" style="padding:0 12px 28px 12px;font-size:14px;line-height:1.65;color:#52525b;">
-                <div style="margin:0 0 16px 0;color:#404040;">Hey ${firstName},</div>
-                <div style="margin:0 0 26px 0;">Use the 6-digit verification code below to verify and save your email address (<strong style="color:#171717;font-weight:600;">${cleanEmail}</strong>) on your The Street Co account.</div>
-                <div style="font-size:11px;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;color:#78716c;margin:0 0 8px 0;">Verification OTP</div>
-                <div style="font-size:34px;font-weight:600;letter-spacing:0.26em;color:#111111;line-height:1.2;margin:0 0 26px 0;">${otpCode}</div>
-                <div style="margin:0;font-size:13px;line-height:1.6;color:#52525b;">This verification code is valid for 10 minutes. If you did not request this verification, you can safely ignore this email.</div>
-              </td>
-            </tr>
-            <tr>
-              <td align="center" style="padding:28px 0 0 0;border-top:1px solid #e5dfd5;">
-                <div style="font-size:12px;color:#78716c;line-height:1.7;padding-top:6px;">Questions? Contact us at <a href="mailto:${supportEmail}" style="color:#78716c;text-decoration:underline;">${supportEmail}</a><br><a href="https://thestreetco.com" target="_blank" rel="noopener noreferrer" style="color:#78716c;text-decoration:underline;">thestreetco.com</a> &middot; The Street Co</div>
-                <div style="margin-top:20px;font-size:10px;font-weight:600;letter-spacing:0.22em;text-transform:uppercase;color:#78716c;">TIMELESS STREETWEAR CULTURE // ARCHIVE COLLECTION</div>
-                <div style="margin-top:8px;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#78716c;">&copy; 2026 THE STREET CO ALL RIGHTS RESERVED.</div>
-                <div style="margin-top:2px;font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:#78716c;">ELEVATED STYLE &middot; MODERN ESSENTIALS</div>
-                <div style="margin-top:16px;font-size:11px;color:#78716c;">
-                  <a href="https://thestreetco.com/#terms" target="_blank" rel="noopener noreferrer" style="color:#78716c;text-decoration:underline;">Terms</a>
-                  <span style="margin:0 6px;color:#78716c;">&middot;</span>
-                  <a href="https://thestreetco.com/#privacy" target="_blank" rel="noopener noreferrer" style="color:#78716c;text-decoration:underline;">Privacy</a>
-                  <span style="margin:0 6px;color:#78716c;">&middot;</span>
-                  <a href="https://thestreetco.com/#refund" target="_blank" rel="noopener noreferrer" style="color:#78716c;text-decoration:underline;">Refunds</a>
-                  <span style="margin:0 6px;color:#78716c;">&middot;</span>
-                  <a href="https://thestreetco.com/#shipping" target="_blank" rel="noopener noreferrer" style="color:#78716c;text-decoration:underline;">Shipping</a>
-                </div>
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
-  </body>
-</html>`
+            subject,
+            text,
+            html,
+            attachments: cidAttachments
           });
           emailDispatched = true;
         } catch (err) {

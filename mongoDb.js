@@ -55,92 +55,24 @@ const INITIAL_ACCOUNT_SEEDS = {
       }
     ],
     defaultAddressId: 'addr_1_1794593258741',
-    streetCashBalance: 113,
-    streetCashEarnedTotal: 612,
-    streetCashSpentTotal: 499,
-    streetCashHistory: [
-      {
-        id: 'redeem_1794851154497_NSRPBW',
-        type: 'REDEEMED',
-        points: -499,
-        discountInr: 499,
-        couponCode: 'STREETCASH-499-NSRPBW',
-        date: '2026-11-16T17:45:54.426Z',
-        label: 'Redeemed 499 Street Cash for ₹499 Voucher'
-      },
-      {
-        id: 'bonus_profile_email_1794851152760',
-        type: 'EARNED',
-        points: 35,
-        bonusKey: 'profile_email',
-        date: '2026-11-16T17:45:52.760Z',
-        label: 'Email Added to Account (+35 pts)'
-      },
-      {
-        id: 'bonus_profile_name_1794851152760',
-        type: 'EARNED',
-        points: 25,
-        bonusKey: 'profile_name',
-        date: '2026-11-16T17:45:52.760Z',
-        label: 'Name Uploaded in Profile (+25 pts)'
-      },
-      {
-        id: 'bonus_account_creation_1794851152759',
-        type: 'EARNED',
-        points: 75,
-        bonusKey: 'account_creation',
-        date: '2026-11-16T17:45:52.759Z',
-        label: 'New Account Creation (+75 pts)'
-      }
-    ],
-    streetCashCoupons: [
-      {
-        code: 'STREETCASH-499-NSRPBW',
-        couponName: '₹499 The Street Cash VIP Voucher',
-        couponText: 'Exclusive VIP Loyalty Reward: ₹499 Flat Discount. One-time use only.',
-        couponSubText: 'Applicable on all orders (No minimum order value)',
-        title: '₹499 The Street Cash VIP Voucher',
-        desc: 'Exclusive VIP Loyalty Reward: ₹499 Flat Discount. One-time use only.',
-        subText: 'Applicable on all orders (No minimum order value)',
-        group: 'flat',
-        type: 'flat',
-        value: 499,
-        discountInr: 499,
-        minOrderValue: 0,
-        maxOrderValue: null,
-        maxDiscount: 499,
-        isPublic: true,
-        isOneTimeUse: true,
-        isRedeemed: false,
-        usageLimit: 1,
-        userPhone: '6296731835',
-        redeemedAt: null,
-        redeemedByOrder: null,
-        badge: 'FLAT ₹499 OFF',
-        status: 'active',
-        createdAt: '2026-11-16T17:45:54.426Z',
-        source: 'the_street_cash_loyalty'
-      }
-    ],
-    streetCashBonuses: {
-      account_creation: true,
-      account_creationAt: '2026-11-16T17:45:52.759Z',
-      profile_name: true,
-      profile_nameAt: '2026-11-16T17:45:52.760Z',
-      profile_email: true,
-      profile_emailAt: '2026-11-16T17:45:52.760Z'
-    },
     createdAt: '2026-11-13T18:07:38.741Z',
     lastLoginAt: '2026-11-16T17:45:52.760Z',
     updatedAt: '2026-11-16T17:45:54.497Z'
   }
 };
 
-// In-memory customer session/address/loyalty store persisted only in OS temp dir (Orders & Customer CRM live in Zoho Inventory; MongoDB stores ONLY newsletter & coupons)
+// Sanitize account document (points / Street Cash system permanently removed)
+function sanitizeWalletDoc(doc) {
+  if (!doc || typeof doc !== 'object') return doc;
+  const { streetCashBalance, streetCashEarnedTotal, streetCashSpentTotal, streetCashHistory, streetCashCoupons, streetCashBonuses, ...rest } = doc;
+  return rest;
+}
+
+// In-memory customer session/address/loyalty store persisted in OS temp dir
 const inMemoryAccounts = new Map();
 function loadLocalAccountsCache() {
   for (const [phone, doc] of Object.entries(INITIAL_ACCOUNT_SEEDS)) {
-    inMemoryAccounts.set(phone, { ...doc });
+    inMemoryAccounts.set(phone, sanitizeWalletDoc({ ...doc }));
   }
   try {
     if (fs.existsSync(ACCOUNTS_CACHE_FILE)) {
@@ -149,7 +81,7 @@ function loadLocalAccountsCache() {
         for (const [phone, doc] of Object.entries(parsed)) {
           const clean = String(phone || '').replace(/\D/g, '').slice(-10);
           if (clean.length === 10 && doc && typeof doc === 'object') {
-            inMemoryAccounts.set(clean, { ...doc, phone: clean });
+            inMemoryAccounts.set(clean, sanitizeWalletDoc({ ...doc, phone: clean }));
           }
         }
       }
@@ -157,6 +89,7 @@ function loadLocalAccountsCache() {
   } catch (err) {
     console.warn('[Accounts Session] Load notice:', err.message);
   }
+  persistLocalAccountsCache();
 }
 loadLocalAccountsCache();
 
@@ -204,22 +137,44 @@ export async function connectMongoDb() {
       await client.connect();
       dbInstance = client.db(dbName);
 
-      // Keep indexes strictly for coupons and newsletter_subscribers
+      // Keep indexes for users_accounts, coupons, and newsletter_subscribers
       await Promise.allSettled([
+        dbInstance.collection('users_accounts').createIndex({ phone: 1 }, { unique: true }),
         dbInstance.collection('coupons').createIndex({ code: 1 }, { unique: true }),
         dbInstance.collection('newsletter_subscribers').createIndex({ email: 1 }, { unique: true })
       ]);
+
+      // Sync clean wallet state for any existing accounts into MongoDB users_accounts
+      try {
+        const usersCol = dbInstance.collection('users_accounts');
+        for (const [phone, localDoc] of inMemoryAccounts.entries()) {
+          const cleanDoc = sanitizeWalletDoc(localDoc);
+          await usersCol.updateOne(
+            { phone },
+            { $set: cleanDoc },
+            { upsert: true }
+          );
+        }
+        const remoteDocs = await usersCol.find({}, { projection: { _id: 0 } }).toArray();
+        for (const rDoc of remoteDocs) {
+          const p = String(rDoc?.phone || '').replace(/\D/g, '').slice(-10);
+          if (p.length === 10 && !inMemoryAccounts.has(p)) {
+            inMemoryAccounts.set(p, sanitizeWalletDoc({ ...rDoc, phone: p }));
+          }
+        }
+        persistLocalAccountsCache();
+      } catch (_) {}
 
       connectionStatus = {
         connected: true,
         cluster: 'cluster-1.torqvts.mongodb.net',
         dbName,
         user: 'aniruddhanag780_db_user',
-        collections: ['newsletter_subscribers', 'coupons'],
+        collections: ['users_accounts', 'newsletter_subscribers', 'coupons'],
         lastConnectedAt: new Date().toISOString(),
         lastError: null
       };
-      console.log(`[MongoDB Atlas] Connected to ${connectionStatus.cluster} (DB: ${dbName} · Newsletter & Coupons)`);
+      console.log(`[MongoDB Atlas] Connected to ${connectionStatus.cluster} (DB: ${dbName} · Accounts, Street Cash Wallet, Newsletter & Coupons)`);
       return dbInstance;
     } catch (err) {
       connectionStatus.connected = false;
@@ -318,11 +273,24 @@ export function normalizeUserAddresses(rawAddresses = [], preferredDefaultId = '
   };
 }
 
-// ── Customer Account Profile Helpers (Local file store + Zoho Inventory CRM — NOT MongoDB) ──
+// ── Customer Account Profile & Street Cash Wallet Helpers (MongoDB users_accounts + Local Cache) ──
 export async function findUserByPhone(phone) {
   const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
   if (cleanPhone.length !== 10) return null;
-  const doc = inMemoryAccounts.get(cleanPhone) || null;
+  let doc = inMemoryAccounts.get(cleanPhone) || null;
+  if (!doc) {
+    try {
+      const col = await getCollection('users_accounts');
+      if (col) {
+        const remote = await col.findOne({ phone: cleanPhone }, { projection: { _id: 0 } });
+        if (remote) {
+          doc = sanitizeWalletDoc({ ...remote, phone: cleanPhone });
+          inMemoryAccounts.set(cleanPhone, doc);
+          persistLocalAccountsCache();
+        }
+      }
+    } catch (_) {}
+  }
   if (!doc) return null;
   const { addresses, defaultAddressId } = normalizeUserAddresses(doc.addresses || [], doc.defaultAddressId || '');
   return {
@@ -368,31 +336,7 @@ export async function upsertUserByPhone(phone, updates = {}) {
 
   const { addresses, defaultAddressId } = normalizeUserAddresses(rawAddresses, rawDefaultId);
 
-  const streetCashBalance = updates.streetCashBalance !== undefined
-    ? Math.max(0, Number(updates.streetCashBalance) || 0)
-    : Math.max(0, Number(existing.streetCashBalance) || 0);
-
-  const streetCashEarnedTotal = updates.streetCashEarnedTotal !== undefined
-    ? Math.max(0, Number(updates.streetCashEarnedTotal) || 0)
-    : Math.max(0, Number(existing.streetCashEarnedTotal) || 0);
-
-  const streetCashSpentTotal = updates.streetCashSpentTotal !== undefined
-    ? Math.max(0, Number(updates.streetCashSpentTotal) || 0)
-    : Math.max(0, Number(existing.streetCashSpentTotal) || 0);
-
-  const streetCashHistory = Array.isArray(updates.streetCashHistory)
-    ? updates.streetCashHistory
-    : (Array.isArray(existing.streetCashHistory) ? existing.streetCashHistory : []);
-
-  const streetCashCoupons = Array.isArray(updates.streetCashCoupons)
-    ? updates.streetCashCoupons
-    : (Array.isArray(existing.streetCashCoupons) ? existing.streetCashCoupons : []);
-
-  const streetCashBonuses = updates.streetCashBonuses && typeof updates.streetCashBonuses === 'object'
-    ? updates.streetCashBonuses
-    : (existing.streetCashBonuses || {});
-
-  const mergedDoc = {
+  const mergedDoc = sanitizeWalletDoc({
     phone: cleanPhone,
     phoneWithCountryCode: `+91 ${cleanPhone}`,
     phoneVerified,
@@ -403,19 +347,21 @@ export async function upsertUserByPhone(phone, updates = {}) {
     emailVerified,
     addresses,
     defaultAddressId,
-    streetCashBalance,
-    streetCashEarnedTotal,
-    streetCashSpentTotal,
-    streetCashHistory,
-    streetCashCoupons,
-    streetCashBonuses,
     createdAt: existing.createdAt || nowIso,
     lastLoginAt: updates.lastLoginAt || existing.lastLoginAt || nowIso,
     updatedAt: nowIso
-  };
+  });
 
   inMemoryAccounts.set(cleanPhone, mergedDoc);
   persistLocalAccountsCache();
+
+  try {
+    const col = await getCollection('users_accounts');
+    if (col) {
+      await col.updateOne({ phone: cleanPhone }, { $set: mergedDoc }, { upsert: true });
+    }
+  } catch (_) {}
+
   return mergedDoc;
 }
 
@@ -427,17 +373,26 @@ export async function changeUserPhone(oldPhone, newPhone) {
   const existing = inMemoryAccounts.get(cleanOld) || {};
   const nowIso = new Date().toISOString();
 
-  const updatedDoc = {
+  const updatedDoc = sanitizeWalletDoc({
     ...existing,
     phone: cleanNew,
     phoneWithCountryCode: `+91 ${cleanNew}`,
     phoneVerified: true,
     updatedAt: nowIso
-  };
+  });
 
   inMemoryAccounts.delete(cleanOld);
   inMemoryAccounts.set(cleanNew, updatedDoc);
   persistLocalAccountsCache();
+
+  try {
+    const col = await getCollection('users_accounts');
+    if (col) {
+      await col.deleteOne({ phone: cleanOld }).catch(() => {});
+      await col.updateOne({ phone: cleanNew }, { $set: updatedDoc }, { upsert: true }).catch(() => {});
+    }
+  } catch (_) {}
+
   return updatedDoc;
 }
 
@@ -483,42 +438,21 @@ export async function getUserStreetCash(phone) {
     });
   }
 
-  // Look up coupons minted for this phone from MongoDB 'coupons' collection
-  let dbCoupons = [];
-  try {
-    const couponsCol = await getCollection('coupons');
-    if (couponsCol) {
-      dbCoupons = await couponsCol
-        .find({ userPhone: cleanPhone }, { projection: { _id: 0 } })
-        .sort({ createdAt: -1 })
-        .toArray();
-    }
-  } catch (_) {}
-
-  const userCoupons = Array.isArray(user?.streetCashCoupons) ? user.streetCashCoupons : [];
-  const couponMap = new Map();
-  for (const c of [...dbCoupons, ...userCoupons]) {
-    if (c && c.code && !couponMap.has(c.code)) {
-      couponMap.set(c.code, c);
-    }
-  }
-
   const balance = Math.max(0, Number(user?.streetCashBalance) || 0);
-  const earned = Math.max(0, Number(user?.streetCashEarnedTotal) || 0);
-  const spent = Math.max(0, Number(user?.streetCashSpentTotal) || 0);
-  const history = Array.isArray(user?.streetCashHistory) ? user.streetCashHistory : [];
+  const earned = Math.max(0, Number(user?.streetCashEarnedTotal) || balance);
+  const history = (Array.isArray(user?.streetCashHistory) ? user.streetCashHistory : []).filter(h => h && h.type !== 'REDEEMED');
 
   return {
     phone: cleanPhone,
     streetCashBalance: balance,
     streetCashEarnedTotal: earned,
-    streetCashSpentTotal: spent,
+    streetCashSpentTotal: 0,
     streetCashHistory: history,
-    streetCashCoupons: Array.from(couponMap.values()),
+    streetCashCoupons: [],
     streetCashBonuses: user?.streetCashBonuses || {},
-    canRedeem: balance >= 499,
-    minRedemptionPoints: 499,
-    minRedemptionInr: 499,
+    canRedeem: false,
+    minRedemptionPoints: 0,
+    minRedemptionInr: 0,
     displayRateNotice: 'Per 1,000 Rs spent will give you 199 The Street Cash'
   };
 }

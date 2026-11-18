@@ -3492,24 +3492,6 @@ app.post('/api/orders', async (req, res) => {
       }
     }
 
-    // 2. Award The Street Cash loyalty points: Per 1,000 Rs spent will give you 199 The Street Cash
-    let streetCashAwarded = null;
-    if (accountPhone.length === 10 && grandTotalInr > 0) {
-      try {
-        streetCashAwarded = await awardStreetCashForOrder(accountPhone, grandTotalInr, orderCode);
-        if (streetCashAwarded) {
-          orderDocument.streetCashEarned = streetCashAwarded.pointsAwarded;
-          orderDocument.streetCashAwarded = streetCashAwarded;
-          const reasonNotice = streetCashAwarded.isFirstOrder
-            ? `Order #${orderCode} (+${streetCashAwarded.standardPoints} pts + 49 pts First Order Milestone)`
-            : `Order #${orderCode}`;
-          sendStreetCashSms(accountPhone, streetCashAwarded.pointsAwarded, reasonNotice, streetCashAwarded.newBalance).catch(() => {});
-        }
-      } catch (ptsErr) {
-        console.warn('[The Street Cash points awarding notice]:', ptsErr.message);
-      }
-    }
-
     // Automated Zoho Inventory Sales Order Push upon checkout (auto-confirmed, kept Confirmed — NOT Closed — until fulfilled/shipped)
     let zohoSalesOrderResult = null;
     try {
@@ -4220,6 +4202,8 @@ app.get('/api/email-preview/:type', (req, res) => {
       recipientEmail: 'aniruddhanag9@gmail.com',
       heading: 'Email Verification',
       codeLabel: 'Verification OTP',
+      useRelativeAssets: true,
+      useCidAssets: false,
       supportEmail
     });
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -4231,9 +4215,11 @@ app.get('/api/email-preview/:type', (req, res) => {
       otpCode: '849201',
       recipientName: 'Aniruddha Nag',
       heading: 'Phone Number Change',
-      bodyLineHtml: 'We received a request to update the primary mobile number on your The Street Co account from <strong style="color:#171717;font-weight:600;">+91 6296731835</strong> to <strong style="color:#171717;font-weight:600;">+91 9876543210</strong>.',
+      bodyLineHtml: 'We received a request to update the primary mobile number on your The Street Co account from <strong style="color:#171717 !important;font-weight:600;">+91 6296731835</strong> to <strong style="color:#171717 !important;font-weight:600;">+91 9876543210</strong>.',
       codeLabel: 'Authorization OTP',
       validityNote: 'This authorization code is valid for 10 minutes. If you did not initiate this change, please contact support immediately.',
+      useRelativeAssets: true,
+      useCidAssets: false,
       supportEmail
     });
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -4245,9 +4231,11 @@ app.get('/api/email-preview/:type', (req, res) => {
       otpCode: '849201',
       recipientName: 'Aniruddha Nag',
       heading: 'Email Address Change',
-      bodyLineHtml: 'We received a request to update the email address on your The Street Co account from <strong style="color:#171717;font-weight:600;">aniruddhanag9@gmail.com</strong> to <strong style="color:#171717;font-weight:600;">newcontact@thestreetco.com</strong>.',
+      bodyLineHtml: 'We received a request to update the email address on your The Street Co account from <strong style="color:#171717 !important;font-weight:600;"><a href="#" style="color:#171717 !important;text-decoration:none !important;pointer-events:none;cursor:text;"><span style="color:#171717 !important;">aniruddhanag9&#8203;@&#8203;gmail.com</span></a></strong> to <strong style="color:#171717 !important;font-weight:600;"><a href="#" style="color:#171717 !important;text-decoration:none !important;pointer-events:none;cursor:text;"><span style="color:#171717 !important;">newcontact&#8203;@&#8203;thestreetco.com</span></a></strong>.',
       codeLabel: 'Authorization OTP',
       validityNote: 'This authorization code is valid for 10 minutes. If you did not initiate this change, please contact support immediately.',
+      useRelativeAssets: true,
+      useCidAssets: false,
       supportEmail
     });
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -5215,347 +5203,14 @@ app.post('/api/drop-waitlist', async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// THE STREET CASH — VIP LOYALTY & AI REWARDS SYSTEM
-// Rules:
-// 1. Math rate: 0.199 points per 1 Rs spent (Math.floor(total * 0.199))
-// 2. Strict UI display constraint: NEVER show "0.199 points".
-//    MUST strictly display: "Per 1,000 Rs spent will give you 199 The Street Cash"
-// 3. Minimum redemption: 499 The Street Cash = ₹499 OFF coupon (strictly one-time use)
-// 4. Coupons saved and managed in MongoDB Atlas 'coupons' collection
-// 5. AI Concierge Stylist integration to pair outfits with the redeemed voucher
+// LOYALTY / STREET CASH ROUTES (Permanently Disabled)
 // ─────────────────────────────────────────────────────────────────────────────
-
-function calculateStreetCashTier(balance = 0) {
-  const pts = Math.max(0, Number(balance) || 0);
-  if (pts >= 2500) {
-    return { name: 'Obsidian Syndicate', level: 4, nextThreshold: null, badge: 'ELITE OBSIDIAN', perk: 'Double Street Cash Drops & VIP Safehouse Invitations' };
-  }
-  if (pts >= 1000) {
-    return { name: 'Gold Vanguard', level: 3, nextThreshold: 2500, badge: 'GOLD VANGUARD', perk: 'Early Access to New Releases & Free Express Air Shipping' };
-  }
-  if (pts >= 499) {
-    return { name: 'VIP Street Insider', level: 2, nextThreshold: 1000, badge: 'VIP INSIDER', perk: 'Redemption Eligible: ₹499 Instant Off Vouchers' };
-  }
-  return { name: 'Street Member', level: 1, nextThreshold: 499, badge: 'VIP MEMBER', perk: 'Earn 199 The Street Cash per ₹1,000 spent on all orders' };
-}
-
-// GET /api/loyalty & /api/loyalty/status
-app.get(['/api/loyalty', '/api/loyalty/status', '/api/street-cash'], async (req, res) => {
-  try {
-    const rawPhone = req.query.phone || req.query.memberId || req.query.accountPhone || '';
-    const cleanPhone = String(rawPhone).replace(/\D/g, '').slice(-10);
-
-    if (cleanPhone.length !== 10) {
-      // Unauthenticated / Guest preview state
-      const defaultBalance = 0;
-      return res.json({
-        success: true,
-        isGuest: true,
-        phone: '',
-        streetCashBalance: defaultBalance,
-        streetCashEarnedTotal: 0,
-        streetCashSpentTotal: 0,
-        canRedeem: false,
-        minRedemptionPoints: 499,
-        minRedemptionInr: 499,
-        pointsNeededForNextReward: 499,
-        progressPercent: 0,
-        displayRateNotice: 'Per 1,000 Rs spent will give you 199 The Street Cash',
-        tier: calculateStreetCashTier(defaultBalance),
-        streetCashHistory: [],
-        streetCashCoupons: [],
-        message: 'Sign in with your mobile number to view and redeem The Street Cash.'
-      });
-    }
-
-    // Automatically check and award any qualifying onboarding bonuses (Account, Name, Email, First Order)
-    const syncRes = await syncUserOnboardingBonuses(cleanPhone);
-    if (syncRes && syncRes.awardedList && syncRes.awardedList.length > 0) {
-      for (const item of syncRes.awardedList) {
-        sendStreetCashSms(cleanPhone, item.points, item.reason, syncRes.currentBalance).catch(() => {});
-      }
-    }
-
-    const wallet = await getUserStreetCash(cleanPhone);
-    const tier = calculateStreetCashTier(wallet.streetCashBalance);
-    const pointsNeeded = Math.max(0, 499 - (wallet.streetCashBalance % 499 === 0 && wallet.streetCashBalance > 0 ? 0 : (499 - (wallet.streetCashBalance % 499))));
-    const progressPercent = Math.min(100, Math.round(((wallet.streetCashBalance % 499) / 499) * 100));
-
-    return res.json({
-      success: true,
-      isGuest: false,
-      phone: cleanPhone,
-      streetCashBalance: wallet.streetCashBalance,
-      streetCashEarnedTotal: wallet.streetCashEarnedTotal,
-      streetCashSpentTotal: wallet.streetCashSpentTotal,
-      canRedeem: wallet.streetCashBalance >= 499,
-      minRedemptionPoints: 499,
-      minRedemptionInr: 499,
-      pointsNeededForNextReward: wallet.streetCashBalance >= 499 ? 0 : (499 - wallet.streetCashBalance),
-      progressPercent: wallet.streetCashBalance >= 499 ? 100 : progressPercent,
-      displayRateNotice: 'Per 1,000 Rs spent will give you 199 The Street Cash',
-      tier,
-      streetCashHistory: wallet.streetCashHistory || [],
-      streetCashCoupons: wallet.streetCashCoupons || [],
-      streetCashBonuses: syncRes.bonuses || wallet.streetCashBonuses || {},
-      newlyAwardedBonuses: syncRes.awardedList || []
-    });
-  } catch (err) {
-    console.error('[The Street Cash error]:', err);
-    return res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// POST /api/loyalty/sync-missions
-app.post('/api/loyalty/sync-missions', async (req, res) => {
-  try {
-    const { phone } = req.body || {};
-    const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
-    if (cleanPhone.length !== 10) {
-      return res.status(400).json({ success: false, error: 'Valid 10-digit mobile number required.' });
-    }
-    const syncRes = await syncUserOnboardingBonuses(cleanPhone);
-    if (syncRes && syncRes.awardedList && syncRes.awardedList.length > 0) {
-      for (const item of syncRes.awardedList) {
-        sendStreetCashSms(cleanPhone, item.points, item.reason, syncRes.currentBalance).catch(() => {});
-      }
-    }
-    return res.json({
-      success: true,
-      bonuses: syncRes.bonuses,
-      awardedList: syncRes.awardedList,
-      totalAwarded: syncRes.totalAwarded,
-      currentBalance: syncRes.currentBalance
-    });
-  } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// POST /api/loyalty/claim-mission (Real-time mission reward claim & point crediting)
-app.post('/api/loyalty/claim-mission', async (req, res) => {
-  try {
-    const { phone, missionKey, data } = req.body || {};
-    const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
-    if (cleanPhone.length !== 10) {
-      return res.status(400).json({ success: false, error: 'Valid 10-digit mobile number required.' });
-    }
-
-    if (data && typeof data === 'object') {
-      await upsertUserByPhone(cleanPhone, data);
-    }
-
-    const validKeys = ['account_creation', 'profile_name', 'profile_email', 'first_order'];
-    if (!validKeys.includes(missionKey)) {
-      return res.status(400).json({ success: false, error: `Invalid mission key: ${missionKey}` });
-    }
-
-    const awardRes = await awardStreetCashBonus(cleanPhone, missionKey);
-    const wallet = await getUserStreetCash(cleanPhone);
-    const tier = calculateStreetCashTier(wallet.streetCashBalance);
-
-    if (awardRes && awardRes.awarded) {
-      sendStreetCashSms(cleanPhone, awardRes.points, awardRes.reason, wallet.streetCashBalance).catch(() => {});
-    }
-
-    return res.json({
-      success: true,
-      awarded: awardRes ? awardRes.awarded : false,
-      alreadyAwarded: awardRes ? awardRes.alreadyAwarded : false,
-      points: awardRes ? awardRes.points : 0,
-      missionKey,
-      streetCashBalance: wallet.streetCashBalance,
-      streetCashEarnedTotal: wallet.streetCashEarnedTotal,
-      tier,
-      message: awardRes && awardRes.awarded 
-        ? `+${awardRes.points} The Street Cash credited to your vault!` 
-        : 'Mission verified and points active.'
-    });
-  } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// POST /api/loyalty/redeem
-app.post('/api/loyalty/redeem', async (req, res) => {
-  try {
-    const { phone, points } = req.body || {};
-    const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
-
-    if (cleanPhone.length !== 10) {
-      return res.status(400).json({
-        success: false,
-        error: 'Please sign in with your 10-digit mobile number to redeem The Street Cash.'
-      });
-    }
-
-    const requestedPoints = Math.max(499, Math.floor(Number(points) || 499));
-
-    const result = await redeemStreetCashCoupon(cleanPhone, requestedPoints);
-    if (!result.success) {
-      return res.status(400).json(result);
-    }
-
-    // Immediately sync the minted coupon into the runtime memory cache so it can be used at checkout without delay
-    if (result.coupon) {
-      const existingIdx = inMemoryCoupons.findIndex(c => c.code.toUpperCase() === result.coupon.code.toUpperCase());
-      if (existingIdx >= 0) {
-        inMemoryCoupons[existingIdx] = result.coupon;
-      } else {
-        inMemoryCoupons.push(result.coupon);
-      }
-    }
-
-    const tier = calculateStreetCashTier(result.remainingBalance);
-
-    return res.json({
-      success: true,
-      coupon: result.coupon,
-      pointsRedeemed: result.pointsRedeemed,
-      discountInr: result.discountInr,
-      remainingBalance: result.remainingBalance,
-      tier,
-      displayRateNotice: 'Per 1,000 Rs spent will give you 199 The Street Cash',
-      message: result.message
-    });
-  } catch (err) {
-    console.error('[The Street Cash Redeem error]:', err);
-    return res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// POST /api/loyalty/ai-concierge
-// AI Concierge & Streetwear Stylist integration
-// Suggests outfits and styling pairings tailored to the customer's ₹499 Street Cash discount voucher
-app.post('/api/loyalty/ai-concierge', async (req, res) => {
-  try {
-    const { phone, couponCode, discountInr = 499, preference = 'streetwear' } = req.body || {};
-    const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
-
-    const catalogHighlights = [
-      { name: 'Minato Yellow Flash Heavyweight Oversized Tee', price: 1999, category: 'Oversized Tees', vibe: 'Bold Japanese Anime Graphic with 280 GSM French Terry' },
-      { name: 'Tokyo Shadow Tactical Cargo Joggers', price: 2499, category: 'Tactical Bottoms', vibe: 'Modular utility pockets, tapered obsidian finish' },
-      { name: 'Akatsuki Cloud Heavyweight Acid-Washed Hoodie', price: 2999, category: 'Hoodies', vibe: '400 GSM luxury fleece with crimson cloud embroidery' },
-      { name: 'Uchiha Clan Crest Boxy Tee', price: 1899, category: 'Boxy Tees', vibe: 'Minimalist chest embroidery, signature drop-shoulder silhouette' },
-      { name: 'Cyberpunk Cyber-Distressed Denim Jacket', price: 3499, category: 'Outerwear', vibe: 'Custom metallic hardware with weathered acid-wash wash' }
-    ];
-
-    let aiAdvice = null;
-
-    // Attempt Gemini AI generation if API key is present (with 4s timeout protection)
-    const apiKey = (process.env.GEMINI_API_KEY || '').trim();
-    if (apiKey) {
-      try {
-        const ai = new GoogleGenAI({ apiKey });
-        const prompt = `You are the lead luxury fashion director and stylist for "The Street Co", a high-end streetwear brand.
-A VIP client (Phone: +91 ${cleanPhone || 'VIP Member'}) has just redeemed their VIP loyalty points ("The Street Cash") and unlocked a ₹${discountInr} OFF voucher (Code: ${couponCode || 'STREETCASH-VIP'}).
-
-Brand details:
-- Rate notice: Per 1,000 Rs spent will give you 199 The Street Cash
-- Aesthetic: Creamy White, Obsidian Black, Architectural Silhouettes, 280-400 GSM Heavyweight Cotton.
-- Key items in stock:
-${catalogHighlights.map(c => `- ${c.name} (₹${c.price}) [${c.category}]: ${c.vibe}`).join('\n')}
-
-Task:
-Write a captivating, ultra-stylish 3-part styling concierge note:
-1. "The Stylist's Recommendation": Pick 2 items that look exceptional together, calculate the combined price after applying the ₹${discountInr} Street Cash discount.
-2. "Color & Silhouette Guide": How to style the drape, footwear, and accessories.
-3. "Street Cred Quote": An inspiring, punchy high-fashion quote about street style.
-
-Return concise, structured JSON with keys:
-{
-  "headline": "string",
-  "recommendedItems": [{"name": "string", "price": number, "priceAfterVoucher": number, "stylingTip": "string"}],
-  "paletteGuide": "string",
-  "quote": "string"
-}`;
-
-        const callPromise = ai.models.generateContent({
-          model: 'gemini-3.8-flash',
-          contents: prompt,
-          config: {
-            responseMimeType: 'application/json'
-          }
-        });
-
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('AI generation timed out')), 4000)
-        );
-
-        const response = await Promise.race([callPromise, timeoutPromise]);
-        const rawText = response.text || '';
-        try {
-          aiAdvice = JSON.parse(rawText);
-        } catch (_) {
-          aiAdvice = null;
-        }
-      } catch (geminiErr) {
-        console.warn('[Gemini AI Concierge Notice]:', geminiErr.message);
-      }
-    }
-
-    // High-fidelity fallback styling concierge if Gemini was offline or no key configured
-    if (!aiAdvice) {
-      aiAdvice = {
-        headline: `Stylist Curation: Pair Your ₹${discountInr} Street Cash with Architectural Essentials`,
-        recommendedItems: [
-          {
-            name: 'Minato Yellow Flash Heavyweight Oversized Tee',
-            price: 1999,
-            priceAfterVoucher: Math.max(0, 1999 - discountInr),
-            stylingTip: 'Tuck loosely into high-waisted relaxed cargo bottoms. The 280 GSM cotton maintains a structured boxy drape that holds its shape all day.'
-          },
-          {
-            name: 'Tokyo Shadow Tactical Cargo Joggers',
-            price: 2499,
-            priceAfterVoucher: Math.max(0, 2499 - discountInr),
-            stylingTip: 'Pair with chunky low-profile obsidian sneakers or retro runners. The tapered ankle cuffs accentuate silhouette proportion.'
-          }
-        ],
-        paletteGuide: 'Obsidian Black (#0E0E11) juxtaposed against Creamy Warm Ecru (#FAF8F5). Accentuate with muted chrome or oxidized silver jewelry.',
-        quote: 'Luxury is not about excess—it is about intentional silhouettes and effortless presence.'
-      };
-    }
-
-    return res.json({
-      success: true,
-      couponCode: couponCode || 'STREETCASH-499',
-      discountInr,
-      displayRateNotice: 'Per 1,000 Rs spent will give you 199 The Street Cash',
-      concierge: aiAdvice
-    });
-  } catch (err) {
-    console.error('[AI Concierge error]:', err);
-    return res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// POST /api/loyalty/earn (Instant bonus challenges)
-app.post('/api/loyalty/earn', async (req, res) => {
-  try {
-    const { phone, actionId, label, points = 50 } = req.body || {};
-    const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
-
-    if (cleanPhone.length !== 10) {
-      return res.status(400).json({ success: false, error: 'Valid phone required to claim The Street Cash bonus.' });
-    }
-
-    const result = await earnCustomStreetCashBonus(cleanPhone, { actionId, label, points });
-    if (!result.success) {
-      return res.json(result);
-    }
-
-    return res.json({
-      success: true,
-      pointsAwarded: result.pointsAwarded,
-      newBalance: result.streetCashBalance,
-      tier: calculateStreetCashTier(result.streetCashBalance),
-      displayRateNotice: 'Per 1,000 Rs spent will give you 199 The Street Cash',
-      message: `+${result.pointsAwarded} The Street Cash credited to your VIP wallet!`
-    });
-  } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
-  }
+app.all(['/api/loyalty', '/api/loyalty/status', '/api/street-cash', '/api/loyalty/sync-missions', '/api/loyalty/claim-mission', '/api/loyalty/redeem', '/api/loyalty/ai-concierge', '/api/loyalty/earn'], (req, res) => {
+  return res.status(410).json({
+    success: false,
+    disabled: true,
+    error: 'The points / Street Cash system has been permanently removed.'
+  });
 });
 
 // 3. Self-Service Order Lookup & 7-Day Size Exchange Portal
@@ -5563,94 +5218,7 @@ const SIZE_EXCHANGES_FILE = path.join(__dirname, 'size_exchanges.json');
 let inMemoryExchanges = loadJsonCache(SIZE_EXCHANGES_FILE, []);
 if (!Array.isArray(inMemoryExchanges)) inMemoryExchanges = [];
 
-// Seed a sample verified order in memory so visitors can test Order Lookup & 7-Day Exchange immediately
-const DEMO_ORDER_CODE = '784920';
-if (!inMemoryOrders.has(DEMO_ORDER_CODE)) {
-  const sampleOrder = {
-    orderId: DEMO_ORDER_CODE,
-    orderCode: DEMO_ORDER_CODE,
-    status: 'DELIVERED',
-    orderDate: new Date(Date.now() - 3 * 86400000).toISOString(),
-    orderDateFormatted: new Date(Date.now() - 3 * 86400000).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-    contactDetails: {
-      fullName: 'Aarav Mehta',
-      phone: '9876543210',
-      email: 'aarav.mehta@example.com',
-      pincode: '400001'
-    },
-    shippingAddress: {
-      fullName: 'Aarav Mehta',
-      phone: '9876543210',
-      email: 'aarav.mehta@example.com',
-      houseFlat: '402, Imperial Residency',
-      streetRoad: 'Colaba Causeway',
-      city: 'Mumbai',
-      state: 'Maharashtra',
-      pincode: '400001',
-      fullAddress: '402, Imperial Residency, Colaba Causeway, Mumbai, Maharashtra - 400001'
-    },
-    paymentMethod: 'COD',
-    paymentStatus: 'PAID_ON_DELIVERY',
-    subtotalInr: 4498,
-    deliveryFeeInr: 0,
-    discountInr: 450,
-    grandTotalInr: 4048,
-    invoiceUrl: `/invoice/${DEMO_ORDER_CODE}`,
-    products: [
-      {
-        sku: 'TS-MIN-001',
-        id: 'TS-MIN-001',
-        name: 'Minato Yellow Flash Heavyweight Oversized Tee',
-        title: 'Minato Yellow Flash Heavyweight Oversized Tee',
-        category: 'Oversized T-Shirts',
-        size: 'M',
-        finish: 'Obsidian Black',
-        qty: 1,
-        priceInr: 1999,
-        image: '/product-minato.jpg'
-      },
-      {
-        sku: 'TS-STR-004',
-        id: 'TS-STR-004',
-        name: 'Tokyo Shadow Tactical Cargo Joggers',
-        title: 'Tokyo Shadow Tactical Cargo Joggers',
-        category: 'Cargo Pants & Joggers',
-        size: 'L',
-        finish: 'Charcoal Grey',
-        qty: 1,
-        priceInr: 2499,
-        image: '/product-ts-min-001.jpg'
-      }
-    ],
-    items: [
-      {
-        sku: 'TS-MIN-001',
-        id: 'TS-MIN-001',
-        name: 'Minato Yellow Flash Heavyweight Oversized Tee',
-        title: 'Minato Yellow Flash Heavyweight Oversized Tee',
-        category: 'Oversized T-Shirts',
-        size: 'M',
-        finish: 'Obsidian Black',
-        qty: 1,
-        priceInr: 1999,
-        image: '/product-minato.jpg'
-      },
-      {
-        sku: 'TS-STR-004',
-        id: 'TS-STR-004',
-        name: 'Tokyo Shadow Tactical Cargo Joggers',
-        title: 'Tokyo Shadow Tactical Cargo Joggers',
-        category: 'Cargo Pants & Joggers',
-        size: 'L',
-        finish: 'Charcoal Grey',
-        qty: 1,
-        priceInr: 2499,
-        image: '/product-ts-min-001.jpg'
-      }
-    ]
-  };
-  inMemoryOrders.set(DEMO_ORDER_CODE, sampleOrder);
-}
+// No demo/test orders seeded in memory
 
 app.post('/api/orders/lookup', (req, res) => {
   const { query } = req.body || {};
@@ -5902,24 +5470,11 @@ app.post('/api/account/verify-phone-otp', async (req, res) => {
       lastLoginAt: new Date().toISOString()
     });
 
-    // Award Account Creation Bonus (+75 The Street Cash) if not already claimed
-    let streetCashBonusAwarded = null;
-    try {
-      const bonusRes = await awardStreetCashBonus(cleanPhone, 'account_creation');
-      if (bonusRes && bonusRes.awarded) {
-        streetCashBonusAwarded = bonusRes;
-        sendStreetCashSms(cleanPhone, bonusRes.points, bonusRes.reason, bonusRes.newBalance).catch(() => {});
-      }
-    } catch (bErr) {
-      console.warn('[Street Cash Account Creation Bonus Note]:', bErr.message);
-    }
-
     return res.json({
       success: true,
       verified: true,
       phone: cleanPhone,
       account: mongoAccount || { phone: cleanPhone, phoneVerified: true },
-      streetCashBonusAwarded,
       message: 'Mobile number verified! Welcome to your account.'
     });
   } catch (err) {
@@ -5957,12 +5512,13 @@ app.post('/api/account/send-email-otp', async (req, res) => {
       try {
         const senderUser = (process.env.GMAIL_SMTP_USER || GMAIL_SMTP_USER).trim();
         const supportEmail = (process.env.GMAIL_REPLY_TO || 'support@thestreetco.zohodesk.in').trim();
-        const { subject, html, text } = renderEmailOtpEmail({
+        const { subject, html, text, cidAttachments } = renderEmailOtpEmail({
           otpCode,
           recipientName: fullName,
           recipientEmail: cleanEmail,
           heading: 'Email Verification',
           codeLabel: 'Verification OTP',
+          useCidAssets: true,
           supportEmail
         });
         await gmail.sendMail({
@@ -5970,7 +5526,8 @@ app.post('/api/account/send-email-otp', async (req, res) => {
           to: cleanEmail,
           subject,
           text,
-          html
+          html,
+          attachments: cidAttachments
         });
         emailDispatched = true;
         console.log(`[Account Email OTP] Sent 6-digit OTP to ${cleanEmail}`);
@@ -6115,14 +5672,15 @@ app.post('/api/account/change-phone/send-otp', async (req, res) => {
         try {
           const senderUser = (process.env.GMAIL_SMTP_USER || GMAIL_SMTP_USER).trim();
           const supportEmail = (process.env.GMAIL_REPLY_TO || 'support@thestreetco.zohodesk.in').trim();
-          const { subject, html, text } = renderEmailOtpEmail({
+          const { subject, html, text, cidAttachments } = renderEmailOtpEmail({
             otpCode,
             recipientName: user?.firstName || 'Customer',
             heading: 'Phone Number Change',
-            bodyLineHtml: `We received a request to update the primary mobile number on your The Street Co account from <strong style="color:#171717;font-weight:600;">+91 ${cleanCurrent}</strong> to <strong style="color:#171717;font-weight:600;">+91 ${cleanNew}</strong>.`,
+            bodyLineHtml: `We received a request to update the primary mobile number on your The Street Co account from <strong style="color:#171717 !important;font-weight:600;">+91 ${cleanCurrent}</strong> to <strong style="color:#171717 !important;font-weight:600;">+91 ${cleanNew}</strong>.`,
             codeLabel: 'Authorization OTP',
             validityNote: 'This authorization code is valid for 10 minutes. If you did not initiate this change, please contact support immediately.',
             subject: `${otpCode} — Security Code to Change Mobile Number · The Street Co`,
+            useCidAssets: true,
             supportEmail
           });
           await gmail.sendMail({
@@ -6130,7 +5688,8 @@ app.post('/api/account/change-phone/send-otp', async (req, res) => {
             to: userEmail,
             subject,
             text,
-            html
+            html,
+            attachments: cidAttachments
           });
           emailDispatched = true;
         } catch (mailErr) {
@@ -6260,14 +5819,15 @@ app.post('/api/account/change-email/send-otp', async (req, res) => {
         try {
           const senderUser = (process.env.GMAIL_SMTP_USER || GMAIL_SMTP_USER).trim();
           const supportEmail = (process.env.GMAIL_REPLY_TO || 'support@thestreetco.zohodesk.in').trim();
-          const { subject, html, text } = renderEmailOtpEmail({
+          const { subject, html, text, cidAttachments } = renderEmailOtpEmail({
             otpCode,
             recipientName: user?.firstName || 'Customer',
             heading: 'Email Address Change',
-            bodyLineHtml: `We received a request to update the email address on your The Street Co account from <strong style="color:#171717;font-weight:600;">${userEmail}</strong> to <strong style="color:#171717;font-weight:600;">${cleanNewEmail}</strong>.`,
+            bodyLineHtml: `We received a request to update the email address on your The Street Co account from <strong style="color:#171717 !important;font-weight:600;"><a href="#" style="color:#171717 !important;text-decoration:none !important;pointer-events:none;cursor:text;"><span style="color:#171717 !important;">${userEmail}</span></a></strong> to <strong style="color:#171717 !important;font-weight:600;"><a href="#" style="color:#171717 !important;text-decoration:none !important;pointer-events:none;cursor:text;"><span style="color:#171717 !important;">${cleanNewEmail}</span></a></strong>.`,
             codeLabel: 'Authorization OTP',
             validityNote: 'This authorization code is valid for 10 minutes. If you did not initiate this change, please contact support immediately.',
             subject: `${otpCode} — Security Code to Change Account Email · The Street Co`,
+            useCidAssets: true,
             supportEmail
           });
           await gmail.sendMail({
@@ -6275,7 +5835,8 @@ app.post('/api/account/change-email/send-otp', async (req, res) => {
             to: userEmail,
             subject,
             text,
-            html
+            html,
+            attachments: cidAttachments
           });
           emailDispatched = true;
         } catch (mailErr) {
@@ -6341,22 +5902,11 @@ app.post('/api/account/change-email/verify-otp', async (req, res) => {
       emailVerified: true
     });
 
-    // Award Email Added Bonus (+35 The Street Cash) if not already claimed
-    let streetCashBonusAwarded = null;
-    try {
-      const emailRes = await awardStreetCashBonus(cleanCurrent, 'profile_email');
-      if (emailRes && emailRes.awarded) {
-        streetCashBonusAwarded = emailRes;
-        sendStreetCashSms(cleanCurrent, emailRes.points, emailRes.reason, emailRes.newBalance).catch(() => {});
-      }
-    } catch (_) {}
-
     return res.json({
       success: true,
       phone: cleanCurrent,
       newEmail,
       account: updatedAccount || { phone: cleanCurrent, email: newEmail, emailVerified: true },
-      streetCashBonusAwarded,
       message: `Email updated to ${newEmail} successfully!`
     });
   } catch (err) {
@@ -6486,42 +6036,9 @@ app.post('/api/account/profile', async (req, res) => {
       }).catch(() => {});
     }
 
-    // Check and award Account Creation (+75 pts), Name Upload (+25 pts) and Email Added (+35 pts) bonuses
-    const newlyAwardedBonuses = [];
-    try {
-      if (!saved.streetCashBonuses?.account_creation) {
-        const accRes = await awardStreetCashBonus(cleanPhone, 'account_creation');
-        if (accRes && accRes.awarded) {
-          newlyAwardedBonuses.push(accRes);
-          sendStreetCashSms(cleanPhone, accRes.points, accRes.reason, accRes.newBalance).catch(() => {});
-        }
-      }
-
-      const hasName = Boolean((saved.firstName && saved.firstName.trim()) || (saved.lastName && saved.lastName.trim()));
-      if (hasName && req.body && req.body.isExplicitSave && !saved.streetCashBonuses?.profile_name) {
-        const nameRes = await awardStreetCashBonus(cleanPhone, 'profile_name');
-        if (nameRes && nameRes.awarded) {
-          newlyAwardedBonuses.push(nameRes);
-          sendStreetCashSms(cleanPhone, nameRes.points, nameRes.reason, nameRes.newBalance).catch(() => {});
-        }
-      }
-
-      const hasEmail = Boolean(saved.email && saved.email.includes('@'));
-      if (hasEmail && !saved.streetCashBonuses?.profile_email) {
-        const emailRes = await awardStreetCashBonus(cleanPhone, 'profile_email');
-        if (emailRes && emailRes.awarded) {
-          newlyAwardedBonuses.push(emailRes);
-          sendStreetCashSms(cleanPhone, emailRes.points, emailRes.reason, emailRes.newBalance).catch(() => {});
-        }
-      }
-    } catch (profErr) {
-      console.warn('[Street Cash Profile Bonus Error]:', profErr.message);
-    }
-
     return res.json({
       success: true,
       account: saved,
-      newlyAwardedBonuses,
       message: 'Account profile saved and synced with Zoho Inventory.'
     });
   } catch (err) {

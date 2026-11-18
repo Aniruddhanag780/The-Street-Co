@@ -32,12 +32,10 @@ window.safeParseJsonResponse = async function(res) {
 };
 var safeParseJsonResponse = window.safeParseJsonResponse;
 
-// VIP & Street Cash UI Global Fallback (prevents any ReferenceError across scopes)
-window.renderVipUI = function() {
-  if (typeof window.renderStreetCashUI === "function") {
-    window.renderStreetCashUI();
-  }
-};
+// Legacy no-op fallbacks
+window.renderStreetCashUI = function() {};
+var renderStreetCashUI = window.renderStreetCashUI;
+window.renderVipUI = function() {};
 var renderVipUI = window.renderVipUI;
 
 // Global Mobile Navigation Active State Helper
@@ -1115,35 +1113,6 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
         ? `PROCEED TO CHECKOUT · ₹${subtotalInr.toLocaleString('en-IN')}`
         : 'PROCEED TO CHECKOUT';
     }
-
-    // Compute estimated Street Cash points: Per 1,000 Rs spent will give you 199 The Street Cash (0.199 pts/Rs)
-    const earnedStreetCash = Math.floor(totalInr * 0.199);
-    const cartStreetCashEarnPoints = document.getElementById('cartStreetCashEarnPoints');
-    const cartStreetCashEarnRow = document.getElementById('cartStreetCashEarnRow');
-    if (cartStreetCashEarnPoints) {
-      cartStreetCashEarnPoints.textContent = String(earnedStreetCash.toLocaleString('en-IN'));
-    }
-    if (cartStreetCashEarnRow) {
-      cartStreetCashEarnRow.style.display = totalInr > 0 ? 'flex' : 'none';
-    }
-
-    // Sync auto-applied Street Cash voucher card in cart drawer footer
-    const cartStreetCashCard = document.getElementById('cartStreetCashAppliedCard');
-    const cartStreetCashCodeBadge = document.getElementById('cartStreetCashCodeBadge');
-    const appliedCode = (appliedCartCoupon && appliedCartCoupon.code) || '';
-    const scState = window.streetCashState;
-    const isStreetCashCode = appliedCode && (
-      appliedCode.startsWith('STREETCASH-') ||
-      (scState && Array.isArray(scState.streetCashCoupons) && scState.streetCashCoupons.some(c => c.code === appliedCode))
-    );
-    if (cartStreetCashCard) {
-      if (isStreetCashCode && discount > 0) {
-        cartStreetCashCard.style.display = 'block';
-        if (cartStreetCashCodeBadge) cartStreetCashCodeBadge.textContent = appliedCode;
-      } else {
-        cartStreetCashCard.style.display = 'none';
-      }
-    }
   }
 
   function updateCartUI() {
@@ -1341,9 +1310,6 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
 
     updateCartUI();
     showToast('ADDED TO BAG', qtyToAdd > 1 ? `${qtyToAdd}× ${item.name}` : item.name, 'bag');
-    if (typeof autoApplyStreetCashCouponIfAvailable === 'function') {
-      autoApplyStreetCashCouponIfAvailable();
-    }
 
     if (typeof window.trackGAEvent === 'function') {
       window.trackGAEvent('add_to_cart', {
@@ -1400,22 +1366,10 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     if (wishlistDrawerFoot) wishlistDrawerFoot.style.display = !isBag ? 'block' : 'none';
   }
 
-  // Automatically apply active Street Cash coupon to bag
+  // Clear any legacy Street Cash coupon codes from storage (Street Cash is saved in wallet only)
   async function autoApplyStreetCashCouponIfAvailable() {
-    let activeCode = window.activeStreetCashCouponCode;
-    const scState = window.streetCashState;
-    if (!activeCode && scState && Array.isArray(scState.streetCashCoupons)) {
-      const activeC = scState.streetCashCoupons.find(c => !c.isRedeemed && c.status === 'active');
-      if (activeC) activeCode = activeC.code;
-    }
-    if (!activeCode) {
-      try { activeCode = localStorage.getItem('the_street_cash_active_coupon'); } catch(_) {}
-    }
-    if (activeCode && (!appliedCartCoupon || !appliedCartCoupon.code) && typeof window.applyCouponCode === 'function') {
-      try {
-        await window.applyCouponCode(activeCode);
-      } catch (_) {}
-    }
+    window.activeStreetCashCouponCode = '';
+    try { localStorage.removeItem('the_street_cash_active_coupon'); } catch (_) {}
   }
   window.autoApplyStreetCashCouponIfAvailable = autoApplyStreetCashCouponIfAvailable;
 
@@ -1440,7 +1394,6 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       if (typeof loadCouponsCatalog === 'function') {
         loadCouponsCatalog();
       }
-      autoApplyStreetCashCouponIfAvailable();
 
       try {
         if (!history.state || !history.state.cartOpen) {
@@ -3045,18 +2998,6 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
         if (invoiceBtn && zohoUrl) {
           invoiceBtn.href = zohoUrl;
           invoiceBtn.style.display = 'inline-flex';
-        }
-
-        if (result?.order?.streetCashEarned) {
-          const earnedPts = result.order.streetCashEarned;
-          const scInfo = result.order.streetCashAwarded;
-          const extraTxt = scInfo?.isFirstOrder ? ' (+49 pts First Order Milestone included!)' : '';
-          if (window.notifyStreetCashReceived) {
-            window.notifyStreetCashReceived(earnedPts, `Order #${generatedId}${extraTxt}`, scInfo?.newBalance);
-          }
-          if (window.syncStreetCashFromBackend) {
-            window.syncStreetCashFromBackend();
-          }
         }
 
         if (result && result.sms) {
@@ -9640,40 +9581,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
    ═══════════════════════════════════════════════════════════════════════════ */
 (function initNextGenStorefrontSuite() {
   const FIT_STORAGE_KEY = 'the_street_co_fit_profile_v1';
-  const VIP_STORAGE_KEY = 'the_street_co_vip_profile_v1';
   const WAITLIST_STORAGE_KEY = 'the_street_co_drop_waitlist_v1';
-
-  function awardVipPoints(actionId, label, points = 50) {
-    try {
-      const profile = JSON.parse(localStorage.getItem(VIP_STORAGE_KEY) || '{}');
-      const claimed = Array.isArray(profile.claimed) ? profile.claimed : [];
-      if (claimed.includes(actionId)) return;
-      claimed.push(actionId);
-      profile.claimed = claimed;
-      localStorage.setItem(VIP_STORAGE_KEY, JSON.stringify(profile));
-    } catch (_) {}
-
-    const activePhone = (typeof window.streetCoGetAccountPhone === 'function' ? window.streetCoGetAccountPhone() : '') || '';
-    if (activePhone && activePhone.length === 10) {
-      fetch('/api/loyalty/earn', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: activePhone, actionId, label, points })
-      })
-        .then(r => r.json())
-        .then(data => {
-          if (data && data.success && window.streetCashState) {
-            window.streetCashState.streetCashBalance = Number(data.newBalance ?? data.streetCashBalance ?? window.streetCashState.streetCashBalance);
-            if (typeof window.renderStreetCashUI === 'function') window.renderStreetCashUI();
-          }
-        })
-        .catch(() => {});
-    }
-
-    if (typeof window.streetCoShowToast === 'function') {
-      window.streetCoShowToast(`+${points} The Street Cash`, label || 'VIP Milestone Unlocked');
-    }
-  }
 
   // ── 1. CURATED LOOKBOOK ENSEMBLES ──
   const LOOKBOOK_DATA = {
@@ -9966,8 +9874,6 @@ window.openDelhiveryTracker = openDelhiveryTracker;
         }
       });
 
-      awardVipPoints('bundle_' + activeLookId, `Added ${look.title} Complete Outfit`, 50);
-
       if (typeof window.streetCoOpenCart === 'function') {
         window.streetCoOpenCart('bag');
       }
@@ -10087,7 +9993,6 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       if (resNote) resNote.textContent = notesByDrape[selectedDrape] || notesByDrape.signature;
 
       updateFitBadgesEverywhere(recommendedSize, confidence);
-      awardVipPoints('fit_quiz_completed', 'Completed Smart Fit Size Quiz', 50);
     });
   }
 
@@ -10270,7 +10175,6 @@ window.openDelhiveryTracker = openDelhiveryTracker;
 
       waitlistCounts[dropId] = (waitlistCounts[dropId] || 120) + 1;
       renderDropVaultGrid();
-      awardVipPoints('waitlist_' + dropId, `Joined Drop Vault Waitlist (${drop.title})`, 60);
 
       const confirmBox = document.getElementById('waitlistConfirmationBox');
       if (confirmBox) {
@@ -10321,682 +10225,17 @@ window.openDelhiveryTracker = openDelhiveryTracker;
   setInterval(updateDropCountdown, 1000);
   updateDropCountdown();
 
-  // ── 4. THE STREET CASH — VIP LOYALTY & REWARDS SYSTEM ──
-  // Rules:
-  // - Math: 0.199 points per 1 Rs spent (Math.floor(total * 0.199))
-  // - Strict Display Rule: NEVER say 0.199 pts. MUST display: "Per 1,000 Rs spent will give you 199 The Street Cash"
-  // - Minimum points to redeem: 499 The Street Cash = ₹499 OFF Coupon (strictly one-time use)
-  // - Saved in MongoDB in 'coupons' collection
-  // - AI Stylist integration to pair outfits with the redeemed voucher
-
-  const STREET_CASH_STORAGE_KEY = 'the_street_co_street_cash_cache';
-
-  let streetCashState = {
-    phone: '',
-    streetCashBalance: 0,
-    streetCashEarnedTotal: 0,
-    streetCashSpentTotal: 0,
-    streetCashHistory: [],
-    streetCashCoupons: [],
-    tier: { name: 'VIP Street Insider', level: 1, badge: 'VIP', perk: 'Earn 199 The Street Cash per ₹1,000 spent' },
-    canRedeem: false,
-    minRedemptionPoints: 499,
-    minRedemptionInr: 499,
-    displayRateNotice: 'Per 1,000 Rs spent will give you 199 The Street Cash',
-    isLoading: false
-  };
-  window.streetCashState = streetCashState;
-
+  // Purge any legacy Street Cash / VIP points cache keys from localStorage
   try {
-    const cachedSc = JSON.parse(localStorage.getItem(STREET_CASH_STORAGE_KEY) || 'null');
-    if (cachedSc && typeof cachedSc.streetCashBalance === 'number') {
-      streetCashState = { ...streetCashState, ...cachedSc };
-      window.streetCashState = streetCashState;
-    }
-  } catch (_) {}
-
-  function saveStreetCashCache() {
-    try {
-      localStorage.setItem(STREET_CASH_STORAGE_KEY, JSON.stringify(streetCashState));
-    } catch (_) {}
-  }
-
-  function getActiveUserPhone() {
-    let p = '';
-    if (typeof window.streetCoGetAccountPhone === 'function') {
-      p = window.streetCoGetAccountPhone();
-    }
-    if (!p && typeof window.getAccountState === 'function') {
-      try {
-        const acc = window.getAccountState();
-        if (acc && acc.phone) p = acc.phone;
-      } catch (_) {}
-    }
-    if (!p && window.accountState && window.accountState.phone) {
-      p = window.accountState.phone;
-    }
-    if (!p) {
-      try {
-        p = localStorage.getItem('the_street_co_user_phone') || '';
-      } catch (_) {}
-    }
-    if (!p) {
-      try {
-        const acc = JSON.parse(localStorage.getItem('the_street_co_account_v2') || 'null');
-        if (acc && acc.phone) p = acc.phone;
-      } catch (_) {}
-    }
-    if (!p) {
-      try {
-        const addr = JSON.parse(localStorage.getItem('the_street_co_last_addr') || 'null');
-        if (addr && addr.phone) p = addr.phone;
-      } catch (_) {}
-    }
-    return String(p || '').replace(/\D/g, '').slice(-10);
-  }
-
-  function getActiveUserAccount() {
-    if (typeof window.getAccountState === 'function') {
-      try {
-        const acc = window.getAccountState();
-        if (acc && (acc.phone || acc.firstName || acc.email)) return acc;
-      } catch (_) {}
-    }
-    if (window.accountState && (window.accountState.phone || window.accountState.firstName)) {
-      return window.accountState;
-    }
-    try {
-      const saved = JSON.parse(localStorage.getItem('the_street_co_account_v2') || 'null');
-      if (saved && typeof saved === 'object') return saved;
-    } catch (_) {}
-    return {};
-  }
-
-  window.notifyStreetCashReceived = function(points, reason, newBalance) {
-    const ptsNum = Number(points) || 0;
-    if (ptsNum <= 0) return;
-    const balanceTxt = newBalance !== undefined ? ` · Vault Balance: ${newBalance} The Street Cash` : '';
-    if (window.streetCoShowToast) {
-      window.streetCoShowToast(
-        '🎁 The Street Cash Credited!',
-        `+${ptsNum} The Street Cash credited to your vault for ${reason || 'VIP Rewards'}!${balanceTxt} SMS confirmation dispatched.`
-      );
-    }
-  };
-
-  async function syncStreetCashFromBackend(phoneToFetch = '') {
-    const phone = phoneToFetch || getActiveUserPhone();
-    try {
-      const url = phone ? `/api/loyalty/status?phone=${phone}` : `/api/loyalty/status`;
-      const res = await fetch(url, {
-        headers: { Accept: 'application/json' },
-        cache: 'no-store'
-      });
-      const data = await safeParseJsonResponse(res);
-      if (data && data.success) {
-        streetCashState = {
-          ...streetCashState,
-          phone: data.phone || phone,
-          streetCashBalance: Number(data.streetCashBalance) || 0,
-          streetCashEarnedTotal: Number(data.streetCashEarnedTotal) || 0,
-          streetCashSpentTotal: Number(data.streetCashSpentTotal) || 0,
-          streetCashHistory: Array.isArray(data.streetCashHistory) ? data.streetCashHistory : [],
-          streetCashCoupons: Array.isArray(data.streetCashCoupons) ? data.streetCashCoupons : [],
-          streetCashBonuses: data.streetCashBonuses || {},
-          tier: data.tier || streetCashState.tier,
-          canRedeem: Boolean(data.canRedeem),
-          minRedemptionPoints: data.minRedemptionPoints || 499,
-          displayRateNotice: data.displayRateNotice || 'Per 1,000 Rs spent will give you 199 The Street Cash'
-        };
-        window.streetCashState = streetCashState;
-        saveStreetCashCache();
-        renderStreetCashUI();
-
-        // If any bonuses were newly awarded during backend sync, alert user with toast notification
-        if (Array.isArray(data.newlyAwardedBonuses) && data.newlyAwardedBonuses.length > 0) {
-          data.newlyAwardedBonuses.forEach(b => {
-            window.notifyStreetCashReceived(b.points, b.reason || b.label, data.streetCashBalance);
-          });
-        }
+    localStorage.removeItem('the_street_co_street_cash_cache');
+    localStorage.removeItem('the_street_cash_active_coupon');
+    localStorage.removeItem('the_street_co_vip_profile_v1');
+    Object.keys(localStorage).forEach(k => {
+      if (k.startsWith('the_street_co_street_cash_cache_')) {
+        localStorage.removeItem(k);
       }
-    } catch (_) {
-      // Silently ignore transient background fetch interruptions
-    }
-  }
-
-  function updateMissionUI(key, isDone) {
-    const item = document.getElementById(`missionItem_${key}`);
-    const check = document.getElementById(`scCheck_${key}`);
-    const goBtn = document.getElementById(`scGo_${key}`);
-    const desc = document.getElementById(`scDesc_${key}`);
-    if (!item) return;
-
-    if (isDone) {
-      if (check) {
-        check.style.background = '#0E0E11';
-        check.style.borderColor = '#0E0E11';
-        check.style.color = '#F3E5AB';
-        check.textContent = '✓';
-      }
-      if (goBtn) {
-        goBtn.style.background = 'rgba(14,14,17,0.06)';
-        goBtn.style.borderColor = 'rgba(14,14,17,0.18)';
-        goBtn.style.color = '#0E0E11';
-        goBtn.style.cursor = 'default';
-        goBtn.innerHTML = `<span>Claimed ✓</span>`;
-        goBtn.onclick = null;
-      }
-      if (desc) {
-        if (key === 'account_creation') desc.textContent = 'Member account created & verified. +75 The Street Cash claimed!';
-        if (key === 'profile_name') desc.textContent = 'Name saved to your account. +25 The Street Cash claimed!';
-        if (key === 'profile_email') desc.textContent = 'Email saved & verified. +35 The Street Cash claimed!';
-        if (key === 'first_order') desc.textContent = '1st order completed. +49 The Street Cash claimed!';
-      }
-      item.style.borderColor = '#E2DBD0';
-      item.style.background = '#FAF9F6';
-    } else {
-      if (check) {
-        check.style.background = '#FFFFFF';
-        check.style.borderColor = '#D6CEBE';
-        check.style.color = 'transparent';
-        check.textContent = '✓';
-      }
-      if (goBtn) {
-        goBtn.style.background = key === 'first_order' ? 'linear-gradient(135deg, #F3E5AB, #D4AF37)' : '#0E0E11';
-        goBtn.style.borderColor = key === 'first_order' ? '#D4AF37' : '#0E0E11';
-        goBtn.style.color = key === 'first_order' ? '#0B0A09' : '#FFFFFF';
-        goBtn.style.cursor = 'pointer';
-        goBtn.innerHTML = `Go →`;
-        goBtn.onclick = function() {
-          if (window.handleMissionGo) window.handleMissionGo(key);
-        };
-      }
-      if (desc) {
-        if (key === 'account_creation') desc.textContent = 'Create your member account to claim 75 The Street Cash.';
-        if (key === 'profile_name') desc.textContent = 'Add your full name in your account settings.';
-        if (key === 'profile_email') desc.textContent = 'Save your verified email in My Account.';
-        if (key === 'first_order') desc.textContent = 'Place your 1st order to receive +49 bonus points!';
-      }
-      item.style.borderColor = '#EBE4D8';
-      item.style.background = '#FAF8F5';
-    }
-  }
-
-  window.claimMissionPoints = async function(missionKey, explicitData = null) {
-    let activePhone = getActiveUserPhone();
-    const localUser = getActiveUserAccount();
-    if (!activePhone && localUser && localUser.phone) {
-      activePhone = String(localUser.phone).replace(/\D/g, '').slice(-10);
-    }
-    if (!activePhone || activePhone.length !== 10) {
-      try {
-        const lastAddr = JSON.parse(localStorage.getItem('the_street_co_last_addr') || '{}');
-        if (lastAddr && lastAddr.phone) {
-          activePhone = String(lastAddr.phone).replace(/\D/g, '').slice(-10);
-        }
-      } catch (_) {}
-    }
-
-    if (!activePhone || activePhone.length !== 10) {
-      if (localUser && (localUser.email || localUser.firstName)) {
-        if (!streetCashState.streetCashBonuses) streetCashState.streetCashBonuses = {};
-        streetCashState.streetCashBonuses[missionKey] = true;
-        const ptsMap = { account_creation: 75, profile_name: 25, profile_email: 35, first_order: 49 };
-        const pts = ptsMap[missionKey] || 0;
-        streetCashState.streetCashBalance = (streetCashState.streetCashBalance || 0) + pts;
-        saveStreetCashCache();
-        renderStreetCashUI();
-        if (window.notifyStreetCashReceived) {
-          window.notifyStreetCashReceived(pts, `Completing mission: ${missionKey}`, streetCashState.streetCashBalance);
-        }
-        return;
-      }
-      if (typeof window.openCheckoutAuthGate === 'function') {
-        window.openCheckoutAuthGate(function() {
-          window.claimMissionPoints(missionKey, explicitData);
-        });
-      } else if (typeof window.openAccountPage === 'function') {
-        window.openAccountPage();
-      }
-      return;
-    }
-
-    try {
-      const res = await fetch('/api/loyalty/claim-mission', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: activePhone, missionKey, data: explicitData })
-      });
-      const data = await res.json();
-      if (data && data.success) {
-        if (!streetCashState.streetCashBonuses) streetCashState.streetCashBonuses = {};
-        streetCashState.streetCashBonuses[missionKey] = true;
-        if (data.awarded && data.points) {
-          streetCashState.streetCashBalance = Number(data.streetCashBalance) || (streetCashState.streetCashBalance + data.points);
-          saveStreetCashCache();
-          renderStreetCashUI();
-          if (window.notifyStreetCashReceived) {
-            window.notifyStreetCashReceived(data.points, `Completing mission: ${missionKey}`, streetCashState.streetCashBalance);
-          }
-        } else {
-          if (data.streetCashBalance !== undefined) {
-            streetCashState.streetCashBalance = Number(data.streetCashBalance);
-          }
-          saveStreetCashCache();
-          renderStreetCashUI();
-        }
-      }
-    } catch (e) {
-      console.warn('[Claim mission error]:', e.message);
-    }
-  };
-
-  window.handleMissionGo = function(key) {
-    const activePhone = getActiveUserPhone();
-    const localUser = getActiveUserAccount();
-    const hasLoggedIn = Boolean(
-      (activePhone && activePhone.length === 10) || 
-      (localUser && (localUser.phone || localUser.email || (localUser.firstName && localUser.firstName.trim())))
-    );
-    if (key === 'account_creation') {
-      if (hasLoggedIn) {
-        window.claimMissionPoints('account_creation');
-        if (window.streetCoShowToast) {
-          window.streetCoShowToast('Account Verified ✓', '+75 The Street Cash credited to your vault!');
-        }
-      } else {
-        window.closeVipLoyaltyModal();
-        if (typeof window.openCheckoutAuthGate === 'function') {
-          window.openCheckoutAuthGate(function() {
-            window.claimMissionPoints('account_creation');
-            window.openVipLoyaltyModal();
-          });
-        } else if (typeof window.openAccountPage === 'function') {
-          window.openAccountPage();
-        }
-      }
-    } else if (key === 'profile_name') {
-      window.closeVipLoyaltyModal();
-      if (typeof window.openAccountPage === 'function') {
-        window.openAccountPage();
-        setTimeout(() => {
-          const nameInput = document.getElementById('accountFirstName');
-          if (nameInput) {
-            nameInput.focus();
-            nameInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }
-        }, 300);
-      }
-    } else if (key === 'profile_email') {
-      const hasEmail = Boolean(localUser.email && String(localUser.email).includes('@'));
-      if (hasEmail) {
-        window.claimMissionPoints('profile_email');
-        if (window.streetCoShowToast) {
-          window.streetCoShowToast('Email Verified ✓', '+35 The Street Cash credited to your vault!');
-        }
-      } else {
-        window.closeVipLoyaltyModal();
-        if (typeof window.openAccountPage === 'function') {
-          window.openAccountPage();
-          setTimeout(() => {
-            const emailInput = document.getElementById('accountEmailInput');
-            if (emailInput) {
-              emailInput.focus();
-              emailInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-          }, 300);
-        }
-      }
-    } else if (key === 'first_order') {
-      window.closeVipLoyaltyModal();
-      const shopTarget = document.getElementById('catalog') || document.querySelector('.elanora-hero') || document.body;
-      if (shopTarget) shopTarget.scrollIntoView({ behavior: 'smooth' });
-      if (window.streetCoShowToast) {
-        window.streetCoShowToast('Explore Collection', 'Place your 1st order to earn +49 bonus points plus standard Street Cash!');
-      }
-    }
-  };
-
-  function renderStreetCashUI() {
-    const balance = Math.max(0, Number(streetCashState.streetCashBalance) || 0);
-    const balanceStr = balance.toLocaleString('en-IN');
-    const inrValueStr = balance.toLocaleString('en-IN');
-
-    // 1. Digital card balance & Inr value
-    const balanceEl = document.getElementById('vipModalPointsBalance');
-    if (balanceEl) balanceEl.textContent = balanceStr;
-
-    const inrEl = document.getElementById('streetCashInrValueDisplay');
-    if (inrEl) inrEl.textContent = inrValueStr;
-    window.streetCashState = streetCashState;
-
-    // Topbar Street Cash Button sync (Mobile & Desktop)
-    const headerScBtn = document.getElementById('headerStreetCashBtn');
-    const headerScBadge = document.getElementById('headerStreetCashBadge');
-    if (headerScBtn) {
-      headerScBtn.title = balance > 0 
-        ? `The Street Cash: ${balanceStr} pts (Click to view & redeem)` 
-        : `The Street Cash VIP Pass (Earn 199 pts per ₹1,000 spent)`;
-      if (headerScBadge) {
-        if (balance >= 499) {
-          headerScBadge.textContent = '₹499';
-          headerScBadge.style.background = 'linear-gradient(135deg, #15803D, #16A34A)';
-        } else {
-          headerScBadge.textContent = 'VIP';
-          headerScBadge.style.background = 'linear-gradient(135deg, #C5A880, #A88658)';
-        }
-      }
-    }
-
-    // 2. User phone on wallet card
-    const phoneEl = document.getElementById('streetCashUserPhoneDisplay');
-    const localUser = getActiveUserAccount();
-    const activePhone = streetCashState.phone || getActiveUserPhone() || (localUser && localUser.phone ? String(localUser.phone).replace(/\D/g, '').slice(-10) : '');
-    if (phoneEl) {
-      if (activePhone && activePhone.length === 10) {
-        phoneEl.textContent = `+91 ${activePhone.slice(0, 5)} ${activePhone.slice(5)}`;
-      } else if (localUser && localUser.email) {
-        phoneEl.textContent = localUser.email;
-      } else if (localUser && (localUser.firstName || localUser.lastName)) {
-        phoneEl.textContent = [localUser.firstName, localUser.lastName].filter(Boolean).join(' ');
-      } else {
-        phoneEl.textContent = 'Guest VIP Pass';
-      }
-    }
-
-    // 3. Tier badge - removed as requested
-    const tierBadge = document.getElementById('streetCashTierBadge');
-    if (tierBadge) {
-      tierBadge.style.display = 'none';
-      tierBadge.textContent = '';
-    }
-
-    // 4. Milestone Progress toward 499 The Street Cash (or next multiple)
-    const milestoneLabel = document.getElementById('streetCashMilestoneLabel');
-    const percentEl = document.getElementById('streetCashProgressPercent');
-    const progressBar = document.getElementById('streetCashProgressBar');
-    const neededNote = document.getElementById('streetCashNeededNote');
-
-    const nextMultiple = Math.max(499, Math.ceil((balance + 1) / 499) * 499);
-    const progressPercent = balance >= 499 ? 100 : Math.min(100, Math.round((balance / 499) * 100));
-
-    if (milestoneLabel) {
-      milestoneLabel.textContent = `Next Milestone: ${nextMultiple} The Street Cash (₹${nextMultiple} Flat Discount)`;
-    }
-    if (percentEl) percentEl.textContent = `${progressPercent}%`;
-    if (progressBar) progressBar.style.width = `${progressPercent}%`;
-
-    if (neededNote) {
-      if (balance >= 499) {
-        neededNote.innerHTML = `<span style="color:#15803D;font-weight:700;">✓ Ready to redeem!</span> <span style="color:#52525B;">You have enough The Street Cash to claim your ₹499 OFF coupon right now.</span>`;
-      } else {
-        const diff = 499 - balance;
-        neededNote.innerHTML = `<span style="color:#52525B;">Need <strong style="color:#0E0E11;font-weight:700;">${diff} more The Street Cash</strong> to unlock your ₹499 OFF voucher.</span><br><span style="color:#71717A;font-size:0.74rem;">Per 1,000 Rs spent will give you 199 The Street Cash.</span>`;
-      }
-    }
-
-    // 5. Store Rewards "Redeem" Button
-    const walletRedeemBtn = document.getElementById('streetCashWalletRedeemBtn');
-    if (walletRedeemBtn) {
-      walletRedeemBtn.disabled = false;
-      walletRedeemBtn.innerHTML = `<span>Redeem (₹499 OFF)</span>`;
-    }
-
-    // 6. Active Minted Street Cash Coupon Card (under luxury wallet card)
-    const mintedCard = document.getElementById('streetCashMintedCouponCard');
-    const mintedCodeDisplay = document.getElementById('streetCashMintedCodeDisplay');
-    const coupons = streetCashState.streetCashCoupons || [];
-    const activeCoupon = coupons.find(c => !c.isRedeemed && c.status === 'active') ||
-      (window.activeStreetCashCouponCode ? { code: window.activeStreetCashCouponCode } : null);
-
-    if (activeCoupon && activeCoupon.code) {
-      window.activeStreetCashCouponCode = activeCoupon.code;
-      try { localStorage.setItem('the_street_cash_active_coupon', activeCoupon.code); } catch(_) {}
-      if (mintedCard && mintedCodeDisplay) {
-        mintedCard.style.display = 'block';
-        mintedCodeDisplay.textContent = activeCoupon.code;
-      }
-    } else if (mintedCard && !window.activeStreetCashCouponCode) {
-      mintedCard.style.display = 'none';
-    }
-
-    // 7. Automatically Update VIP Member Missions & Boosts (Checkboxes & Status)
-    const bonuses = streetCashState.streetCashBonuses || {};
-    const hasLoggedIn = Boolean(
-      (activePhone && activePhone.length === 10) || 
-      (localUser && (localUser.phone || localUser.email || (localUser.firstName && localUser.firstName.trim())))
-    );
-
-    // Mission 1: Account Creation (+75 pts)
-    const isAccDone = Boolean(bonuses.account_creation || hasLoggedIn);
-    updateMissionUI('account_creation', isAccDone);
-
-    // Auto-award account_creation points if user already created account but points not yet synced
-    if (hasLoggedIn && !bonuses.account_creation) {
-      bonuses.account_creation = true;
-      streetCashState.streetCashBonuses = bonuses;
-      if (typeof window.claimMissionPoints === 'function') {
-        window.claimMissionPoints('account_creation');
-      }
-    }
-
-    // Mission 2: Name Upload (+25 pts) - awarded ONLY after saving account name in My Account
-    const isNameClaimed = Boolean(bonuses.profile_name);
-    updateMissionUI('profile_name', isNameClaimed);
-
-    // Mission 3: Email Added (+35 pts)
-    const hasEmail = Boolean(bonuses.profile_email || (localUser && localUser.email && String(localUser.email).includes('@')));
-    updateMissionUI('profile_email', hasEmail);
-
-    if (hasEmail && !bonuses.profile_email && hasLoggedIn) {
-      bonuses.profile_email = true;
-      streetCashState.streetCashBonuses = bonuses;
-      if (typeof window.claimMissionPoints === 'function') {
-        window.claimMissionPoints('profile_email');
-      }
-    }
-
-    // Mission 4: 1st Order (+49 pts)
-    const isOrderDone = Boolean(bonuses.first_order);
-    updateMissionUI('first_order', isOrderDone);
-  }
-  window.renderStreetCashUI = renderStreetCashUI;
-
-  // Window actions
-  window.openVipLoyaltyModal = function() {
-    const modal = document.getElementById('suiteVipLoyaltyModal');
-    if (modal) {
-      modal.classList.add('open');
-      modal.setAttribute('aria-hidden', 'false');
-    }
-    syncStreetCashFromBackend();
-  };
-
-  window.closeVipLoyaltyModal = function() {
-    const modal = document.getElementById('suiteVipLoyaltyModal');
-    if (modal) {
-      modal.classList.remove('open');
-      modal.setAttribute('aria-hidden', 'true');
-    }
-  };
-
-  window.openStreetCashHub = function() {
-    window.openVipLoyaltyModal();
-  };
-
-  window.handleWalletRedeemStreetCash = async function() {
-    const activePhone = getActiveUserPhone();
-    if (!activePhone || activePhone.length !== 10) {
-      if (typeof window.openCheckoutAuthGate === 'function') {
-        window.openCheckoutAuthGate(function() {
-          window.handleWalletRedeemStreetCash();
-        });
-      } else if (typeof window.openAccountPage === 'function') {
-        window.closeVipLoyaltyModal();
-        window.openAccountPage();
-        if (window.streetCoShowToast) {
-          window.streetCoShowToast('Account Login Required', 'Please sign in with your mobile number to redeem The Street Cash.');
-        }
-      }
-      return;
-    }
-
-    const currentBalance = Math.max(0, Number(streetCashState.streetCashBalance) || 0);
-    if (currentBalance < 499) {
-      const diff = 499 - currentBalance;
-      if (window.streetCoShowToast) {
-        window.streetCoShowToast('Insufficient Street Cash', `Need at least 499 The Street Cash to redeem. You need ${diff} more points!`);
-      }
-      return;
-    }
-
-    const btn = document.getElementById('streetCashWalletRedeemBtn');
-    if (btn) {
-      btn.disabled = true;
-      btn.innerHTML = `<span>✨ Redeeming...</span>`;
-    }
-
-    try {
-      const res = await fetch('/api/loyalty/redeem', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: activePhone, points: 499 })
-      });
-      const data = await res.json();
-      if (!data || !data.success) {
-        throw new Error(data?.error || 'Unable to redeem points at this time.');
-      }
-
-      const mintedCoupon = data.coupon;
-      const couponCode = mintedCoupon?.code;
-
-      streetCashState.streetCashBalance = data.remainingBalance;
-      if (mintedCoupon) {
-        streetCashState.streetCashCoupons = [mintedCoupon, ...(streetCashState.streetCashCoupons || [])];
-      }
-      if (couponCode) {
-        window.activeStreetCashCouponCode = couponCode;
-        try { localStorage.setItem('the_street_cash_active_coupon', couponCode); } catch(_) {}
-      }
-      saveStreetCashCache();
-      renderStreetCashUI();
-
-      // Show notification to the user that Street Cash is redeemed successfully
-      if (window.streetCoShowToast) {
-        window.streetCoShowToast('Street Cash Redeemed!', 'Your Street Cash is redeemed successfully! ₹499 OFF voucher created.');
-      }
-
-      // Display coupon in card directly under wallet card
-      const couponCard = document.getElementById('streetCashMintedCouponCard');
-      const codeDisplay = document.getElementById('streetCashMintedCodeDisplay');
-      if (couponCard && codeDisplay && couponCode) {
-        couponCard.style.display = 'block';
-        codeDisplay.textContent = couponCode;
-        couponCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      }
-
-      // Auto-apply this coupon to cart immediately
-      if (couponCode && typeof window.applyCouponCode === 'function') {
-        window.applyCouponCode(couponCode).catch(() => {});
-      }
-    } catch (err) {
-      if (window.streetCoShowToast) {
-        window.streetCoShowToast('Redemption Failed', err.message);
-      }
-    } finally {
-      if (btn) {
-        btn.disabled = false;
-        btn.innerHTML = `<span>✨ Redeem (₹499 OFF)</span>`;
-      }
-    }
-  };
-
-  window.copyActiveStreetCashCoupon = function() {
-    const code = window.activeStreetCashCouponCode ||
-      (streetCashState.streetCashCoupons?.find(c => !c.isRedeemed && c.status === 'active')?.code) ||
-      document.getElementById('streetCashMintedCodeDisplay')?.textContent?.trim() ||
-      localStorage.getItem('the_street_cash_active_coupon');
-
-    if (code && !code.includes('XXXX')) {
-      const btnLabel = document.getElementById('streetCashCopyCodeBtnLabel');
-      const setCopiedFeedback = () => {
-        if (btnLabel) {
-          btnLabel.textContent = 'Copied';
-          setTimeout(() => {
-            btnLabel.textContent = 'Copy Code';
-          }, 2000);
-        }
-      };
-
-      navigator.clipboard.writeText(code).then(() => {
-        setCopiedFeedback();
-        if (window.streetCoShowToast) {
-          window.streetCoShowToast('Voucher Code Copied', `${code} is copied and automatically applied at checkout.`);
-        }
-      }).catch(() => {
-        setCopiedFeedback();
-        if (window.streetCoShowToast) {
-          window.streetCoShowToast('Voucher Ready', `${code} is saved to your account and applied at checkout.`);
-        }
-      });
-    }
-  };
-
-  // Backwards compatible aliases
-  window.handleRedeemStreetCash = window.handleWalletRedeemStreetCash;
-  window.refreshStreetCashWallet = function() {
-    syncStreetCashFromBackend().then(() => {
-      if (window.streetCoShowToast) window.streetCoShowToast('Street Cash Synced', 'Live balance refreshed from MongoDB.');
     });
-  };
-
-  window.handleClaimBonusStreetCash = async function(actionId, label, points) {
-    const activePhone = getActiveUserPhone();
-    if (!activePhone || activePhone.length !== 10) {
-      if (window.streetCoShowToast) {
-        window.streetCoShowToast('Sign In Required', 'Please log in to claim community Street Cash bonuses.');
-      }
-      return;
-    }
-
-    try {
-      const res = await fetch('/api/loyalty/earn', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: activePhone, actionId, label, points })
-      });
-      const data = await res.json();
-      if (data && data.success) {
-        streetCashState.streetCashBalance = data.newBalance;
-        saveStreetCashCache();
-        renderStreetCashUI();
-        if (window.streetCoShowToast) {
-          window.streetCoShowToast(`+${points} The Street Cash!`, label);
-        }
-      } else if (data && data.alreadyClaimed) {
-        if (window.streetCoShowToast) {
-          window.streetCoShowToast('Already Claimed', data.message);
-        }
-      }
-    } catch (err) {
-      console.warn('[Claim bonus error]:', err.message);
-    }
-  };
-
-  window.applyStreetCashToCart = function(couponCode) {
-    window.closeVipLoyaltyModal();
-    if (typeof window.streetCoOpenCart === 'function') {
-      window.streetCoOpenCart('bag');
-    }
-    if (typeof window.streetCoApplyCoupon === 'function') {
-      window.streetCoApplyCoupon(couponCode);
-    }
-  };
-
-  // Initial sync on startup
-  setTimeout(() => {
-    syncStreetCashFromBackend();
-  }, 1000);
+  } catch (_) {}
 
   // ── 5. SELF-SERVICE ORDER LOOKUP & 7-DAY SIZE EXCHANGE PORTAL ──
   window.openOrderExchangeModal = function() {
@@ -11179,11 +10418,6 @@ window.openDelhiveryTracker = openDelhiveryTracker;
   // Initial renders
   renderLookbook('look-01');
   renderDropVaultGrid();
-  renderStreetCashUI();
-  function renderVipUI() {
-    renderStreetCashUI();
-  }
-  window.renderVipUI = renderVipUI;
   const initialFit = getSavedFitSize();
   if (initialFit) updateFitBadgesEverywhere(initialFit, 96);
 })();
@@ -14328,12 +13562,6 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           window.closeUnifiedOtpModal();
           renderAccountPageUI();
           showAccountFeedback(`✓ Email address successfully changed to ${newEmail}!`, false);
-          if (data && data.streetCashBonusAwarded && window.notifyStreetCashReceived) {
-            window.notifyStreetCashReceived(data.streetCashBonusAwarded.points, data.streetCashBonusAwarded.reason, data.streetCashBonusAwarded.newBalance);
-          }
-          if (window.syncStreetCashFromBackend) {
-            window.syncStreetCashFromBackend();
-          }
           if (window.streetCoShowToast) {
             window.streetCoShowToast('EMAIL CHANGED', `Email address updated to ${newEmail}`, 'success');
           }
@@ -14374,17 +13602,6 @@ window.openDelhiveryTracker = openDelhiveryTracker;
               : accountState.addresses,
             defaultAddressId: serverAccount.defaultAddressId || accountState.defaultAddressId || ''
           });
-
-          if (data.streetCashBonusAwarded && window.notifyStreetCashReceived) {
-            window.notifyStreetCashReceived(
-              data.streetCashBonusAwarded.points,
-              data.streetCashBonusAwarded.reason,
-              data.streetCashBonusAwarded.newBalance
-            );
-          }
-          if (window.syncStreetCashFromBackend) {
-            window.syncStreetCashFromBackend(activeOtpContext.targetPhone);
-          }
 
           window.closeUnifiedOtpModal();
           fetchAccountByPhone(activeOtpContext.targetPhone);
@@ -14892,12 +14109,6 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       feedbackBox.textContent = '';
     }
 
-    if (isExplicitSave && (fName || lName)) {
-      if (typeof window.claimMissionPoints === 'function') {
-        window.claimMissionPoints('profile_name', { firstName: fName, lastName: lName });
-      }
-    }
-
     // Background network sync without blocking UI
     try {
       if (phoneToSave) {
@@ -14914,20 +14125,6 @@ window.openDelhiveryTracker = openDelhiveryTracker;
             defaultAddressId: accountState.defaultAddressId || '',
             isExplicitSave: Boolean(isExplicitSave)
           })
-        }).then(async (res) => {
-          if (res.ok) {
-            const data = await res.json().catch(() => ({}));
-            if (isExplicitSave && data && Array.isArray(data.newlyAwardedBonuses) && data.newlyAwardedBonuses.length > 0) {
-              data.newlyAwardedBonuses.forEach(b => {
-                if (window.notifyStreetCashReceived) {
-                  window.notifyStreetCashReceived(b.points, b.reason || b.label, b.newBalance);
-                }
-              });
-              if (window.syncStreetCashFromBackend) {
-                window.syncStreetCashFromBackend(phoneToSave);
-              }
-            }
-          }
         }).catch(() => {});
       }
     } catch (_) {}

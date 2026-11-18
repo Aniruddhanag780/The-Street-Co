@@ -417,14 +417,14 @@ function renderMinimalEmailShell({
               </td>
             </tr>
 
-            <!-- Subtle Brand & Storefront Footer -->
+                <!-- Subtle Brand & Storefront Footer -->
             <tr>
               <td align="center" style="padding:32px 0 0 0;border-top:1px solid #e5dfd5;">
-                <div class="email-subtle-text" style="font-size:12px;color:#78716c;line-height:1.7;padding-top:22px;">
-                  Questions? Contact us at
-                  <a href="mailto:${escapeHtml(supportEmail)}" class="email-dark-text" style="color:#171717;text-decoration:underline;">${escapeHtml(supportEmail)}</a>
+                <div class="email-subtle-text" style="font-size:12px;color:#52525b !important;line-height:1.7;padding-top:22px;">
+                  <span style="color:#52525b !important;">Questions? Contact us at</span>
+                  <a href="mailto:${escapeHtml(supportEmail)}" class="email-subtle-text" style="color:#52525b !important;text-decoration:underline !important;"><span style="color:#52525b !important;">${escapeHtml(supportEmail)}</span></a>
                   <br>
-                  <a href="${escapeHtml(websiteHref)}" target="_blank" rel="noopener noreferrer" class="email-link" style="color:#2563eb;text-decoration:underline;">${escapeHtml(websiteLabel)}</a> &middot; The Street Co
+                  <a href="${escapeHtml(websiteHref)}" target="_blank" rel="noopener noreferrer" class="email-subtle-text" style="color:#52525b !important;text-decoration:underline !important;"><span style="color:#52525b !important;">${escapeHtml(websiteLabel)}</span></a> <span style="color:#52525b !important;">&middot; The Street Co</span>
                 </div>
 
                 <!-- Social Icons: Instagram, Twitter, Reddit -->
@@ -435,14 +435,14 @@ function renderMinimalEmailShell({
                 </table>
 
                 <!-- Brand Heritage Tagline -->
-                <div class="email-subtle-text" style="margin-top:20px;font-size:10px;font-weight:600;letter-spacing:0.22em;text-transform:uppercase;color:#78716c;line-height:1.6;">
-                  TIMELESS STREETWEAR CULTURE // ARCHIVE COLLECTION
+                <div class="email-subtle-text" style="margin-top:20px;font-size:10px;font-weight:600;letter-spacing:0.22em;text-transform:uppercase;color:#52525b !important;line-height:1.6;">
+                  <span style="color:#52525b !important;">TIMELESS STREETWEAR CULTURE // ARCHIVE COLLECTION</span>
                 </div>
-                <div class="email-subtle-text" style="margin-top:8px;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#78716c;line-height:1.5;">
-                  &copy; 2026 THE STREET CO ALL RIGHTS RESERVED.
+                <div class="email-subtle-text" style="margin-top:8px;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#52525b !important;line-height:1.5;">
+                  <span style="color:#52525b !important;">&copy; 2026 THE STREET CO ALL RIGHTS RESERVED.</span>
                 </div>
-                <div class="email-subtle-text" style="margin-top:2px;font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:#78716c;line-height:1.5;">
-                  ELEVATED STYLE &middot; MODERN ESSENTIALS
+                <div class="email-subtle-text" style="margin-top:2px;font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:#52525b !important;line-height:1.5;">
+                  <span style="color:#52525b !important;">ELEVATED STYLE &middot; MODERN ESSENTIALS</span>
                 </div>
 
                 <!-- Original Payment Method Badges -->
@@ -451,14 +451,14 @@ function renderMinimalEmailShell({
                 </div>
 
                 <!-- Legal Footer Links -->
-                <div class="email-subtle-text" style="margin-top:16px;font-size:11px;color:#78716c;letter-spacing:0.04em;line-height:1.6;">
-                  <a href="${escapeHtml(websiteHref.replace(/\/$/, ''))}/#terms" target="_blank" rel="noopener noreferrer" class="email-link" style="color:#2563eb;text-decoration:underline;">Terms</a>
-                  <span style="margin:0 6px;color:#c4bdb2;">&middot;</span>
-                  <a href="${escapeHtml(websiteHref.replace(/\/$/, ''))}/#privacy" target="_blank" rel="noopener noreferrer" class="email-link" style="color:#2563eb;text-decoration:underline;">Privacy</a>
-                  <span style="margin:0 6px;color:#c4bdb2;">&middot;</span>
-                  <a href="${escapeHtml(websiteHref.replace(/\/$/, ''))}/#refund" target="_blank" rel="noopener noreferrer" class="email-link" style="color:#2563eb;text-decoration:underline;">Refunds</a>
-                  <span style="margin:0 6px;color:#c4bdb2;">&middot;</span>
-                  <a href="${escapeHtml(websiteHref.replace(/\/$/, ''))}/#shipping" target="_blank" rel="noopener noreferrer" class="email-link" style="color:#2563eb;text-decoration:underline;">Shipping</a>
+                <div class="email-subtle-text" style="margin-top:16px;font-size:11px;color:#52525b !important;letter-spacing:0.04em;line-height:1.6;">
+                  <a href="${escapeHtml(websiteHref.replace(/\/$/, ''))}/#terms" target="_blank" rel="noopener noreferrer" class="email-subtle-text" style="color:#52525b !important;text-decoration:underline !important;"><span style="color:#52525b !important;">Terms</span></a>
+                  <span style="margin:0 6px;color:#52525b !important;">&middot;</span>
+                  <a href="${escapeHtml(websiteHref.replace(/\/$/, ''))}/#privacy" target="_blank" rel="noopener noreferrer" class="email-subtle-text" style="color:#52525b !important;text-decoration:underline !important;"><span style="color:#52525b !important;">Privacy</span></a>
+                  <span style="margin:0 6px;color:#52525b !important;">&middot;</span>
+                  <a href="${escapeHtml(websiteHref.replace(/\/$/, ''))}/#refund" target="_blank" rel="noopener noreferrer" class="email-subtle-text" style="color:#52525b !important;text-decoration:underline !important;"><span style="color:#52525b !important;">Refunds</span></a>
+                  <span style="margin:0 6px;color:#52525b !important;">&middot;</span>
+                  <a href="${escapeHtml(websiteHref.replace(/\/$/, ''))}/#shipping" target="_blank" rel="noopener noreferrer" class="email-subtle-text" style="color:#52525b !important;text-decoration:underline !important;"><span style="color:#52525b !important;">Shipping</span></a>
                 </div>
               </td>
             </tr>
@@ -527,7 +527,7 @@ export function renderOrderConfirmationEmail({
     </div>
     <div style="margin:0;">
       You can follow your order status by logging into your account at<br>
-      <a href="${escapeHtml(websiteHref)}" target="_blank" style="color:#2563eb;text-decoration:underline;">${escapeHtml(websiteLabel)}</a>.<br>
+      <a href="${escapeHtml(websiteHref)}" target="_blank" style="color:#171717 !important;font-weight:600;text-decoration:underline !important;"><span style="color:#171717 !important;">${escapeHtml(websiteLabel)}</span></a>.<br>
       You can see the invoice using the button below.
     </div>
   `;
@@ -709,7 +709,7 @@ export function renderReturnConfirmationEmail({
       </div>
       <div style="margin:0;">
         You can follow your exchange status by logging into your account at<br>
-        <a href="${escapeHtml(websiteHref)}" target="_blank" style="color:#2563eb;text-decoration:underline;">${escapeHtml(websiteLabel)}</a> or by using the button below.
+        <a href="${escapeHtml(websiteHref)}" target="_blank" style="color:#171717 !important;font-weight:600;text-decoration:underline !important;"><span style="color:#171717 !important;">${escapeHtml(websiteLabel)}</span></a> or by using the button below.
       </div>
     `
     : `
@@ -719,7 +719,7 @@ export function renderReturnConfirmationEmail({
       </div>
       <div style="margin:0;">
         You can follow your return status by logging into your account at<br>
-        <a href="${escapeHtml(websiteHref)}" target="_blank" style="color:#2563eb;text-decoration:underline;">${escapeHtml(websiteLabel)}</a> or by using the button below.
+        <a href="${escapeHtml(websiteHref)}" target="_blank" style="color:#171717 !important;font-weight:600;text-decoration:underline !important;"><span style="color:#171717 !important;">${escapeHtml(websiteLabel)}</span></a> or by using the button below.
       </div>
     `;
 
@@ -854,7 +854,7 @@ export function renderShipmentFulfilledEmail({
     </div>
     <div style="margin:0;">
       Need a different size or easy return? Our 7-day reverse pickup portal is open anytime at
-      <a href="${escapeHtml(accountStatusUrl)}" target="_blank" style="color:#2563eb;text-decoration:underline;">${escapeHtml(websiteLabel)}</a> or using the button below.
+      <a href="${escapeHtml(accountStatusUrl)}" target="_blank" style="color:#171717 !important;font-weight:600;text-decoration:underline !important;"><span style="color:#171717 !important;">${escapeHtml(websiteLabel)}</span></a> or using the button below.
     </div>
   `;
 
@@ -868,7 +868,7 @@ export function renderShipmentFulfilledEmail({
     <tr>
       <td style="text-align:left;color:#52525b;padding:4px 0;">Courier</td>
       <td style="text-align:right;color:#171717;padding:4px 0;white-space:nowrap;">
-        <a href="${escapeHtml(trackingUrl)}" target="_blank" style="color:#2563eb;text-decoration:underline;">Delhivery Express (#${escapeHtml(cleanOrderNumber)})</a>
+        <a href="${escapeHtml(trackingUrl)}" target="_blank" style="color:#171717 !important;text-decoration:underline !important;"><span style="color:#171717 !important;">Delhivery Express (#${escapeHtml(cleanOrderNumber)})</span></a>
       </td>
     </tr>
     <tr>
@@ -940,15 +940,53 @@ export function renderEmailOtpEmail({
   codeLabel = 'Verification OTP',
   validityNote = 'This verification code is valid for 10 minutes. If you did not request this verification, you can safely ignore this email.',
   subject = '',
+  hostOrigin = '',
+  useRelativeAssets = false,
+  useCidAssets = true,
   supportEmail = DEFAULT_SUPPORT_EMAIL,
   websiteHref = DEFAULT_WEBSITE_URL,
   websiteLabel = DEFAULT_WEBSITE_LABEL
 } = {}) {
+  const cidAttachments = [];
+  const assetOpts = { hostOrigin, useRelativeAssets, useCidAssets, cidList: cidAttachments };
+  const asset = (file, cidName) => escapeHtml(
+    resolveEmailAssetUrl(`/public/assets/email/${file}`, { ...assetOpts, cidName })
+  );
+
+  const socialHtml = [
+    { href: 'https://instagram.com', label: 'Instagram', file: 'social-instagram.png', cid: 'social-instagram', w: 32, h: 32 },
+    { href: 'https://twitter.com', label: 'Twitter', file: 'social-twitter.png', cid: 'social-twitter', w: 32, h: 32 },
+    { href: 'https://reddit.com', label: 'Reddit', file: 'social-reddit.png', cid: 'social-reddit', w: 32, h: 32 }
+  ].map(s => `
+                    <td style="padding:0 5px;">
+                      <a href="${escapeHtml(s.href)}" target="_blank" rel="noopener noreferrer" aria-label="${escapeHtml(s.label)}" title="${escapeHtml(s.label)}" style="display:inline-block;width:${s.w}px;height:${s.h}px;text-decoration:none;border-radius:50%;vertical-align:middle;">
+                        <img src="${asset(s.file, s.cid)}" alt="${escapeHtml(s.label)}" width="${s.w}" height="${s.h}" style="width:${s.w}px;height:${s.h}px;display:block;border:0;border-radius:50%;" />
+                      </a>
+                    </td>`).join('');
+
+  const paymentHtml = [
+    { label: 'Visa', file: 'pay-visa.png', cid: 'pay-visa', w: 52, h: 30 },
+    { label: 'Mastercard', file: 'pay-mastercard.png', cid: 'pay-mastercard', w: 52, h: 30 },
+    { label: 'PayPal', file: 'pay-paypal.png', cid: 'pay-paypal', w: 58, h: 30 },
+    { label: 'Apple Pay', file: 'pay-applepay.png', cid: 'pay-applepay', w: 52, h: 30 },
+    { label: 'Stripe', file: 'pay-stripe.png', cid: 'pay-stripe', w: 52, h: 30 },
+    { label: 'Google Pay', file: 'pay-gpay.png', cid: 'pay-gpay', w: 55, h: 30 },
+    { label: 'Amazon Pay', file: 'pay-amazonpay.png', cid: 'pay-amazonpay', w: 64, h: 30 }
+  ].map(p => `
+                  <span title="${escapeHtml(p.label)}" style="display:inline-block;margin:3px 3px;vertical-align:middle;line-height:0;">
+                    <img src="${asset(p.file, p.cid)}" alt="${escapeHtml(p.label)}" title="${escapeHtml(p.label)}" width="${p.w}" height="${p.h}" style="width:${p.w}px;height:${p.h}px;display:block;border:0;" />
+                  </span>`).join('');
+
   const firstName = String(recipientName || 'Customer').trim().split(/\s+/)[0] || 'Customer';
   const cleanCode = String(otpCode || '849201').trim();
   const resolvedSubject = subject || `${cleanCode} is your 6-Digit Email Verification OTP — The Street Co`;
+
+  // Prevent Gmail from auto-coloring the email address in blue
+  const safeEmailHtml = recipientEmail
+    ? `<a href="mailto:${escapeHtml(recipientEmail)}" style="color:#171717 !important;text-decoration:none !important;font-weight:600;"><span style="color:#171717 !important;text-decoration:none !important;">${escapeHtml(recipientEmail)}</span></a>`
+    : '';
   const defaultBodyHtml = recipientEmail
-    ? `Use the 6-digit verification code below to verify and save your email address (<strong style="color:#171717;font-weight:600;">${escapeHtml(recipientEmail)}</strong>) on your The Street Co account.`
+    ? `Use the 6-digit verification code below to verify and save your email address (${safeEmailHtml}) on your The Street Co account.`
     : `Use the 6-digit verification code below to verify your email address on your The Street Co account.`;
   const messageHtml = bodyLineHtml || defaultBodyHtml;
 
@@ -965,15 +1003,18 @@ export function renderEmailOtpEmail({
       :root { color-scheme: light only; supported-color-schemes: light only; }
       html, body { margin:0;padding:0;background-color:#FAF8F5 !important;color:#171717 !important;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;color-scheme:light only; }
       table, td { border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt; }
+      img { border:0;height:auto;line-height:100%;outline:none;text-decoration:none; }
+      a, a:link, a:visited, .ii a[href], .gt a { color:#171717 !important; }
+      .email-subtle-text a, .email-subtle-text a:link, .email-subtle-text a:visited, .ii .email-subtle-text a[href] { color:#52525b !important; }
+      .im, .im * { color: inherit !important; }
       @media (prefers-color-scheme: dark) {
         html, body, .email-light-bg, .email-light-table { background-color:#FAF8F5 !important;background-image:linear-gradient(#FAF8F5,#FAF8F5) !important;color:#171717 !important; }
         .email-dark-text, h1, h2, h3, strong { color:#171717 !important; }
-        .email-muted-text { color:#52525b !important; }
-        .email-subtle-text, .email-subtle-link { color:#78716c !important; }
+        .email-muted-text, .email-subtle-text, .email-subtle-link { color:#52525b !important; }
       }
       [data-ogsb] .email-light-bg, [data-ogsb] body { background-color:#FAF8F5 !important; }
       [data-ogsc] .email-dark-text, [data-ogsc] body { color:#171717 !important; }
-      [data-ogsc] .email-subtle-text, [data-ogsc] .email-subtle-link { color:#78716c !important; }
+      [data-ogsc] .email-subtle-text, [data-ogsc] .email-subtle-link { color:#52525b !important; }
       u + .body .email-light-bg { background-color:#FAF8F5 !important;background-image:linear-gradient(#FAF8F5,#FAF8F5) !important;color:#171717 !important; }
     </style>
   </head>
@@ -985,8 +1026,8 @@ export function renderEmailOtpEmail({
             <!-- Centered Brand Wordmark -->
             <tr>
               <td align="center" style="padding:0 0 28px 0;">
-                <a href="${escapeHtml(websiteHref)}" target="_blank" class="email-dark-text" style="text-decoration:none;color:#000000;font-size:20px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;">
-                  THE STREET CO
+                <a href="${escapeHtml(websiteHref)}" target="_blank" class="email-dark-text" style="text-decoration:none !important;color:#000000 !important;font-size:20px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;">
+                  <span style="color:#000000 !important;text-decoration:none !important;">THE STREET CO</span>
                 </a>
               </td>
             </tr>
@@ -994,61 +1035,73 @@ export function renderEmailOtpEmail({
             <!-- Main Heading -->
             <tr>
               <td align="center" style="padding:0 0 20px 0;">
-                <h1 class="email-dark-text" style="margin:0;font-size:28px;font-weight:500;line-height:1.25;letter-spacing:-0.02em;color:#111111;">
-                  ${escapeHtml(heading)}
+                <h1 class="email-dark-text" style="margin:0;font-size:28px;font-weight:500;line-height:1.25;letter-spacing:-0.02em;color:#111111 !important;">
+                  <span style="color:#111111 !important;">${escapeHtml(heading)}</span>
                 </h1>
               </td>
             </tr>
 
             <!-- Greeting & Body Copy (Text Only) -->
             <tr>
-              <td align="center" class="email-muted-text" style="padding:0 12px 28px 12px;font-size:14px;line-height:1.65;color:#52525b;">
-                <div class="email-dark-text" style="margin:0 0 16px 0;color:#404040;">Hey ${escapeHtml(firstName)},</div>
-                <div style="margin:0 0 26px 0;">
+              <td align="center" class="email-muted-text" style="padding:0 12px 28px 12px;font-size:14px;line-height:1.65;color:#52525b !important;">
+                <div class="email-dark-text" style="margin:0 0 16px 0;color:#171717 !important;"><span style="color:#171717 !important;">Hey ${escapeHtml(firstName)},</span></div>
+                <div style="margin:0 0 26px 0;color:#52525b !important;">
                   ${messageHtml}
                 </div>
-                <div style="font-size:11px;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;color:#78716c;margin:0 0 8px 0;">
-                  ${escapeHtml(codeLabel)}
+                <div style="font-size:11px;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;color:#52525b !important;margin:0 0 8px 0;">
+                  <span style="color:#52525b !important;">${escapeHtml(codeLabel)}</span>
                 </div>
-                <div class="email-dark-text" style="font-size:34px;font-weight:600;letter-spacing:0.26em;color:#111111;line-height:1.2;margin:0 0 26px 0;">
-                  ${escapeHtml(cleanCode)}
+                <div class="email-dark-text" style="font-size:34px;font-weight:600;letter-spacing:0.26em;color:#111111 !important;line-height:1.2;margin:0 0 26px 0;">
+                  <span style="color:#111111 !important;">${escapeHtml(cleanCode)}</span>
                 </div>
-                <div style="margin:0;font-size:13px;line-height:1.6;color:#52525b;">
-                  ${escapeHtml(validityNote)}
+                <div style="margin:0;font-size:13px;line-height:1.6;color:#52525b !important;">
+                  <span style="color:#52525b !important;">${escapeHtml(validityNote)}</span>
                 </div>
               </td>
             </tr>
 
-            <!-- Subtle Brand & Storefront Footer (Text Only, Uniform Bottom Colour #78716c) -->
+            <!-- Subtle Brand & Storefront Footer (Same Layout & Icons as Order Confirmation, Uniform Bottom Colour #52525b) -->
             <tr>
-              <td align="center" style="padding:28px 0 0 0;border-top:1px solid #e5dfd5;">
-                <div class="email-subtle-text" style="font-size:12px;color:#78716c;line-height:1.7;padding-top:6px;">
-                  Questions? Contact us at
-                  <a href="mailto:${escapeHtml(supportEmail)}" class="email-subtle-link" style="color:#78716c;text-decoration:underline;">${escapeHtml(supportEmail)}</a>
+              <td align="center" style="padding:32px 0 0 0;border-top:1px solid #e5dfd5;">
+                <div class="email-subtle-text" style="font-size:12px;color:#52525b !important;line-height:1.7;padding-top:22px;">
+                  <span style="color:#52525b !important;">Questions? Contact us at</span>
+                  <a href="mailto:${escapeHtml(supportEmail)}" class="email-subtle-link" style="color:#52525b !important;text-decoration:underline !important;"><span style="color:#52525b !important;">${escapeHtml(supportEmail)}</span></a>
                   <br>
-                  <a href="${escapeHtml(websiteHref)}" target="_blank" rel="noopener noreferrer" class="email-subtle-link" style="color:#78716c;text-decoration:underline;">${escapeHtml(websiteLabel)}</a> &middot; The Street Co
+                  <a href="${escapeHtml(websiteHref)}" target="_blank" rel="noopener noreferrer" class="email-subtle-link" style="color:#52525b !important;text-decoration:underline !important;"><span style="color:#52525b !important;">${escapeHtml(websiteLabel)}</span></a> <span style="color:#52525b !important;">&middot; The Street Co</span>
                 </div>
 
-                <!-- Brand Heritage Tagline (Uniform Colour #78716c) -->
-                <div class="email-subtle-text" style="margin-top:20px;font-size:10px;font-weight:600;letter-spacing:0.22em;text-transform:uppercase;color:#78716c;line-height:1.6;">
-                  TIMELESS STREETWEAR CULTURE // ARCHIVE COLLECTION
+                <!-- Social Icons: Instagram, Twitter, Reddit -->
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:22px auto 0 auto;">
+                  <tr>
+                    ${socialHtml}
+                  </tr>
+                </table>
+
+                <!-- Brand Heritage Tagline (Uniform Colour #52525b) -->
+                <div class="email-subtle-text" style="margin-top:20px;font-size:10px;font-weight:600;letter-spacing:0.22em;text-transform:uppercase;color:#52525b !important;line-height:1.6;">
+                  <span style="color:#52525b !important;">TIMELESS STREETWEAR CULTURE // ARCHIVE COLLECTION</span>
                 </div>
-                <div class="email-subtle-text" style="margin-top:8px;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#78716c;line-height:1.5;">
-                  &copy; 2026 THE STREET CO ALL RIGHTS RESERVED.
+                <div class="email-subtle-text" style="margin-top:8px;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#52525b !important;line-height:1.5;">
+                  <span style="color:#52525b !important;">&copy; 2026 THE STREET CO ALL RIGHTS RESERVED.</span>
                 </div>
-                <div class="email-subtle-text" style="margin-top:2px;font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:#78716c;line-height:1.5;">
-                  ELEVATED STYLE &middot; MODERN ESSENTIALS
+                <div class="email-subtle-text" style="margin-top:2px;font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:#52525b !important;line-height:1.5;">
+                  <span style="color:#52525b !important;">ELEVATED STYLE &middot; MODERN ESSENTIALS</span>
                 </div>
 
-                <!-- Legal Footer Links (Uniform Colour #78716c) -->
-                <div class="email-subtle-text" style="margin-top:16px;font-size:11px;color:#78716c;letter-spacing:0.04em;line-height:1.6;">
-                  <a href="${escapeHtml(websiteHref.replace(/\/$/, ''))}/#terms" target="_blank" rel="noopener noreferrer" class="email-subtle-link" style="color:#78716c;text-decoration:underline;">Terms</a>
-                  <span style="margin:0 6px;color:#78716c;">&middot;</span>
-                  <a href="${escapeHtml(websiteHref.replace(/\/$/, ''))}/#privacy" target="_blank" rel="noopener noreferrer" class="email-subtle-link" style="color:#78716c;text-decoration:underline;">Privacy</a>
-                  <span style="margin:0 6px;color:#78716c;">&middot;</span>
-                  <a href="${escapeHtml(websiteHref.replace(/\/$/, ''))}/#refund" target="_blank" rel="noopener noreferrer" class="email-subtle-link" style="color:#78716c;text-decoration:underline;">Refunds</a>
-                  <span style="margin:0 6px;color:#78716c;">&middot;</span>
-                  <a href="${escapeHtml(websiteHref.replace(/\/$/, ''))}/#shipping" target="_blank" rel="noopener noreferrer" class="email-subtle-link" style="color:#78716c;text-decoration:underline;">Shipping</a>
+                <!-- Original Payment Method Badges -->
+                <div style="margin-top:18px;text-align:center;line-height:0;">
+                  ${paymentHtml}
+                </div>
+
+                <!-- Legal Footer Links (Uniform Colour #52525b) -->
+                <div class="email-subtle-text" style="margin-top:16px;font-size:11px;color:#52525b !important;letter-spacing:0.04em;line-height:1.6;">
+                  <a href="${escapeHtml(websiteHref.replace(/\/$/, ''))}/#terms" target="_blank" rel="noopener noreferrer" class="email-subtle-link" style="color:#52525b !important;text-decoration:underline !important;"><span style="color:#52525b !important;">Terms</span></a>
+                  <span style="margin:0 6px;color:#52525b !important;">&middot;</span>
+                  <a href="${escapeHtml(websiteHref.replace(/\/$/, ''))}/#privacy" target="_blank" rel="noopener noreferrer" class="email-subtle-link" style="color:#52525b !important;text-decoration:underline !important;"><span style="color:#52525b !important;">Privacy</span></a>
+                  <span style="margin:0 6px;color:#52525b !important;">&middot;</span>
+                  <a href="${escapeHtml(websiteHref.replace(/\/$/, ''))}/#refund" target="_blank" rel="noopener noreferrer" class="email-subtle-link" style="color:#52525b !important;text-decoration:underline !important;"><span style="color:#52525b !important;">Refunds</span></a>
+                  <span style="margin:0 6px;color:#52525b !important;">&middot;</span>
+                  <a href="${escapeHtml(websiteHref.replace(/\/$/, ''))}/#shipping" target="_blank" rel="noopener noreferrer" class="email-subtle-link" style="color:#52525b !important;text-decoration:underline !important;"><span style="color:#52525b !important;">Shipping</span></a>
                 </div>
               </td>
             </tr>
@@ -1074,8 +1127,10 @@ ${websiteLabel} · The Street Co
 TIMELESS STREETWEAR CULTURE // ARCHIVE COLLECTION
 © 2026 THE STREET CO ALL RIGHTS RESERVED.
 ELEVATED STYLE · MODERN ESSENTIALS
+VISA · Mastercard · PayPal · Apple Pay · Stripe · Google Pay · Amazon Pay
 Terms · Privacy · Refunds · Shipping`;
 
-  return { subject: resolvedSubject, html, text, otpCode: cleanCode };
+  return { subject: resolvedSubject, html, text, otpCode: cleanCode, cidAttachments };
 }
+
 

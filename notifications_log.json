@@ -3,7 +3,7 @@
     "id": "fcm_1792920649408_m0rwbi",
     "title": "Test Drop Alert",
     "body": "Welcome to The Street Co exclusive drop network!",
-    "icon": "/pwa-192x192.png",
+    "icon": "/img/favicon.ico",
     "url": "/",
     "data": {
       "click_action": "/",
@@ -16,7 +16,7 @@
     "id": "fcm_1792920580739_zzubkj",
     "title": "Test Street Co",
     "body": "Push notifications operational",
-    "icon": "/pwa-192x192.png",
+    "icon": "/img/favicon.ico",
     "url": "/",
     "data": {
       "click_action": "/",

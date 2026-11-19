@@ -5965,6 +5965,18 @@ app.get('*', (req, res) => {
   sendDynamicIndex(req, res);
 });
 
+// Route-level fallback for offline database errors
+app.use((err, req, res, next) => {
+  if (err && (err.name === 'MongooseError' || err.name === 'MongoNetworkError' || err.name === 'MongoServerSelectionError' || (err.message && err.message.includes('buffering timed out')))) {
+    console.warn('[AI Studio] Database offline — returning mock empty response');
+    if (req.method === 'GET') {
+      return res.json(req.path.endsWith('s') || req.path.endsWith('s/') ? [] : {});
+    }
+    return res.status(503).json({ error: 'Service temporarily unavailable (database offline)' });
+  }
+  next(err);
+});
+
 async function hydrateFromMongoDb() {
   try {
     const db = await connectMongoDb();

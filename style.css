@@ -3,7 +3,7 @@
    ═══════════════════════════════════════════ */
 
 :root{
-  --bg-page:#ffffff;
+  --bg-page:#FAF8F5;
   --bg-surface:#ffffff;
   --bg-subtle:#f4f4f5;
   --ink:#ffffff;
@@ -25,7 +25,7 @@
 *{margin:0;padding:0;box-sizing:border-box}
 html{scroll-behavior:smooth}
 body{
-  background:#ffffff;
+  background:#FAF8F5;
   color:#000000;
   font-family:var(--gothic);
   overflow-x:hidden;
@@ -7740,12 +7740,12 @@ input#checkoutPhone:focus{
 
 /* ── Global Light Theme Foundations ── */
 body {
-  background: #ffffff !important;
+  background: #FAF8F5 !important;
   color: #000000 !important;
 }
 
 main {
-  background: #ffffff !important;
+  background: #FAF8F5 !important;
 }
 
 /* ── Ticker & Header ── */
@@ -12142,9 +12142,9 @@ input#checkoutPhone:focus {
 
 /* ── Quote & Footer ── */
 .quote {
-  background: #ffffff !important;
-  border-top: 1px solid #e5e5e5 !important;
-  border-bottom: 1px solid #e5e5e5 !important;
+  background: #FAF8F5 !important;
+  border-top: 1px solid #ECE5DB !important;
+  border-bottom: 1px solid #ECE5DB !important;
   color: #000000 !important;
   padding: 3.5rem 1.5rem !important;
 }
@@ -12155,20 +12155,20 @@ input#checkoutPhone:focus {
   color: #525252 !important;
 }
 .quote__jp {
-  color: #e5e5e5 !important;
+  color: #e5dfd5 !important;
 }
 .quote__mark {
   color: #737373 !important;
 }
 
 .site-footer {
-  background: #ffffff !important;
-  border-top: 1px solid #e5e5e5 !important;
+  background: #FAF8F5 !important;
+  border-top: 1px solid #ECE5DB !important;
   color: #000000 !important;
 }
 .footer__newsletter-wrap {
-  background: #ffffff !important;
-  border-bottom: 1px solid #e5e5e5 !important;
+  background: #FAF8F5 !important;
+  border-bottom: 1px solid #ECE5DB !important;
 }
 .footer__newsletter-title {
   color: #000000 !important;
@@ -12438,7 +12438,7 @@ body {
 /* ── LUXURY HEADER ── */
 .store-header,
 header#topChrome {
-  background: #FCFAF7 !important;
+  background: #FAF8F5 !important;
   border-bottom: 1px solid var(--elanora-border) !important;
   padding: 0.42rem 1.25rem !important;
   min-height: 48px !important;
@@ -12818,7 +12818,7 @@ a#heroShopNewArrivalsBtn:hover {
 
 /* ── CIRCULAR CATEGORIES ROW ── */
 .elanora-categories-row {
-  background: #FCFAF7 !important;
+  background: #FAF8F5 !important;
   border-top: 1px solid var(--elanora-border) !important;
   border-bottom: 1px solid var(--elanora-border) !important;
   padding: 2.5rem 1.5rem !important;
@@ -15077,7 +15077,7 @@ body:has(.return-exchange-modal.open) .mobile-bottom-bar,
   position: sticky !important;
   top: 0 !important;
   z-index: 30 !important;
-  background: #ffffff !important;
+  background: #FAF8F5 !important;
   border-bottom: 1px solid #e5e5e5 !important;
   width: 100% !important;
 }
@@ -19894,4 +19894,13 @@ button#toastOpenWishlistBtn:hover {
   font-weight: 600 !important;
 }
 
-
+/* ── UNIFIED PAGE BACKGROUND (#FAF8F5) ── */
+html,
+body,
+main,
+#homePageView,
+#categoriesPageView,
+.souled-cat-page {
+  background: #FAF8F5 !important;
+  background-color: #FAF8F5 !important;
+}

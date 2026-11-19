@@ -5,20 +5,111 @@ import path from 'path';
 
 const ACCOUNTS_CACHE_FILE = path.join(os.tmpdir(), 'thestreetco_accounts_cache.json');
 
-const DEFAULT_MONGODB_URI = 'mongodb+srv://aniruddhanag780_db_user:MIHtGOi9FH6Wgzd1@cluster-1.torqvts.mongodb.net/thestreetco?retryWrites=true&w=majority&appName=Cluster-1';
+const DEFAULT_MONGODB_URI = '';
 const DEFAULT_DB_NAME = 'thestreetco';
 
 let client = null;
 let dbInstance = null;
 let connectionPromise = null;
+let connectionFailed = false;
 let connectionStatus = {
   connected: false,
-  cluster: 'cluster-1.torqvts.mongodb.net',
+  mode: 'in-memory',
+  cluster: 'in-memory-mock',
   dbName: DEFAULT_DB_NAME,
-  user: 'aniruddhanag780_db_user',
-  collections: ['newsletter_subscribers', 'coupons'],
+  user: null,
+  collections: ['users_accounts', 'newsletter_subscribers', 'coupons'],
   lastConnectedAt: null,
   lastError: null
+};
+
+// In-memory MongoDB collection mock for offline / AI Studio runtime
+const mockCollectionsStore = new Map();
+
+function matchesMongoFilter(doc, filter = {}) {
+  if (!filter || typeof filter !== 'object') return true;
+  for (const [key, cond] of Object.entries(filter)) {
+    const val = doc?.[key];
+    if (cond && typeof cond === 'object' && !Array.isArray(cond) && !(cond instanceof RegExp)) {
+      if ('$ne' in cond && val === cond.$ne) return false;
+      if ('$eq' in cond && val !== cond.$eq) return false;
+      if ('$in' in cond && Array.isArray(cond.$in) && !cond.$in.includes(val)) return false;
+      if ('$regex' in cond) {
+        const rx = cond.$regex instanceof RegExp ? cond.$regex : new RegExp(cond.$regex, cond.$options || '');
+        if (!rx.test(String(val ?? ''))) return false;
+      }
+      if ('$not' in cond && cond.$not && typeof cond.$not === 'object') {
+        if ('$regex' in cond.$not) {
+          const rx = cond.$not.$regex instanceof RegExp
+            ? cond.$not.$regex
+            : new RegExp(cond.$not.$regex, cond.$not.$options || '');
+          if (rx.test(String(val ?? ''))) return false;
+        }
+      }
+    } else if (cond instanceof RegExp) {
+      if (!cond.test(String(val ?? ''))) return false;
+    } else {
+      if (val !== cond) return false;
+    }
+  }
+  return true;
+}
+
+function applyProjection(doc, options = {}) {
+  if (!doc) return null;
+  const copy = { ...doc };
+  if (options?.projection?._id === 0) {
+    delete copy._id;
+  }
+  return copy;
+}
+
+function getMockCollection(name) {
+  if (!mockCollectionsStore.has(name)) {
+    mockCollectionsStore.set(name, []);
+  }
+  const rows = mockCollectionsStore.get(name);
+  return {
+    createIndex: async () => `${name}_idx`,
+    find: (query = {}, options = {}) => ({
+      toArray: async () => rows
+        .filter((doc) => matchesMongoFilter(doc, query))
+        .map((doc) => applyProjection(doc, options))
+    }),
+    findOne: async (query = {}, options = {}) => {
+      const found = rows.find((doc) => matchesMongoFilter(doc, query));
+      return found ? applyProjection(found, options) : null;
+    },
+    updateOne: async (filter = {}, update = {}, options = {}) => {
+      const idx = rows.findIndex((doc) => matchesMongoFilter(doc, filter));
+      const setData = update?.$set || update || {};
+      if (idx >= 0) {
+        rows[idx] = { ...rows[idx], ...setData };
+        return { matchedCount: 1, modifiedCount: 1, upsertedCount: 0 };
+      }
+      if (options?.upsert) {
+        rows.push({ ...filter, ...setData });
+        return { matchedCount: 0, modifiedCount: 0, upsertedCount: 1 };
+      }
+      return { matchedCount: 0, modifiedCount: 0, upsertedCount: 0 };
+    },
+    insertOne: async (doc = {}) => {
+      rows.push({ ...doc });
+      return { acknowledged: true, insertedId: doc._id || `mock_${Date.now()}` };
+    },
+    deleteOne: async (filter = {}) => {
+      const idx = rows.findIndex((doc) => matchesMongoFilter(doc, filter));
+      if (idx >= 0) {
+        rows.splice(idx, 1);
+        return { deletedCount: 1 };
+      }
+      return { deletedCount: 0 };
+    }
+  };
+}
+
+const mockDbInstance = {
+  collection: (name) => getMockCollection(name)
 };
 
 const INITIAL_ACCOUNT_SEEDS = {
@@ -107,6 +198,7 @@ function persistLocalAccountsCache() {
 
 export function getMongoUri() {
   const raw = (process.env.MONGODB_URI || DEFAULT_MONGODB_URI).trim();
+  if (!raw) return '';
   if (raw.endsWith('.mongodb.net/')) {
     return `${raw}${DEFAULT_DB_NAME}?retryWrites=true&w=majority`;
   }
@@ -121,18 +213,21 @@ export async function connectMongoDb() {
   if (dbInstance && connectionStatus.connected) {
     return dbInstance;
   }
+  const uri = getMongoUri();
+  if (!uri || connectionFailed) {
+    return mockDbInstance;
+  }
   if (connectionPromise) {
     return connectionPromise;
   }
 
-  const uri = getMongoUri();
   const dbName = getMongoDbName();
 
   connectionPromise = (async () => {
     try {
       client = new MongoClient(uri, {
-        serverSelectionTimeoutMS: 8000,
-        connectTimeoutMS: 8000
+        serverSelectionTimeoutMS: 2000,
+        connectTimeoutMS: 2000
       });
       await client.connect();
       dbInstance = client.db(dbName);
@@ -167,20 +262,23 @@ export async function connectMongoDb() {
 
       connectionStatus = {
         connected: true,
-        cluster: 'cluster-1.torqvts.mongodb.net',
+        mode: 'mongodb',
+        cluster: 'external',
         dbName,
-        user: 'aniruddhanag780_db_user',
+        user: null,
         collections: ['users_accounts', 'newsletter_subscribers', 'coupons'],
         lastConnectedAt: new Date().toISOString(),
         lastError: null
       };
-      console.log(`[MongoDB Atlas] Connected to ${connectionStatus.cluster} (DB: ${dbName} · Accounts, Street Cash Wallet, Newsletter & Coupons)`);
+      console.log(`[MongoDB] Connected (DB: ${dbName})`);
       return dbInstance;
     } catch (err) {
+      connectionFailed = true;
       connectionStatus.connected = false;
+      connectionStatus.mode = 'in-memory';
       connectionStatus.lastError = err.message;
-      console.warn('[MongoDB Atlas] Connection warning:', err.message);
-      return null;
+      console.warn('[MongoDB] Not connected — using in-memory store:', err.message);
+      return mockDbInstance;
     } finally {
       connectionPromise = null;
     }
@@ -195,7 +293,7 @@ export function getMongoStatus() {
 
 export async function getCollection(name) {
   const db = dbInstance || (await connectMongoDb());
-  if (!db) return null;
+  if (!db) return getMockCollection(name);
   return db.collection(name);
 }
 

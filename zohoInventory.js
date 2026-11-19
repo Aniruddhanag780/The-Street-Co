@@ -2054,16 +2054,16 @@ export function renderGstInvoiceHtml(orderRecord) {
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       color: #111;
-      background: #f4f4f7;
+      background: #FAF8F5;
       padding: 30px 15px;
     }
     .invoice-card {
       max-width: 850px;
       margin: 0 auto;
-      background: #fff;
+      background: #FAF8F5;
       padding: 35px 40px;
-      border: 1px solid #ddd;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      border: 1px solid #e5dfd5;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
       border-radius: 4px;
     }
     .header-bar {
@@ -2111,10 +2111,10 @@ export function renderGstInvoiceHtml(orderRecord) {
       line-height: 1.5;
     }
     .party-box {
-      border: 1px solid #e5e7eb;
+      border: 1px solid #e5dfd5;
       padding: 12px 16px;
       border-radius: 4px;
-      background: #fafafa;
+      background: #FAF8F5;
     }
     .party-box h4 {
       font-size: 11px;

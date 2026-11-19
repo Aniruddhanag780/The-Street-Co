@@ -239,7 +239,7 @@ function renderItemRowsHtml(items, assetOpts) {
           <table cellpadding="0" cellspacing="0" width="100%" border="0" role="presentation" style="width:100%;border-collapse:collapse;">
             <tr>
               <td width="112" style="width:96px;vertical-align:top;padding-right:16px;">
-                <img src="${escapeHtml(imgSrc)}" alt="${escapeHtml(item.title)}" width="96" height="96" style="width:96px;height:96px;min-width:96px;max-width:96px;object-fit:cover;display:block;border-radius:6px;background-color:#ffffff;border:1px solid #e8e2d8;" />
+                <img src="${escapeHtml(imgSrc)}" alt="${escapeHtml(item.title)}" width="96" height="96" style="width:96px;height:96px;min-width:96px;max-width:96px;object-fit:cover;display:block;border-radius:6px;background-color:#FAF8F5;border:1px solid #e8e2d8;" />
               </td>
               <td style="vertical-align:top;width:auto;">
                 <div style="font-size:15px;font-weight:600;color:#171717;line-height:1.4;margin:0;">${escapeHtml(item.title)}</div>

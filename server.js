@@ -428,21 +428,21 @@ ${supportEmail}`;
   <style type="text/css">
     :root { color-scheme: light only; supported-color-schemes: light only; }
     @media (prefers-color-scheme: dark) {
-      html, body { background-color: #ffffff !important; color: #1f2937 !important; }
+      html, body { background-color: #FAF8F5 !important; color: #1f2937 !important; }
     }
   </style>
 </head>
-<body bgcolor="#ffffff" style="margin: 0; padding: 0; background-color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1f2937; line-height: 1.65;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width: 100%; margin: 0; padding: 0; background-color: #ffffff; border: none;">
+<body bgcolor="#FAF8F5" style="margin: 0; padding: 0; background-color: #FAF8F5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1f2937; line-height: 1.65;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#FAF8F5" style="width: 100%; margin: 0; padding: 0; background-color: #FAF8F5; border: none;">
     
-    <!-- Top Full-Width Brand Bar (No Box) -->
+    <!-- Top Full-Width Brand Bar -->
     <tr>
-      <td align="center" style="background-color: #0b0a0f; border-bottom: 2px solid #e05a47; padding: 22px 20px;">
+      <td align="center" bgcolor="#FAF8F5" style="background-color: #FAF8F5; border-bottom: 1px solid #e5dfd5; padding: 22px 20px;">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto;">
           <tr>
             <td>
-              <h1 style="margin: 0; font-size: 20px; font-weight: 800; color: #ffffff; letter-spacing: 0.12em; text-transform: uppercase;">THE STREET CO</h1>
-              <span style="font-size: 11px; color: #9ca3af; letter-spacing: 0.1em; text-transform: uppercase;">Official GST Tax Invoice Dispatch</span>
+              <h1 style="margin: 0; font-size: 20px; font-weight: 800; color: #111827; letter-spacing: 0.12em; text-transform: uppercase;">THE STREET CO</h1>
+              <span style="font-size: 11px; color: #6b7280; letter-spacing: 0.1em; text-transform: uppercase;">Official GST Tax Invoice Dispatch</span>
             </td>
           </tr>
         </table>
@@ -451,7 +451,7 @@ ${supportEmail}`;
 
     <!-- Main Message Body (Full Page, clean and crisp) -->
     <tr>
-      <td align="center" style="padding: 32px 20px 24px; background-color: #ffffff;">
+      <td align="center" bgcolor="#FAF8F5" style="padding: 32px 20px 24px; background-color: #FAF8F5;">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; text-align: left;">
           <tr>
             <td>
@@ -483,7 +483,7 @@ ${supportEmail}`;
 
     <!-- Footer Full Page -->
     <tr>
-      <td align="center" style="padding: 24px 20px; background-color: #ffffff; border-top: 1px solid #eeeeee; font-size: 11px; color: #9ca3af; text-align: center;">
+      <td align="center" bgcolor="#FAF8F5" style="padding: 24px 20px; background-color: #FAF8F5; border-top: 1px solid #e5dfd5; font-size: 11px; color: #9ca3af; text-align: center;">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto;">
           <tr>
             <td align="center">
@@ -674,16 +674,16 @@ async function sendReturnApprovedEmail(returnRecord, hostOrigin = '') {
     <div style="width:100%;background-color:#faf8f5;padding:32px 12px;box-sizing:border-box;">
       
       <!-- Center Luxury Card -->
-      <div style="max-width:600px;margin:0 auto;background-color:#ffffff;border:1px solid #e8e2d8;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.03);">
+      <div style="max-width:600px;margin:0 auto;background-color:#FAF8F5;border:1px solid #e8e2d8;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.03);">
         
-        <!-- Top Obsidian Header with Gold Accent -->
-        <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;background:#0e0e11;border-bottom:1px solid #c5a880;">
+        <!-- Top Creamy Brand Header -->
+        <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;background:#FAF8F5;border-bottom:1px solid #e8e2d8;">
           <tbody>
             <tr>
               <td style="padding:26px 20px;text-align:center;">
                 <a href="${storeUrl}" target="_blank" style="text-decoration:none;display:inline-block;">
-                  <div style="font-family:'Playfair Display',Georgia,serif;font-size:22px;font-weight:700;letter-spacing:0.2em;color:#ffffff;text-transform:uppercase;">THE STREET CO</div>
-                  <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.18em;color:#c5a880;text-transform:uppercase;margin-top:6px;">REVERSE LOGISTICS · PICKUP CONFIRMED</div>
+                  <div style="font-family:'Playfair Display',Georgia,serif;font-size:22px;font-weight:700;letter-spacing:0.2em;color:#0e0e11;text-transform:uppercase;">THE STREET CO</div>
+                  <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.18em;color:#8a7b6e;text-transform:uppercase;margin-top:6px;">REVERSE LOGISTICS · PICKUP CONFIRMED</div>
                 </a>
               </td>
             </tr>
@@ -694,7 +694,7 @@ async function sendReturnApprovedEmail(returnRecord, hostOrigin = '') {
         <div style="padding:32px 28px;">
           
           <!-- Approval Banner -->
-          <div style="background:#f4fbf7;border:1px solid #bbf7d0;border-radius:10px;padding:22px 20px;margin-bottom:26px;text-align:center;">
+          <div style="background:#FAF8F5;border:1px solid #e8e2d8;border-radius:10px;padding:22px 20px;margin-bottom:26px;text-align:center;">
             <div style="display:inline-block;width:40px;height:40px;line-height:40px;border-radius:50%;background:#059669;color:#ffffff;font-size:20px;font-weight:bold;margin-bottom:8px;">✓</div>
             <div style="font-family:'Playfair Display',Georgia,serif;font-size:22px;font-weight:600;color:#065f46;letter-spacing:-0.2px;margin-bottom:4px;">Reverse Pickup Scheduled</div>
             <div style="font-size:12px;color:#047857;font-weight:600;">Delhivery Express reverse doorstep pickup scheduled within 24–48 hours</div>
@@ -721,11 +721,11 @@ async function sendReturnApprovedEmail(returnRecord, hostOrigin = '') {
             </table>
 
             ${isExchange && returnRecord.requestedSize ? `
-              <div style="background:#ffffff;border:1px solid #e8e2d8;border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#3f3f46;">
-                Requested Replacement Size: <strong style="color:#0e0e11;background:#faf8f5;border:1px solid #e8e2d8;padding:2px 8px;border-radius:4px;margin-left:6px;">${returnRecord.requestedSize}</strong>
+              <div style="background:#FAF8F5;border:1px solid #e8e2d8;border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#3f3f46;">
+                Requested Replacement Size: <strong style="color:#0e0e11;background:#FAF8F5;border:1px solid #e8e2d8;padding:2px 8px;border-radius:4px;margin-left:6px;">${returnRecord.requestedSize}</strong>
               </div>
             ` : `
-              <div style="background:#ffffff;border:1px solid #e8e2d8;border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#3f3f46;">
+              <div style="background:#FAF8F5;border:1px solid #e8e2d8;border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#3f3f46;">
                 <strong style="color:#0e0e11;">Return for Refund:</strong> No size selection needed. Full purchase refund will be issued to your original payment method or bank UPI.
               </div>
             `}
@@ -747,13 +747,13 @@ async function sendReturnApprovedEmail(returnRecord, hostOrigin = '') {
           </div>
 
           <!-- Important Handover Instructions -->
-          <div style="background:#0e0e11;color:#ffffff;border-radius:10px;padding:24px 22px;margin-bottom:28px;">
-            <div style="font-size:10px;font-weight:700;letter-spacing:0.16em;color:#c5a880;text-transform:uppercase;margin-bottom:8px;">DOORSTEP PICKUP GUIDELINES</div>
-            <ol style="font-size:13px;line-height:1.65;color:#d4d4d8;margin:0 0 16px 0;padding-left:18px;">
-              <li style="margin-bottom:6px;"><strong style="color:#ffffff;">Keep Tags Intact:</strong> Please ensure garments remain unworn with original brand tags attached.</li>
-              <li style="margin-bottom:6px;"><strong style="color:#ffffff;">Pack in Bag:</strong> Place the items in any sealed courier bag or the original packaging.</li>
-              <li style="margin-bottom:6px;"><strong style="color:#ffffff;">Zero Reverse Fee:</strong> Hand the parcel to the Delhivery courier agent. Do <em>not</em> pay any courier fee — reverse logistics is 100% free under our 7-Day Guarantee.</li>
-              <li><strong style="color:#ffffff;">${isExchange ? 'Replacement Dispatch:' : 'Fast Refund Credit:'}</strong> ${isExchange ? 'Your replacement size will be dispatched immediately once the return pickup is scanned.' : 'Full amount will be credited to your original payment method or UPI within 24 hours of doorstep scan.'}</li>
+          <div style="background:#FAF8F5;color:#18181b;border:1px solid #e8e2d8;border-radius:10px;padding:24px 22px;margin-bottom:28px;">
+            <div style="font-size:10px;font-weight:700;letter-spacing:0.16em;color:#8a7b6e;text-transform:uppercase;margin-bottom:8px;">DOORSTEP PICKUP GUIDELINES</div>
+            <ol style="font-size:13px;line-height:1.65;color:#52525b;margin:0 0 16px 0;padding-left:18px;">
+              <li style="margin-bottom:6px;"><strong style="color:#0e0e11;">Keep Tags Intact:</strong> Please ensure garments remain unworn with original brand tags attached.</li>
+              <li style="margin-bottom:6px;"><strong style="color:#0e0e11;">Pack in Bag:</strong> Place the items in any sealed courier bag or the original packaging.</li>
+              <li style="margin-bottom:6px;"><strong style="color:#0e0e11;">Zero Reverse Fee:</strong> Hand the parcel to the Delhivery courier agent. Do <em>not</em> pay any courier fee — reverse logistics is 100% free under our 7-Day Guarantee.</li>
+              <li><strong style="color:#0e0e11;">${isExchange ? 'Replacement Dispatch:' : 'Fast Refund Credit:'}</strong> ${isExchange ? 'Your replacement size will be dispatched immediately once the return pickup is scanned.' : 'Full amount will be credited to your original payment method or UPI within 24 hours of doorstep scan.'}</li>
             </ol>
           </div>
 
@@ -927,16 +927,16 @@ async function sendOrderReadyToShipEmail(order, hostOrigin = '') {
     <div style="width:100%;background-color:#faf8f5;padding:32px 12px;box-sizing:border-box;">
       
       <!-- Center Luxury Card -->
-      <div style="max-width:600px;margin:0 auto;background-color:#ffffff;border:1px solid #e8e2d8;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.03);">
+      <div style="max-width:600px;margin:0 auto;background-color:#FAF8F5;border:1px solid #e8e2d8;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.03);">
         
-        <!-- Top Obsidian Header with Gold Accent -->
-        <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;background:#0e0e11;border-bottom:1px solid #c5a880;">
+        <!-- Top Creamy Brand Header -->
+        <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;background:#FAF8F5;border-bottom:1px solid #e8e2d8;">
           <tbody>
             <tr>
               <td style="padding:26px 20px;text-align:center;">
                 <a href="${storeUrl}" target="_blank" style="text-decoration:none;display:inline-block;">
-                  <div style="font-family:'Playfair Display',Georgia,serif;font-size:22px;font-weight:700;letter-spacing:0.2em;color:#ffffff;text-transform:uppercase;">THE STREET CO</div>
-                  <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.18em;color:#c5a880;text-transform:uppercase;margin-top:6px;">DELHIVERY EXPRESS · PACKED &amp; MANIFESTED</div>
+                  <div style="font-family:'Playfair Display',Georgia,serif;font-size:22px;font-weight:700;letter-spacing:0.2em;color:#0e0e11;text-transform:uppercase;">THE STREET CO</div>
+                  <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.18em;color:#8a7b6e;text-transform:uppercase;margin-top:6px;">DELHIVERY EXPRESS · PACKED &amp; MANIFESTED</div>
                 </a>
               </td>
             </tr>
@@ -1215,16 +1215,16 @@ async function sendRefundDoneEmail(returnRecord, hostOrigin = '') {
     <div style="width:100%;background-color:#faf8f5;padding:32px 12px;box-sizing:border-box;">
       
       <!-- Center Luxury Card -->
-      <div style="max-width:600px;margin:0 auto;background-color:#ffffff;border:1px solid #e8e2d8;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.03);">
+      <div style="max-width:600px;margin:0 auto;background-color:#FAF8F5;border:1px solid #e8e2d8;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.03);">
         
-        <!-- Top Obsidian Header with Gold Accent -->
-        <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;background:#0e0e11;border-bottom:1px solid #c5a880;">
+        <!-- Top Creamy Brand Header -->
+        <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;background:#FAF8F5;border-bottom:1px solid #e8e2d8;">
           <tbody>
             <tr>
               <td style="padding:26px 20px;text-align:center;">
                 <a href="${storeUrl}" target="_blank" style="text-decoration:none;display:inline-block;">
-                  <div style="font-family:'Playfair Display',Georgia,serif;font-size:22px;font-weight:700;letter-spacing:0.2em;color:#ffffff;text-transform:uppercase;">THE STREET CO</div>
-                  <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.18em;color:#c5a880;text-transform:uppercase;margin-top:6px;">FINANCIAL CONCIERGE · REFUND SETTLEMENT</div>
+                  <div style="font-family:'Playfair Display',Georgia,serif;font-size:22px;font-weight:700;letter-spacing:0.2em;color:#0e0e11;text-transform:uppercase;">THE STREET CO</div>
+                  <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.18em;color:#8a7b6e;text-transform:uppercase;margin-top:6px;">FINANCIAL CONCIERGE · REFUND SETTLEMENT</div>
                 </a>
               </td>
             </tr>
@@ -1235,7 +1235,7 @@ async function sendRefundDoneEmail(returnRecord, hostOrigin = '') {
         <div style="padding:32px 28px;">
           
           <!-- Banner -->
-          <div style="background:#f4fbf7;border:1px solid #bbf7d0;border-radius:10px;padding:22px 20px;margin-bottom:26px;text-align:center;">
+          <div style="background:#FAF8F5;border:1px solid #e8e2d8;border-radius:10px;padding:22px 20px;margin-bottom:26px;text-align:center;">
             <div style="display:inline-block;width:40px;height:40px;line-height:40px;border-radius:50%;background:#059669;color:#ffffff;font-size:20px;font-weight:bold;margin-bottom:8px;">✓</div>
             <div style="font-family:'Playfair Display',Georgia,serif;font-size:22px;font-weight:600;color:#065f46;letter-spacing:-0.2px;margin-bottom:4px;">Refund Successfully Processed</div>
             <div style="font-size:13px;color:#047857;font-weight:700;">₹${refundAmount.toLocaleString('en-IN')} credited to your original payment source / UPI</div>
@@ -1393,16 +1393,16 @@ async function sendExchangeDoneEmail(returnRecord, hostOrigin = '') {
     <div style="width:100%;background-color:#faf8f5;padding:32px 12px;box-sizing:border-box;">
       
       <!-- Center Luxury Card -->
-      <div style="max-width:600px;margin:0 auto;background-color:#ffffff;border:1px solid #e8e2d8;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.03);">
+      <div style="max-width:600px;margin:0 auto;background-color:#FAF8F5;border:1px solid #e8e2d8;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.03);">
         
-        <!-- Top Obsidian Header with Gold Accent -->
-        <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;background:#0e0e11;border-bottom:1px solid #c5a880;">
+        <!-- Top Creamy Brand Header -->
+        <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;background:#FAF8F5;border-bottom:1px solid #e8e2d8;">
           <tbody>
             <tr>
               <td style="padding:26px 20px;text-align:center;">
                 <a href="${storeUrl}" target="_blank" style="text-decoration:none;display:inline-block;">
-                  <div style="font-family:'Playfair Display',Georgia,serif;font-size:22px;font-weight:700;letter-spacing:0.2em;color:#ffffff;text-transform:uppercase;">THE STREET CO</div>
-                  <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.18em;color:#c5a880;text-transform:uppercase;margin-top:6px;">DELHIVERY EXPRESS · REPLACEMENT DELIVERED</div>
+                  <div style="font-family:'Playfair Display',Georgia,serif;font-size:22px;font-weight:700;letter-spacing:0.2em;color:#0e0e11;text-transform:uppercase;">THE STREET CO</div>
+                  <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.18em;color:#8a7b6e;text-transform:uppercase;margin-top:6px;">DELHIVERY EXPRESS · REPLACEMENT DELIVERED</div>
                 </a>
               </td>
             </tr>
@@ -1413,7 +1413,7 @@ async function sendExchangeDoneEmail(returnRecord, hostOrigin = '') {
         <div style="padding:32px 28px;">
           
           <!-- Banner -->
-          <div style="background:#f4fbf7;border:1px solid #bbf7d0;border-radius:10px;padding:22px 20px;margin-bottom:26px;text-align:center;">
+          <div style="background:#FAF8F5;border:1px solid #e8e2d8;border-radius:10px;padding:22px 20px;margin-bottom:26px;text-align:center;">
             <div style="display:inline-block;width:40px;height:40px;line-height:40px;border-radius:50%;background:#059669;color:#ffffff;font-size:20px;font-weight:bold;margin-bottom:8px;">✓</div>
             <div style="font-family:'Playfair Display',Georgia,serif;font-size:22px;font-weight:600;color:#065f46;letter-spacing:-0.2px;margin-bottom:4px;">Exchange Completed &amp; Delivered</div>
             <div style="font-size:12px;color:#047857;font-weight:600;">Replacement Size ${replacementSize} successfully delivered</div>
@@ -1431,7 +1431,7 @@ async function sendExchangeDoneEmail(returnRecord, hostOrigin = '') {
             <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#8a7b6e;margin-bottom:8px;">EXCHANGE RECORD SUMMARY</div>
             <div style="font-size:14px;font-weight:700;color:#0e0e11;">${itemName}</div>
             <div style="font-size:13px;color:#3f3f46;margin-top:4px;">
-              Delivered Size: <strong style="color:#065f46;background:#f4fbf7;border:1px solid #bbf7d0;padding:2px 8px;border-radius:4px;">${replacementSize}</strong>
+              Delivered Size: <strong style="color:#065f46;background:#FAF8F5;border:1px solid #bbf7d0;padding:2px 8px;border-radius:4px;">${replacementSize}</strong>
             </div>
             <div style="font-size:12px;color:#71717a;margin-top:8px;border-top:1px dashed #e8e2d8;padding-top:8px;">
               Exchange Request Ref: <strong style="color:#0e0e11;">${returnId}</strong>
@@ -4330,20 +4330,22 @@ app.post(['/api/contact', '/api/support', '/api/contact-support'], async (req, r
       try {
         const senderUser = (process.env.GMAIL_SMTP_USER || GMAIL_SMTP_USER).trim();
         const supportDeskHtml = `
-          <div style="font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;background:#FAF8F5;color:#18181B;padding:24px;border:1px solid #E8E2D8;border-radius:12px;max-width:560px;margin:0 auto;">
-            <div style="font-size:11px;color:#8A7B6E;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;margin-bottom:6px;">THE STREET CO · CLIENT CONCIERGE</div>
-            <h2 style="margin:0 0 16px;color:#0E0E11;font-size:20px;font-family:'Playfair Display',Georgia,serif;">NEW SUPPORT TICKET #${ticketId}</h2>
-            <div style="background:#FFFFFF;padding:16px;border-radius:8px;border:1px solid #E8E2D8;margin-bottom:16px;font-size:13px;line-height:22px;">
-              <p style="margin:3px 0;"><strong style="color:#0E0E11;">Customer Name:</strong> ${cleanName}</p>
-              <p style="margin:3px 0;"><strong style="color:#0E0E11;">Email:</strong> <a href="mailto:${cleanEmail}" style="color:#0E0E11;">${cleanEmail}</a></p>
-              <p style="margin:3px 0;"><strong style="color:#0E0E11;">Phone:</strong> ${cleanPhone || 'Not provided'}</p>
-              <p style="margin:3px 0;"><strong style="color:#0E0E11;">Category:</strong> ${cleanCategory}</p>
-              <p style="margin:3px 0;"><strong style="color:#0E0E11;">Order Reference:</strong> ${cleanOrderNumber || 'N/A'}</p>
-              <p style="margin:3px 0;"><strong style="color:#0E0E11;">Logged At:</strong> ${istTime.istDateTime}</p>
-            </div>
-            <div style="background:#FFFFFF;padding:16px;border-radius:8px;border:1px solid #E8E2D8;font-size:13px;">
-              <strong style="display:block;margin-bottom:8px;color:#8A7B6E;letter-spacing:0.06em;font-size:11px;text-transform:uppercase;">CUSTOMER INQUIRY MESSAGE:</strong>
-              <p style="white-space:pre-wrap;line-height:1.6;color:#3F3F46;margin:0;">${cleanMessage.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
+          <div style="background-color:#FAF8F5;padding:24px 12px;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;color:#18181B;">
+            <div style="background:#FAF8F5;color:#18181B;padding:24px;border:1px solid #E8E2D8;border-radius:12px;max-width:560px;margin:0 auto;">
+              <div style="font-size:11px;color:#8A7B6E;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;margin-bottom:6px;">THE STREET CO · CLIENT CONCIERGE</div>
+              <h2 style="margin:0 0 16px;color:#0E0E11;font-size:20px;font-family:'Playfair Display',Georgia,serif;">NEW SUPPORT TICKET #${ticketId}</h2>
+              <div style="background:#FAF8F5;padding:16px;border-radius:8px;border:1px solid #E8E2D8;margin-bottom:16px;font-size:13px;line-height:22px;">
+                <p style="margin:3px 0;"><strong style="color:#0E0E11;">Customer Name:</strong> ${cleanName}</p>
+                <p style="margin:3px 0;"><strong style="color:#0E0E11;">Email:</strong> <a href="mailto:${cleanEmail}" style="color:#0E0E11;">${cleanEmail}</a></p>
+                <p style="margin:3px 0;"><strong style="color:#0E0E11;">Phone:</strong> ${cleanPhone || 'Not provided'}</p>
+                <p style="margin:3px 0;"><strong style="color:#0E0E11;">Category:</strong> ${cleanCategory}</p>
+                <p style="margin:3px 0;"><strong style="color:#0E0E11;">Order Reference:</strong> ${cleanOrderNumber || 'N/A'}</p>
+                <p style="margin:3px 0;"><strong style="color:#0E0E11;">Logged At:</strong> ${istTime.istDateTime}</p>
+              </div>
+              <div style="background:#FAF8F5;padding:16px;border-radius:8px;border:1px solid #E8E2D8;font-size:13px;">
+                <strong style="display:block;margin-bottom:8px;color:#8A7B6E;letter-spacing:0.06em;font-size:11px;text-transform:uppercase;">CUSTOMER INQUIRY MESSAGE:</strong>
+                <p style="white-space:pre-wrap;line-height:1.6;color:#3F3F46;margin:0;">${cleanMessage.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
+              </div>
             </div>
           </div>
         `;
@@ -4572,15 +4574,17 @@ app.post('/api/drop-waitlist', async (req, res) => {
         replyTo: GMAIL_REPLY_TO,
         subject: `Drop Vault Priority Access Confirmed — ${record.dropTitle} (${reservationCode})`,
         html: `
-          <div style="font-family:'Plus Jakarta Sans',Arial,sans-serif;max-width:560px;margin:0 auto;padding:28px;background:#0e0e11;color:#f5f3ef;border-radius:8px;">
-            <p style="font-size:11px;letter-spacing:0.18em;color:#c9a84c;margin:0 0 8px;">THE STREET CO · DROP VAULT PRIORITY PASS</p>
-            <h2 style="font-size:22px;margin:0 0 12px;color:#ffffff;">You're on the Early Access List</h2>
-            <p style="font-size:14px;line-height:1.6;color:#d4d4d8;">Your priority reservation for <strong>${record.dropTitle}</strong> (Preferred Size: <strong>${record.preferredSize}</strong>) has been locked in.</p>
-            <div style="background:#18181c;border:1px solid rgba(255,255,255,0.1);padding:14px 18px;border-radius:6px;margin:18px 0;">
-              <div style="font-size:11px;color:#a1a1aa;">PRIORITY RESERVATION ID</div>
-              <div style="font-size:18px;font-weight:700;color:#ffffff;letter-spacing:0.08em;margin-top:4px;">${reservationCode}</div>
+          <div style="background:#FAF8F5;padding:28px 12px;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#171717;">
+            <div style="font-family:'Plus Jakarta Sans',Arial,sans-serif;max-width:560px;margin:0 auto;padding:28px;background:#FAF8F5;color:#171717;border:1px solid #e8e2d8;border-radius:10px;">
+              <p style="font-size:11px;letter-spacing:0.18em;color:#8a7b6e;font-weight:700;margin:0 0 8px;">THE STREET CO · DROP VAULT PRIORITY PASS</p>
+              <h2 style="font-size:22px;margin:0 0 12px;color:#111111;">You're on the Early Access List</h2>
+              <p style="font-size:14px;line-height:1.6;color:#52525b;">Your priority reservation for <strong style="color:#111111;">${record.dropTitle}</strong> (Preferred Size: <strong style="color:#111111;">${record.preferredSize}</strong>) has been locked in.</p>
+              <div style="background:#FAF8F5;border:1px solid #e5dfd5;padding:14px 18px;border-radius:6px;margin:18px 0;">
+                <div style="font-size:11px;color:#78716c;font-weight:700;letter-spacing:0.08em;">PRIORITY RESERVATION ID</div>
+                <div style="font-size:18px;font-weight:700;color:#111111;letter-spacing:0.08em;margin-top:4px;">${reservationCode}</div>
+              </div>
+              <p style="font-size:12px;color:#78716c;margin-top:16px;">You will receive your private early-access checkout link 30 minutes before the public release.</p>
             </div>
-            <p style="font-size:12px;color:#a1a1aa;margin-top:16px;">You will receive your private early-access checkout link 30 minutes before the public release.</p>
           </div>
         `
       }).catch(e => console.warn('[Drop Waitlist Email Notice]:', e.message));
@@ -4732,16 +4736,18 @@ app.post('/api/exchanges/create', async (req, res) => {
         replyTo: GMAIL_REPLY_TO,
         subject: `7-Day Size Exchange Confirmed (#${exchangeId}) for Order #${exchangeRecord.orderCode}`,
         html: `
-          <div style="font-family:'Plus Jakarta Sans',Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;background:#ffffff;color:#18181b;border:1px solid #e4e4e7;border-radius:8px;">
-            <p style="font-size:11px;letter-spacing:0.15em;color:#71717a;margin:0 0 6px;">THE STREET CO · 7-DAY EASY EXCHANGE</p>
-            <h2 style="font-size:20px;margin:0 0 12px;">Exchange Request #${exchangeId} Approved</h2>
-            <p style="font-size:14px;line-height:1.6;color:#3f3f46;">We have scheduled a free reverse pickup for <strong>${exchangeRecord.itemName}</strong> from Order <strong>#${exchangeRecord.orderCode}</strong>.</p>
-            <div style="background:#f4f4f5;padding:14px;border-radius:6px;margin:16px 0;font-size:13px;line-height:1.7;">
-              <div><strong>Resolution:</strong> ${exchangeRecord.resolutionType}</div>
-              <div><strong>Size Change:</strong> Size ${exchangeRecord.currentSize} → Size ${exchangeRecord.requestedSize}</div>
-              <div><strong>Reverse Pickup Date:</strong> ${exchangeRecord.scheduledPickupDate} via Delhivery Express</div>
+          <div style="background:#FAF8F5;padding:28px 12px;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#18181b;">
+            <div style="font-family:'Plus Jakarta Sans',Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;background:#FAF8F5;color:#18181b;border:1px solid #e8e2d8;border-radius:8px;">
+              <p style="font-size:11px;letter-spacing:0.15em;color:#78716c;margin:0 0 6px;">THE STREET CO · 7-DAY EASY EXCHANGE</p>
+              <h2 style="font-size:20px;margin:0 0 12px;color:#111111;">Exchange Request #${exchangeId} Approved</h2>
+              <p style="font-size:14px;line-height:1.6;color:#3f3f46;">We have scheduled a free reverse pickup for <strong>${exchangeRecord.itemName}</strong> from Order <strong>#${exchangeRecord.orderCode}</strong>.</p>
+              <div style="background:#FAF8F5;border:1px solid #e5dfd5;padding:14px;border-radius:6px;margin:16px 0;font-size:13px;line-height:1.7;">
+                <div><strong>Resolution:</strong> ${exchangeRecord.resolutionType}</div>
+                <div><strong>Size Change:</strong> Size ${exchangeRecord.currentSize} → Size ${exchangeRecord.requestedSize}</div>
+                <div><strong>Reverse Pickup Date:</strong> ${exchangeRecord.scheduledPickupDate} via Delhivery Express</div>
+              </div>
+              <p style="font-size:12px;color:#78716c;">Please keep the original garment tags intact for doorstep verification.</p>
             </div>
-            <p style="font-size:12px;color:#71717a;">Please keep the original garment tags intact for doorstep verification.</p>
           </div>
         `
       }).catch(e => console.warn('[Exchange Email Notice]:', e.message));

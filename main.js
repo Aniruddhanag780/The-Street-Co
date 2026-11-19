@@ -1959,7 +1959,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     }
     const flowTitle = document.getElementById('checkoutFlowTitle');
     if (flowTitle) {
-      flowTitle.textContent = (stepNumber === 4) ? 'ORDER CONFIRMATION' : 'THE STREET CO CHECKOUT';
+      flowTitle.textContent = (stepNumber === 4) ? 'ORDER CONFIRMED' : 'THE STREET CO CHECKOUT';
     }
 
     // Completely remove the X close button on order confirmation page
@@ -2017,6 +2017,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       checkoutFlowModal.classList.toggle('step-2-active', stepNumber === 2);
       checkoutFlowModal.classList.toggle('step-3-active', stepNumber === 3);
       checkoutFlowModal.classList.toggle('step-4-active', stepNumber === 4);
+      checkoutFlowModal.classList.toggle('order-confirmed', stepNumber === 4);
     }
 
     // Dynamic top-left header button handling:
@@ -2992,14 +2993,6 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
         const result = await resp.json();
         console.log('[Store Database] Order successfully recorded in Zoho:', result);
 
-        // Update View Invoice button on confirmation modal
-        const invoiceBtn = document.getElementById('checkoutViewInvoiceBtn');
-        const zohoUrl = result?.invoiceUrl || (fullOrderRecord?.orderCode ? `/invoice/${fullOrderRecord.orderCode}` : '') || result?.order?.zoho_invoice_url;
-        if (invoiceBtn && zohoUrl) {
-          invoiceBtn.href = zohoUrl;
-          invoiceBtn.style.display = 'inline-flex';
-        }
-
         if (result && result.sms) {
           if (result.sms.success) {
             console.log(`[Twilio] Automated confirmation SMS sent to ${result.sms.to} (SID: ${result.sms.sid})`);
@@ -3022,12 +3015,13 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       updateCartUI();
     }
 
-    // Show immediate ORDER PLACED toast and add order confirmation to the Notifications Bell drawer
-    const firstItemName = (itemsToOrder && itemsToOrder[0] && (itemsToOrder[0].name || itemsToOrder[0].title)) || 'The Street Co Apparel';
-    const moreCount = (itemsToOrder && itemsToOrder.length > 1) ? ` +${itemsToOrder.length - 1} more` : '';
+    // Show immediate ORDER CONFIRMED toast and add order confirmation to the Notifications Bell drawer
+    const orderedItems = Array.isArray(productDetails) ? productDetails : (checkoutSession.items || []);
+    const firstItemName = (orderedItems[0] && (orderedItems[0].name || orderedItems[0].title)) || 'The Street Co Apparel';
+    const moreCount = orderedItems.length > 1 ? ` +${orderedItems.length - 1} more` : '';
     if (typeof showToast === 'function') {
       showToast(
-        'ORDER PLACED',
+        'ORDER CONFIRMED',
         `Order #${generatedId} · ${firstItemName}${moreCount} (₹${Number(totalInr || 0).toLocaleString('en-IN')})`,
         'info'
       );
@@ -3037,19 +3031,29 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
         id: `order_${generatedId}_${Date.now()}`,
         title: `Order #${generatedId} Confirmed`,
         body: `${firstItemName}${moreCount} · Total ₹${Number(totalInr || 0).toLocaleString('en-IN')} (${paymentMethod === 'cod' ? 'Cash on Delivery' : 'Paid'}). Dispatches via Delhivery Express.`,
-        tag: 'ORDER PLACED',
+        tag: 'ORDER CONFIRMED',
         iconEmoji: '📦',
         timestamp: Date.now()
       });
     }
 
-    // Immediately render and switch to confirmation step without any delay or loading screen
+    // Immediately render and switch to Order Confirmed step
     renderOrderConfirmationStep(fullOrderRecord);
     goToCheckoutStep(4);
   }
 
   // Step 4: Show Order Confirmation & Order Summary
   function renderOrderConfirmationStep(orderRecord) {
+    const escHtml = (str) => String(str ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+    const formatMoney = (val) => `₹${Number(val || 0).toLocaleString('en-IN', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    })}`;
+
     if (typeof window.trackGAEvent === 'function') {
       window.trackGAEvent('purchase', {
         transaction_id: orderRecord.orderCode || orderRecord.orderId || '',
@@ -3059,23 +3063,20 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
         items_count: orderRecord.itemCount || 1
       });
     }
-    // Separate Emails Notice
-    const emailNoticeAddr = document.getElementById('confirmedEmailNoticeAddress');
-    if (emailNoticeAddr) {
-      const email = orderRecord.email || (orderRecord.shipping && orderRecord.shipping.email) || (orderRecord.shippingAddress && orderRecord.shippingAddress.email) || 'your email address';
-      emailNoticeAddr.textContent = email;
-    }
 
-    const codeEl = document.getElementById('orderCode');
+    const vm = typeof window.streetCoConfirmationHelper?.buildOrderConfirmedViewModel === 'function'
+      ? window.streetCoConfirmationHelper.buildOrderConfirmedViewModel(orderRecord)
+      : null;
+
     const orderIdEl = document.getElementById('confirmedOrderId');
-    const cardOrderIdEl = document.getElementById('confirmedCardOrderId');
     const cardOrderDate = document.getElementById('confirmedCardOrderDate');
     const estDelivery = document.getElementById('confirmedEstDelivery');
     const courierName = document.getElementById('confirmedCourierName');
     const payStatus = document.getElementById('confirmedPayStatus');
     const payMethod = document.getElementById('confirmedPayMethod');
     const recipient = document.getElementById('confirmedRecipient');
-    const shortAddr = document.getElementById('confirmedShortAddress');
+    const customerPhone = document.getElementById('confirmedCustomerPhone');
+    const fullAddressText = document.getElementById('confirmedFullAddress');
     const itemsList = document.getElementById('confirmedItemsList');
 
     // Summary calculation elements
@@ -3087,25 +3088,14 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     const summaryTotal = document.getElementById('confirmedSummaryTotal');
     const summaryRyo = document.getElementById('confirmedSummaryRyo');
 
-    // Customer & address summary elements
-    const customerFullName = document.getElementById('confirmedCustomerFullName');
-    const customerPhone = document.getElementById('confirmedCustomerPhone');
-    const customerEmail = document.getElementById('confirmedCustomerEmail');
-    const addressTypePill = document.getElementById('confirmedAddressType');
-    const fullAddressText = document.getElementById('confirmedFullAddress');
-
-    const orderId = orderRecord.orderId || String(Math.floor(111111 + Math.random() * 888889));
-    const orderCode = orderId;
-
-    if (codeEl) codeEl.textContent = orderId;
+    const orderId = vm?.orderId || String(orderRecord.orderCode || orderRecord.orderId || '').replace(/^#/, '').trim() || String(Math.floor(111111 + Math.random() * 888889));
     if (orderIdEl) orderIdEl.textContent = orderId;
-    if (cardOrderIdEl) cardOrderIdEl.textContent = orderId;
 
     const now = new Date(orderRecord.createdAt || Date.now());
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const nowFormatted = `${dayNames[now.getDay()]}, ${monthNames[now.getMonth()]} ${now.getDate()}`;
-    if (cardOrderDate) cardOrderDate.textContent = `Confirmed ${nowFormatted}`;
+    if (cardOrderDate) cardOrderDate.textContent = nowFormatted;
 
     // Delivery calculation
     const daysAhead = orderRecord.delivery && orderRecord.delivery.speed === 'express' ? 1 : 3;
@@ -3113,71 +3103,88 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
     estDate.setDate(estDate.getDate() + daysAhead);
     const formattedDate = `${dayNames[estDate.getDay()]}, ${monthNames[estDate.getMonth()]} ${estDate.getDate()}`;
 
-    if (estDelivery) estDelivery.textContent = formattedDate;
+    if (estDelivery) estDelivery.textContent = vm?.estimatedDelivery || formattedDate;
     if (courierName) {
-      courierName.textContent = orderRecord.delivery && orderRecord.delivery.speed === 'express'
+      courierName.textContent = vm?.courierName || (orderRecord.delivery && orderRecord.delivery.speed === 'express'
         ? 'Express Delivery'
-        : 'Standard Delivery';
+        : 'Standard Delivery');
     }
 
+    const payMethodRaw = String(orderRecord.payment?.method || orderRecord.paymentMethod || 'cod').toLowerCase();
+    const payTitleFallbackMap = {
+      cod: 'Cash on Delivery (COD)',
+      upi: 'UPI Payment',
+      card: 'Credit / Debit Card',
+      netbanking: 'Net Banking'
+    };
     if (payStatus) {
-      payStatus.textContent = orderRecord.payment?.method === 'cod' ? 'Cash on Arrival · Authorized' : 'Paid · Confirmed';
+      payStatus.textContent = vm?.payStatus || payTitleFallbackMap[payMethodRaw] || 'Cash on Delivery (COD)';
     }
     if (payMethod) {
-      payMethod.textContent = orderRecord.payment?.detail || (orderRecord.payment?.method === 'cod' ? 'Cash on Delivery (COD)' : 'Direct Electronic Payment');
+      payMethod.textContent = vm?.payMethod || orderRecord.payment?.detail || (payMethodRaw === 'cod' ? 'Pay with cash upon doorstep arrival' : 'Electronic Payment');
     }
 
-    const userObj = orderRecord.user || orderRecord.customer || orderRecord.address || {};
-    const fullName = userObj.fullName || userObj.name || 'Valued Customer';
-    const phone = userObj.phone || userObj.phoneNumber || '+91 ••••• •••••';
-    const email = userObj.email || 'support@thestreetco.zohodesk.in';
-    const fullAddr = userObj.fullAddress || `${userObj.houseFlat || userObj.address1 || ''}, ${userObj.streetRoad || ''} ${userObj.landmark ? '(' + userObj.landmark + ')' : ''}, ${userObj.city || ''}, ${userObj.state || ''} - ${userObj.pincode || ''}`;
-    const addrType = userObj.addressType || userObj.type || 'HOME';
+    const userObj = orderRecord.user || orderRecord.customer || orderRecord.address || orderRecord.shippingAddress || {};
+    const fullName = vm?.recipientName || userObj.fullName || userObj.name || 'Valued Customer';
+    const phone = userObj.phone || userObj.phoneNumber || '';
+    const builtAddr = [
+      [userObj.houseFlat || userObj.address1 || '', userObj.streetRoad || ''].filter(Boolean).join(', '),
+      userObj.landmark ? `(${userObj.landmark})` : '',
+      userObj.city || '',
+      userObj.state || ''
+    ].filter(Boolean).join(', ');
+    const rawFullAddr = (userObj.fullAddress && String(userObj.fullAddress).trim()) || builtAddr;
+    const fullAddr = rawFullAddr
+      ? (userObj.pincode && !rawFullAddr.includes(String(userObj.pincode)) ? `${rawFullAddr} - ${userObj.pincode}` : rawFullAddr)
+      : '—';
 
     if (recipient) recipient.textContent = fullName;
-    if (shortAddr) shortAddr.textContent = `${userObj.houseFlat || userObj.address1 || ''}, ${userObj.city || ''} - ${userObj.pincode || ''}`;
-
-    if (customerFullName) customerFullName.textContent = fullName;
-    if (customerPhone) {
-      const cleanDigits = String(phone).replace(/\D/g, '');
-      const formattedP = cleanDigits.length === 10
-        ? `+91 ${cleanDigits}`
-        : (cleanDigits.length === 12 && cleanDigits.startsWith('91') ? `+91 ${cleanDigits.slice(2)}` : phone);
-      customerPhone.textContent = formattedP;
-    }
-    if (customerEmail) customerEmail.textContent = email;
-    if (addressTypePill) addressTypePill.textContent = addrType;
     if (fullAddressText) fullAddressText.textContent = fullAddr;
+
+    if (customerPhone) {
+      if (phone) {
+        const cleanDigits = String(phone).replace(/\D/g, '');
+        const formattedP = cleanDigits.length === 10
+          ? `+91 ${cleanDigits.slice(0, 5)} ${cleanDigits.slice(5)}`
+          : (cleanDigits.length === 12 && cleanDigits.startsWith('91')
+            ? `+91 ${cleanDigits.slice(2, 7)} ${cleanDigits.slice(7)}`
+            : phone);
+        customerPhone.textContent = formattedP;
+        customerPhone.style.display = 'block';
+      } else {
+        customerPhone.textContent = '';
+        customerPhone.style.display = 'none';
+      }
+    }
 
     // Financial Order Summary breakdown
     const items = orderRecord.products || orderRecord.items || [];
-    const totalQty = items.reduce((sum, it) => sum + (Number(it.qty) || 1), 0);
-    const subtotalInr = Number(orderRecord.pricing?.subtotalInr ?? orderRecord.subtotalInr ?? items.reduce((sum, it) => sum + ((Number(it.priceInr) || 0) * (Number(it.qty) || 1)), 0));
+    const totalQty = items.reduce((sum, it) => sum + (Math.max(1, parseInt(it?.qty ?? it?.quantity ?? 1, 10) || 1)), 0);
+    const subtotalInr = Number(orderRecord.pricing?.subtotalInr ?? orderRecord.subtotalInr ?? items.reduce((sum, it) => sum + ((Number(it.priceInr ?? it.price) || 0) * (Number(it.qty ?? it.quantity) || 1)), 0));
     const deliveryCost = Number(orderRecord.pricing?.deliveryCost ?? orderRecord.delivery?.cost ?? 0);
     const discount = Number(orderRecord.pricing?.discountInr ?? orderRecord.discount ?? 0);
     const totalInr = Number(orderRecord.pricing?.totalInr ?? orderRecord.totalInr ?? Math.max(0, subtotalInr + deliveryCost - discount));
-    const totalRyo = Number(orderRecord.pricing?.totalRyo ?? orderRecord.totalRyo ?? Math.round(totalInr * 1.54));
 
-    if (summaryItemCount) summaryItemCount.textContent = `${totalQty} Item${totalQty > 1 ? 's' : ''}`;
-    if (summarySubtotal) summarySubtotal.textContent = `₹${subtotalInr.toLocaleString('en-IN')}`;
+    if (summaryItemCount) summaryItemCount.textContent = `${totalQty || items.length || 1} Item${(totalQty || items.length || 1) > 1 ? 's' : ''}`;
+    if (summarySubtotal) summarySubtotal.textContent = formatMoney(subtotalInr);
     if (summaryDelivery) {
+      summaryDelivery.className = '';
       if (deliveryCost === 0) {
         summaryDelivery.textContent = 'FREE';
-        summaryDelivery.className = 'text-free';
       } else {
-        summaryDelivery.textContent = `₹${deliveryCost} INR`;
-        summaryDelivery.className = 'text-blood';
+        summaryDelivery.textContent = `${formatMoney(deliveryCost)} INR`;
       }
     }
     if (summaryDiscountRow && summaryDiscount) {
       if (discount > 0) {
         summaryDiscountRow.style.display = 'flex';
-        summaryDiscount.textContent = `-₹${discount.toLocaleString('en-IN')}`;
+        summaryDiscount.className = '';
+        summaryDiscount.textContent = `-${formatMoney(discount)}`;
       } else {
         summaryDiscountRow.style.display = 'none';
       }
     }
-    if (summaryTotal) summaryTotal.textContent = `₹${totalInr.toLocaleString('en-IN')}`;
+    if (summaryTotal) summaryTotal.textContent = `${formatMoney(totalInr)} INR`;
     if (summaryRyo) {
       summaryRyo.textContent = '';
       summaryRyo.style.display = 'none';
@@ -3185,17 +3192,32 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
 
     if (itemsList) {
       itemsList.innerHTML = items.map(it => {
-        const itemImg = it.image ? `<img src="${it.image}" alt="${it.name}" loading="lazy">` : `<div style="display:grid;place-items:center;height:100%;color:var(--blood-hot)">⚔️</div>`;
-        const itemPrice = Number(it.priceInr) || 0;
-        const itemQty = Number(it.qty) || 1;
+        const title = it.title || it.name || 'The Street Co Apparel';
+        const size = it.size || 'M';
+        const color = it.color || it.finish || 'Classic Black';
+        const variantParts = [];
+        if (color) variantParts.push(color);
+        if (size) variantParts.push(`Size ${size}`);
+        const variant = variantParts.join(' · ') || 'Standard Edition';
+        const sku = it.sku || it.id || 'TS-MIN-001';
+        const itemQty = Math.max(1, parseInt(it?.qty ?? it?.quantity ?? 1, 10) || 1);
+        const unitPrice = Number(it?.priceInr ?? it?.price ?? 0);
+        const totalItemInr = Number(it?.totalItemPriceInr) || (unitPrice * itemQty);
+        const itemImg = it.image || it.imageUrl || it.img || (Array.isArray(it.images) && it.images[0]) || '/api/product-image';
+
         return `
-          <div class="checkout-review-item-row">
-            <div class="checkout-review-thumb">${itemImg}</div>
-            <div class="checkout-review-info">
-              <strong>${it.name}</strong>
-              <small>Size: ${it.size || 'M'} · Finish: ${it.finish || 'Classic Black'} · Qty: ${itemQty}</small>
+          <div class="confirmed-email-item-row">
+            <div class="confirmed-email-item-thumb">
+              <img src="${escHtml(itemImg)}" alt="${escHtml(title)}" loading="lazy" onerror="this.onerror=null;this.src='/api/product-image';" />
             </div>
-            <div class="checkout-review-price">₹${(itemPrice * itemQty).toLocaleString('en-IN')}</div>
+            <div class="confirmed-email-item-body">
+              <div class="confirmed-email-item-title">${escHtml(title)}</div>
+              <div class="confirmed-email-item-meta">${escHtml(variant)} <span class="confirmed-email-meta-dot">&middot;</span> <span class="confirmed-email-item-sku">${escHtml(sku)}</span></div>
+              <div class="confirmed-email-item-bottom">
+                <span class="confirmed-email-item-qty">Qty: ${itemQty}</span>
+                <span class="confirmed-email-item-price">${formatMoney(totalItemInr)}</span>
+              </div>
+            </div>
           </div>
         `;
       }).join('');
@@ -4247,6 +4269,25 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
 
       // Reset checkout step to 1 for subsequent shopping
       goToCheckoutStep(1);
+    });
+  }
+
+  // Step 4 Action: View My Orders -> Close checkout and open Account Order History
+  const checkoutViewOrdersBtn = document.getElementById('checkoutViewOrdersBtn');
+  if (checkoutViewOrdersBtn) {
+    checkoutViewOrdersBtn.addEventListener('click', () => {
+      if (checkoutFlowModal) {
+        checkoutFlowModal.classList.remove('open', 'order-confirmed', 'step-4', 'step-4-active');
+        checkoutFlowModal.setAttribute('aria-hidden', 'true');
+        if (checkoutFlowCloseBtn) checkoutFlowCloseBtn.style.display = 'grid';
+      }
+      if (typeof closeCart === 'function') closeCart(true);
+      document.body.classList.remove('bag-open');
+      document.documentElement.classList.remove('bag-open');
+      goToCheckoutStep(1);
+      if (typeof window.openAccountPage === 'function') {
+        window.openAccountPage('orders');
+      }
     });
   }
 
@@ -6851,7 +6892,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       // 2. Product Features
       if (parsed.features && parsed.features.length > 0) {
         loreHtml += `
-          <div style="margin-top:1.5rem; background:#f9fafb; border:1px solid #e5e7eb; border-radius:10px; padding:1.35rem 1.5rem;">
+          <div style="margin-top:1.5rem; background:#FAF8F5; border:1px solid #e5dfd5; border-radius:10px; padding:1.35rem 1.5rem;">
             <h4 style="font-family:var(--sans); font-size:0.8rem; color:#111827; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; margin:0 0 0.85rem 0;">KEY PRODUCT FEATURES</h4>
             <ul style="list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:0.65rem;">
               ${parsed.features.map(f => {
@@ -6882,7 +6923,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
       const specKeys = Object.keys(parsed.specs || {});
       if (specKeys.length > 0) {
         loreHtml += `
-          <div style="margin-top:1.25rem; background:#f9fafb; border:1px solid #e5e7eb; border-radius:10px; padding:1.2rem 1.35rem;">
+          <div style="margin-top:1.25rem; background:#FAF8F5; border:1px solid #e5dfd5; border-radius:10px; padding:1.2rem 1.35rem;">
             <strong style="color:#111827; font-size:0.8rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; display:block; margin-bottom:0.75rem; font-family:var(--sans);">Material &amp; Care</strong>
             <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:0.65rem;">
               ${specKeys.map(k => `
@@ -8719,7 +8760,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     }
 
     const toast = document.createElement('div');
-    toast.style.cssText = 'background:#ffffff;color:#111111;border:1px solid #e5e5e5;border-left:4px solid #111111;border-radius:8px;padding:14px 16px;box-shadow:0 12px 32px rgba(0,0,0,0.12);font-family:var(--sans,sans-serif);pointer-events:auto;animation:pushToastSlideIn 0.3s cubic-bezier(0.16,1,0.3,1);cursor:pointer;';
+    toast.style.cssText = 'background:#FAF8F5;color:#111111;border:1px solid #e5dfd5;border-left:4px solid #111111;border-radius:8px;padding:14px 16px;box-shadow:0 12px 32px rgba(0,0,0,0.12);font-family:var(--sans,sans-serif);pointer-events:auto;animation:pushToastSlideIn 0.3s cubic-bezier(0.16,1,0.3,1);cursor:pointer;';
     toast.innerHTML = `
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
         <div style="flex:1;">
@@ -9884,7 +9925,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
 
           <div style="display:flex;flex-direction:column;gap:0.65rem;">
             ${items.map((it, idx) => `
-              <div style="display:flex;align-items:center;justify-content:space-between;gap:0.75rem;background:#ffffff;padding:0.65rem;border-radius:6px;border:1px solid #e4e4e7;">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:0.75rem;background:#FAF8F5;padding:0.65rem;border-radius:6px;border:1px solid #e5dfd5;">
                 <div>
                   <strong style="font-size:0.84rem;color:#0e0e11;display:block;">${it.name || it.title}</strong>
                   <span style="font-size:0.74rem;color:#71717a;">Current Size: ${it.size || 'M'} · ₹${Number(it.priceInr || 1999).toLocaleString('en-IN')}</span>
@@ -9893,7 +9934,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
                   Request 7-Day Size Exchange
                 </button>
               </div>
-              <form class="suite-exchange-inline-form" id="exchangeForm_${code}_${idx}" style="display:none;background:#ffffff;padding:0.9rem;border-radius:8px;border:1px solid #0e0e11;" data-order-code="${code}" data-item-name="${it.name || it.title}" data-current-size="${it.size || 'M'}">
+              <form class="suite-exchange-inline-form" id="exchangeForm_${code}_${idx}" style="display:none;background:#FAF8F5;padding:0.9rem;border-radius:8px;border:1px solid #0e0e11;" data-order-code="${code}" data-item-name="${it.name || it.title}" data-current-size="${it.size || 'M'}">
                 <div style="font-size:0.78rem;font-weight:700;margin-bottom:0.55rem;">7-Day Doorstep Size Exchange — ${it.name || it.title}</div>
                 <div class="suite-form-grid">
                   <div class="suite-field">
@@ -9958,13 +9999,45 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           });
           const data = await res.json();
           if (data && data.success) {
+            const suiteModal = document.getElementById('returnsExchangeSuiteModal');
+            if (suiteModal) {
+              suiteModal.classList.remove('open');
+              suiteModal.setAttribute('aria-hidden', 'true');
+            }
+            const exchangeReq = {
+              id: data.exchange.exchangeId || ('EXC-' + Math.floor(10000 + Math.random() * 90000)),
+              orderCode: String(orderCode || '').replace(/^#/, '').trim(),
+              type: 'exchange',
+              requestedSize: requestedSize,
+              reason: reason,
+              pickupAddress: 'Registered Delivery Address',
+              items: [{
+                name: itemName || 'The Street Co Apparel',
+                size: currentSize || 'M',
+                finish: 'Classic Black',
+                qty: 1,
+                priceInr: 1599,
+                image: '/api/product-image'
+              }],
+              status: 'SUBMITTED',
+              createdAt: new Date().toISOString()
+            };
+            try {
+              const rawRet = localStorage.getItem('the_street_co_returns_v1');
+              const arrRet = rawRet ? JSON.parse(rawRet) : [];
+              const nextRet = Array.isArray(arrRet) ? [exchangeReq, ...arrRet.filter(r => r && r.orderCode !== exchangeReq.orderCode)] : [exchangeReq];
+              localStorage.setItem('the_street_co_returns_v1', JSON.stringify(nextRet));
+            } catch (_) {}
             form.innerHTML = `
-              <div style="color:#0e0e11;font-size:0.82rem;font-weight:600;">
-                ✓ Exchange #${data.exchange.exchangeId} Approved! Free Delhivery reverse pickup scheduled for ${data.exchange.scheduledPickupDate} (Size ${currentSize} → Size ${requestedSize}).
+              <div style="color:#166534;font-size:0.82rem;font-weight:700;">
+                ✓ Exchange #${data.exchange.exchangeId} Marked as Submitted! Free Delhivery reverse pickup scheduled for ${data.exchange.scheduledPickupDate} (Size ${currentSize} → Size ${requestedSize}).
               </div>
             `;
             if (typeof window.streetCoShowToast === 'function') {
-              window.streetCoShowToast('7-DAY EXCHANGE SCHEDULED', `Exchange #${data.exchange.exchangeId} confirmed`);
+              window.streetCoShowToast('EXCHANGE REQUEST SUBMITTED', `Exchange #${data.exchange.exchangeId} marked as submitted`);
+            }
+            if (typeof window.renderReturnExchangeConfirmationPage === 'function') {
+              window.renderReturnExchangeConfirmationPage(exchangeReq, { orderCode: exchangeReq.orderCode, items: exchangeReq.items });
             }
           }
         } catch (_) {}
@@ -11312,9 +11385,9 @@ window.openDelhiveryTracker = openDelhiveryTracker;
 
       let statusBadgeMarkup = '<span class="account-order-short-badge">CONFIRMED</span>';
       if (isExchange) {
-        statusBadgeMarkup = '<span class="account-order-short-badge account-order-short-badge--exchange">EXCHANGE REQUESTED</span>';
+        statusBadgeMarkup = '<span class="account-order-short-badge account-order-short-badge--exchange">EXCHANGE SUBMITTED</span>';
       } else if (isReturn) {
-        statusBadgeMarkup = '<span class="account-order-short-badge account-order-short-badge--return">RETURN REQUESTED</span>';
+        statusBadgeMarkup = '<span class="account-order-short-badge account-order-short-badge--return">RETURN SUBMITTED</span>';
       } else if (isDelivered) {
         statusBadgeMarkup = '<span class="account-order-short-badge account-order-short-badge--delivered">DELIVERED</span>';
       } else if (isAwaitingZoho) {
@@ -11355,11 +11428,11 @@ window.openDelhiveryTracker = openDelhiveryTracker;
               ${returnReq ? `
                 <div class="account-order-return-summary" style="margin-top:10px;padding:9px 12px;border-radius:8px;background:${isExchange ? 'rgba(37,99,235,0.06)' : 'rgba(217,119,6,0.07)'};border:1px solid ${isExchange ? 'rgba(37,99,235,0.22)' : 'rgba(217,119,6,0.25)'};font-size:12px;line-height:1.45;color:#18181b;">
                   <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;font-weight:700;color:${isExchange ? '#1d4ed8' : '#b45309'};">
-                    <span>${isExchange ? `↻ Size Exchange Requested (Replacement Size: ${returnReq.requestedSize || 'L'})` : '↩ Return Requested (Full Refund)'}</span>
-                    <span style="font-size:11px;font-weight:700;color:#0E0E11;background:#ffffff;border:1px solid #e4e4e7;padding:2px 7px;border-radius:4px;">${returnReq.salesreturn_number ? `Zoho RMA: #${returnReq.salesreturn_number}` : `Req: #${returnReq.id}`}</span>
+                    <span>${isExchange ? `✓ Size Exchange Request Submitted (Size: ${returnReq.requestedSize || 'L'})` : '✓ Return Request Submitted (Full Refund)'}</span>
+                    <span style="font-size:11px;font-weight:700;color:#0E0E11;background:#FAF8F5;border:1px solid #e4e4e7;padding:2px 7px;border-radius:4px;">${returnReq.salesreturn_number ? `Zoho RMA: #${returnReq.salesreturn_number}` : `Req: #${returnReq.id}`}</span>
                   </div>
                   <div style="margin-top:4px;color:#52525b;font-size:11.5px;">
-                    Ref: <strong>#${returnReq.id}</strong>
+                    Ref: <strong>#${returnReq.id}</strong> · Status: <strong>Submitted</strong>
                     ${returnReq.reverseAwb ? ` · Reverse AWB: <strong>#${returnReq.reverseAwb}</strong>` : ''}
                     ${returnReq.reason ? ` · Reason: ${returnReq.reason}` : ''}
                   </div>
@@ -11387,7 +11460,11 @@ window.openDelhiveryTracker = openDelhiveryTracker;
                 </svg>
                 <span>Return or Exchange</span>
               </button>
-              ` : ''}
+              ` : `
+              <button type="button" class="account-order-return-btn account-order-view-return-btn" onclick="event.stopPropagation(); if(window.openReturnExchangeModal){window.openReturnExchangeModal('${orderCode}');}" title="View submitted request status for Order #${orderCode}">
+                <span>View Submitted Request</span>
+              </button>
+              `}
             </div>
           </div>
         </article>
@@ -11485,19 +11562,51 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     const bodyEl = document.getElementById('returnExchangeModalBody');
     if (!modal || !bodyEl || !req) return;
 
-    const isEx = req.type === 'exchange';
-    const cleanCode = String(req.orderCode || ord?.orderCode || ord?.orderId || '').replace(/^#/, '').trim();
-    const reqId = String(req.id || '').trim() || ('RET-' + Math.floor(10000 + Math.random() * 90000));
-    const items = Array.isArray(req.items) && req.items.length > 0
-      ? req.items
-      : (Array.isArray(ord?.items) && ord.items.length > 0 ? ord.items : []);
+    const vm = (window.streetCoConfirmationHelper && typeof window.streetCoConfirmationHelper.buildReturnExchangeSubmittedViewModel === 'function')
+      ? window.streetCoConfirmationHelper.buildReturnExchangeSubmittedViewModel(req, ord)
+      : (() => {
+          const isExchange = req.type === 'exchange';
+          const orderCode = String(req.orderCode || ord?.orderCode || ord?.orderId || '').replace(/^#/, '').trim();
+          const requestId = String(req.id || '').trim() || ('RET-' + Math.floor(10000 + Math.random() * 90000));
+          const itemsList = Array.isArray(req.items) && req.items.length > 0
+            ? req.items
+            : (Array.isArray(ord?.items) && ord.items.length > 0 ? ord.items : []);
+          const qty = itemsList.reduce((sum, it) => sum + (Math.max(1, parseInt(it.qty || it.quantity, 10) || 1)), 0) || 1;
+          const totalInrVal = itemsList.reduce((sum, it) => {
+            const q = Math.max(1, parseInt(it.qty || it.quantity, 10) || 1);
+            const u = Number(it.priceInr || it.price || 0);
+            return sum + (Number(it.totalItemPriceInr) || (u * q));
+          }, 0);
+          return {
+            isExchange,
+            requestId,
+            orderCode,
+            statusBadge: 'STATUS: REQUEST MARKED AS SUBMITTED',
+            statusValue: 'Marked as Submitted',
+            heading: isExchange ? 'EXCHANGE REQUEST SUBMITTED' : 'RETURN REQUEST SUBMITTED',
+            subtitle: isExchange
+              ? 'Your size exchange request has been marked as submitted and scheduled for free doorstep pickup.'
+              : 'Your return request has been marked as submitted and scheduled for free doorstep pickup.',
+            idLabel: isExchange ? 'EXCHANGE REQUEST ID' : 'RETURN REQUEST ID',
+            requestTypeLabel: isExchange ? 'Size Exchange (Free Replacement)' : 'Return Item (Full Refund)',
+            requestedSize: isExchange ? (req.requestedSize || 'L') : null,
+            salesreturnNumber: req.salesreturn_number || '',
+            reverseAwb: req.reverseAwb || '',
+            pickupAddress: req.pickupAddress || '',
+            reason: req.reason || '',
+            items: itemsList,
+            totalQty: qty,
+            itemsTotalInr: totalInrVal,
+            totalLabel: isExchange ? 'Exchange Value' : 'Estimated Refund'
+          };
+        })();
 
-    const totalQty = items.reduce((sum, it) => sum + (Math.max(1, parseInt(it.qty || it.quantity, 10) || 1)), 0) || 1;
-    const itemsTotalInr = items.reduce((sum, it) => {
-      const qty = Math.max(1, parseInt(it.qty || it.quantity, 10) || 1);
-      const unitPrice = Number(it.priceInr || it.price || 0);
-      return sum + (Number(it.totalItemPriceInr) || (unitPrice * qty));
-    }, 0);
+    const isEx = vm.isExchange;
+    const cleanCode = vm.orderCode;
+    const reqId = vm.requestId;
+    const items = vm.items;
+    const totalQty = vm.totalQty;
+    const itemsTotalInr = vm.itemsTotalInr;
 
     const escapeHtml = (val) => String(val || '')
       .replace(/&/g, '&amp;')
@@ -11513,7 +11622,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       const itemQty = Math.max(1, parseInt(it.qty || it.quantity, 10) || 1);
       const itemPrice = Number(it.priceInr || it.price || 0);
       const itemLineTotal = Number(it.totalItemPriceInr) || (itemPrice * itemQty);
-      const replacementMeta = isEx && req.requestedSize ? ` → New Size: ${escapeHtml(req.requestedSize)}` : '';
+      const replacementMeta = isEx && vm.requestedSize ? ` → New Size: ${escapeHtml(vm.requestedSize)}` : '';
       return `
         <div class="checkout-review-item-row">
           <div class="checkout-review-thumb">
@@ -11530,22 +11639,25 @@ window.openDelhiveryTracker = openDelhiveryTracker;
 
     modal.classList.add('open', 'is-confirmation');
     modal.setAttribute('aria-hidden', 'false');
+    modal.scrollTop = 0;
     document.body.classList.add('order-modal-open', 'return-modal-open');
     document.documentElement.classList.add('order-modal-open', 'return-modal-open');
 
     bodyEl.innerHTML = `
-      <div class="checkout-step-view checkout-step-view--confirmed return-confirmed-view">
+      <div class="checkout-step-view checkout-step-view--confirmed return-confirmed-view" id="returnSubmittedConfirmationPage">
         <div class="checkout-confirmed-hero" style="text-align: center; margin-bottom: 1.4rem;">
-          <h3 class="checkout-confirmed-title" style="margin-bottom: 0.35rem;">${isEx ? 'EXCHANGE CONFIRMATION' : 'RETURN CONFIRMATION'}</h3>
-          <p class="checkout-confirmed-sub">${isEx
-            ? 'Thank you! Your size exchange request has been confirmed and scheduled for free doorstep pickup.'
-            : 'Thank you! Your return request has been confirmed and scheduled for free doorstep pickup.'}</p>
+          <div class="confirmed-status-badge" id="returnSubmittedStatusBadge">
+            <span class="confirmed-status-dot" aria-hidden="true">✓</span>
+            <span>${escapeHtml(vm.statusBadge)}</span>
+          </div>
+          <h3 class="checkout-confirmed-title" style="margin-bottom: 0.35rem;">${escapeHtml(vm.heading)}</h3>
+          <p class="checkout-confirmed-sub">${escapeHtml(vm.subtitle)}</p>
         </div>
 
         <div class="checkout-single-confirmed-card">
           <div class="confirmed-card-id-row">
             <div class="confirmed-id-meta">
-              <span class="confirmed-id-label">${isEx ? 'EXCHANGE ID' : 'RETURN ID'}</span>
+              <span class="confirmed-id-label">${escapeHtml(vm.idLabel)}</span>
               <strong class="confirmed-id-val" id="confirmedReturnRequestId">${escapeHtml(reqId)}</strong>
             </div>
             <button type="button" class="checkout-copy-id-btn" id="returnCopyIdBtn" title="Copy Request ID" onclick="if(window.copyReturnExchangeId){window.copyReturnExchangeId('${escapeHtml(reqId)}');}">
@@ -11566,8 +11678,12 @@ window.openDelhiveryTracker = openDelhiveryTracker;
 
           <div class="confirmed-card-calc">
             <div class="confirmed-calc-row">
+              <span>Request Status</span>
+              <strong class="text-free" id="returnSubmittedStatusValue">✓ ${escapeHtml(vm.statusValue)}</strong>
+            </div>
+            <div class="confirmed-calc-row">
               <span>Request Type</span>
-              <strong>${isEx ? 'Size Exchange' : 'Return (Full Refund)'}</strong>
+              <strong>${escapeHtml(vm.requestTypeLabel)}</strong>
             </div>
             ${cleanCode ? `
               <div class="confirmed-calc-row">
@@ -11575,32 +11691,44 @@ window.openDelhiveryTracker = openDelhiveryTracker;
                 <strong>#${escapeHtml(cleanCode)}</strong>
               </div>
             ` : ''}
-            ${req.salesreturn_number ? `
+            ${vm.salesreturnNumber ? `
               <div class="confirmed-calc-row">
                 <span>Zoho RMA Number</span>
-                <strong>#${escapeHtml(req.salesreturn_number)}</strong>
+                <strong>#${escapeHtml(vm.salesreturnNumber)}</strong>
               </div>
             ` : ''}
-            ${isEx && req.requestedSize ? `
+            ${vm.reverseAwb ? `
+              <div class="confirmed-calc-row">
+                <span>Reverse Pickup AWB</span>
+                <strong>#${escapeHtml(vm.reverseAwb)}</strong>
+              </div>
+            ` : ''}
+            ${isEx && vm.requestedSize ? `
               <div class="confirmed-calc-row">
                 <span>Replacement Size</span>
-                <strong>${escapeHtml(req.requestedSize)}</strong>
+                <strong>${escapeHtml(vm.requestedSize)}</strong>
+              </div>
+            ` : ''}
+            ${vm.reason ? `
+              <div class="confirmed-calc-row">
+                <span>Reason</span>
+                <strong>${escapeHtml(vm.reason)}</strong>
               </div>
             ` : ''}
             <div class="confirmed-calc-row">
               <span>Doorstep Pickup Fee</span>
               <strong class="text-free">FREE</strong>
             </div>
-            ${req.pickupAddress ? `
+            ${vm.pickupAddress ? `
               <div class="confirmed-calc-row confirmed-calc-row--address">
                 <span>Pickup Address</span>
-                <strong>${escapeHtml(req.pickupAddress)}</strong>
+                <strong>${escapeHtml(vm.pickupAddress)}</strong>
               </div>
             ` : ''}
             <div class="confirmed-calc-divider"></div>
             <div class="confirmed-calc-row confirmed-calc-row--total">
               <div class="calc-total-label-wrap">
-                <strong class="calc-total-title">${isEx ? 'Exchange Value' : 'Estimated Refund'}</strong>
+                <strong class="calc-total-title">${escapeHtml(vm.totalLabel)}</strong>
               </div>
               <div class="calc-total-amount-wrap">
                 <strong class="confirmed-calc-total-inr">₹${itemsTotalInr.toLocaleString('en-IN')} INR</strong>
@@ -11608,7 +11736,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
             </div>
           </div>
 
-          <div class="confirmed-card-action" style="display:block !important; margin-top: 1.8rem; text-align: center;">
+          <div class="confirmed-card-action confirmed-card-actions-group" style="display:flex !important; margin-top: 1.4rem; text-align: center;">
             <button type="button" class="checkout-btn-track" id="returnConfirmedDoneBtn" onclick="if(window.closeReturnExchangeModal){window.closeReturnExchangeModal();}">
               <span>CONTINUE TO ORDER HISTORY</span>
             </button>
@@ -11757,10 +11885,10 @@ window.openDelhiveryTracker = openDelhiveryTracker;
         <!-- 2B. Return Refund Method Preview (No Size Needed for Return) -->
         <div class="return-form-group" id="returnRefundGroup" style="display:none;">
           <label class="return-form-label">2. Return for Full Refund (No Size Needed)</label>
-          <div style="background: #FAF9F5; border: 1.5px solid #EAE6DC; border-radius: 8px; padding: 0.85rem 1rem; font-size: 0.85rem; color: #0E0E11;">
+          <div style="background: #FAF8F5; border: 1.5px solid #e5dfd5; border-radius: 8px; padding: 0.85rem 1rem; font-size: 0.85rem; color: #0E0E11;">
             <div style="display:flex; align-items:center; gap:8px; font-weight:700; color:#0E0E11; margin-bottom:4px;">
               <span>✓ Full Purchase Price Refund</span>
-              <span style="font-size:0.75rem; background:#F4F4F5; color:#0E0E11; border:1px solid #D4D4D8; padding:2px 6px; border-radius:4px; font-weight:700;">NO SIZE NEEDED</span>
+              <span style="font-size:0.75rem; background:#FAF8F5; color:#0E0E11; border:1px solid #D4D4D8; padding:2px 6px; border-radius:4px; font-weight:700;">NO SIZE NEEDED</span>
             </div>
             <p style="margin: 0; font-size: 0.78rem; color: #52525B; line-height: 1.45;">
               You are returning this garment for a direct refund. No replacement size is required. 100% of your payment will be refunded to your source account or bank UPI upon doorstep pickup verification.
@@ -12886,7 +13014,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     }
   };
 
-  window.openAccountPage = function() {
+  window.openAccountPage = function(initialTab) {
     accountState = loadLocalAccount();
     const cleanPhone = String(accountState.phone || '').replace(/\D/g, '').slice(-10);
     const isLoggedIn = cleanPhone.length === 10 && Boolean(accountState.phoneVerified);
@@ -12924,6 +13052,9 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     modal.classList.add('open');
     modal.setAttribute('aria-hidden', 'false');
     renderAccountPageUI();
+    if (initialTab === 'orders' || initialTab === 'address' || initialTab === 'personal') {
+      switchAccountTab(initialTab, { fromNavClick: true });
+    }
     fetchAccountByPhone(cleanPhone);
   };
 

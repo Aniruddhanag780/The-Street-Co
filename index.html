@@ -2381,68 +2381,75 @@
           </div>
         </div>
 
-        <!-- ══════════ STEP 4: ORDER CONFIRMATION & ORDER SUMMARY ══════════ -->
+        <!-- ══════════ STEP 4: ORDER CONFIRMED PAGE & SUMMARY ══════════ -->
         <div class="checkout-step-view checkout-step-view--confirmed" id="checkoutStep4" role="tabpanel" aria-labelledby="stepIndicator4" style="display:none;">
           
-          <!-- Clean Order Confirmation Header (No Seal Graphic) -->
-          <div class="checkout-confirmed-hero" style="text-align: center; margin-bottom: 1.4rem;">
-            <h3 class="checkout-confirmed-title" style="margin-bottom: 0.35rem;">ORDER CONFIRMATION</h3>
-            <p class="checkout-confirmed-sub">Thank you for your order. Your order has been placed successfully.</p>
+          <div class="checkout-confirmed-brand-wordmark">THE STREET CO</div>
+
+          <div class="checkout-confirmed-hero">
+            <h3 class="checkout-confirmed-title">ORDER CONFIRMED</h3>
+            <p class="checkout-confirmed-sub">Thank you for your order. Your order has been confirmed and placed successfully.</p>
           </div>
 
-          <!-- ONE SINGLE CARD CONTAINING EVERYTHING -->
-          <div class="checkout-single-confirmed-card">
+          <!-- CARDLESS FLAT EDITORIAL SUMMARY -->
+          <div class="checkout-confirmed-flat">
 
-            <!-- 1. Order ID & Copy Bar -->
-            <div class="confirmed-card-id-row">
-              <div class="confirmed-id-meta">
+            <!-- 1. Order ID & Confirmation Date -->
+            <div class="confirmed-flat-id-row">
+              <div class="confirmed-flat-id-meta">
                 <span class="confirmed-id-label">ORDER ID</span>
-                <strong class="confirmed-id-val" id="confirmedOrderId">111111</strong>
+                <strong class="confirmed-id-val">#<span id="confirmedOrderId">111111</span></strong>
               </div>
-              <button type="button" class="checkout-copy-id-btn" id="checkoutCopyIdBtn" title="Copy Order ID">
-                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                <span>COPY ORDER ID</span>
-              </button>
+              <div class="confirmed-flat-date-meta">
+                <span class="confirmed-id-label">CONFIRMED ON</span>
+                <strong class="confirmed-flat-date-val" id="confirmedCardOrderDate">Today</strong>
+              </div>
             </div>
 
-            <!-- 2. Delivery, Payment & Recipient Info (Hidden for clean presentation) -->
-            <div class="confirmed-card-info-grid" style="display:none !important;" aria-hidden="true">
-              <div class="confirmed-info-cell">
+            <!-- 2. Delivering To & Payment Method (Flat Typographic Grid, No Cards) -->
+            <div class="confirmed-flat-info-grid">
+              <div class="confirmed-flat-info-cell">
                 <span class="info-cell-label">DELIVERING TO</span>
-                <strong class="info-cell-val" id="confirmedRecipient"></strong>
-                <small class="info-cell-sub" id="confirmedShortAddress"></small>
+                <strong class="info-cell-val" id="confirmedRecipient">Customer</strong>
+                <span class="info-cell-line" id="confirmedFullAddress">—</span>
+                <span class="info-cell-sub" id="confirmedCustomerPhone"></span>
               </div>
-              <div class="confirmed-info-cell">
-                <span class="info-cell-label">PAYMENT</span>
-                <strong class="info-cell-val" id="confirmedPayStatus"></strong>
-                <small class="info-cell-sub" id="confirmedPayMethod"></small>
+              <div class="confirmed-flat-info-cell">
+                <span class="info-cell-label">PAYMENT METHOD</span>
+                <strong class="info-cell-val" id="confirmedPayStatus">Cash on Delivery (COD)</strong>
+                <span class="info-cell-line" id="confirmedPayMethod">Pay with cash upon doorstep arrival</span>
+                <div class="confirmed-flat-est-inline">
+                  <span class="info-cell-label">ESTIMATED DELIVERY</span>
+                  <strong class="info-cell-val" id="confirmedEstDelivery">—</strong>
+                  <span class="info-cell-sub" id="confirmedCourierName">Standard Delivery</span>
+                </div>
               </div>
             </div>
 
-            <!-- 3. Product Summary (Items Ordered) -->
-            <div class="confirmed-card-section">
+            <!-- 3. Product Summary (Email-Style Ordered Items List) -->
+            <div class="confirmed-flat-section">
               <div class="confirmed-card-section__header">
                 <span class="section-title">PRODUCT SUMMARY</span>
                 <span class="section-count" id="confirmedSummaryItemCount">1 Item</span>
               </div>
-              <div class="confirmed-items-list" id="confirmedItemsList">
-                <!-- Dynamically populated -->
+              <div class="confirmed-email-items-list" id="confirmedItemsList">
+                <!-- Dynamically populated in email item format -->
               </div>
             </div>
 
             <!-- 4. Price Breakdown & Total -->
-            <div class="confirmed-card-calc">
+            <div class="confirmed-flat-calc">
               <div class="confirmed-calc-row">
                 <span>Subtotal</span>
-                <strong id="confirmedSummarySubtotal">₹4,999</strong>
+                <strong id="confirmedSummarySubtotal">₹4,999.00</strong>
               </div>
               <div class="confirmed-calc-row">
                 <span>Delivery Fee</span>
-                <strong class="text-free" id="confirmedSummaryDelivery">FREE</strong>
+                <strong id="confirmedSummaryDelivery">FREE</strong>
               </div>
               <div class="confirmed-calc-row" id="confirmedSummaryDiscountRow" style="display:none;">
                 <span>Discount</span>
-                <strong class="text-discount" id="confirmedSummaryDiscount">-₹0</strong>
+                <strong id="confirmedSummaryDiscount">-₹0.00</strong>
               </div>
               <div class="confirmed-calc-divider"></div>
               <div class="confirmed-calc-row confirmed-calc-row--total">
@@ -2450,17 +2457,19 @@
                   <strong class="calc-total-title">Total Amount</strong>
                 </div>
                 <div class="calc-total-amount-wrap">
-                  <strong class="confirmed-calc-total-inr" id="confirmedSummaryTotal">₹4,999 INR</strong>
+                  <strong class="confirmed-calc-total-inr" id="confirmedSummaryTotal">₹4,999.00 INR</strong>
                   <small class="confirmed-calc-total-ryo" id="confirmedSummaryRyo" style="display:none;"></small>
                 </div>
               </div>
             </div>
 
-            <!-- 5. Continue Shopping Action -->
-            <div class="confirmed-card-action" style="display:block !important; margin-top: 1.8rem; text-align: center;">
+            <!-- 5. Actions -->
+            <div class="confirmed-flat-actions confirmed-card-actions-group">
               <button type="button" class="checkout-btn-track" id="checkoutTrackCourierBtn">
-                <span class="btn-icon">🛍️</span>
                 <span>CONTINUE SHOPPING</span>
+              </button>
+              <button type="button" class="checkout-btn-orders" id="checkoutViewOrdersBtn">
+                <span>VIEW MY ORDERS</span>
               </button>
             </div>
 
@@ -2662,21 +2671,21 @@
             <td style="padding:.6rem .5rem;">18.5"</td>
             <td style="padding:.6rem .5rem;">5'4" - 5'7"</td>
           </tr>
-          <tr style="border-bottom:1px solid #e5e5e5;background:#fafafa;">
+          <tr style="border-bottom:1px solid #e5dfd5;background:#FAF8F5;">
             <td style="padding:.6rem .5rem;font-weight:800;color:#000000;">M (Standard)</td>
             <td style="padding:.6rem .5rem;">39 - 41" (102 cm)</td>
             <td style="padding:.6rem .5rem;">48" (122 cm)</td>
             <td style="padding:.6rem .5rem;">19.5"</td>
             <td style="padding:.6rem .5rem;">5'8" - 5'10"</td>
           </tr>
-          <tr style="border-bottom:1px solid #e5e5e5;">
+          <tr style="border-bottom:1px solid #e5dfd5;">
             <td style="padding:.6rem .5rem;font-weight:800;color:#000000;">L</td>
             <td style="padding:.6rem .5rem;">42 - 44" (110 cm)</td>
             <td style="padding:.6rem .5rem;">51" (129 cm)</td>
             <td style="padding:.6rem .5rem;">20.5"</td>
             <td style="padding:.6rem .5rem;">5'11" - 6'1"</td>
           </tr>
-          <tr style="border-bottom:1px solid #e5e5e5;background:#fafafa;">
+          <tr style="border-bottom:1px solid #e5dfd5;background:#FAF8F5;">
             <td style="padding:.6rem .5rem;font-weight:800;color:#000000;">XL</td>
             <td style="padding:.6rem .5rem;">45 - 47" (118 cm)</td>
             <td style="padding:.6rem .5rem;">53" (135 cm)</td>
@@ -2694,7 +2703,7 @@
       </table>
     </div>
 
-    <div style="background:#fafafa;border:1px solid #e5e5e5;border-radius:6px;padding:.9rem;margin-bottom:1.4rem;">
+    <div style="background:#FAF8F5;border:1px solid #e5dfd5;border-radius:6px;padding:.9rem;margin-bottom:1.4rem;">
       <p style="font-family:var(--mono);font-size:.62rem;color:#000000;margin:0 0 .3rem 0;font-weight:800;">GARMENT CARE &amp; FABRIC SPECIFICATIONS:</p>
       <p style="font-family:var(--mono);font-size:.56rem;color:#525252;margin:0;line-height:1.5;">
         Crafted from 100% Japanese heavyweight gabardine twill with crimson silk satin lining. Hand wash cold or dry clean only to preserve embroidered vermilion cloud seals. Pre-shrunk fabric ensures no shrinkage.
@@ -3563,7 +3572,9 @@
 </script>
 <script type="module">
   import * as upiIntentHelper from '/upiIntentHelper.js';
+  import * as confirmationHelper from '/confirmationHelper.js';
   window.streetCoUpiHelper = upiIntentHelper;
+  window.streetCoConfirmationHelper = confirmationHelper;
 </script>
 <script src="main.js?v=20261116_zoho_v19"></script>
 

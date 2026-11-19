@@ -47,6 +47,13 @@
   to = "/.netlify/functions/api/:splat"
   status = 200
 
+# Keep environment templates and local environment files out of the public site.
+[[redirects]]
+  from = "/.env*"
+  to = "/404.html"
+  status = 404
+  force = true
+
 # SPA routing redirect rule
 [[redirects]]
   from = "/*"

@@ -458,53 +458,6 @@ export const handler = async (event) => {
   const rawPath = event.path || '';
   const method = event.httpMethod || 'GET';
 
-  // Direct download endpoint for Netlify .env file
-  if (rawPath.includes('download-env') || rawPath.endsWith('/env')) {
-    const envContent = `# ==============================================================================
-# The Street Co - Netlify Environment Variables (.env)
-# Import this file in Netlify: Site Settings > Environment Variables
-# ==============================================================================
-
-# --- 1. Google Gmail SMTP (Exclusive Email Sender) ---
-GMAIL_SMTP_USER=thestreetco.official@gmail.com
-GMAIL_SMTP_PASS=hybxmdubrjmsddoh
-GMAIL_SENDER_NAME=The Street Co
-GMAIL_REPLY_TO=support@thestreetco.zohodesk.in
-
-# --- 2. Zoho Desk Support Concierge ---
-ZOHO_DESK_SUPPORT_EMAIL=support@thestreetco.zohodesk.in
-ZOHO_DESK_PORTAL_NAME=thestreetco
-
-# --- 3. Twilio SMS Notifications ---
-TWILIO_ACCOUNT_SID=AC94691c71b285619460176e829e92fec4
-TWILIO_AUTH_TOKEN=1a6de980980e3bc5e8cd27a0e3446727
-TWILIO_PHONE_NUMBER=+14356605689
-
-# --- 4. Zoho Inventory & Zoho Invoice Suite ---
-ZOHO_INVENTORY_CLIENT_ID=1000.UZX14OW3RS263F9HO71UTABZ83BEUK
-ZOHO_INVENTORY_CLIENT_SECRET=89c5bfa5bb94d3b6a6b956e030753116ed3f765095
-ZOHO_INVENTORY_REFRESH_TOKEN=1000.be2b654a1e1c745bf85384b670224252.43b26bde60e360a5a7a083f98fe01c7e
-ZOHO_INVENTORY_ORG_ID=60090378434
-ZOHO_INVENTORY_DOMAIN=inventory.zoho.in
-ZOHO_ACCOUNTS_DOMAIN=accounts.zoho.in
-
-# --- 5. Security, Admin Passkey & Google Analytics ---
-ADMIN_SECRET=itachi-admin-secret-2026
-GA_MEASUREMENT_ID=G-P6M5JYSKP0
-GOOGLE_ANALYTICS_ID=G-P6M5JYSKP0
-NODE_ENV=production
-`;
-    return {
-      statusCode: 200,
-      headers: {
-        ...CORS_HEADERS,
-        'Content-Type': 'text/plain; charset=utf-8',
-        'Content-Disposition': 'attachment; filename=".env"'
-      },
-      body: envContent
-    };
-  }
-
   // Direct download endpoint for zoho_inventory_cache.json
   if (rawPath.includes('download-zoho-cache') || rawPath.includes('download-cache') || rawPath.endsWith('/zoho-cache-file')) {
     let cacheContent = '{}';

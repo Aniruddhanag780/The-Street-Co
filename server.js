@@ -660,18 +660,18 @@ async function sendReturnApprovedEmail(returnRecord, hostOrigin = '') {
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style type="text/css">
       :root { color-scheme: light only; supported-color-schemes: light only; }
-      body { margin:0;padding:0;background-color:#faf8f5 !important;color:#18181b !important;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;-webkit-font-smoothing:antialiased; }
+      body { margin:0;padding:0;background-color:#FAF8F5 !important;color:#18181b !important;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;-webkit-font-smoothing:antialiased; }
       table, td { border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt; }
       img { border:0;height:auto;line-height:100%;outline:none;text-decoration:none; }
       p { display:block;margin:12px 0; }
       @media (prefers-color-scheme: dark) {
-        html, body { background-color:#faf8f5 !important;color:#18181b !important; }
+        html, body { background-color:#FAF8F5 !important;color:#18181b !important; }
       }
     </style>
   </head>
-  <body bgcolor="#faf8f5" style="margin:0;padding:0;background-color:#faf8f5;">
+  <body bgcolor="#FAF8F5" style="margin:0;padding:0;background-color:#FAF8F5;">
     <!-- Outer Creamy Canvas -->
-    <div style="width:100%;background-color:#faf8f5;padding:32px 12px;box-sizing:border-box;">
+    <div style="width:100%;background-color:#FAF8F5;padding:32px 12px;box-sizing:border-box;">
       
       <!-- Center Luxury Card -->
       <div style="max-width:600px;margin:0 auto;background-color:#FAF8F5;border:1px solid #e8e2d8;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.03);">
@@ -708,7 +708,7 @@ async function sendReturnApprovedEmail(returnRecord, hostOrigin = '') {
           </p>
 
           <!-- Request Summary Card -->
-          <div style="background:#faf8f5;border:1px solid #e8e2d8;border-radius:10px;padding:18px 20px;margin-bottom:24px;">
+          <div style="background:#FAF8F5;border:1px solid #e8e2d8;border-radius:10px;padding:18px 20px;margin-bottom:24px;">
             <table cellpadding="0" cellspacing="0" width="100%" border="0" style="font-size:13px;line-height:22px;color:#3f3f46;margin-bottom:12px;">
               <tr>
                 <td style="color:#8a7b6e;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;padding-bottom:4px;">REQUEST TYPE</td>
@@ -771,7 +771,7 @@ async function sendReturnApprovedEmail(returnRecord, hostOrigin = '') {
         </div> <!-- /main content -->
 
         <!-- Footer -->
-        <div style="background-color:#faf8f5;border-top:1px solid #e8e2d8;padding:26px 20px;text-align:center;">
+        <div style="background-color:#FAF8F5;border-top:1px solid #e8e2d8;padding:26px 20px;text-align:center;">
           <div style="margin-bottom:14px;">
             <a href="${storeUrl}" target="_blank" style="text-decoration:none;margin:0 12px;font-size:12px;font-weight:600;color:#0e0e11;">The Shop</a>
             <span style="color:#c5a880;">•</span>
@@ -913,18 +913,18 @@ async function sendOrderReadyToShipEmail(order, hostOrigin = '') {
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style type="text/css">
       :root { color-scheme: light only; supported-color-schemes: light only; }
-      body { margin:0;padding:0;background-color:#faf8f5 !important;color:#18181b !important;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;-webkit-font-smoothing:antialiased; }
+      body { margin:0;padding:0;background-color:#FAF8F5 !important;color:#18181b !important;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;-webkit-font-smoothing:antialiased; }
       table, td { border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt; }
       img { border:0;height:auto;line-height:100%;outline:none;text-decoration:none; }
       p { display:block;margin:12px 0; }
       @media (prefers-color-scheme: dark) {
-        html, body { background-color:#faf8f5 !important;color:#18181b !important; }
+        html, body { background-color:#FAF8F5 !important;color:#18181b !important; }
       }
     </style>
   </head>
-  <body bgcolor="#faf8f5" style="margin:0;padding:0;background-color:#faf8f5;">
+  <body bgcolor="#FAF8F5" style="margin:0;padding:0;background-color:#FAF8F5;">
     <!-- Outer Creamy Canvas -->
-    <div style="width:100%;background-color:#faf8f5;padding:32px 12px;box-sizing:border-box;">
+    <div style="width:100%;background-color:#FAF8F5;padding:32px 12px;box-sizing:border-box;">
       
       <!-- Center Luxury Card -->
       <div style="max-width:600px;margin:0 auto;background-color:#FAF8F5;border:1px solid #e8e2d8;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.03);">
@@ -947,7 +947,7 @@ async function sendOrderReadyToShipEmail(order, hostOrigin = '') {
         <div style="padding:32px 28px;">
           
           <!-- Packed Status Banner -->
-          <div style="background:#faf8f5;border:1px solid #e8e2d8;border-radius:10px;padding:22px 20px;margin-bottom:26px;text-align:center;">
+          <div style="background:#FAF8F5;border:1px solid #e8e2d8;border-radius:10px;padding:22px 20px;margin-bottom:26px;text-align:center;">
             <div style="display:inline-block;width:40px;height:40px;line-height:40px;border-radius:50%;background:#0e0e11;color:#ffffff;font-size:18px;font-weight:bold;margin-bottom:8px;">⚡</div>
             <div style="font-family:'Playfair Display',Georgia,serif;font-size:22px;font-weight:600;color:#0e0e11;letter-spacing:-0.2px;margin-bottom:4px;">Packed &amp; Ready To Ship</div>
             <div style="font-size:12px;color:#8a7b6e;font-weight:600;">Delhivery Express courier handover queued · AWB #${awbCode}</div>
@@ -961,7 +961,7 @@ async function sendOrderReadyToShipEmail(order, hostOrigin = '') {
           </p>
 
           <!-- Shipping Destination Card -->
-          <div style="background:#faf8f5;border:1px solid #e8e2d8;border-radius:10px;padding:18px 20px;margin-bottom:24px;">
+          <div style="background:#FAF8F5;border:1px solid #e8e2d8;border-radius:10px;padding:18px 20px;margin-bottom:24px;">
             <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#8a7b6e;margin-bottom:6px;">DISPATCH DESTINATION</div>
             <div style="font-size:14px;font-weight:700;color:#0e0e11;">${customerName}</div>
             <div style="font-size:13px;color:#52525b;line-height:1.5;margin-top:2px;">${fullAddress}</div>
@@ -997,7 +997,7 @@ async function sendOrderReadyToShipEmail(order, hostOrigin = '') {
         </div> <!-- /main content -->
 
         <!-- Footer -->
-        <div style="background-color:#faf8f5;border-top:1px solid #e8e2d8;padding:26px 20px;text-align:center;">
+        <div style="background-color:#FAF8F5;border-top:1px solid #e8e2d8;padding:26px 20px;text-align:center;">
           <div style="margin-bottom:14px;">
             <a href="${storeUrl}" target="_blank" style="text-decoration:none;margin:0 12px;font-size:12px;font-weight:600;color:#0e0e11;">The Shop</a>
             <span style="color:#c5a880;">•</span>
@@ -1201,18 +1201,18 @@ async function sendRefundDoneEmail(returnRecord, hostOrigin = '') {
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style type="text/css">
       :root { color-scheme: light only; supported-color-schemes: light only; }
-      body { margin:0;padding:0;background-color:#faf8f5 !important;color:#18181b !important;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;-webkit-font-smoothing:antialiased; }
+      body { margin:0;padding:0;background-color:#FAF8F5 !important;color:#18181b !important;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;-webkit-font-smoothing:antialiased; }
       table, td { border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt; }
       img { border:0;height:auto;line-height:100%;outline:none;text-decoration:none; }
       p { display:block;margin:12px 0; }
       @media (prefers-color-scheme: dark) {
-        html, body { background-color:#faf8f5 !important;color:#18181b !important; }
+        html, body { background-color:#FAF8F5 !important;color:#18181b !important; }
       }
     </style>
   </head>
-  <body bgcolor="#faf8f5" style="margin:0;padding:0;background-color:#faf8f5;">
+  <body bgcolor="#FAF8F5" style="margin:0;padding:0;background-color:#FAF8F5;">
     <!-- Outer Creamy Canvas -->
-    <div style="width:100%;background-color:#faf8f5;padding:32px 12px;box-sizing:border-box;">
+    <div style="width:100%;background-color:#FAF8F5;padding:32px 12px;box-sizing:border-box;">
       
       <!-- Center Luxury Card -->
       <div style="max-width:600px;margin:0 auto;background-color:#FAF8F5;border:1px solid #e8e2d8;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.03);">
@@ -1249,7 +1249,7 @@ async function sendRefundDoneEmail(returnRecord, hostOrigin = '') {
           </p>
 
           <!-- Refund Receipt -->
-          <div style="background:#faf8f5;border:1px solid #e8e2d8;border-radius:10px;padding:20px;margin-bottom:24px;">
+          <div style="background:#FAF8F5;border:1px solid #e8e2d8;border-radius:10px;padding:20px;margin-bottom:24px;">
             <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#8a7b6e;margin-bottom:12px;">REFUND SETTLEMENT VOUCHER</div>
             <table cellpadding="0" cellspacing="0" width="100%" border="0" style="font-size:13px;line-height:22px;color:#3f3f46;">
               <tr>
@@ -1284,7 +1284,7 @@ async function sendRefundDoneEmail(returnRecord, hostOrigin = '') {
         </div> <!-- /main content -->
 
         <!-- Footer -->
-        <div style="background-color:#faf8f5;border-top:1px solid #e8e2d8;padding:26px 20px;text-align:center;">
+        <div style="background-color:#FAF8F5;border-top:1px solid #e8e2d8;padding:26px 20px;text-align:center;">
           <div style="margin-bottom:14px;">
             <a href="${storeUrl}" target="_blank" style="text-decoration:none;margin:0 12px;font-size:12px;font-weight:600;color:#0e0e11;">The Shop</a>
             <span style="color:#c5a880;">•</span>
@@ -1379,18 +1379,18 @@ async function sendExchangeDoneEmail(returnRecord, hostOrigin = '') {
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style type="text/css">
       :root { color-scheme: light only; supported-color-schemes: light only; }
-      body { margin:0;padding:0;background-color:#faf8f5 !important;color:#18181b !important;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;-webkit-font-smoothing:antialiased; }
+      body { margin:0;padding:0;background-color:#FAF8F5 !important;color:#18181b !important;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;-webkit-font-smoothing:antialiased; }
       table, td { border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt; }
       img { border:0;height:auto;line-height:100%;outline:none;text-decoration:none; }
       p { display:block;margin:12px 0; }
       @media (prefers-color-scheme: dark) {
-        html, body { background-color:#faf8f5 !important;color:#18181b !important; }
+        html, body { background-color:#FAF8F5 !important;color:#18181b !important; }
       }
     </style>
   </head>
-  <body bgcolor="#faf8f5" style="margin:0;padding:0;background-color:#faf8f5;">
+  <body bgcolor="#FAF8F5" style="margin:0;padding:0;background-color:#FAF8F5;">
     <!-- Outer Creamy Canvas -->
-    <div style="width:100%;background-color:#faf8f5;padding:32px 12px;box-sizing:border-box;">
+    <div style="width:100%;background-color:#FAF8F5;padding:32px 12px;box-sizing:border-box;">
       
       <!-- Center Luxury Card -->
       <div style="max-width:600px;margin:0 auto;background-color:#FAF8F5;border:1px solid #e8e2d8;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.03);">
@@ -1427,7 +1427,7 @@ async function sendExchangeDoneEmail(returnRecord, hostOrigin = '') {
           </p>
 
           <!-- Record Summary -->
-          <div style="background:#faf8f5;border:1px solid #e8e2d8;border-radius:10px;padding:18px 20px;margin-bottom:24px;">
+          <div style="background:#FAF8F5;border:1px solid #e8e2d8;border-radius:10px;padding:18px 20px;margin-bottom:24px;">
             <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#8a7b6e;margin-bottom:8px;">EXCHANGE RECORD SUMMARY</div>
             <div style="font-size:14px;font-weight:700;color:#0e0e11;">${itemName}</div>
             <div style="font-size:13px;color:#3f3f46;margin-top:4px;">
@@ -1451,7 +1451,7 @@ async function sendExchangeDoneEmail(returnRecord, hostOrigin = '') {
         </div> <!-- /main content -->
 
         <!-- Footer -->
-        <div style="background-color:#faf8f5;border-top:1px solid #e8e2d8;padding:26px 20px;text-align:center;">
+        <div style="background-color:#FAF8F5;border-top:1px solid #e8e2d8;padding:26px 20px;text-align:center;">
           <div style="margin-bottom:14px;">
             <a href="${storeUrl}" target="_blank" style="text-decoration:none;margin:0 12px;font-size:12px;font-weight:600;color:#0e0e11;">The Shop</a>
             <span style="color:#c5a880;">•</span>

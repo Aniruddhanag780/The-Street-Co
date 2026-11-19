@@ -1209,29 +1209,64 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
 
     if (checkoutPromoBox) checkoutPromoBox.style.display = 'block';
 
+    const escapeCartHtml = (str) => String(str ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+
+    const catalogList = (typeof collectionsData !== 'undefined' && Array.isArray(collectionsData))
+      ? collectionsData
+      : [];
+
     cartItemsContainer.innerHTML = cart.map((item, idx) => {
-      const itemInr = Number(item.priceInr) || (item.priceUsd ? Math.round(item.priceUsd * 83) : 4999);
-      const sku = item.sku || item.id;
-      const relic = (typeof collectionsData !== 'undefined' && Array.isArray(collectionsData))
-        ? collectionsData.find(c => (c.sku || c.id) === sku)
-        : null;
-      const thumb = item.image || item.imageUrl || (Array.isArray(item.images) && item.images[0])
-        || (relic && Array.isArray(relic.images) && relic.images[0])
-        || (relic && relic.imageUrl)
-        || '/api/product-image';
+      const display = (typeof window.streetCoCartHelper?.normalizeCartItemForDisplay === 'function')
+        ? window.streetCoCartHelper.normalizeCartItemForDisplay(item, catalogList)
+        : (() => {
+            const sku = item.sku || item.id || 'TS-MIN-001';
+            const relic = catalogList.find(c => (c.sku || c.id) === sku) || null;
+            const qty = Math.max(1, parseInt(item.quantity ?? item.qty ?? 1, 10) || 1);
+            const unitPrice = Number(item.priceInr ?? item.price ?? (relic && relic.priceInr) ?? (item.priceUsd ? Math.round(item.priceUsd * 83) : 4999));
+            const totalInr = Number(item.totalItemPriceInr || (unitPrice * qty));
+            const size = item.size || 'M';
+            const color = item.color || item.finish || '';
+            const variantParts = [];
+            if (color) variantParts.push(color);
+            if (size) variantParts.push(`Size ${size}`);
+            const variant = variantParts.join(' · ') || 'Standard Edition';
+            const image = item.image || item.imageUrl || (Array.isArray(item.images) && item.images[0])
+              || (relic && Array.isArray(relic.images) && relic.images[0])
+              || (relic && relic.imageUrl)
+              || '/api/product-image';
+            return {
+              title: item.title || item.name || (relic && relic.name) || 'Fourth Hokage Minato Inspired Oversized T-Shirt',
+              variant,
+              sku,
+              qty,
+              formattedTotalInr: `₹${totalInr.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+              image
+            };
+          })();
+
       return `
-        <div class="cart-item">
+        <div class="cart-item cart-item--email-style">
           <div class="cart-item__thumb">
-            <img src="${thumb}" alt="${item.name}" loading="lazy" onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='/api/product-image';}else{this.style.display='none';}" />
+            <img src="${escapeCartHtml(display.image)}" alt="${escapeCartHtml(display.title)}" loading="lazy" onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='/api/product-image';}else{this.style.display='none';}" />
           </div>
-          <div class="cart-item__info">
-            <h5>${item.name}</h5>
-            <div class="cart-item__price">₹${(itemInr * item.qty).toLocaleString('en-IN')} INR</div>
-          </div>
-          <div class="cart-item__controls">
-            <button class="cart-item__btn" type="button" data-qty-dec="${idx}" aria-label="Decrease quantity">-</button>
-            <span class="cart-item__qty">${item.qty}</span>
-            <button class="cart-item__btn" type="button" data-qty-inc="${idx}" aria-label="Increase quantity">+</button>
+          <div class="cart-item__body">
+            <div class="cart-item__title">${escapeCartHtml(display.title)}</div>
+            <div class="cart-item__meta">${escapeCartHtml(display.variant)} <span class="cart-item__meta-dot">&middot;</span> <span class="cart-item__sku">${escapeCartHtml(display.sku)}</span></div>
+            <div class="cart-item__bottom">
+              <div class="cart-item__qty-row">
+                <span class="cart-item__qty-label">Qty: ${display.qty}</span>
+                <div class="cart-item__controls">
+                  <button class="cart-item__btn" type="button" data-qty-dec="${idx}" aria-label="Decrease quantity of ${escapeCartHtml(display.title)}">-</button>
+                  <button class="cart-item__btn" type="button" data-qty-inc="${idx}" aria-label="Increase quantity of ${escapeCartHtml(display.title)}">+</button>
+                </div>
+              </div>
+              <div class="cart-item__price">${escapeCartHtml(display.formattedTotalInr)}</div>
+            </div>
           </div>
         </div>
       `;
@@ -1282,7 +1317,9 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
   function handleAddToCart(btn, item, quantity = 1) {
     const qtyToAdd = Math.max(1, parseInt(quantity, 10) || 1);
     const sku = item.sku || item.id;
-    const existing = cart.find(i => (i.sku || i.id) === sku);
+    const itemSize = item.size || 'M';
+    const itemColor = item.color || item.finish || '';
+    const existing = cart.find(i => (i.sku || i.id) === sku && (i.size || 'M') === itemSize && (i.color || i.finish || '') === itemColor);
     const priceInr = Number(item.priceInr) || (item.priceUsd ? Math.round(item.priceUsd * 83) : 4999);
     const priceRyo = item.priceRyo ? Number(item.priceRyo) : Math.round(priceInr * 1.54);
 
@@ -1295,11 +1332,15 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
         id: sku,
         sku: sku,
         name: item.name,
+        title: item.title || item.name,
         category: item.category || 'Relics',
         collection: item.collection || '',
         collectionName: item.collectionName || 'Official Collection',
         priceInr: priceInr,
         priceRyo: priceRyo,
+        size: itemSize,
+        finish: itemColor,
+        color: itemColor,
         seal: item.seal || 'RELIC',
         specs: item.specs || '',
         desc: item.desc || '',
@@ -7848,7 +7889,11 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
   if (relicGalleryAddBagBtn) {
     relicGalleryAddBagBtn.addEventListener('click', () => {
       if (!activeGalleryItem) return;
-      handleAddToCart(relicGalleryAddBagBtn, activeGalleryItem, currentPdpQty);
+      handleAddToCart(relicGalleryAddBagBtn, {
+        ...activeGalleryItem,
+        size: currentSelectedSize || 'M',
+        finish: currentSelectedFinish || ''
+      }, currentPdpQty);
     });
   }
 
@@ -8799,32 +8844,11 @@ window.openDelhiveryTracker = openDelhiveryTracker;
   // ══════════════════════════════════════════════════════════════
   const NOTIF_STORAGE_KEY = 'thestreetco_notifications_v3';
 
-  const PROPER_INITIAL_NOTIFICATIONS = [
-    {
-      id: 'drop_capsule_01',
-      title: 'AKATSUKI CLOUDS CAPSULE LIVE',
-      body: '450 GSM Heavyweight Terry Drop is now live. Limited capsule of 50 numbered pieces worldwide.',
-      tag: 'NEW DROP',
-      timestamp: Date.now() - 1000 * 60 * 25,
-      iconEmoji: '🔥'
-    },
-    {
-      id: 'drop_perk_02',
-      title: 'VIP EXPRESS DISPATCH ACTIVE',
-      body: 'Complimentary priority courier shipping applied automatically to all orders today.',
-      tag: 'PRIVILEGE',
-      timestamp: Date.now() - 1000 * 60 * 60 * 3,
-      iconEmoji: '⚡'
-    },
-    {
-      id: 'drop_tracking_03',
-      title: 'DELHIVERY LIVE TRACKING READY',
-      body: 'Real-time shipment milestones and instant delivery alerts are synced to your account.',
-      tag: 'ORDERS',
-      timestamp: Date.now() - 1000 * 60 * 60 * 22,
-      iconEmoji: '📦'
-    }
-  ];
+  const REMOVED_DEFAULT_NOTIFICATION_IDS = new Set([
+    'drop_capsule_01',
+    'drop_perk_02',
+    'drop_tracking_03'
+  ]);
 
   const NOTIF_LAST_SEEN_KEY = 'thestreetco_notifs_last_seen_time';
 
@@ -8858,10 +8882,17 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     try {
       const raw = localStorage.getItem(NOTIF_STORAGE_KEY);
       if (raw !== null) {
-        return JSON.parse(raw);
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          const cleaned = parsed.filter(n => n && !REMOVED_DEFAULT_NOTIFICATION_IDS.has(n.id));
+          if (cleaned.length !== parsed.length) {
+            localStorage.setItem(NOTIF_STORAGE_KEY, JSON.stringify(cleaned));
+          }
+          return cleaned;
+        }
       }
     } catch (_) {}
-    return PROPER_INITIAL_NOTIFICATIONS;
+    return [];
   }
 
   function saveLocalNotifications(list) {

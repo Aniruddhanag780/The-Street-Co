@@ -25,7 +25,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Cinzel:wght@400;700&family=Space+Grotesk:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20261116_mob_v15" />
+<link rel="stylesheet" href="style.css?v=20261119_aistudio_v1" />
 <link rel="manifest" href="/manifest.json" crossorigin="use-credentials" />
 <meta name="application-name" content="The Street Co" />
 <meta name="theme-color" content="#FAF8F5" />
@@ -119,26 +119,65 @@
 <div id="homePageView">
 
 <!-- ══════════ HERO BANNER ══════════ -->
-<section class="elanora-hero">
-  <div class="elanora-hero__container">
-    <div class="elanora-hero__text-col">
-      <h1 class="elanora-hero__heading">
+<section class="elanora-hero street-hero" id="heroSection">
+  <div class="elanora-hero__container street-hero__container">
+    <div class="elanora-hero__text-col street-hero__text-col">
+      <div class="street-hero__eyebrow">
+        <span>MODERN ESSENTIALS</span>
+        <span class="street-hero__eyebrow-line" aria-hidden="true"></span>
+      </div>
+      <h1 class="elanora-hero__heading street-hero__heading">
         Timeless Style.<br>Modern Elegance.
       </h1>
-      <p class="elanora-hero__sub">
+      <p class="elanora-hero__sub street-hero__sub">
         Elevated everyday pieces, designed to make you feel confident.
       </p>
-      <div class="elanora-hero__cta-group">
-        <a href="#new-in" class="elanora-btn elanora-btn--dark" id="heroShopNewArrivalsBtn">SHOP NEW ARRIVALS</a>
-        <a href="#shop" class="elanora-link-arrow" id="heroExploreCollectionsBtn">
+      <div class="elanora-hero__cta-group street-hero__cta-group">
+        <a href="#new-in" class="elanora-btn elanora-btn--dark street-hero__cta-btn" id="heroShopNewArrivalsBtn">
+          <span>SHOP NEW ARRIVALS</span>
+          <span class="arrow-glyph" aria-hidden="true">→</span>
+        </a>
+        <a href="#shop" class="elanora-link-arrow street-hero__secondary-link" id="heroExploreCollectionsBtn">
           <span>EXPLORE COLLECTIONS</span>
-          <span class="arrow-glyph">→</span>
+          <span class="arrow-glyph" aria-hidden="true">→</span>
         </a>
       </div>
+
+      <div class="street-hero__trust-row" aria-label="Storefront Guarantees">
+        <div class="street-hero__trust-item">
+          <svg class="street-hero__trust-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M10 17h4V5H2v12h3"/>
+            <path d="M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5"/>
+            <path d="M14 17h1"/>
+            <circle cx="7.5" cy="17.5" r="2.5"/>
+            <circle cx="17.5" cy="17.5" r="2.5"/>
+          </svg>
+          <span class="street-hero__trust-label">EXPRESS<br>SHIPPING</span>
+        </div>
+        <span class="street-hero__trust-divider" aria-hidden="true"></span>
+        <div class="street-hero__trust-item">
+          <svg class="street-hero__trust-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <path d="m9 12 2 2 4-4"/>
+          </svg>
+          <span class="street-hero__trust-label">100%<br>AUTHENTIC</span>
+        </div>
+        <span class="street-hero__trust-divider" aria-hidden="true"></span>
+        <div class="street-hero__trust-item">
+          <svg class="street-hero__trust-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+            <path d="M3 3v5h5"/>
+            <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
+            <path d="M16 16h5v5"/>
+          </svg>
+          <span class="street-hero__trust-label">7-DAY EASY<br>RETURNS</span>
+        </div>
+      </div>
     </div>
-    <div class="elanora-hero__visual-col">
-      <div class="elanora-hero__arch-frame">
-        <img src="/api/product-image" alt="The Street Co Model in Tailored Blazer" class="elanora-hero__photo" />
+
+    <div class="elanora-hero__visual-col street-hero__visual-col">
+      <div class="street-hero__visual-frame">
+        <img src="/public/assets/aistudio/file_00000000f610820b8e9bfddeca5fd672_b3f0a8f5.png" alt="The Street Co — Elevated Style and Modern Essentials" class="elanora-hero__photo street-hero__photo" />
       </div>
     </div>
   </div>
@@ -3573,10 +3612,12 @@
 <script type="module">
   import * as upiIntentHelper from '/upiIntentHelper.js';
   import * as confirmationHelper from '/confirmationHelper.js';
+  import * as cartItemHelper from '/cartItemHelper.js';
   window.streetCoUpiHelper = upiIntentHelper;
   window.streetCoConfirmationHelper = confirmationHelper;
+  window.streetCoCartHelper = cartItemHelper;
 </script>
-<script src="main.js?v=20261116_zoho_v19"></script>
+<script src="main.js?v=20261119_notif_v1"></script>
 
 <!-- Guaranteed Header & Step Button Sync (Overrides any browser cache) -->
 <script>

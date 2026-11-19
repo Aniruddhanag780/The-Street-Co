@@ -2,6 +2,7 @@ import { MongoClient } from 'mongodb';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { normalizeMongoUri } from './mongoUriHelper.js';
 
 const ACCOUNTS_CACHE_FILE = path.join(os.tmpdir(), 'thestreetco_accounts_cache.json');
 
@@ -197,12 +198,7 @@ function persistLocalAccountsCache() {
 }
 
 export function getMongoUri() {
-  const raw = (process.env.MONGODB_URI || DEFAULT_MONGODB_URI).trim();
-  if (!raw) return '';
-  if (raw.endsWith('.mongodb.net/')) {
-    return `${raw}${DEFAULT_DB_NAME}?retryWrites=true&w=majority`;
-  }
-  return raw;
+  return normalizeMongoUri(process.env.MONGODB_URI || DEFAULT_MONGODB_URI, DEFAULT_DB_NAME);
 }
 
 export function getMongoDbName() {
@@ -273,11 +269,18 @@ export async function connectMongoDb() {
       console.log(`[MongoDB] Connected (DB: ${dbName})`);
       return dbInstance;
     } catch (err) {
+      if (client) {
+        try {
+          await client.close();
+        } catch (_) {}
+        client = null;
+      }
+      dbInstance = null;
       connectionFailed = true;
       connectionStatus.connected = false;
       connectionStatus.mode = 'in-memory';
       connectionStatus.lastError = err.message;
-      console.warn('[MongoDB] Not connected — using in-memory store:', err.message);
+      console.log(`[MongoDB] Using local in-memory store (external connection skipped: ${err.message})`);
       return mockDbInstance;
     } finally {
       connectionPromise = null;

@@ -15851,7 +15851,7 @@ body:has(.return-exchange-modal.open) .mobile-bottom-bar,
   border-color: #0e0e11;
 }
 .suite-result-card {
-  background: #faf8f5;
+  background: #FAF8F5;
   border: 1px solid #e5dfd5;
   border-radius: 8px;
   padding: 1.15rem;
@@ -20577,4 +20577,439 @@ aside#shopFilterSidebar,
     min-width: 78px !important;
   }
 }
+
+/* ══════════ CART DRAWER: EMAIL "ITEMS ORDERED" ITEM LAYOUT ══════════ */
+.cart-drawer__panel {
+  width: min(440px, 100%) !important;
+}
+
+.cart-drawer__items-list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0 !important;
+}
+
+.cart-item.cart-item--email-style {
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  gap: 16px !important;
+  padding: 18px 0 !important;
+  border: none !important;
+  border-bottom: 1px solid #e8e2d8 !important;
+  border-radius: 0 !important;
+  background: #FAF8F5 !important;
+  box-shadow: none !important;
+}
+
+.cart-item.cart-item--email-style:hover {
+  background: #FAF8F5 !important;
+  box-shadow: none !important;
+}
+
+.cart-item.cart-item--email-style .cart-item__thumb {
+  width: 96px !important;
+  height: 96px !important;
+  min-width: 96px !important;
+  max-width: 96px !important;
+  border-radius: 6px !important;
+  border: 1px solid #e8e2d8 !important;
+  background: #FAF8F5 !important;
+  overflow: hidden !important;
+  flex-shrink: 0 !important;
+}
+
+.cart-item.cart-item--email-style .cart-item__thumb img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.cart-item.cart-item--email-style .cart-item__body {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.cart-item.cart-item--email-style .cart-item__title {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  color: #171717 !important;
+  line-height: 1.4 !important;
+  margin: 0 !important;
+  word-break: break-word !important;
+}
+
+.cart-item.cart-item--email-style .cart-item__meta {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+  font-size: 13px !important;
+  color: #78716c !important;
+  line-height: 1.45 !important;
+  margin-top: 4px !important;
+  word-break: break-word !important;
+}
+
+.cart-item.cart-item--email-style .cart-item__meta-dot {
+  color: #c4bdb2 !important;
+}
+
+.cart-item.cart-item--email-style .cart-item__sku {
+  color: #a8a29e !important;
+  white-space: nowrap !important;
+}
+
+.cart-item.cart-item--email-style .cart-item__bottom {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  margin-top: 10px !important;
+  flex-wrap: wrap !important;
+}
+
+.cart-item.cart-item--email-style .cart-item__qty-row {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.cart-item.cart-item--email-style .cart-item__qty-label {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+  font-size: 13px !important;
+  color: #52525b !important;
+  white-space: nowrap !important;
+}
+
+.cart-item.cart-item--email-style .cart-item__price {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0 !important;
+  color: #171717 !important;
+  white-space: nowrap !important;
+}
+
+@media (max-width: 480px) {
+  .cart-item.cart-item--email-style {
+    gap: 12px !important;
+    padding: 14px 0 !important;
+  }
+  .cart-item.cart-item--email-style .cart-item__thumb {
+    width: 78px !important;
+    height: 78px !important;
+    min-width: 78px !important;
+    max-width: 78px !important;
+  }
+}
+
+/* ══════════ HERO SECTION: EDITORIAL #FAF8F5 LAYOUT (AI STUDIO SCREEN ADAPTIVE) ══════════ */
+@media (min-width: 769px) and (max-width: 960px) {
+  .store-header__inner {
+    padding: 0 1rem !important;
+  }
+  .store-header__left {
+    gap: 1rem !important;
+  }
+  .store-nav,
+  header#topChrome .store-nav {
+    display: flex !important;
+    gap: 0.75rem !important;
+  }
+  header#topChrome .store-nav__link {
+    display: inline-block !important;
+    font-size: 0.68rem !important;
+    white-space: nowrap !important;
+  }
+  .store-header__cart-btn,
+  #shopCartBtn {
+    display: inline-flex !important;
+  }
+}
+
+.elanora-hero.street-hero {
+  background: #FAF8F5 !important;
+  background-color: #FAF8F5 !important;
+  padding: clamp(0.75rem, 2.2vh, 2rem) clamp(1rem, 2.5vw, 1.5rem) 0 !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.street-hero__container {
+  max-width: 1380px !important;
+  margin: 0 auto !important;
+  display: grid !important;
+  grid-template-columns: 1.06fr 0.94fr !important;
+  align-items: end !important;
+  gap: clamp(1rem, 2.5vw, 2rem) !important;
+}
+
+.street-hero__text-col {
+  padding: clamp(0.75rem, 2.5vh, 2rem) 0 clamp(1.25rem, 4vh, 3.25rem) clamp(0.25rem, 1.5vw, 1.5rem) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-self: center !important;
+}
+
+.street-hero__eyebrow {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: clamp(0.6rem, 1.2vw, 1rem) !important;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-size: clamp(0.66rem, 0.85vw, 0.78rem) !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.3em !important;
+  text-transform: uppercase !important;
+  color: #111111 !important;
+  margin-bottom: clamp(0.65rem, 1.6vh, 1.15rem) !important;
+}
+
+.street-hero__eyebrow-line {
+  display: inline-block !important;
+  width: clamp(36px, 4.5vw, 68px) !important;
+  height: 1.5px !important;
+  background-color: #111111 !important;
+}
+
+.elanora-hero__heading.street-hero__heading {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-size: clamp(1.85rem, 4vw, 4.05rem) !important;
+  font-weight: 800 !important;
+  line-height: 0.98 !important;
+  letter-spacing: -0.035em !important;
+  text-transform: uppercase !important;
+  color: #0d0d0d !important;
+  margin: 0 0 clamp(0.65rem, 1.6vh, 1.2rem) 0 !important;
+}
+
+.elanora-hero__sub.street-hero__sub {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-size: clamp(0.88rem, 1.15vw, 1.08rem) !important;
+  font-weight: 400 !important;
+  line-height: 1.48 !important;
+  color: #3f3f46 !important;
+  max-width: 440px !important;
+  margin: 0 0 clamp(1rem, 2.6vh, 1.85rem) 0 !important;
+}
+
+.street-hero__cta-group {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: clamp(0.75rem, 1.5vw, 1.4rem) !important;
+  margin-bottom: clamp(1.15rem, 3.2vh, 2.75rem) !important;
+}
+
+.street-hero__cta-btn,
+a#heroShopNewArrivalsBtn.street-hero__cta-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.55rem !important;
+  background: #0d0d0d !important;
+  color: #ffffff !important;
+  border: 1px solid #0d0d0d !important;
+  border-radius: 8px !important;
+  padding: clamp(0.7rem, 1.25vh, 0.92rem) clamp(1.15rem, 2vw, 1.8rem) !important;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-size: clamp(0.68rem, 0.85vw, 0.78rem) !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  text-decoration: none !important;
+  white-space: nowrap !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+}
+
+.street-hero__cta-btn:hover,
+a#heroShopNewArrivalsBtn.street-hero__cta-btn:hover {
+  background: #27272a !important;
+  border-color: #27272a !important;
+  transform: translateY(-1px) !important;
+}
+
+.street-hero__secondary-link {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-size: clamp(0.68rem, 0.85vw, 0.78rem) !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.09em !important;
+  white-space: nowrap !important;
+  color: #111111 !important;
+}
+
+.street-hero__trust-row {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: clamp(0.65rem, 1.35vw, 1.3rem) !important;
+}
+
+.street-hero__trust-item {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  color: #111111 !important;
+}
+
+.street-hero__trust-icon {
+  flex-shrink: 0 !important;
+  width: clamp(18px, 1.8vw, 22px) !important;
+  height: clamp(18px, 1.8vw, 22px) !important;
+  color: #111111 !important;
+}
+
+.street-hero__trust-label {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-size: clamp(0.62rem, 0.78vw, 0.72rem) !important;
+  font-weight: 500 !important;
+  line-height: 1.22 !important;
+  letter-spacing: 0.05em !important;
+  text-transform: uppercase !important;
+  color: #27272a !important;
+}
+
+.street-hero__trust-divider {
+  width: 1px !important;
+  height: 24px !important;
+  background-color: #d4d0c8 !important;
+  flex-shrink: 0 !important;
+}
+
+.street-hero__visual-col {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: flex-end !important;
+  background: #FAF8F5 !important;
+}
+
+.street-hero__visual-frame {
+  position: relative !important;
+  width: min(100%, 560px, calc((100dvh - 80px) * 0.848)) !important;
+  aspect-ratio: 710 / 837 !important;
+  overflow: hidden !important;
+  background: #FAF8F5 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.street-hero__photo {
+  position: absolute !important;
+  left: -100% !important;
+  top: -12.36% !important;
+  width: 235.5% !important;
+  height: 112.36% !important;
+  max-width: none !important;
+  object-fit: fill !important;
+  display: block !important;
+  filter: brightness(1.035) contrast(1.03) !important;
+  mix-blend-mode: multiply !important;
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 7%, #000 94%, transparent 100%), linear-gradient(to bottom, transparent 0%, #000 5%, #000 100%) !important;
+  -webkit-mask-composite: source-in !important;
+  mask-image: linear-gradient(to right, transparent 0%, #000 7%, #000 94%, transparent 100%), linear-gradient(to bottom, transparent 0%, #000 5%, #000 100%) !important;
+  mask-composite: intersect !important;
+  pointer-events: none !important;
+  user-select: none !important;
+}
+
+@media (max-width: 768px) {
+  .elanora-hero.street-hero {
+    padding: clamp(0.65rem, 1.5dvh, 1.2rem) 1rem clamp(1.1rem, 2.5dvh, 2rem) !important;
+    background: #FAF8F5 !important;
+    background-color: #FAF8F5 !important;
+  }
+  .street-hero__container {
+    grid-template-columns: 1fr !important;
+    text-align: center !important;
+    gap: clamp(0.7rem, 1.8dvh, 1.35rem) !important;
+  }
+  .street-hero__text-col {
+    padding: 0 !important;
+    align-items: center !important;
+  }
+  .street-hero__eyebrow {
+    justify-content: center !important;
+    font-size: 0.68rem !important;
+    letter-spacing: 0.25em !important;
+    gap: 0.65rem !important;
+    margin-bottom: clamp(0.35rem, 0.9dvh, 0.65rem) !important;
+  }
+  .street-hero__eyebrow-line {
+    width: 34px !important;
+  }
+  .elanora-hero__heading.street-hero__heading {
+    font-size: clamp(1.6rem, 6.8vw, 2.25rem) !important;
+    line-height: 1.03 !important;
+    margin: 0 0 clamp(0.4rem, 1dvh, 0.7rem) 0 !important;
+  }
+  .elanora-hero__sub.street-hero__sub {
+    font-size: clamp(0.84rem, 3.3vw, 0.95rem) !important;
+    line-height: 1.42 !important;
+    max-width: 320px !important;
+    margin: 0 auto clamp(0.65rem, 1.6dvh, 1.1rem) !important;
+  }
+  .street-hero__cta-group {
+    justify-content: center !important;
+    gap: 0.55rem 0.95rem !important;
+    margin-bottom: 0 !important;
+  }
+  .street-hero__cta-btn,
+  a#heroShopNewArrivalsBtn.street-hero__cta-btn {
+    padding: 0.68rem 1.05rem !important;
+    font-size: 0.68rem !important;
+    letter-spacing: 0.06em !important;
+  }
+  .street-hero__secondary-link {
+    font-size: 0.68rem !important;
+    letter-spacing: 0.07em !important;
+  }
+  .street-hero__trust-row {
+    display: none !important;
+  }
+  .street-hero__visual-col {
+    justify-content: center !important;
+    align-items: center !important;
+  }
+  .street-hero__visual-frame {
+    height: clamp(200px, calc(100dvh - 355px), 355px) !important;
+    width: auto !important;
+    max-width: min(305px, 78vw) !important;
+    aspect-ratio: 710 / 837 !important;
+    border-radius: 240px 240px 12px 12px !important;
+    overflow: hidden !important;
+    background: #FAF8F5 !important;
+    border: 1px solid #e5dfd5 !important;
+    box-shadow: 0 18px 40px rgba(28, 25, 23, 0.07) !important;
+    margin: 0 auto !important;
+  }
+  .street-hero__photo {
+    left: -100% !important;
+    top: -11.5% !important;
+    width: 235.5% !important;
+    height: 111.5% !important;
+    filter: brightness(1.06) contrast(1.04) !important;
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 8%, #000 94%, transparent 100%), linear-gradient(to bottom, transparent 0%, #000 5%, #000 100%) !important;
+    -webkit-mask-composite: source-in !important;
+    mask-image: linear-gradient(to right, transparent 0%, #000 8%, #000 94%, transparent 100%), linear-gradient(to bottom, transparent 0%, #000 5%, #000 100%) !important;
+    mask-composite: intersect !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .elanora-hero.street-hero {
+    padding: 0.55rem 0.75rem 1rem !important;
+  }
+  .elanora-hero__heading.street-hero__heading {
+    font-size: clamp(1.48rem, 6.8vw, 1.95rem) !important;
+  }
+  .street-hero__visual-frame {
+    height: clamp(190px, calc(100dvh - 345px), 315px) !important;
+  }
+}
+
+
+
 

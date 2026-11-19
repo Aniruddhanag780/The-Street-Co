@@ -1,4 +1,4 @@
-const CACHE_NAME = 'thestreetco-v8';
+const CACHE_NAME = 'thestreetco-v13';
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
@@ -40,8 +40,8 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Network-first strategy for navigation / HTML and application scripts
-  if (event.request.mode === 'navigate' || url.pathname.endsWith('.js')) {
+  // Network-first strategy for navigation / HTML, CSS, and application scripts
+  if (event.request.mode === 'navigate' || url.pathname.endsWith('.js') || url.pathname.endsWith('.css')) {
     event.respondWith(
       fetch(event.request)
         .then((response) => {

@@ -9,6 +9,7 @@ import * as zohoInventory from './zohoInventory.js';
 import { doesZohoSalesOrderBelongToCustomer, mapZohoSalesOrderToAccountOrder } from './zohoOrderHelper.js';
 import { renderOrderConfirmationEmail, renderReturnConfirmationEmail, renderShipmentFulfilledEmail, renderEmailOtpEmail } from './emailTemplates.js';
 import { verifyUpiPaymentViaImap } from './imapPaymentVerifier.js';
+import { classifyStaticRequest } from './staticSecurityHelper.js';
 import {
   connectMongoDb,
   getMongoStatus,
@@ -1971,8 +1972,13 @@ let inMemoryCoupons = [...DEFAULT_COUPONS];
 // API ROUTES
 // ──────────────────────────────────────────
 
-// Direct download endpoint for zoho_inventory_cache.json
+// Admin-only download endpoint for zoho_inventory_cache.json
 app.get(['/api/download-zoho-cache', '/api/download-cache', '/api/zoho-cache-file'], (req, res) => {
+  const adminKey = req.headers['x-admin-key'] || req.query.key;
+  const expectedKey = process.env.ADMIN_SECRET || 'itachi-admin-secret-2026';
+  if (adminKey !== expectedKey) {
+    return res.status(403).json({ error: 'Unauthorized: Admin access required.' });
+  }
   const cachePath = path.join(__dirname, 'zoho_inventory_cache.json');
   if (fs.existsSync(cachePath)) {
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -3486,132 +3492,6 @@ app.post('/api/send-order-sms', async (req, res) => {
 // Orders: Get list for admin
 app.get('/api/orders', async (req, res) => {
   res.json({ success: true, orders: Array.from(inMemoryOrders.values()) });
-});
-
-// Live HTML preview endpoint rendering exact transactional email templates
-app.get('/api/email-preview/:type', (req, res) => {
-  const type = String(req.params.type || 'order_confirmed').toLowerCase();
-  const supportEmail = (process.env.GMAIL_REPLY_TO || 'support@thestreetco.zohodesk.in').trim();
-  const sampleOrder = {
-    orderCode: '214822',
-    orderDate: '2026-11-13T10:00:00.000Z',
-    shippingAddress: {
-      fullName: 'Aniruddha Nag',
-      addressLine1: 'Thakurnagar Shimulpur Hazratala',
-      city: 'Bongaon',
-      state: 'West Bengal',
-      pincode: '743287'
-    },
-    subtotalInr: 1599,
-    discountInr: 200,
-    appliedPromoCode: 'STREET200',
-    deliveryFeeInr: 0,
-    grandTotalInr: 1399,
-    items: [
-      {
-        title: 'Fourth Hokage Minato Inspired Oversized T-Shirt',
-        finish: 'Obsidian Black',
-        size: 'L',
-        sku: 'TS-MIN-001',
-        qty: 1,
-        priceInr: 1599,
-        totalItemPriceInr: 1599,
-        image: '/api/product-image'
-      }
-    ]
-  };
-
-  if (type === 'return_requested' || type === 'exchange_requested') {
-    const isExchange = type === 'exchange_requested';
-    const { html } = renderReturnConfirmationEmail({
-      returnRecord: {
-        id: isExchange ? 'EX-48291' : 'RET-23665',
-        orderCode: '214822',
-        type: isExchange ? 'exchange' : 'return',
-        requestedSize: isExchange ? 'XL' : null,
-        customerName: 'Aniruddha Nag',
-        createdAt: '2026-11-13T11:30:00.000Z',
-        items: sampleOrder.items
-      },
-      order: sampleOrder,
-      useRelativeAssets: true,
-      supportEmail
-    });
-    res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    return res.send(html);
-  }
-
-  if (type === 'shipment_fulfilled' || type === 'delhivery_done' || type === 'delivered') {
-    const { html } = renderShipmentFulfilledEmail({
-      order: {
-        ...sampleOrder,
-        deliveredAtFormatted: '15/11/2026, 04:30 PM IST',
-        deliveryDetails: {
-          carrier: 'Delhivery Express',
-          trackingNumber: 'DLV-214822-IN'
-        }
-      },
-      useRelativeAssets: true,
-      supportEmail
-    });
-    res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    return res.send(html);
-  }
-
-  if (type === 'auth_otp') {
-    const { html } = renderEmailOtpEmail({
-      otpCode: '849201',
-      recipientName: 'Aniruddha Nag',
-      recipientEmail: 'aniruddhanag9@gmail.com',
-      heading: 'Email Verification',
-      codeLabel: 'Verification OTP',
-      useRelativeAssets: true,
-      useCidAssets: false,
-      supportEmail
-    });
-    res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    return res.send(html);
-  }
-
-  if (type === 'change_phone_otp') {
-    const { html } = renderEmailOtpEmail({
-      otpCode: '849201',
-      recipientName: 'Aniruddha Nag',
-      heading: 'Phone Number Change',
-      bodyLineHtml: 'We received a request to update the primary mobile number on your The Street Co account from <strong style="color:#171717 !important;font-weight:600;">+91 6296731835</strong> to <strong style="color:#171717 !important;font-weight:600;">+91 9876543210</strong>.',
-      codeLabel: 'Authorization OTP',
-      validityNote: 'This authorization code is valid for 10 minutes. If you did not initiate this change, please contact support immediately.',
-      useRelativeAssets: true,
-      useCidAssets: false,
-      supportEmail
-    });
-    res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    return res.send(html);
-  }
-
-  if (type === 'change_email_otp') {
-    const { html } = renderEmailOtpEmail({
-      otpCode: '849201',
-      recipientName: 'Aniruddha Nag',
-      heading: 'Email Address Change',
-      bodyLineHtml: 'We received a request to update the email address on your The Street Co account from <strong style="color:#171717 !important;font-weight:600;"><a href="#" style="color:#171717 !important;text-decoration:none !important;pointer-events:none;cursor:text;"><span style="color:#171717 !important;">aniruddhanag9&#8203;@&#8203;gmail.com</span></a></strong> to <strong style="color:#171717 !important;font-weight:600;"><a href="#" style="color:#171717 !important;text-decoration:none !important;pointer-events:none;cursor:text;"><span style="color:#171717 !important;">newcontact&#8203;@&#8203;thestreetco.com</span></a></strong>.',
-      codeLabel: 'Authorization OTP',
-      validityNote: 'This authorization code is valid for 10 minutes. If you did not initiate this change, please contact support immediately.',
-      useRelativeAssets: true,
-      useCidAssets: false,
-      supportEmail
-    });
-    res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    return res.send(html);
-  }
-
-  const { html } = renderOrderConfirmationEmail({
-    order: sampleOrder,
-    useRelativeAssets: true,
-    supportEmail
-  });
-  res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  return res.send(html);
 });
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -5868,11 +5748,6 @@ app.get('/admin-og', (req, res) => {
   res.sendFile(path.join(__dirname, 'admin-og.html'));
 });
 
-// Live Email Template Preview Page
-app.get('/email-preview', (req, res) => {
-  res.sendFile(path.join(__dirname, 'email-preview.html'));
-});
-
 // Progressive Web App (PWA) Manifest & Service Worker
 app.get('/manifest.json', (req, res) => {
   res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
@@ -5918,16 +5793,39 @@ app.all('/api/*', (req, res) => {
   res.status(404).json({ success: false, error: 'API endpoint not found' });
 });
 
-// Do not let environment files fall through to the SPA route.
-app.use((req, res, next) => {
-  if (/^\/\.env(?:\.[^/]+)?\/?$/i.test(req.path)) {
-    return res.sendStatus(404);
-  }
-  next();
+// Serve only explicitly allowlisted public assets (block .env, env/evn, backend code, JSON data, and hidden files)
+const publicAssetsMiddleware = express.static(path.join(__dirname, 'public'), {
+  dotfiles: 'deny',
+  index: false
 });
 
-// Serve static files from root
-app.use(express.static(__dirname, { index: false }));
+app.use((req, res, next) => {
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    return next();
+  }
+  const decision = classifyStaticRequest(req.path);
+  if (decision.action === 'block') {
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(404).type('text/plain').send('Not Found');
+  }
+  if (decision.action === 'allow_file') {
+    if (decision.file === 'style.css') {
+      res.setHeader('Content-Type', 'text/css; charset=utf-8');
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    }
+    return res.sendFile(path.join(__dirname, decision.file));
+  }
+  if (decision.action === 'allow_public_dir') {
+    const originalUrl = req.url;
+    req.url = req.url.replace(/^\/public(?=\/|$)/i, '') || '/';
+    return publicAssetsMiddleware(req, res, (err) => {
+      req.url = originalUrl;
+      if (err) return next(err);
+      return res.status(404).type('text/plain').send('Not Found');
+    });
+  }
+  return next();
+});
 
 // Fallback route for index.html
 app.get('*', (req, res) => {

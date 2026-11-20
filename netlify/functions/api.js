@@ -458,8 +458,18 @@ export const handler = async (event) => {
   const rawPath = event.path || '';
   const method = event.httpMethod || 'GET';
 
-  // Direct download endpoint for zoho_inventory_cache.json
+  // Admin-only download endpoint for zoho_inventory_cache.json
   if (rawPath.includes('download-zoho-cache') || rawPath.includes('download-cache') || rawPath.endsWith('/zoho-cache-file')) {
+    const reqHeaders = event.headers || {};
+    const adminKey = reqHeaders['x-admin-key'] || reqHeaders['X-Admin-Key'] || event.queryStringParameters?.key;
+    const expectedKey = process.env.ADMIN_SECRET || 'itachi-admin-secret-2026';
+    if (adminKey !== expectedKey) {
+      return {
+        statusCode: 403,
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error: 'Unauthorized: Admin access required.' })
+      };
+    }
     let cacheContent = '{}';
     try {
       const candidates = [

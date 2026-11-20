@@ -25,7 +25,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Cinzel:wght@400;700&family=Space+Grotesk:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20261119_aistudio_v1" />
+<link rel="stylesheet" href="style.css?v=20261120_mobbottom_v1" />
 <link rel="manifest" href="/manifest.json" crossorigin="use-credentials" />
 <meta name="application-name" content="The Street Co" />
 <meta name="theme-color" content="#FAF8F5" />
@@ -66,8 +66,8 @@
       <nav class="store-nav" aria-label="Main Navigation">
         <a href="#new-in" class="store-nav__link" data-nav-category="new">New In</a>
         <a href="#shop" class="store-nav__link active" data-nav-category="all">Shop <span class="nav-arrow">▾</span></a>
-        <a href="#shop" class="store-nav__link" data-nav-category="dresses">Dresses</a>
-        <a href="#shop" class="store-nav__link" data-nav-category="tops">Tops</a>
+        <a href="#shop" class="store-nav__link" data-nav-category="hoodies">Hoodies</a>
+        <a href="#shop" class="store-nav__link" data-nav-category="t-shirts">Tees</a>
         <a href="#shop" class="store-nav__link" data-nav-category="bottoms">Bottoms</a>
         <a href="#shop" class="store-nav__link store-nav__link--sale" data-nav-category="sale">Sale</a>
       </nav>
@@ -183,56 +183,6 @@
   </div>
 </section>
 
-<!-- ══════════ CIRCULAR CATEGORIES ROW ══════════ -->
-<section class="elanora-categories-row">
-  <div class="elanora-categories__inner">
-    <div class="category-pill-item" data-category-filter="dresses">
-      <div class="category-pill-circle">
-        <img src="/api/product-image" alt="Dresses" />
-      </div>
-      <span class="category-pill-title">Dresses</span>
-    </div>
-    <div class="category-pill-item" data-category-filter="tops">
-      <div class="category-pill-circle">
-        <img src="/api/product-image" alt="Tops" />
-      </div>
-      <span class="category-pill-title">Tops</span>
-    </div>
-    <div class="category-pill-item" data-category-filter="bottoms">
-      <div class="category-pill-circle">
-        <img src="/api/product-image" alt="Bottoms" />
-      </div>
-      <span class="category-pill-title">Bottoms</span>
-    </div>
-    <div class="category-pill-item" data-category-filter="bags">
-      <div class="category-pill-circle">
-        <img src="/api/product-image" alt="Bags" />
-      </div>
-      <span class="category-pill-title">Bags</span>
-    </div>
-    <div class="category-pill-item" data-category-filter="accessories">
-      <div class="category-pill-circle">
-        <img src="/api/product-image" alt="Accessories" />
-      </div>
-      <span class="category-pill-title">Accessories</span>
-    </div>
-    <div class="category-pill-item" data-category-filter="blazers">
-      <div class="category-pill-circle">
-        <img src="/api/product-image" alt="Blazers" />
-      </div>
-      <span class="category-pill-title">Blazers</span>
-    </div>
-    <div class="category-pill-item" data-category-filter="shoes">
-      <div class="category-pill-circle">
-        <img src="/api/product-image" alt="Shoes" />
-      </div>
-      <span class="category-pill-title">Shoes</span>
-    </div>
-  </div>
-</section>
-
-
-
 <!-- ══════════ DUAL EDITORIAL PROMO BANNERS ══════════ -->
 <section class="elanora-dual-promos">
   <div class="elanora-dual-promos__inner">
@@ -244,7 +194,7 @@
         <a href="#shop" class="dual-promo-banner__link" data-promo-action="summer">SHOP NOW →</a>
       </div>
       <div class="dual-promo-banner__image-box">
-        <img src="/api/product-image" alt="Summer Essentials Model" />
+        <img src="/public/assets/aistudio/summer_menswear_model_1795179422928.jpg" alt="Summer Essentials Menswear Model" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
       </div>
     </div>
 
@@ -255,7 +205,7 @@
         <a href="#shop" class="dual-promo-banner__link dual-promo-banner__link--dark" data-promo-action="accessories">SHOP ACCESSORIES →</a>
       </div>
       <div class="dual-promo-banner__image-box">
-        <img src="/api/product-image" alt="Accessory Edit Bag" />
+        <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/8/86/Leather_duffel_bag_on_the_ground.jpg/960px-Leather_duffel_bag_on_the_ground.jpg" alt="Accessory Edit Bag" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
       </div>
     </div>
   </div>
@@ -290,8 +240,8 @@
       <!-- Quick Collection Switcher Tabs -->
       <div class="collection-pills-bar" role="tablist" aria-label="Collection Categories">
         <button type="button" class="collection-pill active" data-collection-tab="all" role="tab" aria-selected="true">All Pieces</button>
-        <button type="button" class="collection-pill" data-collection-tab="dresses" role="tab" aria-selected="false">Dresses</button>
-        <button type="button" class="collection-pill" data-collection-tab="tops" role="tab" aria-selected="false">Tops &amp; Tees</button>
+        <button type="button" class="collection-pill" data-collection-tab="hoodies" role="tab" aria-selected="false">Hoodies</button>
+        <button type="button" class="collection-pill" data-collection-tab="t-shirts" role="tab" aria-selected="false">Oversized Tees</button>
         <button type="button" class="collection-pill" data-collection-tab="bottoms" role="tab" aria-selected="false">Bottoms &amp; Pants</button>
         <button type="button" class="collection-pill" data-collection-tab="accessories" role="tab" aria-selected="false">Accessories</button>
         <button type="button" class="collection-pill" data-collection-tab="sale" role="tab" aria-selected="false">Sale / Archive</button>
@@ -305,7 +255,7 @@
               <circle cx="11" cy="11" r="8"/>
               <line x1="21" y1="21" x2="16.65" y2="16.65"/>
             </svg>
-            <input type="text" id="shopSearchInput" class="shop__search-input" placeholder="Search The Street Co collection (e.g. blazers, dresses, tops, tailored pants, bags)..." autocomplete="off" spellcheck="false"/>
+            <input type="text" id="shopSearchInput" class="shop__search-input" placeholder="Search The Street Co collection (e.g. hoodies, oversized tees, jackets, cargos, accessories)..." autocomplete="off" spellcheck="false"/>
             <button type="button" id="shopSearchClearBtn" class="shop__search-clear" style="display:none;" aria-label="Clear search">✕</button>
             <button type="button" id="shopSearchSubmitBtn" class="shop__search-submit" aria-label="Submit Search" title="Search Products">
               <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -419,7 +369,7 @@
               <!-- 01. Minato Namikaze -->
               <label class="filter-collec-square" data-val="Minato Namikaze" title="Minato Namikaze">
                 <input type="checkbox" class="filter-checkbox filter-box-sr" data-group="collection" data-val="Minato Namikaze" />
-                <img src="/api/product-image" alt="Minato Namikaze" class="filter-collec-square__bg" loading="lazy" />
+                <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1d/Winter_walk_in_New_York_%28Unsplash%29.jpg/960px-Winter_walk_in_New_York_%28Unsplash%29.jpg" alt="Minato Namikaze" class="filter-collec-square__bg" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
                 <div class="filter-collec-square__scrim"></div>
                 <span class="filter-collec-square__kanji" aria-hidden="true">閃</span>
                 <div class="filter-collec-square__top">
@@ -441,7 +391,7 @@
               <!-- 02. Akatsuki Shadows -->
               <label class="filter-collec-square" data-val="Akatsuki Shadows" title="Akatsuki Shadows">
                 <input type="checkbox" class="filter-checkbox filter-box-sr" data-group="collection" data-val="Akatsuki Shadows" />
-                <img src="/api/product-image" alt="Akatsuki Shadows" class="filter-collec-square__bg" loading="lazy" />
+                <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/9/92/Kabukicho_red_gate_and_colorful_neon_street_signs_at_night%2C_Shinjuku%2C_Tokyo%2C_Japan.jpg/960px-Kabukicho_red_gate_and_colorful_neon_street_signs_at_night%2C_Shinjuku%2C_Tokyo%2C_Japan.jpg" alt="Akatsuki Shadows" class="filter-collec-square__bg" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
                 <div class="filter-collec-square__scrim"></div>
                 <span class="filter-collec-square__kanji" aria-hidden="true">雲</span>
                 <div class="filter-collec-square__top">
@@ -463,7 +413,7 @@
               <!-- 03. Uchiha Clan -->
               <label class="filter-collec-square" data-val="Uchiha Clan" title="Uchiha Clan">
                 <input type="checkbox" class="filter-checkbox filter-box-sr" data-group="collection" data-val="Uchiha Clan" />
-                <img src="/api/product-image" alt="Uchiha Clan" class="filter-collec-square__bg" loading="lazy" />
+                <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/7/76/Man_in_t-shirt_posing_%28Unsplash%29.jpg/960px-Man_in_t-shirt_posing_%28Unsplash%29.jpg" alt="Uchiha Clan" class="filter-collec-square__bg" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
                 <div class="filter-collec-square__scrim"></div>
                 <span class="filter-collec-square__kanji" aria-hidden="true">団</span>
                 <div class="filter-collec-square__top">
@@ -485,7 +435,7 @@
               <!-- 04. Crow Genjutsu -->
               <label class="filter-collec-square" data-val="Crow Genjutsu" title="Crow Genjutsu">
                 <input type="checkbox" class="filter-checkbox filter-box-sr" data-group="collection" data-val="Crow Genjutsu" />
-                <img src="/api/product-image" alt="Crow Genjutsu" class="filter-collec-square__bg" loading="lazy" />
+                <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/4/42/Raven_portrait_%2889387%29.jpg/960px-Raven_portrait_%2889387%29.jpg" alt="Crow Genjutsu" class="filter-collec-square__bg" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
                 <div class="filter-collec-square__scrim"></div>
                 <span class="filter-collec-square__kanji" aria-hidden="true">鴉</span>
                 <div class="filter-collec-square__top">
@@ -507,7 +457,7 @@
               <!-- 05. Street Core -->
               <label class="filter-collec-square" data-val="Street Core" title="Street Core">
                 <input type="checkbox" class="filter-checkbox filter-box-sr" data-group="collection" data-val="Street Core" />
-                <img src="/api/product-image" alt="Street Core" class="filter-collec-square__bg" loading="lazy" />
+                <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/7/70/Shibuya_Crossing_Tokyo_At_Night_%28150285427%29.jpeg/960px-Shibuya_Crossing_Tokyo_At_Night_%28150285427%29.jpeg" alt="Street Core" class="filter-collec-square__bg" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
                 <div class="filter-collec-square__scrim"></div>
                 <span class="filter-collec-square__kanji" aria-hidden="true">街</span>
                 <div class="filter-collec-square__top">
@@ -529,7 +479,7 @@
               <!-- 06. Shinobi Armory -->
               <label class="filter-collec-square" data-val="Shinobi Armory" title="Shinobi Armory">
                 <input type="checkbox" class="filter-checkbox filter-box-sr" data-group="collection" data-val="Shinobi Armory" />
-                <img src="/api/product-image" alt="Shinobi Armory" class="filter-collec-square__bg" loading="lazy" />
+                <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d6/Katana_exhibition_at_Matsumoto_City_Museum_%2848685%29.jpg/960px-Katana_exhibition_at_Matsumoto_City_Museum_%2848685%29.jpg" alt="Shinobi Armory" class="filter-collec-square__bg" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
                 <div class="filter-collec-square__scrim"></div>
                 <span class="filter-collec-square__kanji" aria-hidden="true">刃</span>
                 <div class="filter-collec-square__top">
@@ -766,8 +716,8 @@
       <ul class="footer__link-list">
         <li><a href="#shop" class="footer__link" data-footer-action="filter-category" data-category="all">All Products</a></li>
         <li><a href="#new-in" class="footer__link" data-footer-action="scroll" data-target="#new-in">New Arrivals</a></li>
-        <li><a href="#shop" class="footer__link" data-footer-action="filter-category" data-category="dresses">Dresses</a></li>
-        <li><a href="#shop" class="footer__link" data-footer-action="filter-category" data-category="tops">Tops &amp; Tees</a></li>
+        <li><a href="#shop" class="footer__link" data-footer-action="filter-category" data-category="hoodies">Hoodies</a></li>
+        <li><a href="#shop" class="footer__link" data-footer-action="filter-category" data-category="t-shirts">Oversized Tees</a></li>
         <li><a href="#shop" class="footer__link" data-footer-action="filter-category" data-category="bottoms">Bottoms</a></li>
         <li><a href="#shop" class="footer__link" data-footer-action="filter-category" data-category="accessories">Accessories</a></li>
         <li><a href="#shop" class="footer__link" data-footer-action="filter-category" data-category="sale">Sale</a></li>
@@ -862,10 +812,10 @@
 <!-- ══════════ DEDICATED FULL-PAGE CATEGORIES & COLLECTIONS PAGE (THE SOULED STORE DESIGN) ══════════ -->
 <section id="categoriesPageView" class="souled-cat-page" style="display: none;" aria-label="Collections and Categories">
   
-  <!-- Sticky Sub-Nav Header (MEN | WOMEN | SNEAKERS) -->
+  <!-- Sticky Sub-Nav Header (MEN | STREETWEAR | SNEAKERS) -->
   <div class="souled-cat-top-tabs" role="tablist">
     <button type="button" class="souled-tab-btn active" data-gender-tab="men" role="tab" aria-selected="true">MEN</button>
-    <button type="button" class="souled-tab-btn" data-gender-tab="women" role="tab" aria-selected="false">WOMEN</button>
+    <button type="button" class="souled-tab-btn" data-gender-tab="streetwear" role="tab" aria-selected="false">STREETWEAR</button>
     <button type="button" class="souled-tab-btn" data-gender-tab="sneakers" role="tab" aria-selected="false">SNEAKERS</button>
   </div>
 
@@ -876,35 +826,35 @@
       <div class="souled-featured-scroll">
         <div class="souled-feat-item" data-collec-filter="Minato Namikaze" role="button" tabindex="0">
           <div class="souled-feat-thumb">
-            <img src="/api/product-image" alt="Minato Namikaze" loading="lazy" onerror="this.src='/api/product-image'" />
+            <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1d/Winter_walk_in_New_York_%28Unsplash%29.jpg/960px-Winter_walk_in_New_York_%28Unsplash%29.jpg" alt="Minato Namikaze" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
           </div>
           <span class="souled-feat-label">Hot Merch</span>
         </div>
 
         <div class="souled-feat-item" data-collec-filter="Street Core" role="button" tabindex="0">
           <div class="souled-feat-thumb">
-            <img src="/api/product-image" alt="Office / Street Core" loading="lazy" />
+            <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/7/70/Shibuya_Crossing_Tokyo_At_Night_%28150285427%29.jpeg/960px-Shibuya_Crossing_Tokyo_At_Night_%28150285427%29.jpeg" alt="Office / Street Core" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
           </div>
           <span class="souled-feat-label">Office</span>
         </div>
 
         <div class="souled-feat-item" data-collec-filter="Akatsuki Shadows" role="button" tabindex="0">
           <div class="souled-feat-thumb">
-            <img src="/api/product-image" alt="Vikings / Akatsuki" loading="lazy" />
+            <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/9/92/Kabukicho_red_gate_and_colorful_neon_street_signs_at_night%2C_Shinjuku%2C_Tokyo%2C_Japan.jpg/960px-Kabukicho_red_gate_and_colorful_neon_street_signs_at_night%2C_Shinjuku%2C_Tokyo%2C_Japan.jpg" alt="Vikings / Akatsuki" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
           </div>
           <span class="souled-feat-label">Vikings</span>
         </div>
 
         <div class="souled-feat-item" data-collec-filter="Uchiha Clan" role="button" tabindex="0">
           <div class="souled-feat-thumb">
-            <img src="/api/product-image" alt="Marvel / Uchiha" loading="lazy" />
+            <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/7/76/Man_in_t-shirt_posing_%28Unsplash%29.jpg/960px-Man_in_t-shirt_posing_%28Unsplash%29.jpg" alt="Marvel / Uchiha" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
           </div>
           <span class="souled-feat-label">Marvel</span>
         </div>
 
         <div class="souled-feat-item" data-collec-filter="Shinobi Armory" role="button" tabindex="0">
           <div class="souled-feat-thumb">
-            <img src="/api/product-image" alt="Shinobi Armory" loading="lazy" />
+            <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d6/Katana_exhibition_at_Matsumoto_City_Museum_%2848685%29.jpg/960px-Katana_exhibition_at_Matsumoto_City_Museum_%2848685%29.jpg" alt="Shinobi Armory" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
           </div>
           <span class="souled-feat-label">Armory</span>
         </div>
@@ -936,21 +886,21 @@
       <!-- Row 1 -->
       <div class="souled-grid-card" data-cat-filter="Classic T-Shirts" role="button" tabindex="0">
         <div class="souled-card-img-wrap">
-          <img src="/api/product-image" alt="Shirts" loading="lazy" />
+          <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/2/27/Smart_Casual_Dress_Example.jpg/960px-Smart_Casual_Dress_Example.jpg" alt="Shirts" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
         </div>
         <span class="souled-card-title">Shirts</span>
       </div>
 
       <div class="souled-grid-card" data-cat-filter="Oversized T-Shirts" role="button" tabindex="0">
         <div class="souled-card-img-wrap">
-          <img src="/api/product-image" alt="T-Shirts" loading="lazy" />
+          <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/2/25/Streetwear_-_G%27Fellas_Apparel.png/960px-Streetwear_-_G%27Fellas_Apparel.png" alt="T-Shirts" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
         </div>
         <span class="souled-card-title">T-Shirts</span>
       </div>
 
       <div class="souled-grid-card" data-cat-filter="Classic T-Shirts" role="button" tabindex="0">
         <div class="souled-card-img-wrap">
-          <img src="/api/product-image" alt="Cotton Linen" loading="lazy" />
+          <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5f/Men%27s_Linen_Work_Shirt.jpg/960px-Men%27s_Linen_Work_Shirt.jpg" alt="Cotton Linen" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
         </div>
         <span class="souled-card-title">Cotton Linen</span>
       </div>
@@ -958,21 +908,21 @@
       <!-- Row 2 -->
       <div class="souled-grid-card" data-cat-filter="Classic T-Shirts" role="button" tabindex="0">
         <div class="souled-card-img-wrap">
-          <img src="/api/product-image" alt="Polos" loading="lazy" />
+          <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e8/Men%27s_Polo_Shirts_2015.JPG/960px-Men%27s_Polo_Shirts_2015.JPG" alt="Polos" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
         </div>
         <span class="souled-card-title">Polos</span>
       </div>
 
       <div class="souled-grid-card" data-cat-filter="Classic T-Shirts" role="button" tabindex="0">
         <div class="souled-card-img-wrap">
-          <img src="/api/product-image" alt="Classic Fit Tees" loading="lazy" />
+          <img src="https://upload.wikimedia.org/wikipedia/commons/2/20/White_simple_T-shirt_made_by_COQ_manufacture.jpg" alt="Classic Fit Tees" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
         </div>
         <span class="souled-card-title">Classic Fit Tees</span>
       </div>
 
       <div class="souled-grid-card" data-cat-filter="Hoodies & Sweatshirts" role="button" tabindex="0">
         <div class="souled-card-img-wrap">
-          <img src="/api/product-image" alt="Outerwear" loading="lazy" />
+          <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1f/Chris_Benson_2017-03-13_%28Unsplash%29.jpg/960px-Chris_Benson_2017-03-13_%28Unsplash%29.jpg" alt="Outerwear" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
         </div>
         <span class="souled-card-title">Outerwear</span>
       </div>
@@ -980,21 +930,21 @@
       <!-- Row 3 (From Screenshot 2) -->
       <div class="souled-grid-card" data-cat-filter="Accessories & Jewelry" role="button" tabindex="0">
         <div class="souled-card-img-wrap">
-          <img src="/api/product-image" alt="Sneakers" loading="lazy" />
+          <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/1/12/White_sneakers_on_asphalt_%28Unsplash%29.jpg/960px-White_sneakers_on_asphalt_%28Unsplash%29.jpg" alt="Sneakers" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
         </div>
         <span class="souled-card-title">Sneakers</span>
       </div>
 
       <div class="souled-grid-card" data-cat-filter="Accessories & Jewelry" role="button" tabindex="0">
         <div class="souled-card-img-wrap">
-          <img src="/api/product-image" alt="All Accessories" loading="lazy" />
+          <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3b/Clothing_flatlay_%28Unsplash%29.jpg/960px-Clothing_flatlay_%28Unsplash%29.jpg" alt="All Accessories" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
         </div>
         <span class="souled-card-title">All Accessories</span>
       </div>
 
       <div class="souled-grid-card" data-cat-filter="Cargo Pants & Joggers" role="button" tabindex="0">
         <div class="souled-card-img-wrap">
-          <img src="/api/product-image" alt="Joggers" loading="lazy" />
+          <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4b/Corteiz_Alcatraz_Joggers.jpg/960px-Corteiz_Alcatraz_Joggers.jpg" alt="Joggers" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
         </div>
         <span class="souled-card-title">Joggers</span>
       </div>
@@ -1002,21 +952,21 @@
       <!-- Row 4 -->
       <div class="souled-grid-card" data-cat-filter="Cargo Pants & Joggers" role="button" tabindex="0">
         <div class="souled-card-img-wrap">
-          <img src="/api/product-image" alt="Jeans" loading="lazy" />
+          <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0c/Jeans_2009.jpg/960px-Jeans_2009.jpg" alt="Jeans" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
         </div>
         <span class="souled-card-title">Jeans</span>
       </div>
 
       <div class="souled-grid-card" data-cat-filter="Cargo Pants & Joggers" role="button" tabindex="0">
         <div class="souled-card-img-wrap">
-          <img src="/api/product-image" alt="Pants" loading="lazy" />
+          <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/1/15/Men%27s_Fall_Fashion_%28Unsplash%29.jpg/960px-Men%27s_Fall_Fashion_%28Unsplash%29.jpg" alt="Pants" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
         </div>
         <span class="souled-card-title">Pants</span>
       </div>
 
       <div class="souled-grid-card" data-cat-filter="Cargo Pants & Joggers" role="button" tabindex="0">
         <div class="souled-card-img-wrap">
-          <img src="/api/product-image" alt="Cargos" loading="lazy" />
+          <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3c/Cargo_pants_002.jpg/960px-Cargo_pants_002.jpg" alt="Cargos" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
         </div>
         <span class="souled-card-title">Cargos</span>
       </div>
@@ -1043,28 +993,28 @@
       <div class="souled-sub-showcase__row">
         <div class="souled-acc-thumb-card" data-cat-filter="Accessories & Jewelry" role="button" tabindex="0">
           <div class="souled-acc-thumb-img">
-            <img src="/api/product-image" alt="Backpacks" loading="lazy" />
+            <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/9/90/Unsplash_Backpack_%28Unsplash_aOEkg_6sWsg%29.jpg/960px-Unsplash_Backpack_%28Unsplash_aOEkg_6sWsg%29.jpg" alt="Backpacks" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
           </div>
           <span>Backpacks</span>
         </div>
 
         <div class="souled-acc-thumb-card" data-cat-filter="Accessories & Jewelry" role="button" tabindex="0">
           <div class="souled-acc-thumb-img">
-            <img src="/api/product-image" alt="Face Wash" loading="lazy" />
+            <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d1/A_dropper_sucking_serum.jpg/960px-A_dropper_sucking_serum.jpg" alt="Face Wash" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
           </div>
           <span>Face Wash</span>
         </div>
 
         <div class="souled-acc-thumb-card" data-cat-filter="Accessories & Jewelry" role="button" tabindex="0">
           <div class="souled-acc-thumb-img">
-            <img src="/api/product-image" alt="Fragrance" loading="lazy" />
+            <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4f/Eau_Sauvage_Christian_Dior.jpg/960px-Eau_Sauvage_Christian_Dior.jpg" alt="Fragrance" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
           </div>
           <span>Fragrance</span>
         </div>
 
         <div class="souled-acc-thumb-card" data-cat-filter="Accessories & Jewelry" role="button" tabindex="0">
           <div class="souled-acc-thumb-img">
-            <img src="/api/product-image" alt="Caps" loading="lazy" />
+            <img src="https://upload.wikimedia.org/wikipedia/commons/e/eb/Baseball_cap.jpg" alt="Caps" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
           </div>
           <span>Caps</span>
         </div>
@@ -1210,35 +1160,35 @@
           
           <div class="hub-featured-card collec-hub-card" data-collec-filter="Minato Namikaze" role="button" tabindex="0" title="Minato Namikaze Collection">
             <div class="hub-featured-thumb">
-              <img src="/api/product-image" alt="Minato Namikaze" loading="lazy" />
+              <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1d/Winter_walk_in_New_York_%28Unsplash%29.jpg/960px-Winter_walk_in_New_York_%28Unsplash%29.jpg" alt="Minato Namikaze" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
             </div>
             <span class="hub-featured-name">Hot Merch</span>
           </div>
 
           <div class="hub-featured-card collec-hub-card" data-collec-filter="Akatsuki Shadows" role="button" tabindex="0" title="Akatsuki Shadows Collection">
             <div class="hub-featured-thumb">
-              <img src="/api/product-image" alt="Akatsuki Shadows" loading="lazy" />
+              <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/9/92/Kabukicho_red_gate_and_colorful_neon_street_signs_at_night%2C_Shinjuku%2C_Tokyo%2C_Japan.jpg/960px-Kabukicho_red_gate_and_colorful_neon_street_signs_at_night%2C_Shinjuku%2C_Tokyo%2C_Japan.jpg" alt="Akatsuki Shadows" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
             </div>
             <span class="hub-featured-name">Akatsuki</span>
           </div>
 
           <div class="hub-featured-card collec-hub-card" data-collec-filter="Uchiha Clan" role="button" tabindex="0" title="Uchiha Clan Collection">
             <div class="hub-featured-thumb">
-              <img src="/api/product-image" alt="Uchiha Clan" loading="lazy" />
+              <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/7/76/Man_in_t-shirt_posing_%28Unsplash%29.jpg/960px-Man_in_t-shirt_posing_%28Unsplash%29.jpg" alt="Uchiha Clan" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
             </div>
             <span class="hub-featured-name">Uchiha</span>
           </div>
 
           <div class="hub-featured-card collec-hub-card" data-collec-filter="Street Core" role="button" tabindex="0" title="Street Core Collection">
             <div class="hub-featured-thumb">
-              <img src="/api/product-image" alt="Street Core" loading="lazy" />
+              <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/7/70/Shibuya_Crossing_Tokyo_At_Night_%28150285427%29.jpeg/960px-Shibuya_Crossing_Tokyo_At_Night_%28150285427%29.jpeg" alt="Street Core" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
             </div>
             <span class="hub-featured-name">Street Core</span>
           </div>
 
           <div class="hub-featured-card collec-hub-card" data-collec-filter="Shinobi Armory" role="button" tabindex="0" title="Shinobi Armory Collection">
             <div class="hub-featured-thumb">
-              <img src="/api/product-image" alt="Shinobi Armory" loading="lazy" />
+              <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d6/Katana_exhibition_at_Matsumoto_City_Museum_%2848685%29.jpg/960px-Katana_exhibition_at_Matsumoto_City_Museum_%2848685%29.jpg" alt="Shinobi Armory" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
             </div>
             <span class="hub-featured-name">Armory</span>
           </div>
@@ -1274,7 +1224,7 @@
           <!-- 1. Oversized T-Shirts -->
           <div class="category-hub-card" data-cat-filter="Oversized T-Shirts" role="button" tabindex="0">
             <div class="category-hub-card__visual">
-              <img src="/api/product-image" alt="Oversized T-Shirts" loading="lazy" />
+              <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/2/25/Streetwear_-_G%27Fellas_Apparel.png/960px-Streetwear_-_G%27Fellas_Apparel.png" alt="Oversized T-Shirts" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
             </div>
             <div class="category-hub-card__info">
               <h4>Oversized T-Shirts</h4>
@@ -1285,7 +1235,7 @@
           <!-- 2. Classic T-Shirts -->
           <div class="category-hub-card" data-cat-filter="Classic T-Shirts" role="button" tabindex="0">
             <div class="category-hub-card__visual">
-              <img src="/api/product-image" alt="Classic T-Shirts" loading="lazy" />
+              <img src="https://upload.wikimedia.org/wikipedia/commons/2/20/White_simple_T-shirt_made_by_COQ_manufacture.jpg" alt="Classic T-Shirts" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
             </div>
             <div class="category-hub-card__info">
               <h4>Classic T-Shirts</h4>
@@ -1296,7 +1246,7 @@
           <!-- 3. Hoodies & Sweatshirts -->
           <div class="category-hub-card" data-cat-filter="Hoodies & Sweatshirts" role="button" tabindex="0">
             <div class="category-hub-card__visual">
-              <img src="/api/product-image" alt="Hoodies & Sweatshirts" loading="lazy" />
+              <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c2/Hoodie_m7agar.jpg/960px-Hoodie_m7agar.jpg" alt="Hoodies & Sweatshirts" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
             </div>
             <div class="category-hub-card__info">
               <h4>Hoodies &amp; Sweats</h4>
@@ -1307,7 +1257,7 @@
           <!-- 4. Jackets & Outerwear -->
           <div class="category-hub-card" data-cat-filter="Jackets & Outerwear" role="button" tabindex="0">
             <div class="category-hub-card__visual">
-              <img src="/api/product-image" alt="Jackets & Outerwear" loading="lazy" />
+              <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1f/Chris_Benson_2017-03-13_%28Unsplash%29.jpg/960px-Chris_Benson_2017-03-13_%28Unsplash%29.jpg" alt="Jackets & Outerwear" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
             </div>
             <div class="category-hub-card__info">
               <h4>Jackets &amp; Outerwear</h4>
@@ -1318,7 +1268,7 @@
           <!-- 5. Cargo Pants & Joggers -->
           <div class="category-hub-card" data-cat-filter="Cargo Pants & Joggers" role="button" tabindex="0">
             <div class="category-hub-card__visual">
-              <img src="/api/product-image" alt="Cargo Pants & Joggers" loading="lazy" />
+              <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cd/Cargo_pants_001.jpg/960px-Cargo_pants_001.jpg" alt="Cargo Pants & Joggers" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
             </div>
             <div class="category-hub-card__info">
               <h4>Cargos &amp; Joggers</h4>
@@ -1329,7 +1279,7 @@
           <!-- 6. Accessories & Jewelry -->
           <div class="category-hub-card" data-cat-filter="Accessories & Jewelry" role="button" tabindex="0">
             <div class="category-hub-card__visual">
-              <img src="/api/product-image" alt="Accessories & Jewelry" loading="lazy" />
+              <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3b/Clothing_flatlay_%28Unsplash%29.jpg/960px-Clothing_flatlay_%28Unsplash%29.jpg" alt="Accessories & Jewelry" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
             </div>
             <div class="category-hub-card__info">
               <h4>All Accessories</h4>
@@ -1352,7 +1302,7 @@
           <!-- 1. Minato Namikaze -->
           <div class="collec-hub-card" data-collec-filter="Minato Namikaze" role="button" tabindex="0">
             <div class="collec-hub-card__visual">
-              <img src="/api/product-image" alt="Minato Namikaze" loading="lazy" />
+              <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1d/Winter_walk_in_New_York_%28Unsplash%29.jpg/960px-Winter_walk_in_New_York_%28Unsplash%29.jpg" alt="Minato Namikaze" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
               <div class="collec-hub-card__overlay"></div>
               <div class="collec-hub-card__top">
                 <span class="collec-hub-card__kanji">閃</span>
@@ -1372,7 +1322,7 @@
           <!-- 2. Akatsuki Shadows -->
           <div class="collec-hub-card" data-collec-filter="Akatsuki Shadows" role="button" tabindex="0">
             <div class="collec-hub-card__visual">
-              <img src="/api/product-image" alt="Akatsuki Shadows" loading="lazy" />
+              <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/9/92/Kabukicho_red_gate_and_colorful_neon_street_signs_at_night%2C_Shinjuku%2C_Tokyo%2C_Japan.jpg/960px-Kabukicho_red_gate_and_colorful_neon_street_signs_at_night%2C_Shinjuku%2C_Tokyo%2C_Japan.jpg" alt="Akatsuki Shadows" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
               <div class="collec-hub-card__overlay"></div>
               <div class="collec-hub-card__top">
                 <span class="collec-hub-card__kanji">雲</span>
@@ -1392,7 +1342,7 @@
           <!-- 3. Uchiha Clan -->
           <div class="collec-hub-card" data-collec-filter="Uchiha Clan" role="button" tabindex="0">
             <div class="collec-hub-card__visual">
-              <img src="/api/product-image" alt="Uchiha Clan" loading="lazy" />
+              <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/7/76/Man_in_t-shirt_posing_%28Unsplash%29.jpg/960px-Man_in_t-shirt_posing_%28Unsplash%29.jpg" alt="Uchiha Clan" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
               <div class="collec-hub-card__overlay"></div>
               <div class="collec-hub-card__top">
                 <span class="collec-hub-card__kanji">団</span>
@@ -1412,7 +1362,7 @@
           <!-- 4. Crow Genjutsu -->
           <div class="collec-hub-card" data-collec-filter="Crow Genjutsu" role="button" tabindex="0">
             <div class="collec-hub-card__visual">
-              <img src="/api/product-image" alt="Crow Genjutsu" loading="lazy" />
+              <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/4/42/Raven_portrait_%2889387%29.jpg/960px-Raven_portrait_%2889387%29.jpg" alt="Crow Genjutsu" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
               <div class="collec-hub-card__overlay"></div>
               <div class="collec-hub-card__top">
                 <span class="collec-hub-card__kanji">鴉</span>
@@ -1432,7 +1382,7 @@
           <!-- 5. Street Core -->
           <div class="collec-hub-card" data-collec-filter="Street Core" role="button" tabindex="0">
             <div class="collec-hub-card__visual">
-              <img src="/api/product-image" alt="Street Core" loading="lazy" />
+              <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/7/70/Shibuya_Crossing_Tokyo_At_Night_%28150285427%29.jpeg/960px-Shibuya_Crossing_Tokyo_At_Night_%28150285427%29.jpeg" alt="Street Core" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
               <div class="collec-hub-card__overlay"></div>
               <div class="collec-hub-card__top">
                 <span class="collec-hub-card__kanji">街</span>
@@ -1452,7 +1402,7 @@
           <!-- 6. Shinobi Armory -->
           <div class="collec-hub-card" data-collec-filter="Shinobi Armory" role="button" tabindex="0">
             <div class="collec-hub-card__visual">
-              <img src="/api/product-image" alt="Shinobi Armory" loading="lazy" />
+              <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d6/Katana_exhibition_at_Matsumoto_City_Museum_%2848685%29.jpg/960px-Katana_exhibition_at_Matsumoto_City_Museum_%2848685%29.jpg" alt="Shinobi Armory" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
               <div class="collec-hub-card__overlay"></div>
               <div class="collec-hub-card__top">
                 <span class="collec-hub-card__kanji">武</span>
@@ -3617,7 +3567,7 @@
   window.streetCoConfirmationHelper = confirmationHelper;
   window.streetCoCartHelper = cartItemHelper;
 </script>
-<script src="main.js?v=20261119_notif_v1"></script>
+<script src="main.js?v=20261120_webimg_v3"></script>
 
 <!-- Guaranteed Header & Step Button Sync (Overrides any browser cache) -->
 <script>

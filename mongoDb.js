@@ -2,7 +2,7 @@ import { MongoClient } from 'mongodb';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { normalizeMongoUri } from './mongoUriHelper.js';
+import { normalizeMongoUri, getMongoUriCandidates, isMongoAuthError } from './mongoUriHelper.js';
 
 const ACCOUNTS_CACHE_FILE = path.join(os.tmpdir(), 'thestreetco_accounts_cache.json');
 
@@ -209,8 +209,8 @@ export async function connectMongoDb() {
   if (dbInstance && connectionStatus.connected) {
     return dbInstance;
   }
-  const uri = getMongoUri();
-  if (!uri || connectionFailed) {
+  const candidates = getMongoUriCandidates(process.env.MONGODB_URI || DEFAULT_MONGODB_URI, DEFAULT_DB_NAME);
+  if (!candidates.length || connectionFailed) {
     return mockDbInstance;
   }
   if (connectionPromise) {
@@ -221,11 +221,32 @@ export async function connectMongoDb() {
 
   connectionPromise = (async () => {
     try {
-      client = new MongoClient(uri, {
-        serverSelectionTimeoutMS: 2000,
-        connectTimeoutMS: 2000
-      });
-      await client.connect();
+      let connectedClient = null;
+      let lastConnectErr = null;
+      for (let i = 0; i < candidates.length; i++) {
+        const candidateClient = new MongoClient(candidates[i], {
+          serverSelectionTimeoutMS: 2000,
+          connectTimeoutMS: 2000
+        });
+        try {
+          await candidateClient.connect();
+          connectedClient = candidateClient;
+          break;
+        } catch (connectErr) {
+          lastConnectErr = connectErr;
+          try {
+            await candidateClient.close();
+          } catch (_) {}
+          if (isMongoAuthError(connectErr) && i + 1 < candidates.length) {
+            continue;
+          }
+          throw connectErr;
+        }
+      }
+      if (!connectedClient) {
+        throw lastConnectErr || new Error('MongoDB connection failed');
+      }
+      client = connectedClient;
       dbInstance = client.db(dbName);
 
       // Keep indexes for users_accounts, coupons, and newsletter_subscribers

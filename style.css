@@ -12878,59 +12878,6 @@ a#heroShopNewArrivalsBtn:hover {
   display: block !important;
 }
 
-/* ── CIRCULAR CATEGORIES ROW ── */
-.elanora-categories-row {
-  background: #FAF8F5 !important;
-  border-top: 1px solid var(--elanora-border) !important;
-  border-bottom: 1px solid var(--elanora-border) !important;
-  padding: 2.5rem 1.5rem !important;
-}
-.elanora-categories__inner {
-  max-width: 1200px !important;
-  margin: 0 auto !important;
-  display: flex !important;
-  justify-content: center !important;
-  align-items: center !important;
-  gap: clamp(1rem, 4vw, 3.2rem) !important;
-  overflow-x: auto !important;
-  scrollbar-width: none !important;
-  padding: 0.5rem 0 !important;
-}
-.category-pill-item {
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  cursor: pointer !important;
-  flex-shrink: 0 !important;
-  transition: transform 0.2s ease !important;
-}
-.category-pill-item:hover {
-  transform: translateY(-3px) !important;
-}
-.category-pill-circle {
-  width: 82px !important;
-  height: 82px !important;
-  border-radius: 50% !important;
-  overflow: hidden !important;
-  background: var(--elanora-sand) !important;
-  border: 1px solid var(--elanora-border) !important;
-  margin-bottom: 0.65rem !important;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.04) !important;
-}
-.category-pill-circle img {
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: cover !important;
-  transition: transform 0.35s ease !important;
-}
-.category-pill-item:hover .category-pill-circle img {
-  transform: scale(1.08) !important;
-}
-.category-pill-title {
-  font-size: 0.85rem !important;
-  font-weight: 500 !important;
-  color: var(--elanora-black) !important;
-}
 
 /* ── NEW ARRIVALS CURATED STRIP ── */
 .elanora-new-arrivals-section {
@@ -13029,6 +12976,7 @@ a#heroShopNewArrivalsBtn:hover {
 /* ── DUAL EDITORIAL PROMO BANNERS ── */
 .elanora-dual-promos {
   background: var(--elanora-cream) !important;
+  border-top: 1px solid var(--elanora-border) !important;
   padding: 4.5rem 1.5rem !important;
 }
 .elanora-dual-promos__inner {
@@ -13102,6 +13050,7 @@ a#heroShopNewArrivalsBtn:hover {
   width: 100% !important;
   height: 100% !important;
   object-fit: cover !important;
+  object-position: center top !important;
 }
 
 /* ── TESTIMONIALS SECTION ── */
@@ -20101,7 +20050,6 @@ aside#shopFilterSidebar,
 .merchant-google-connect-btn,
 .delhivery-input,
 .elanora-hero__arch-frame,
-.category-pill-circle,
 .dual-promo-banner,
 .dual-promo-banner--espresso,
 .dual-promo-banner--sand {
@@ -20732,22 +20680,28 @@ aside#shopFilterSidebar,
 .elanora-hero.street-hero {
   background: #FAF8F5 !important;
   background-color: #FAF8F5 !important;
-  padding: clamp(0.75rem, 2.2vh, 2rem) clamp(1rem, 2.5vw, 1.5rem) 0 !important;
+  min-height: calc(100dvh - 50px) !important;
+  display: flex !important;
+  align-items: stretch !important;
+  padding: clamp(0.75rem, 2vh, 1.5rem) clamp(1rem, 2.5vw, 2rem) 0 !important;
   position: relative !important;
   overflow: hidden !important;
+  box-sizing: border-box !important;
 }
 
 .street-hero__container {
-  max-width: 1380px !important;
+  width: 100% !important;
+  max-width: 1400px !important;
+  min-height: calc(100dvh - 66px) !important;
   margin: 0 auto !important;
   display: grid !important;
-  grid-template-columns: 1.06fr 0.94fr !important;
+  grid-template-columns: 0.96fr 1.04fr !important;
   align-items: end !important;
-  gap: clamp(1rem, 2.5vw, 2rem) !important;
+  gap: clamp(1rem, 2.5vw, 2.5rem) !important;
 }
 
 .street-hero__text-col {
-  padding: clamp(0.75rem, 2.5vh, 2rem) 0 clamp(1.25rem, 4vh, 3.25rem) clamp(0.25rem, 1.5vw, 1.5rem) !important;
+  padding: clamp(1rem, 3vh, 2.5rem) 0 clamp(1.5rem, 4.5vh, 3.5rem) clamp(0.25rem, 1.5vw, 1.5rem) !important;
   display: flex !important;
   flex-direction: column !important;
   justify-content: center !important;
@@ -20759,48 +20713,48 @@ aside#shopFilterSidebar,
   align-items: center !important;
   gap: clamp(0.6rem, 1.2vw, 1rem) !important;
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
-  font-size: clamp(0.66rem, 0.85vw, 0.78rem) !important;
+  font-size: clamp(0.68rem, 0.9vw, 0.82rem) !important;
   font-weight: 600 !important;
   letter-spacing: 0.3em !important;
   text-transform: uppercase !important;
   color: #111111 !important;
-  margin-bottom: clamp(0.65rem, 1.6vh, 1.15rem) !important;
+  margin-bottom: clamp(0.75rem, 1.8vh, 1.25rem) !important;
 }
 
 .street-hero__eyebrow-line {
   display: inline-block !important;
-  width: clamp(36px, 4.5vw, 68px) !important;
+  width: clamp(38px, 4.8vw, 72px) !important;
   height: 1.5px !important;
   background-color: #111111 !important;
 }
 
 .elanora-hero__heading.street-hero__heading {
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
-  font-size: clamp(1.85rem, 4vw, 4.05rem) !important;
+  font-size: clamp(2.1rem, 4.5vw, 4.5rem) !important;
   font-weight: 800 !important;
-  line-height: 0.98 !important;
+  line-height: 0.97 !important;
   letter-spacing: -0.035em !important;
   text-transform: uppercase !important;
   color: #0d0d0d !important;
-  margin: 0 0 clamp(0.65rem, 1.6vh, 1.2rem) 0 !important;
+  margin: 0 0 clamp(0.75rem, 1.8vh, 1.35rem) 0 !important;
 }
 
 .elanora-hero__sub.street-hero__sub {
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
-  font-size: clamp(0.88rem, 1.15vw, 1.08rem) !important;
+  font-size: clamp(0.92rem, 1.25vw, 1.15rem) !important;
   font-weight: 400 !important;
-  line-height: 1.48 !important;
+  line-height: 1.5 !important;
   color: #3f3f46 !important;
-  max-width: 440px !important;
-  margin: 0 0 clamp(1rem, 2.6vh, 1.85rem) 0 !important;
+  max-width: 460px !important;
+  margin: 0 0 clamp(1.2rem, 2.8vh, 2.1rem) 0 !important;
 }
 
 .street-hero__cta-group {
   display: flex !important;
   align-items: center !important;
   flex-wrap: wrap !important;
-  gap: clamp(0.75rem, 1.5vw, 1.4rem) !important;
-  margin-bottom: clamp(1.15rem, 3.2vh, 2.75rem) !important;
+  gap: clamp(0.85rem, 1.6vw, 1.5rem) !important;
+  margin-bottom: clamp(1.35rem, 3.5vh, 3rem) !important;
 }
 
 .street-hero__cta-btn,
@@ -20813,9 +20767,9 @@ a#heroShopNewArrivalsBtn.street-hero__cta-btn {
   color: #ffffff !important;
   border: 1px solid #0d0d0d !important;
   border-radius: 8px !important;
-  padding: clamp(0.7rem, 1.25vh, 0.92rem) clamp(1.15rem, 2vw, 1.8rem) !important;
+  padding: clamp(0.78rem, 1.4vh, 1rem) clamp(1.25rem, 2.2vw, 1.95rem) !important;
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
-  font-size: clamp(0.68rem, 0.85vw, 0.78rem) !important;
+  font-size: clamp(0.7rem, 0.88vw, 0.82rem) !important;
   font-weight: 700 !important;
   letter-spacing: 0.08em !important;
   text-transform: uppercase !important;
@@ -20833,7 +20787,7 @@ a#heroShopNewArrivalsBtn.street-hero__cta-btn:hover {
 
 .street-hero__secondary-link {
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
-  font-size: clamp(0.68rem, 0.85vw, 0.78rem) !important;
+  font-size: clamp(0.7rem, 0.88vw, 0.82rem) !important;
   font-weight: 700 !important;
   letter-spacing: 0.09em !important;
   white-space: nowrap !important;
@@ -20844,28 +20798,28 @@ a#heroShopNewArrivalsBtn.street-hero__cta-btn:hover {
   display: flex !important;
   align-items: center !important;
   flex-wrap: wrap !important;
-  gap: clamp(0.65rem, 1.35vw, 1.3rem) !important;
+  gap: clamp(0.75rem, 1.5vw, 1.4rem) !important;
 }
 
 .street-hero__trust-item {
   display: inline-flex !important;
   align-items: center !important;
-  gap: 0.5rem !important;
+  gap: 0.55rem !important;
   color: #111111 !important;
 }
 
 .street-hero__trust-icon {
   flex-shrink: 0 !important;
-  width: clamp(18px, 1.8vw, 22px) !important;
-  height: clamp(18px, 1.8vw, 22px) !important;
+  width: clamp(19px, 1.9vw, 23px) !important;
+  height: clamp(19px, 1.9vw, 23px) !important;
   color: #111111 !important;
 }
 
 .street-hero__trust-label {
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
-  font-size: clamp(0.62rem, 0.78vw, 0.72rem) !important;
+  font-size: clamp(0.64rem, 0.8vw, 0.74rem) !important;
   font-weight: 500 !important;
-  line-height: 1.22 !important;
+  line-height: 1.24 !important;
   letter-spacing: 0.05em !important;
   text-transform: uppercase !important;
   color: #27272a !important;
@@ -20873,7 +20827,7 @@ a#heroShopNewArrivalsBtn.street-hero__cta-btn:hover {
 
 .street-hero__trust-divider {
   width: 1px !important;
-  height: 24px !important;
+  height: 26px !important;
   background-color: #d4d0c8 !important;
   flex-shrink: 0 !important;
 }
@@ -20882,13 +20836,15 @@ a#heroShopNewArrivalsBtn.street-hero__cta-btn:hover {
   display: flex !important;
   justify-content: center !important;
   align-items: flex-end !important;
+  height: 100% !important;
   background: #FAF8F5 !important;
 }
 
 .street-hero__visual-frame {
   position: relative !important;
-  width: min(100%, 560px, calc((100dvh - 80px) * 0.848)) !important;
-  aspect-ratio: 710 / 837 !important;
+  height: min(820px, calc(100dvh - 66px)) !important;
+  width: min(100%, 660px) !important;
+  max-width: 100% !important;
   overflow: hidden !important;
   background: #FAF8F5 !important;
   border: none !important;
@@ -20898,18 +20854,18 @@ a#heroShopNewArrivalsBtn.street-hero__cta-btn:hover {
 
 .street-hero__photo {
   position: absolute !important;
-  left: -100% !important;
+  left: 50% !important;
   top: -12.36% !important;
-  width: 235.5% !important;
   height: 112.36% !important;
+  width: auto !important;
   max-width: none !important;
-  object-fit: fill !important;
+  transform: translateX(-62.8%) !important;
   display: block !important;
   filter: brightness(1.035) contrast(1.03) !important;
   mix-blend-mode: multiply !important;
-  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 7%, #000 94%, transparent 100%), linear-gradient(to bottom, transparent 0%, #000 5%, #000 100%) !important;
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 10%, #000 92%, transparent 100%), linear-gradient(to bottom, transparent 0%, #000 5%, #000 100%) !important;
   -webkit-mask-composite: source-in !important;
-  mask-image: linear-gradient(to right, transparent 0%, #000 7%, #000 94%, transparent 100%), linear-gradient(to bottom, transparent 0%, #000 5%, #000 100%) !important;
+  mask-image: linear-gradient(to right, transparent 0%, #000 10%, #000 92%, transparent 100%), linear-gradient(to bottom, transparent 0%, #000 5%, #000 100%) !important;
   mask-composite: intersect !important;
   pointer-events: none !important;
   user-select: none !important;
@@ -20917,96 +20873,106 @@ a#heroShopNewArrivalsBtn.street-hero__cta-btn:hover {
 
 @media (max-width: 768px) {
   .elanora-hero.street-hero {
-    padding: clamp(0.65rem, 1.5dvh, 1.2rem) 1rem clamp(1.1rem, 2.5dvh, 2rem) !important;
+    min-height: calc(100dvh - 46px) !important;
+    padding: clamp(1rem, 3dvh, 2rem) 1rem 0 !important;
     background: #FAF8F5 !important;
     background-color: #FAF8F5 !important;
+    align-items: stretch !important;
   }
   .street-hero__container {
+    min-height: calc(100dvh - 46px - clamp(1rem, 3dvh, 2rem)) !important;
     grid-template-columns: 1fr !important;
+    grid-template-rows: auto minmax(0, 1fr) !important;
     text-align: center !important;
-    gap: clamp(0.7rem, 1.8dvh, 1.35rem) !important;
+    align-items: stretch !important;
+    gap: clamp(0.9rem, 2.4dvh, 1.75rem) !important;
   }
   .street-hero__text-col {
-    padding: 0 !important;
+    padding: clamp(0.35rem, 1.4dvh, 1rem) 0.25rem 0 !important;
     align-items: center !important;
+    align-self: start !important;
   }
   .street-hero__eyebrow {
     justify-content: center !important;
-    font-size: 0.68rem !important;
-    letter-spacing: 0.25em !important;
-    gap: 0.65rem !important;
-    margin-bottom: clamp(0.35rem, 0.9dvh, 0.65rem) !important;
+    font-size: 0.72rem !important;
+    letter-spacing: 0.26em !important;
+    gap: 0.7rem !important;
+    margin-bottom: clamp(0.45rem, 1.3dvh, 0.85rem) !important;
   }
   .street-hero__eyebrow-line {
-    width: 34px !important;
+    width: 38px !important;
   }
   .elanora-hero__heading.street-hero__heading {
-    font-size: clamp(1.6rem, 6.8vw, 2.25rem) !important;
-    line-height: 1.03 !important;
-    margin: 0 0 clamp(0.4rem, 1dvh, 0.7rem) 0 !important;
+    font-size: clamp(1.85rem, 7.6vw, 2.55rem) !important;
+    line-height: 1.02 !important;
+    margin: 0 0 clamp(0.5rem, 1.4dvh, 0.9rem) 0 !important;
   }
   .elanora-hero__sub.street-hero__sub {
-    font-size: clamp(0.84rem, 3.3vw, 0.95rem) !important;
-    line-height: 1.42 !important;
-    max-width: 320px !important;
-    margin: 0 auto clamp(0.65rem, 1.6dvh, 1.1rem) !important;
+    font-size: clamp(0.88rem, 3.5vw, 1rem) !important;
+    line-height: 1.48 !important;
+    max-width: 340px !important;
+    margin: 0 auto clamp(0.85rem, 2.2dvh, 1.4rem) !important;
   }
   .street-hero__cta-group {
     justify-content: center !important;
-    gap: 0.55rem 0.95rem !important;
+    gap: 0.65rem 1.15rem !important;
     margin-bottom: 0 !important;
   }
   .street-hero__cta-btn,
   a#heroShopNewArrivalsBtn.street-hero__cta-btn {
-    padding: 0.68rem 1.05rem !important;
-    font-size: 0.68rem !important;
-    letter-spacing: 0.06em !important;
+    padding: 0.76rem 1.25rem !important;
+    font-size: 0.72rem !important;
+    letter-spacing: 0.07em !important;
   }
   .street-hero__secondary-link {
-    font-size: 0.68rem !important;
-    letter-spacing: 0.07em !important;
+    font-size: 0.72rem !important;
+    letter-spacing: 0.08em !important;
   }
   .street-hero__trust-row {
     display: none !important;
   }
   .street-hero__visual-col {
     justify-content: center !important;
-    align-items: center !important;
+    align-items: flex-end !important;
+    height: 100% !important;
+    margin-top: auto !important;
   }
   .street-hero__visual-frame {
-    height: clamp(200px, calc(100dvh - 355px), 355px) !important;
-    width: auto !important;
-    max-width: min(305px, 78vw) !important;
-    aspect-ratio: 710 / 837 !important;
-    border-radius: 240px 240px 12px 12px !important;
+    height: clamp(290px, calc(100dvh - 305px), 515px) !important;
+    width: min(100%, 420px) !important;
+    max-width: 100% !important;
+    border-radius: 0 !important;
     overflow: hidden !important;
     background: #FAF8F5 !important;
-    border: 1px solid #e5dfd5 !important;
-    box-shadow: 0 18px 40px rgba(28, 25, 23, 0.07) !important;
+    border: none !important;
+    box-shadow: none !important;
     margin: 0 auto !important;
   }
   .street-hero__photo {
-    left: -100% !important;
-    top: -11.5% !important;
-    width: 235.5% !important;
-    height: 111.5% !important;
-    filter: brightness(1.06) contrast(1.04) !important;
-    -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 8%, #000 94%, transparent 100%), linear-gradient(to bottom, transparent 0%, #000 5%, #000 100%) !important;
+    left: 50% !important;
+    top: -9.5% !important;
+    height: 109.5% !important;
+    width: auto !important;
+    transform: translateX(-62.5%) !important;
+    filter: brightness(1.04) contrast(1.03) !important;
+    mix-blend-mode: multiply !important;
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 12%, #000 90%, transparent 100%), linear-gradient(to bottom, transparent 0%, #000 6%, #000 100%) !important;
     -webkit-mask-composite: source-in !important;
-    mask-image: linear-gradient(to right, transparent 0%, #000 8%, #000 94%, transparent 100%), linear-gradient(to bottom, transparent 0%, #000 5%, #000 100%) !important;
+    mask-image: linear-gradient(to right, transparent 0%, #000 12%, #000 90%, transparent 100%), linear-gradient(to bottom, transparent 0%, #000 6%, #000 100%) !important;
     mask-composite: intersect !important;
   }
 }
 
 @media (max-width: 380px) {
   .elanora-hero.street-hero {
-    padding: 0.55rem 0.75rem 1rem !important;
+    padding: 0.85rem 0.85rem 0 !important;
   }
   .elanora-hero__heading.street-hero__heading {
-    font-size: clamp(1.48rem, 6.8vw, 1.95rem) !important;
+    font-size: clamp(1.65rem, 7.3vw, 2.15rem) !important;
   }
   .street-hero__visual-frame {
-    height: clamp(190px, calc(100dvh - 345px), 315px) !important;
+    height: clamp(265px, calc(100dvh - 295px), 440px) !important;
+    width: 100% !important;
   }
 }
 

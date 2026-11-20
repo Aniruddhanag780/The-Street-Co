@@ -64,7 +64,6 @@ the-street-co/
 ├── public/                       # Transactional email payment and social icons
 ├── admin-og.html                 # Social preview & OpenGraph banner generator
 ├── admin-zoho.html               # Zoho Inventory synchronization dashboard
-├── email-preview.html            # Transactional email template previewer
 ├── env.example                   # Environment variable template
 ├── index.html                    # Main single-page application entry point
 ├── main.js                       # Frontend store logic, cart, accounts & return modal

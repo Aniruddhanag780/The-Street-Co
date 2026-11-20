@@ -1,4 +1,4 @@
-const CACHE_NAME = 'thestreetco-v13';
+const CACHE_NAME = 'thestreetco-v19';
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',

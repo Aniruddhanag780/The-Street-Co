@@ -156,18 +156,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Circular Category Avatars (7 Circles)
-  document.querySelectorAll("[data-category-filter]").forEach(item => {
-    item.addEventListener("click", () => {
-      const cat = item.getAttribute("data-category-filter");
-      if (shopSearchInput) {
-        shopSearchInput.value = cat;
-        shopSearchInput.dispatchEvent(new Event("input", { bubbles: true }));
-      }
-      const shopEl = document.getElementById("shop");
-      if (shopEl) shopEl.scrollIntoView({ behavior: "smooth" });
-    });
-  });
 
   // Hero Quick Category & Nav shortcuts
   document.querySelectorAll("[data-filter-quick]").forEach(btn => {
@@ -309,7 +297,7 @@ document.addEventListener("DOMContentLoaded", () => {
       e.preventDefault();
       const action = link.getAttribute("data-promo-action");
       if (shopSearchInput) {
-        shopSearchInput.value = action === "summer" ? "dress" : "accessories";
+        shopSearchInput.value = action === "summer" ? "tee" : "accessories";
         shopSearchInput.dispatchEvent(new Event("input", { bubbles: true }));
       }
       const shopEl = document.getElementById("shop");
@@ -5273,42 +5261,42 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
         label: 'Minato Namikaze',
         subtitle: 'Yellow Flash',
         kanji: '閃',
-        img: '/api/product-image'
+        img: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1d/Winter_walk_in_New_York_%28Unsplash%29.jpg/960px-Winter_walk_in_New_York_%28Unsplash%29.jpg'
       },
       {
         id: 'Akatsuki Shadows',
         label: 'Akatsuki Shadows',
         subtitle: 'Crimson Cloud',
         kanji: '雲',
-        img: '/api/product-image'
+        img: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/9/92/Kabukicho_red_gate_and_colorful_neon_street_signs_at_night%2C_Shinjuku%2C_Tokyo%2C_Japan.jpg/960px-Kabukicho_red_gate_and_colorful_neon_street_signs_at_night%2C_Shinjuku%2C_Tokyo%2C_Japan.jpg'
       },
       {
         id: 'Uchiha Clan',
         label: 'Uchiha Clan',
         subtitle: 'Flame Legacy',
         kanji: '団',
-        img: '/api/product-image'
+        img: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/7/76/Man_in_t-shirt_posing_%28Unsplash%29.jpg/960px-Man_in_t-shirt_posing_%28Unsplash%29.jpg'
       },
       {
         id: 'Crow Genjutsu',
         label: 'Crow Genjutsu',
         subtitle: 'Raven Mirage',
         kanji: '鴉',
-        img: '/api/product-image'
+        img: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/4/42/Raven_portrait_%2889387%29.jpg/960px-Raven_portrait_%2889387%29.jpg'
       },
       {
         id: 'Street Core',
         label: 'Street Core',
         subtitle: 'Tokyo Shadow',
         kanji: '街',
-        img: '/api/product-image'
+        img: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/7/70/Shibuya_Crossing_Tokyo_At_Night_%28150285427%29.jpeg/960px-Shibuya_Crossing_Tokyo_At_Night_%28150285427%29.jpeg'
       },
       {
         id: 'Shinobi Armory',
         label: 'Shinobi Armory',
         subtitle: 'Tactical Steel',
         kanji: '刃',
-        img: '/api/product-image'
+        img: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d6/Katana_exhibition_at_Matsumoto_City_Museum_%2848685%29.jpg/960px-Katana_exhibition_at_Matsumoto_City_Museum_%2848685%29.jpg'
       }
     ],
     size: [
@@ -5380,7 +5368,7 @@ document.querySelectorAll("[data-reveal]").forEach(el => io.observe(el));
           return `
             <label class="filter-collec-square ${isChecked ? 'checked active' : ''}" data-val="${opt.id}" title="${opt.label}">
               <input type="checkbox" class="filter-checkbox filter-box-sr" data-group="collection" data-val="${opt.id}" ${isChecked ? 'checked' : ''} />
-              <img src="${bgImg}" alt="${opt.label}" class="filter-collec-square__bg" loading="lazy" />
+              <img src="${bgImg}" alt="${opt.label}" class="filter-collec-square__bg" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='/api/product-image';" />
               <div class="filter-collec-square__scrim"></div>
               <span class="filter-collec-square__kanji" aria-hidden="true">${kanji}</span>
               <div class="filter-collec-square__top">
@@ -9231,7 +9219,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       title: 'Tokyo Shadow Ensemble',
       meta: 'Look 01 · Heavyweight Streetwear · 3 Curated Pieces',
       note: '480 GSM loopwheel cotton hoodie paired with articulated cargo trousers and a tactical utility bag.',
-      heroImage: '/api/product-image',
+      heroImage: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/9/9e/Neon-street-in-Tokyo-Japan.jpg/960px-Neon-street-in-Tokyo-Japan.jpg',
       pieces: [
         {
           pin: '01',
@@ -9242,7 +9230,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           category: 'Oversized T-Shirts',
           fabric: '320 GSM Combed Cotton · Drop Shoulder',
           priceInr: 1999,
-          image: '/api/product-image',
+          image: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/2/25/Streetwear_-_G%27Fellas_Apparel.png/960px-Streetwear_-_G%27Fellas_Apparel.png',
           defaultSize: 'L'
         },
         {
@@ -9254,7 +9242,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           category: 'Cargo Pants & Joggers',
           fabric: 'Ripstop Cotton Twill · 6-Pocket Articulated Fit',
           priceInr: 2699,
-          image: '/api/product-image',
+          image: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cd/Cargo_pants_001.jpg/960px-Cargo_pants_001.jpg',
           defaultSize: 'L'
         },
         {
@@ -9266,7 +9254,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           category: 'Accessories & Bags',
           fabric: 'Ballistic Nylon · Matte Fidlock Buckle',
           priceInr: 1599,
-          image: '/api/product-image',
+          image: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c8/Man_with_a_red_and_blue_bag_%28Unsplash%29.jpg/960px-Man_with_a_red_and_blue_bag_%28Unsplash%29.jpg',
           defaultSize: 'M'
         }
       ]
@@ -9276,7 +9264,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       title: 'Tailored Archive Silhouette',
       meta: 'Look 02 · Structured Luxury Street · 3 Curated Pieces',
       note: 'Architectural double-breasted streetwear blazer layered over an ivory heavyweight tee and pleated wide trousers.',
-      heroImage: '/api/product-image',
+      heroImage: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/2/27/Smart_Casual_Dress_Example.jpg/960px-Smart_Casual_Dress_Example.jpg',
       pieces: [
         {
           pin: '01',
@@ -9287,7 +9275,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           category: 'Jackets & Outerwear',
           fabric: 'Japanese Gabardine Twill · Satin Lined',
           priceInr: 3999,
-          image: '/api/product-image',
+          image: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e9/Blazer_Jackets_on_Rack_%28Unsplash%29.jpg/960px-Blazer_Jackets_on_Rack_%28Unsplash%29.jpg',
           defaultSize: 'L'
         },
         {
@@ -9299,7 +9287,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           category: 'Classic T-Shirts',
           fabric: '280 GSM Organic Supima Cotton',
           priceInr: 1499,
-          image: '/api/product-image',
+          image: 'https://upload.wikimedia.org/wikipedia/commons/2/20/White_simple_T-shirt_made_by_COQ_manufacture.jpg',
           defaultSize: 'M'
         },
         {
@@ -9311,7 +9299,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           category: 'Cargo Pants & Joggers',
           fabric: 'Structured Wool-Blend Drape',
           priceInr: 2899,
-          image: '/api/product-image',
+          image: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/1/15/Men%27s_Fall_Fashion_%28Unsplash%29.jpg/960px-Men%27s_Fall_Fashion_%28Unsplash%29.jpg',
           defaultSize: 'L'
         }
       ]
@@ -9321,7 +9309,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       title: 'Utilitarian Street Armor',
       meta: 'Look 03 · All-Weather Capsule · 3 Curated Pieces',
       note: 'Heavyweight French terry hoodie paired with relaxed parachute joggers and brushed steel street hardware.',
-      heroImage: '/api/product-image',
+      heroImage: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7b/Imani-bahati-man-wearing-black-jacket-on-street.jpg/960px-Imani-bahati-man-wearing-black-jacket-on-street.jpg',
       pieces: [
         {
           pin: '01',
@@ -9332,7 +9320,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           category: 'Hoodies & Sweatshirts',
           fabric: '480 GSM Heavyweight French Terry',
           priceInr: 3299,
-          image: '/api/product-image',
+          image: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c2/Hoodie_m7agar.jpg/960px-Hoodie_m7agar.jpg',
           defaultSize: 'XL'
         },
         {
@@ -9344,7 +9332,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           category: 'Cargo Pants & Joggers',
           fabric: 'Water-Repellent Matte Nylon',
           priceInr: 2499,
-          image: '/api/product-image',
+          image: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4b/Corteiz_Alcatraz_Joggers.jpg/960px-Corteiz_Alcatraz_Joggers.jpg',
           defaultSize: 'L'
         },
         {
@@ -9356,7 +9344,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           category: 'Accessories & Jewelry',
           fabric: '316L Surgical Grade Stainless Steel',
           priceInr: 1299,
-          image: '/api/product-image',
+          image: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/a/ae/Silver_necklace_875.JPG/960px-Silver_necklace_875.JPG',
           defaultSize: 'M'
         }
       ]
@@ -9390,6 +9378,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
     const finalPriceEl = document.getElementById('lookbookBundleFinalPrice');
 
     if (stageImg) {
+      stageImg.referrerPolicy = 'no-referrer';
       stageImg.src = look.heroImage;
       stageImg.onerror = function() {
         this.onerror = null;
@@ -9661,7 +9650,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       title: 'Obsidian Susanoo 500 GSM Armored Trench Hoodie',
       desc: 'Milled from custom 500 GSM heavyweight loopwheel cotton with embroidered metallic crest and storm-flap collar.',
       priceInr: 4299,
-      image: '/api/product-image',
+      image: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c2/Hoodie_m7agar.jpg/960px-Hoodie_m7agar.jpg',
       demandPct: 88
     },
     {
@@ -9670,7 +9659,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       title: 'Akatsuki Midnight Waxed Canvas Tactical Jacket',
       desc: 'Weatherproof Japanese waxed canvas shell with concealed magnetic utility pockets and vermilion satin lining.',
       priceInr: 5499,
-      image: '/api/product-image',
+      image: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/0/09/RJZ_at_3_Music_Awards_22_44.jpg/960px-RJZ_at_3_Music_Awards_22_44.jpg',
       demandPct: 79
     },
     {
@@ -9679,7 +9668,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
       title: 'Shibuya Heavyweight Selvedge Cargo Denim',
       desc: '14oz raw selvedge black denim engineered with articulated knee pleats and custom brushed-steel hardware.',
       priceInr: 3699,
-      image: '/api/product-image',
+      image: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/0/01/Jeans_Jeans_Jeans.jpg/960px-Jeans_Jeans_Jeans.jpg',
       demandPct: 93
     }
   ];
@@ -12327,7 +12316,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           qty: 1,
           priceInr: 2499,
           totalItemPriceInr: 2499,
-          image: '/api/product-image'
+          image: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c2/Hoodie_m7agar.jpg/960px-Hoodie_m7agar.jpg'
         },
         {
           id: 'sample-2',
@@ -12338,7 +12327,7 @@ window.openDelhiveryTracker = openDelhiveryTracker;
           qty: 1,
           priceInr: 1499,
           totalItemPriceInr: 1499,
-          image: '/api/product-image'
+          image: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/2/25/Streetwear_-_G%27Fellas_Apparel.png/960px-Streetwear_-_G%27Fellas_Apparel.png'
         }
       ],
       shippingAddress: {
